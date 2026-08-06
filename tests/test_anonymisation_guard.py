@@ -310,6 +310,33 @@ def test_hooks_are_tracked_in_the_repo_not_only_in_dot_git():
     assert "pre-push" in tracked and "pre-commit" in tracked
 
 
+def test_hooks_are_executable_in_the_git_index():
+    """Git silently refuses to run a hook without the execute bit.
+
+    Windows does not track file mode, so `chmod +x` in the working tree leaves
+    the index at 100644 and every Linux/macOS clone gets hooks that never fire —
+    no error, no warning, just no protection. This is the fail-open case the
+    whole gate exists to avoid, and CI caught it on the first real run.
+
+    Fix with: git update-index --chmod=+x .githooks/<name>
+    """
+    import subprocess
+    out = subprocess.run(["git", "ls-files", "-s", ".githooks"], cwd=PROJECT_ROOT,
+                         capture_output=True, text=True, check=True).stdout
+    assert out.strip(), ".githooks must be tracked"
+    for line in out.splitlines():
+        mode, _rest = line.split(" ", 1)
+        assert mode == "100755", f"not executable in the index: {line}"
+
+
+def test_ci_scans_all_history_not_just_the_root_commit():
+    """`git rev-list <root>` walks the ANCESTORS of the root — i.e. only the
+    root. CI reported success having scanned 1 commit of 4."""
+    ci = (PROJECT_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "--range HEAD" in ci
+    assert "--max-parents=0" not in ci, "that expression scans one commit, not history"
+
+
 def test_pre_push_hook_scans_the_pushed_range_and_demands_config():
     body = (PROJECT_ROOT / ".githooks" / "pre-push").read_text(encoding="utf-8")
     assert "--range" in body, "must scan the commits being pushed"
