@@ -8,6 +8,18 @@ Exact, offline, and it does not need a browser.
 
 Exit 0 when every difference is an intended alias collapse; 1 otherwise.
 
+IF YOU SPOT-CHECK IN A BROWSER, DISABLE TRANSITIONS FIRST
+---------------------------------------------------------
+In a tab that is not compositing frames — the normal state for an automated
+browser pane — a CSS transition never advances, and `getComputedStyle` returns
+its START value indefinitely. `<body class="transition-colors duration-200">`
+reported the light background half a second after switching to dark, while the
+rule and the custom property were both provably correct. Inject
+
+    *,*::before,*::after { transition: none !important; animation: none !important }
+
+before reading, or every transitioned property will lie to you.
+
 WHY NOT JUST TRUST THE TESTS
 ----------------------------
 An earlier converter deleted `dark:bg-[#1E293B]` wherever the light half was
