@@ -110,7 +110,16 @@ That sets `core.hooksPath` to the tracked `.githooks/` directory rather than
 copying files into `.git/hooks`, so the hooks are always whatever the
 repository says they are. Verify with `python tools/install_hooks.py --check`.
 
-## Two things only a repo admin can do
+## Repo-admin configuration (done — recorded here so it can be re-created)
+
+Both of the following are configured on `Rinkatecam/Prism`. If the repo is ever
+recreated, they have to be set up again — the whole gate is only as strong as
+layer 4.
+
+Note that the **ruleset** is also named `ANONYMISATION_DENYLIST`, which is the
+same name as the **Actions secret**. They are two unrelated things that happen
+to share a name; do not assume configuring one configures the other.
+
 
 **1. Add the `ANONYMISATION_DENYLIST` secret** — Settings → Secrets and
 variables → Actions. Generate the value with:
