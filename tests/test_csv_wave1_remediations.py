@@ -156,8 +156,14 @@ def test_backup_includes_install_state_when_present(tmp_path, monkeypatch):
     # Seed prism.db (real sqlite file).
     db_file = data_dir / "prism.db"
     sqlite3.connect(str(db_file)).close()
-    # Seed config.json.
-    (data_dir / "config.json").write_text("{}", encoding="utf-8")
+    # config.json lives at the PROJECT ROOT, not in data/ — that was B-1.
+    # Seeding it under data_dir and letting run() fall back to its default is
+    # exactly the second-order defect recorded in docs/plans/HANDOFF.md §3: the
+    # test passed on a developer machine because the real repo-root config
+    # existed, so it quietly backed up the LIVE deployment config into a temp
+    # dir, and it failed on CI where no such file exists. Pass the path in.
+    config_file = tmp_path / "config.json"
+    config_file.write_text("{}", encoding="utf-8")
     # Seed install_state.json — the asset under test.
     install_state_payload = {"srv1": {"status": "restart_required"}}
     (data_dir / "install_state.json").write_text(
@@ -165,7 +171,7 @@ def test_backup_includes_install_state_when_present(tmp_path, monkeypatch):
     )
 
     out_dir = tmp_path / "out"
-    backup_mod.run(out_dir, data_dir=data_dir)
+    backup_mod.run(out_dir, data_dir=data_dir, config_path=config_file)
 
     # Verify install_state.json landed in the backup AND is in the manifest.
     assert (out_dir / "install_state.json").exists()
@@ -185,9 +191,11 @@ def test_backup_omits_install_state_when_absent(tmp_path):
     data_dir = tmp_path / "data"
     data_dir.mkdir()
     sqlite3.connect(str(data_dir / "prism.db")).close()
-    (data_dir / "config.json").write_text("{}", encoding="utf-8")
+    # Root-level, and passed explicitly — see the note in the test above.
+    config_file = tmp_path / "config.json"
+    config_file.write_text("{}", encoding="utf-8")
     out_dir = tmp_path / "out"
-    backup_mod.run(out_dir, data_dir=data_dir)
+    backup_mod.run(out_dir, data_dir=data_dir, config_path=config_file)
     assert not (out_dir / "install_state.json").exists()
     # Backup still succeeded — manifest exists and is valid.
     assert (out_dir / "manifest.json").exists()
