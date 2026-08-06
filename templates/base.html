@@ -16,9 +16,32 @@
       darkMode: 'class',
       theme: {
         extend: {
+          // Semantic colours, resolved from the CSS custom properties in
+          // static/css/app.css. Generated — regenerate with:
+          //   python -c "import sys;sys.path.insert(0,'.');\
+          //     from tools import design_tokens as d;print(d.render_tailwind_colors())"
+          //
+          // One class covers BOTH themes: `text-muted` reads --c-muted, which
+          // .dark overrides. That is why a `dark:` variant is no longer needed
+          // and, more importantly, can no longer be forgotten — 34% of coloured
+          // utilities used to have none and leaked their light colour into dark
+          // mode.
+          //
+          // Replaces the previous `surface` / `bg` entries, which were defined
+          // here and referenced by exactly 0 templates.
           colors: {
-            surface: { light: '#FFFFFF', dark: '#1E293B' },
-            bg: { light: '#F9FAFB', dark: '#0F172A' },
+            page: 'rgb(var(--c-page) / <alpha-value>)',
+            card: 'rgb(var(--c-card) / <alpha-value>)',
+            raised: 'rgb(var(--c-raised) / <alpha-value>)',
+            line: 'rgb(var(--c-line) / <alpha-value>)',
+            ink: 'rgb(var(--c-ink) / <alpha-value>)',
+            muted: 'rgb(var(--c-muted) / <alpha-value>)',
+            faint: 'rgb(var(--c-faint) / <alpha-value>)',
+            brand: 'rgb(var(--c-brand) / <alpha-value>)',
+            info: 'rgb(var(--c-info) / <alpha-value>)',
+            healthy: 'rgb(var(--c-healthy) / <alpha-value>)',
+            warning: 'rgb(var(--c-warning) / <alpha-value>)',
+            critical: 'rgb(var(--c-critical) / <alpha-value>)'
           }
         }
       }

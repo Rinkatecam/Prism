@@ -130,6 +130,30 @@ def test_dark_hover_pairs_with_light_hover():
         '<b class="hover:text-muted">'
 
 
+def test_css_uses_channel_triplets_not_hex():
+    """A bare hex inside var() breaks Tailwind's opacity modifier, and 329
+    sites depend on it. The format is a requirement, not a preference."""
+    css = dt.render_css()
+    assert "--c-critical: 220 38 38;" in css
+    assert "#" not in css, "no hex may survive into the custom properties"
+    assert ":root {" in css and ".dark {" in css
+
+
+def test_tailwind_colour_map_composes_alpha():
+    js = dt.render_tailwind_colors()
+    assert "rgb(var(--c-critical) / <alpha-value>)" in js
+    for name in dt.TOKENS:
+        assert f"--c-{name}" in js, f"{name} missing from the Tailwind map"
+
+
+def test_css_and_tailwind_cover_exactly_the_same_tokens():
+    """A token defined in one and not the other renders as nothing at all."""
+    css, js = dt.render_css(), dt.render_tailwind_colors()
+    for name in dt.TOKENS:
+        assert f"--c-{name}:" in css
+        assert f"{name}: 'rgb(var(--c-{name})" in js
+
+
 def test_every_token_has_distinct_light_and_dark():
     for name, (light, dark) in dt.TOKENS.items():
         assert light.upper() != dark.upper(), f"{name} is identical in both themes"
