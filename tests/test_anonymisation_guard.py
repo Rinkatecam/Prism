@@ -211,13 +211,140 @@ def test_the_repository_is_currently_clean():
     assert guard.main([]) == 0
 
 
-def test_pre_push_hook_template_refuses_when_python_is_missing():
+def test_pre_push_hook_refuses_when_python_is_missing():
     """A hook that silently no-ops when its interpreter is absent is worse
     than no hook: it reports success."""
-    from tools.install_hooks import PRE_PUSH
-    assert "--require-config" in PRE_PUSH
-    assert "exit 1" in PRE_PUSH
-    assert "Refusing to push rather than skipping it." in PRE_PUSH
+    body = (PROJECT_ROOT / ".githooks" / "pre-push").read_text(encoding="utf-8")
+    assert "--require-config" in body
+    assert "exit 1" in body
+    assert "Refusing to push rather than skipping it." in body
+
+
+# ── the five holes that made "never again" untrue ────────────────────────
+
+def test_commit_messages_are_scanned():
+    """A hostname in a commit message is as public as one in a file.
+
+    On 2026-08-03 exactly that happened while every file was clean, and nothing
+    was looking at messages.
+    """
+    findings = guard.scan_text("chore: bump DESQQQ42 timeout", set())
+    assert any(rule == "hostname-convention" for _l, rule, _t in findings)
+
+
+def test_scan_range_covers_commits_not_just_the_worktree():
+    """The tip being clean says nothing about the commits underneath it.
+
+    Three commits went out on 2026-08-06 carrying a file whose cleanup only
+    landed in the fourth. A worktree-only check waves that through, and once
+    pushed the only remedy is a history rewrite.
+    """
+    import inspect
+    src = inspect.getsource(guard)
+    assert "def scan_commit_trees" in src
+    assert "def scan_commit_messages" in src
+    # and the range must reach both
+    main_src = inspect.getsource(guard.main)
+    assert "scan_commit_messages" in main_src and "scan_commit_trees" in main_src
+
+
+def test_git_grep_flags_precede_the_pattern():
+    """`git grep -oE pat -i` silently does NOT apply -i.
+
+    Git stops reading flags at the first pattern. That mistake produced a
+    false-negative "clean" result which hid five real hostnames, so the built
+    argument list must put every flag first.
+    """
+    import inspect
+    src = inspect.getsource(guard.scan_commit_trees)
+    build = src[src.index('args = ['):src.index('args += [commit]')]
+    assert '"-i"' in build.split('"-e"')[0], "-i must precede the first -e pattern"
+
+
+def test_filenames_are_scanned_not_just_contents():
+    """A path is published even when the blob is spotless.
+
+    "DESFIL10_Deduplication.html" gives away a hostname from the directory
+    listing alone, and naming a report after the server it describes is the
+    most natural filename anyone could write.
+    """
+    findings = guard.scan_path("reports/DESQQQ42_Deduplication.html", set())
+    assert findings, "a leaking filename must be caught"
+    assert all(rule.startswith("path:") for _ln, rule, _t in findings)
+    assert all(line == 0 for line, _r, _t in findings), "line 0 marks a name finding"
+
+
+def test_a_binary_file_still_gets_its_name_checked():
+    """Unreadable content is not a reason to skip the part that is published."""
+    findings = guard.scan_file("static/img/DESQQQ42-diagram.png", set())
+    assert any(rule.startswith("path:") for _ln, rule, _t in findings)
+
+
+def test_clean_paths_are_not_flagged():
+    for path in ("templates/reports.html", "tests/test_incident_dedup.py",
+                 "docs/plans/FLEET_REPORT_SPEC.md", "tools/check_anonymised.py"):
+        assert guard.scan_path(path, set()) == [], path
+
+
+def test_redact_masks_the_value_but_keeps_it_locatable():
+    """CI runs on a PUBLIC repo — printing the match would publish it.
+
+    GitHub masks a secret's exact full value, not the individual lines inside a
+    multi-line secret, so the tool must do its own redaction.
+    """
+    out = guard.redact("secrethost01")
+    assert "secrethost01" not in out
+    assert out.startswith("s") and "12 chars" in out
+    assert guard.redact("ab") == "**"
+
+
+def test_hooks_are_tracked_in_the_repo_not_only_in_dot_git():
+    """.git/hooks is not cloned. A fresh clone must not be defenceless."""
+    for name in ("pre-commit", "pre-push"):
+        path = PROJECT_ROOT / ".githooks" / name
+        assert path.is_file(), f".githooks/{name} must be tracked"
+
+    import subprocess
+    tracked = subprocess.run(["git", "ls-files", ".githooks"], cwd=PROJECT_ROOT,
+                             capture_output=True, text=True).stdout
+    assert "pre-push" in tracked and "pre-commit" in tracked
+
+
+def test_pre_push_hook_scans_the_pushed_range_and_demands_config():
+    body = (PROJECT_ROOT / ".githooks" / "pre-push").read_text(encoding="utf-8")
+    assert "--range" in body, "must scan the commits being pushed"
+    assert "--require-config" in body, "a missing config must fail the push"
+    assert "remote_sha" in body, "must read git's stdin protocol, not guess"
+    assert "Refusing to push rather than skipping it." in body
+
+
+def test_pre_commit_hook_does_not_hard_require_config():
+    """A contributor without the deployment config should still get shape rules
+    on every commit, not a hard stop. pre-push is where it becomes fatal."""
+    body = (PROJECT_ROOT / ".githooks" / "pre-commit").read_text(encoding="utf-8")
+    # Strip comments — the hook explains in prose WHY it omits the flag, and a
+    # naive substring search matches that explanation rather than the command.
+    code = "\n".join(l for l in body.splitlines() if not l.lstrip().startswith("#"))
+    assert "--require-config" not in code
+    assert "--diff-filter=ACM" in code, "only inspect content that exists"
+
+
+def test_ci_runs_the_check_so_a_missing_hook_is_not_fatal():
+    """Local hooks are convenience; CI is the layer that survives a clone that
+    never ran install_hooks.py, or a push with --no-verify."""
+    ci = (PROJECT_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "check_anonymised.py" in ci
+    assert "--redact" in ci, "CI output is public; matches must be masked"
+    assert "fetch-depth: 0" in ci, "needs history to scan commits and messages"
+
+
+def test_install_hooks_uses_hookspath_rather_than_copying():
+    """Copies in .git/hooks drift from the versioned originals."""
+    from tools import install_hooks
+    import inspect
+    src = inspect.getsource(install_hooks)
+    assert "core.hooksPath" in src
+    assert install_hooks.HOOK_NAMES == ("pre-commit", "pre-push")
 
 
 def _scan_text(text: str) -> list[tuple[int, str, str]]:

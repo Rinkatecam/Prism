@@ -1,0 +1,37 @@
+#!/bin/sh
+# Prism pre-commit — catch a leak BEFORE it enters a commit.
+# See docs/ANONYMISATION.md. Enable with: python tools/install_hooks.py
+#
+# pre-push is the authoritative gate; this one exists because by the time
+# pre-push fires the leak is already in a commit, and the only remedy is
+# rewriting history. Catching it here costs a second and keeps the fix to
+# "edit the file".
+#
+# Deliberately does NOT pass --require-config: a contributor without the
+# deployment config should still get the shape rules rather than a hard stop on
+# every commit. pre-push is where the missing config becomes fatal.
+
+ROOT=$(git rev-parse --show-toplevel)
+
+if command -v python >/dev/null 2>&1; then
+  PY=python
+elif command -v python3 >/dev/null 2>&1; then
+  PY=python3
+else
+  exit 0    # pre-push will still refuse; do not block local work over this
+fi
+
+# Added/copied/modified staged paths only. Deletions and renames-away have no
+# content to inspect.
+FILES=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$FILES" ] && exit 0
+
+# shellcheck disable=SC2086
+"$PY" "$ROOT/tools/check_anonymised.py" --files $FILES || {
+  echo "" >&2
+  echo "COMMIT BLOCKED by the anonymisation check." >&2
+  echo "Fix the file now — once this is committed, removing it needs a" >&2
+  echo "history rewrite. See docs/ANONYMISATION.md." >&2
+  exit 1
+}
+exit 0

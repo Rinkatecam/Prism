@@ -1,0 +1,50 @@
+#!/bin/sh
+# Prism pre-push — refuse to publish anything that names the real estate.
+# See docs/ANONYMISATION.md. Enable with: python tools/install_hooks.py
+#
+# Tracked in .githooks/ rather than written into .git/hooks, because .git/hooks
+# is not cloned: a fresh clone would otherwise have no protection at all until
+# someone remembered to install it. `core.hooksPath` points here.
+
+ROOT=$(git rev-parse --show-toplevel)
+
+if command -v python >/dev/null 2>&1; then
+  PY=python
+elif command -v python3 >/dev/null 2>&1; then
+  PY=python3
+else
+  echo "pre-push: no python on PATH — cannot run the anonymisation check." >&2
+  echo "Refusing to push rather than skipping it." >&2
+  exit 1
+fi
+
+# git feeds pre-push "<local ref> <local sha> <remote ref> <remote sha>" on
+# stdin, one line per ref. The commits actually being published are
+# remote_sha..local_sha — the WORKING TREE is not what gets pushed, and a clean
+# tip says nothing about the commits underneath it.
+status=0
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+  [ -z "$local_sha" ] && continue
+  case "$local_sha" in *[!0]*) ;; *) continue ;; esac   # all-zero = branch deletion
+
+  case "$remote_sha" in
+    ""|*[!0-9a-f]*|0000000000000000000000000000000000000000)
+      # New branch, or no common ancestor: scan everything it carries.
+      RANGE="$local_sha"
+      ;;
+    *)
+      RANGE="$remote_sha..$local_sha"
+      ;;
+  esac
+
+  "$PY" "$ROOT/tools/check_anonymised.py" --require-config --range "$RANGE" || status=$?
+done
+
+if [ "$status" -ne 0 ]; then
+  echo "" >&2
+  echo "PUSH BLOCKED by the anonymisation check." >&2
+  echo "Read docs/ANONYMISATION.md. Do not bypass with --no-verify:" >&2
+  echo "this repository is PUBLIC and has leaked real hostnames twice." >&2
+  exit "$status"
+fi
+exit 0

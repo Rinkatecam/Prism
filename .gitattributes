@@ -1,0 +1,29 @@
+# Normalise text in the repository, but pin the files where a line ending is
+# not cosmetic.
+* text=auto
+
+# Shell scripts MUST be LF in the working tree on every platform. This machine
+# has core.autocrlf=true, so without this rule a checkout rewrites them to CRLF
+# and /bin/sh fails with "bad interpreter: /bin/sh^M". For the git hooks that
+# is worse than a broken script: the anonymisation gate is the thing standing
+# between a real hostname and a public repository, and a hook that cannot start
+# is a hook that is not protecting anything.
+.githooks/*      text eol=lf
+*.sh             text eol=lf
+
+# PowerShell is run by Windows tooling that is happy either way, but keeping it
+# CRLF matches what an operator sees when they open it in Notepad.
+*.ps1            text eol=crlf
+
+# Binary — never touch.
+*.png            binary
+*.jpg            binary
+*.jpeg           binary
+*.gif            binary
+*.ico            binary
+*.pdf            binary
+*.woff           binary
+*.woff2          binary
+*.ttf            binary
+*.otf            binary
+*.db             binary

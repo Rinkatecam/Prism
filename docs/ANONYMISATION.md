@@ -67,19 +67,60 @@ shape rules alone and stays green, while a developer's machine runs the full
 check. The hook passes `--require-config` so a missing config **fails the
 push** rather than quietly downgrading to the weaker ruleset.
 
+## Four layers, because one was not enough
+
+This repository leaked real hostnames **twice**, and both times a human had
+already declared it clean. A single check that someone has to remember to run
+is not a control. There are now four, each covering a way the previous one
+fails.
+
+| # | Layer | Catches | Fails when |
+|---|---|---|---|
+| 1 | `pre-commit` hook | a leak before it ever enters a commit | hooks not installed |
+| 2 | `pre-push` hook | the whole range being pushed — every commit's tree **and** every commit message | hooks not installed, or `--no-verify` |
+| 3 | **CI** | the same, on GitHub, on every push and PR | never — this is the backstop |
+| 4 | Branch protection | a push that skipped CI | only if you enable it (see below) |
+
+Layer 2 scans the **range**, not the working tree, because a clean tip says
+nothing about the commits underneath it — three commits went out on 2026-08-06
+carrying a file whose cleanup only landed in the fourth. And it scans commit
+**messages**, because on 2026-08-03 a hostname reached GitHub inside one while
+every file was clean.
+
+CI passes `--redact`, which masks matched values. A build log on a public repo
+is public, and GitHub masks a secret's exact full value — not the individual
+lines inside a multi-line one.
+
 ## Running it
 
 ```bash
-python tools/check_anonymised.py                  # every tracked and new file
-python tools/check_anonymised.py --files a.py     # just these
-python tools/check_anonymised.py --require-config # what the hook runs
+python tools/check_anonymised.py                        # working tree
+python tools/check_anonymised.py --files a.py b.md      # just these
+python tools/check_anonymised.py --range origin/master..HEAD   # commits + messages
+python tools/check_anonymised.py --redact               # mask matches (CI)
 ```
 
-Install the hook (once per clone):
+Enable the hooks (once per clone):
 
 ```bash
 python tools/install_hooks.py
 ```
+
+That sets `core.hooksPath` to the tracked `.githooks/` directory rather than
+copying files into `.git/hooks`, so the hooks are always whatever the
+repository says they are. Verify with `python tools/install_hooks.py --check`.
+
+## Two things only a repo admin can do
+
+**1. Add the `ANONYMISATION_DENYLIST` secret** — Settings → Secrets and
+variables → Actions. Paste the contents of your local
+`.anonymisation-denylist`. Without it CI runs shape rules alone and cannot
+recognise the AD domain or an account name; it emits a warning saying so.
+
+**2. Enable branch protection on `master`** — Settings → Branches → require the
+`Anonymisation (no real hostnames)` status check to pass. Until this is on, a
+direct push with `--no-verify` reaches GitHub and CI only tells you afterwards.
+This is the only layer that makes "never" literally true.
 
 ## If the check fires on something legitimate
 

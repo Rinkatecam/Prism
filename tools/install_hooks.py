@@ -1,97 +1,94 @@
-"""Install Prism's git hooks into this clone.
+"""Point this clone's git hooks at the tracked .githooks/ directory.
 
-    python tools/install_hooks.py
+    python tools/install_hooks.py          # enable
+    python tools/install_hooks.py --check  # verify, non-zero if not enabled
 
-Git hooks live in .git/hooks, which is not version-controlled, so a hook cannot
-simply be committed — every clone has to install it. This script does that and
-is safe to re-run.
+Git hooks live in .git/hooks, which is NOT cloned — so a hook cannot simply be
+committed, and every clone starts with no protection. Rather than copying files
+into .git/hooks (where they immediately drift from the versioned copy), this
+sets `core.hooksPath` to the tracked .githooks/ directory. One setting, and the
+hooks are whatever the repository says they are.
 
-Currently installs:
+Installs:
 
-  pre-push — refuses to push anything that names the real estate.
-             See docs/ANONYMISATION.md.
+  pre-commit — catch a leak before it enters a commit
+  pre-push   — refuse to publish anything that names the real estate
+
+See docs/ANONYMISATION.md.
 """
 
 from __future__ import annotations
 
+import argparse
 import stat
 import subprocess
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-
-# POSIX sh: works with Git Bash on Windows, which is what git invokes for hooks.
-PRE_PUSH = """#!/bin/sh
-# Prism pre-push hook — installed by tools/install_hooks.py. Do not edit here;
-# edit the template in tools/install_hooks.py and re-run it.
-#
-# Blocks any push that would publish real hostnames, the real AD domain, real
-# accounts or real addresses. See docs/ANONYMISATION.md.
-
-if command -v python >/dev/null 2>&1; then
-  PY=python
-elif command -v python3 >/dev/null 2>&1; then
-  PY=python3
-else
-  echo "pre-push: no python on PATH — cannot run the anonymisation check." >&2
-  echo "Refusing to push rather than skipping it." >&2
-  exit 1
-fi
-
-"$PY" "$(git rev-parse --show-toplevel)/tools/check_anonymised.py" --require-config
-status=$?
-if [ $status -ne 0 ]; then
-  echo "" >&2
-  echo "PUSH BLOCKED by the anonymisation check." >&2
-  echo "Fix the occurrences above, or read docs/ANONYMISATION.md." >&2
-  exit $status
-fi
-exit 0
-"""
-
-HOOKS = {"pre-push": PRE_PUSH}
+HOOKS_DIR = REPO_ROOT / ".githooks"
+HOOK_NAMES = ("pre-commit", "pre-push")
 
 
-def hooks_dir() -> Path:
-    """Resolve .git/hooks, honouring worktrees and core.hooksPath."""
-    try:
-        configured = subprocess.run(
-            ["git", "config", "--get", "core.hooksPath"],
-            cwd=REPO_ROOT, capture_output=True, text=True, check=False)
-        if configured.returncode == 0 and configured.stdout.strip():
-            path = Path(configured.stdout.strip())
-            return path if path.is_absolute() else REPO_ROOT / path
-        common = subprocess.run(["git", "rev-parse", "--git-common-dir"],
-                                cwd=REPO_ROOT, capture_output=True,
-                                text=True, check=True).stdout.strip()
-    except (OSError, subprocess.CalledProcessError) as exc:
-        raise SystemExit(f"not a git repository, or git is unavailable: {exc}")
-    git_dir = Path(common)
-    if not git_dir.is_absolute():
-        git_dir = REPO_ROOT / git_dir
-    return git_dir / "hooks"
+def _git(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", *args], cwd=REPO_ROOT,
+                          capture_output=True, text=True, check=False)
 
 
-def main() -> int:
-    target_dir = hooks_dir()
-    target_dir.mkdir(parents=True, exist_ok=True)
+def configured_path() -> str:
+    result = _git("config", "--get", "core.hooksPath")
+    return result.stdout.strip() if result.returncode == 0 else ""
 
-    for name, body in HOOKS.items():
-        target = target_dir / name
-        if target.exists() and target.read_text(encoding="utf-8") == body:
-            print(f"  {name}: already current")
-            continue
-        if target.exists():
-            backup = target.with_suffix(".prism-replaced")
-            backup.write_text(target.read_text(encoding="utf-8"), encoding="utf-8")
-            print(f"  {name}: existing hook saved to {backup.name}")
-        target.write_text(body, encoding="utf-8", newline="\n")
-        target.chmod(target.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP)
-        print(f"  {name}: installed")
 
-    print(f"\nhooks installed into {target_dir}")
-    print("Verify with:  python tools/check_anonymised.py --require-config")
+def is_enabled() -> bool:
+    return configured_path() in (".githooks", str(HOOKS_DIR))
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true",
+                        help="report status instead of changing anything")
+    args = parser.parse_args(argv)
+
+    missing = [n for n in HOOK_NAMES if not (HOOKS_DIR / n).is_file()]
+    if missing:
+        print(f"missing hook script(s) in .githooks/: {', '.join(missing)}",
+              file=sys.stderr)
+        return 2
+
+    if args.check:
+        if is_enabled():
+            print("git hooks are enabled (core.hooksPath = .githooks)")
+            return 0
+        current = configured_path() or "<unset, using .git/hooks>"
+        print(f"git hooks are NOT enabled — core.hooksPath is {current}\n"
+              f"Run: python tools/install_hooks.py", file=sys.stderr)
+        return 1
+
+    if _git("config", "core.hooksPath", ".githooks").returncode != 0:
+        print("could not set core.hooksPath", file=sys.stderr)
+        return 2
+
+    # Git needs the execute bit on POSIX. On Windows it is ignored, and setting
+    # it is harmless.
+    for name in HOOK_NAMES:
+        path = HOOKS_DIR / name
+        path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP)
+        print(f"  {name}: enabled")
+
+    # A stale copy in .git/hooks is now dead code — core.hooksPath overrides the
+    # whole directory — but leaving it there invites someone to edit the wrong
+    # file. Say so rather than deleting anything.
+    legacy = REPO_ROOT / ".git" / "hooks"
+    stale = [n for n in HOOK_NAMES if (legacy / n).is_file()]
+    if stale:
+        print(f"\nnote: .git/hooks still contains {', '.join(stale)}. "
+              f"core.hooksPath now takes precedence, so those copies are "
+              f"inert — edit .githooks/ instead, and delete the old ones when "
+              f"convenient.")
+
+    print(f"\ncore.hooksPath = .githooks")
+    print("Verify with:  python tools/install_hooks.py --check")
     return 0
 
 

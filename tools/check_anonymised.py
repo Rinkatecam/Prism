@@ -52,7 +52,12 @@ LOCAL_TERMS_PATH = REPO_ROOT / ".anonymisation-denylist"
 SHAPE_RULES: list[tuple[str, str, str]] = [
     (
         "hostname-convention",
-        r"\bDES[A-Z]{2,4}\d{2}\b",
+        # Explicit alphanumeric boundaries, NOT \b. Underscore is a word
+        # character, so \b does not break between "42" and "_" — which meant
+        # "DESQQQ42_Deduplication.html" went unmatched. A real host caught by
+        # the config-derived terms hid that for a while; a DECOMMISSIONED host,
+        # which only the shape rule can catch, would have gone straight through.
+        r"(?<![A-Za-z0-9])DES[A-Z]{2,4}\d{2}(?![A-Za-z0-9])",
         "looks like a real host from the estate's naming convention",
     ),
     (
@@ -248,14 +253,8 @@ def _should_skip(rel_path: str) -> bool:
             or lowered.endswith(SKIP_SUFFIXES))
 
 
-def scan_file(rel_path: str, secret_terms: set[str]) -> list[tuple[int, str, str]]:
-    """Return [(line_no, rule, offending_text)] for one file."""
-    path = REPO_ROOT / rel_path
-    try:
-        text = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        return []   # binary or unreadable — nothing quotable in it
-
+def scan_text(text: str, secret_terms: set[str]) -> list[tuple[int, str, str]]:
+    """Return [(line_no, rule, offending_text)] for a blob of text."""
     findings: list[tuple[int, str, str]] = []
     for line_no, line in enumerate(text.splitlines(), start=1):
         lowered = line.lower()
@@ -270,12 +269,142 @@ def scan_file(rel_path: str, secret_terms: set[str]) -> list[tuple[int, str, str
     return findings
 
 
+def scan_path(rel_path: str, secret_terms: set[str]) -> list[tuple[int, str, str]]:
+    """A PATH is published too, even when the file's contents are spotless.
+
+    `DESFIL10_Deduplication.html` gives away a hostname from the directory
+    listing alone — and a report or export named after the server it describes
+    is the most natural filename in the world to write. Line 0 marks a
+    name-level finding.
+    """
+    return [(0, f"path:{rule}", text)
+            for _ln, rule, text in scan_text(rel_path, secret_terms)]
+
+
+def scan_file(rel_path: str, secret_terms: set[str]) -> list[tuple[int, str, str]]:
+    """Return [(line_no, rule, offending_text)] for one working-tree file.
+
+    Binary and unreadable files still have their NAME checked — that is the
+    part of them that gets published either way.
+    """
+    findings = scan_path(rel_path, secret_terms)
+    try:
+        text = (REPO_ROOT / rel_path).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return findings   # binary or unreadable — nothing else quotable in it
+    return findings + scan_text(text, secret_terms)
+
+
+def _git(*args: str) -> str:
+    return subprocess.run(["git", *args], cwd=REPO_ROOT, capture_output=True,
+                          text=True, check=True).stdout
+
+
+def commits_in_range(rev_range: str) -> list[str]:
+    out = _git("rev-list", rev_range)
+    return [c for c in out.splitlines() if c.strip()]
+
+
+def scan_commit_messages(commits: list[str],
+                         secret_terms: set[str]) -> list[tuple[str, int, str, str]]:
+    """Commit MESSAGES are published too.
+
+    On 2026-08-03 a real hostname reached GitHub inside a commit message while
+    every file was clean. Rewriting a message is as disruptive as rewriting a
+    tree, and nothing was looking at them.
+    """
+    violations = []
+    for commit in commits:
+        message = _git("log", "-1", "--format=%B%n%an%n%ae", commit)
+        for line_no, rule, text in scan_text(message, secret_terms):
+            violations.append((f"commit {commit[:9]} (message)", line_no, rule, text))
+    return violations
+
+
+def scan_commit_trees(commits: list[str],
+                      secret_terms: set[str]) -> list[tuple[str, int, str, str]]:
+    """Scan the tree of every commit being pushed, not just the final one.
+
+    The tip being clean says nothing about the commits underneath it. Three
+    commits went out on 2026-08-06 carrying a file whose cleanup only landed in
+    the fourth — a worktree-only check waves that through, and once pushed the
+    only fix is a history rewrite.
+
+    Two-stage for speed: `git grep` narrows to candidate files inside each
+    commit, then those blobs get the precise Python rules (which know that
+    10.0.0.x is an allowed placeholder and a bare version string is not an
+    address).
+    """
+    violations = []
+    patterns = [p for _rule, p, _why in SHAPE_RULES]
+    patterns.append(_PRIVATE_ADDRESS.pattern)
+    patterns.extend(re.escape(t) for t in sorted(secret_terms))
+
+    for commit in commits:
+        # Filenames first — a path is published whether or not the blob is
+        # readable, and git grep never looks at them.
+        try:
+            for rel_path in _git("ls-tree", "-r", "--name-only", commit).splitlines():
+                if rel_path and not _should_skip(rel_path):
+                    for _ln, rule, text in scan_path(rel_path, secret_terms):
+                        violations.append((f"{rel_path} @ {commit[:9]}", 0, rule, text))
+        except subprocess.CalledProcessError:
+            pass
+
+        # NOTE: every flag goes BEFORE the pattern. `git grep -oE pat -i` does
+        # NOT apply -i — git stops reading flags at the first pattern, and that
+        # exact mistake produced a false-negative "clean" result that hid five
+        # real hostnames.
+        args = ["grep", "-I", "-l", "-i", "-E"]
+        for pattern in patterns:
+            args += ["-e", pattern]
+        args += [commit]
+        try:
+            candidates = _git(*args).splitlines()
+        except subprocess.CalledProcessError:
+            continue   # git grep exits 1 when nothing matches
+
+        for entry in candidates:
+            # `git grep -l <commit>` prints "<commit>:<path>".
+            rel_path = entry.split(":", 1)[1] if ":" in entry else entry
+            if _should_skip(rel_path):
+                continue
+            try:
+                blob = _git("show", f"{commit}:{rel_path}")
+            except subprocess.CalledProcessError:
+                continue
+            for line_no, rule, text in scan_text(blob, secret_terms):
+                violations.append((f"{rel_path} @ {commit[:9]}", line_no, rule, text))
+    return violations
+
+
+def redact(text: str) -> str:
+    """Mask an offending value, keeping just enough to locate it.
+
+    Needed because the check runs in CI on a PUBLIC repository. Printing the
+    matched value into a build log would publish the very string the check
+    exists to keep out — and GitHub only masks a secret's exact full value, not
+    the individual lines inside a multi-line one. So a failure in CI names the
+    file, the line and the rule, and the developer reproduces it locally where
+    the full text is safe to show.
+    """
+    if len(text) <= 2:
+        return "*" * len(text)
+    return f"{text[0]}{'*' * (len(text) - 2)}{text[-1]} ({len(text)} chars)"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--files", nargs="*", default=None,
                         help="scan these paths instead of every tracked file")
+    parser.add_argument("--range", dest="rev_range", default=None,
+                        help="also scan every commit and message in A..B "
+                             "(what the pre-push hook passes)")
     parser.add_argument("--require-config", action="store_true",
                         help="fail if config.json is absent (used by pre-push)")
+    parser.add_argument("--redact", action="store_true",
+                        help="mask matched values in the output (use in CI on "
+                             "a public repo)")
     args = parser.parse_args(argv)
 
     secret_terms = load_secret_terms()
@@ -288,29 +417,51 @@ def main(argv: list[str] | None = None) -> int:
               file=sys.stderr)
         return 2
 
-    paths = args.files if args.files is not None else tracked_files()
-    paths = [p.replace("\\", "/") for p in paths]
-
     violations: list[tuple[str, int, str, str]] = []
-    for rel_path in paths:
+    scanned = 0
+
+    paths = args.files if args.files is not None else tracked_files()
+    for rel_path in (p.replace("\\", "/") for p in paths):
         if _should_skip(rel_path):
             continue
+        scanned += 1
         for line_no, rule, text in scan_file(rel_path, secret_terms):
             violations.append((rel_path, line_no, rule, text))
 
+    commits: list[str] = []
+    if args.rev_range:
+        try:
+            commits = commits_in_range(args.rev_range)
+        except subprocess.CalledProcessError:
+            print(f"could not resolve range {args.rev_range!r}", file=sys.stderr)
+            return 2
+        violations += scan_commit_messages(commits, secret_terms)
+        violations += scan_commit_trees(commits, secret_terms)
+
     if not violations:
         scope = "shape rules only" if not secret_terms else "full"
-        print(f"anonymisation check passed ({len(paths)} files, {scope})")
+        extra = f", {len(commits)} commit(s)" if args.rev_range else ""
+        print(f"anonymisation check passed ({scanned} files{extra}, {scope})")
         return 0
 
+    show = redact if args.redact else (lambda t: t)
     print(f"ANONYMISATION CHECK FAILED — {len(violations)} occurrence(s) name "
           f"the real estate:\n", file=sys.stderr)
-    for rel_path, line_no, rule, text in violations:
-        print(f"  {rel_path}:{line_no}  [{rule}]  {text}", file=sys.stderr)
-    print("\nReplace real hostnames with the fictional fleet, the real domain "
-          "with example.com, and real addresses with RFC 5737 documentation "
-          "ranges (192.0.2.x / 198.51.100.x / 203.0.113.x).\n"
-          "See docs/ANONYMISATION.md.", file=sys.stderr)
+    for where, line_no, rule, text in violations:
+        print(f"  {where}:{line_no}  [{rule}]  {show(text)}", file=sys.stderr)
+    if args.redact:
+        print("\nValues are masked because this ran on a public repository. "
+              "Reproduce locally for the full text:\n"
+              "  python tools/check_anonymised.py", file=sys.stderr)
+    else:
+        print("\nReplace real hostnames with the fictional fleet, the real "
+              "domain with example.com, and real addresses with RFC 5737 "
+              "documentation ranges (192.0.2.x / 198.51.100.x / 203.0.113.x).\n"
+              "See docs/ANONYMISATION.md.", file=sys.stderr)
+    if any(w.startswith("commit ") or " @ " in w for w, _l, _r, _t in violations):
+        print("\nSome of these are in COMMITS ALREADY MADE, not just the working "
+              "tree. Fixing the files is not enough — the commits need "
+              "rewriting before this can be pushed.", file=sys.stderr)
     return 1
 
 
