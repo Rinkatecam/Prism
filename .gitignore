@@ -1,0 +1,82 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+*.egg-info/
+
+# Secrets + runtime data
+.env
+data/
+*.log
+*.log.*
+
+# Active deployment config — contains real hostnames + encrypted passwords.
+# Keep a sanitised config.example.json in the repo if you want a template.
+config.json
+
+# Extra forbidden terms for tools/check_anonymised.py — personal accounts and
+# other real identifiers that config.json cannot supply. Committing this file
+# would publish exactly what it exists to keep out of the repo.
+.anonymisation-denylist
+
+# Secrets anywhere (defensive)
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+flask_secret.key
+prism.key
+
+# Local test / debug artifacts
+cookies.txt
+*_cookies.txt
+*.stackdump
+.pytest_cache/
+
+# IDE / tooling
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude agent metadata (session-local)
+.claude/
+
+# User-authored doc drafts (optional, not production code)
+COMPLETE_PACKAGE_SUMMARY.md
+FINAL_UI_UX_SPEC.md
+OFFICE_MONITORING_SPEC.md
+QUICK_START_GUIDE.md
+READY_TO_BUILD.md
+/^/instance
+instance/
+
+# Ad-hoc diagnostic / scratch scripts (never product code)
+probe_*.py
+scratch_*.py
+
+# Internal server runbooks / infrastructure docs — these name real hostnames,
+# volumes, share paths and staff folders. Deliberately a folder rule rather than
+# *.html, because templates/ must stay tracked.
+docs/runbooks/
+
+# Internal working documents — plans, handoffs, backlogs, specs. These are the
+# working notes between the maintainer and the assistant, not product
+# documentation, and they discuss the real estate in detail. They stay local.
+# Operator-facing guides in docs/ and the compliance content the app renders
+# are NOT covered by this rule.
+docs/plans/
+
+# Internal security-audit / exploit-analysis docs — kept locally, never published
+docs/audit/
+docs/audit-2026-05/
+docs/AUDIT-2026-05.md
+docs/AUDIT_2026-04-28.md
+docs/COLLECTOR_V2_AUDIT.md
+
+# Personal Claude Code plugin marketplace (unrelated to Prism)
+rinka-skills/

@@ -1,0 +1,142 @@
+name: Release
+
+# Triggered on annotated/lightweight tags matching vX.Y.Z (semver).
+# Builds a tarball of the working tree at the tag, generates SHA256SUMS, then
+# signs both with Sigstore (cosign keyless) using the workflow's GitHub OIDC
+# identity. Operators verify with `cosign verify-blob` (see
+# docs/RELEASE_VERIFICATION.md).
+#
+# B7 audit framing: an attacker who compromises a maintainer's GitHub account
+# can push a malicious revision; without an offline signature the install path
+# has no out-of-band integrity check. Keyless Sigstore binds artifacts to the
+# workflow identity (repo + ref + workflow path) recorded in the public
+# Rekor transparency log — no maintainer-managed key required.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write   # needed to upload the GitHub Release artifacts
+  id-token: write   # needed for Sigstore keyless OIDC token
+
+jobs:
+  release:
+    name: Build, sign, and publish release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v4
+        with:
+          # Fetch the tag commit only; we don't need full history for the tarball.
+          fetch-depth: 1
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Compute version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "tarball=prism-${TAG}.tar.gz" >> "$GITHUB_OUTPUT"
+
+      - name: Build source tarball
+        # Excludes:
+        #   .git, .github       — VCS / CI metadata not needed at runtime
+        #   data, config.json   — operator state (would also be empty in CI, but explicit is safer)
+        #   __pycache__, *.pyc  — compiled bytecode
+        #   .pytest_cache, .ruff_cache, .mypy_cache — tool caches
+        #   node_modules        — defensive (none today, but cheap to exclude)
+        #   *.tar.gz, SHA256SUMS, *.sig, *.pem — any prior release artefacts
+        run: |
+          set -euo pipefail
+          TARBALL="${{ steps.version.outputs.tarball }}"
+          PREFIX="prism-${{ steps.version.outputs.version }}"
+          tar --transform "s,^\.,${PREFIX}," \
+              --exclude='./.git' \
+              --exclude='./.github' \
+              --exclude='./data' \
+              --exclude='./config.json' \
+              --exclude='__pycache__' \
+              --exclude='*.pyc' \
+              --exclude='.pytest_cache' \
+              --exclude='.ruff_cache' \
+              --exclude='.mypy_cache' \
+              --exclude='node_modules' \
+              --exclude='*.tar.gz' \
+              --exclude='SHA256SUMS' \
+              --exclude='*.sig' \
+              --exclude='*.pem' \
+              -czf "${TARBALL}" .
+          ls -la "${TARBALL}"
+
+      - name: Generate SHA256SUMS
+        run: |
+          set -euo pipefail
+          TARBALL="${{ steps.version.outputs.tarball }}"
+          sha256sum "${TARBALL}" > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: "v2.2.4"
+
+      - name: Sign tarball (keyless)
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+          COSIGN_YES: "true"
+        run: |
+          set -euo pipefail
+          TARBALL="${{ steps.version.outputs.tarball }}"
+          cosign sign-blob \
+            --yes \
+            --output-signature "${TARBALL}.sig" \
+            --output-certificate "${TARBALL}.pem" \
+            "${TARBALL}"
+
+      - name: Sign SHA256SUMS (keyless)
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+          COSIGN_YES: "true"
+        run: |
+          set -euo pipefail
+          cosign sign-blob \
+            --yes \
+            --output-signature "SHA256SUMS.sig" \
+            --output-certificate "SHA256SUMS.pem" \
+            SHA256SUMS
+
+      - name: Create GitHub Release and upload artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Prism ${{ steps.version.outputs.tag }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            Prism ${{ steps.version.outputs.tag }}
+
+            Verify before installing — see `docs/RELEASE_VERIFICATION.md`.
+
+            Sigstore keyless signing identity:
+              - issuer: `https://token.actions.githubusercontent.com`
+              - identity: `https://github.com/${{ github.repository }}/.github/workflows/release.yml@refs/tags/${{ steps.version.outputs.tag }}`
+
+            Artifacts:
+              - `${{ steps.version.outputs.tarball }}` — source tarball
+              - `${{ steps.version.outputs.tarball }}.sig`, `${{ steps.version.outputs.tarball }}.pem` — Sigstore signature + cert
+              - `SHA256SUMS`, `SHA256SUMS.sig`, `SHA256SUMS.pem` — checksums + Sigstore signature
+          files: |
+            ${{ steps.version.outputs.tarball }}
+            ${{ steps.version.outputs.tarball }}.sig
+            ${{ steps.version.outputs.tarball }}.pem
+            SHA256SUMS
+            SHA256SUMS.sig
+            SHA256SUMS.pem

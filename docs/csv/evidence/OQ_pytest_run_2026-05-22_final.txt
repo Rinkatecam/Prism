@@ -1,0 +1,10 @@
+============================== warnings summary ===============================
+tests/test_collector_v2_health_endpoint.py::test_health_includes_collector_engine_key
+  C:\Users\user\AppData\Local\Programs\Python\Python313\Lib\site-packages\flask_limiter\_extension.py:364: UserWarning: Using the in-memory storage for tracking rate limits as no storage was explicitly specified. This is not recommended for production use. See: https://flask-limiter.readthedocs.io#configuring-a-storage-backend for documentation about configuring the storage backend.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_csp.py::test_csp_nonce_present_in_rendered_html - Assertion...
+FAILED tests/test_csp.py::test_csp_nonce_per_request - AssertionError: both r...
+================== 2 failed, 457 passed, 1 warning in 22.07s ==================

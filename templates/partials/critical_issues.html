@@ -1,0 +1,89 @@
+<!-- Critical Issues Section -->
+{% if issues | length == 0 %}
+<div id="healthy-banner" class="bg-[#D1FAE5] dark:bg-[#064E3B] rounded-lg p-4 border border-[#10B981]/20 flex items-center gap-3 transition-opacity duration-500">
+  <i data-lucide="check-circle" class="w-5 h-5 text-[#10B981] flex-shrink-0"></i>
+  <span class="text-sm font-medium text-[#065F46] dark:text-[#6EE7B7]">{{ t.all_healthy }}</span>
+</div>
+{# The auto-dismiss timer lives in base.html (_prismFadeHealthy, armed on
+   htmx:afterSettle). No inline <script> here: this partial is HTMX-swapped and
+   a fresh per-request nonce would not match the host page's CSP nonce. #}
+{% else %}
+<div>
+  <h2 class="text-xl font-semibold flex items-center gap-2 mb-3">
+    <i data-lucide="alert-octagon" class="w-5 h-5 text-[#DC2626] dark:text-[#EF4444]"></i>
+    {{ t.issues_detected }}
+    <span class="badge badge-critical">{{ issues | length }}</span>
+  </h2>
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+    {% for issue in issues %}
+    <a href="/server/{{ issue.server_name }}"
+       class="block bg-white dark:bg-[#1E293B] rounded-lg p-4 border border-[#E5E7EB] dark:border-[#334155] hover:shadow-md transition-shadow
+              {% if issue.status == 'critical' %}border-status-critical{% elif issue.status == 'warning' %}border-status-warning{% else %}border-status-offline{% endif %}">
+      <div class="flex items-center justify-between mb-2">
+        <span class="font-semibold text-sm">{{ issue.server_name }}</span>
+        <span class="badge badge-{{ issue.status }}">{{ issue.status }}</span>
+      </div>
+
+      {# Per-metric coloring uses PER-SERVER thresholds (passed in from the view).
+         Red ≥ critical, amber ≥ warning, gray otherwise. Fallback defaults are
+         only used if the server config has no thresholds set at all. #}
+      {% set _t = issue.thresholds or {} %}
+      {% set _cpu_w = _t.get('cpu_warning', 75) %}
+      {% set _cpu_c = _t.get('cpu_critical', 90) %}
+      {% set _ram_w = _t.get('ram_warning', 80) %}
+      {% set _ram_c = _t.get('ram_critical', 90) %}
+      {% set _dsk_w = _t.get('disk_warning', 80) %}
+      {% set _dsk_c = _t.get('disk_critical', 90) %}
+      <!-- Show the worst metrics -->
+      <div class="space-y-1 text-xs">
+        {% if issue.cpu_percent is not none and issue.cpu_percent >= 0 %}
+          {% set cpu_class = 'text-[#DC2626] dark:text-[#EF4444] font-semibold' if issue.cpu_percent >= _cpu_c else ('text-[#F59E0B] dark:text-[#FBBF24] font-semibold' if issue.cpu_percent >= _cpu_w else 'text-[#6B7280] dark:text-[#CBD5E1]') %}
+          <div class="{{ cpu_class }}">CPU: {{ issue.cpu_percent | round(1) }}%</div>
+        {% endif %}
+        {% if issue.ram_percent is not none and issue.ram_percent >= 0 %}
+          {% set ram_class = 'text-[#DC2626] dark:text-[#EF4444] font-semibold' if issue.ram_percent >= _ram_c else ('text-[#F59E0B] dark:text-[#FBBF24] font-semibold' if issue.ram_percent >= _ram_w else 'text-[#6B7280] dark:text-[#CBD5E1]') %}
+          <div class="{{ ram_class }}">RAM: {{ issue.ram_percent | round(1) }}%</div>
+        {% endif %}
+        {% if issue.disk_c_percent is not none and issue.disk_c_percent >= 0 %}
+          {% set dc_class = 'text-[#DC2626] dark:text-[#EF4444] font-semibold' if issue.disk_c_percent >= _dsk_c else ('text-[#F59E0B] dark:text-[#FBBF24] font-semibold' if issue.disk_c_percent >= _dsk_w else 'text-[#6B7280] dark:text-[#CBD5E1]') %}
+          <div class="{{ dc_class }}">Disk C: {{ issue.disk_c_percent | round(1) }}%</div>
+        {% endif %}
+        {% if issue.disk_d_percent is not none and issue.disk_d_percent >= 0 %}
+          {% set dd_class = 'text-[#DC2626] dark:text-[#EF4444] font-semibold' if issue.disk_d_percent >= _dsk_c else ('text-[#F59E0B] dark:text-[#FBBF24] font-semibold' if issue.disk_d_percent >= _dsk_w else 'text-[#6B7280] dark:text-[#CBD5E1]') %}
+          <div class="{{ dd_class }}">Disk D: {{ issue.disk_d_percent | round(1) }}%</div>
+        {% endif %}
+        {% if issue.status == 'offline' %}
+          <div class="text-[#9CA3AF] italic">{{ t.server_unreachable }}</div>
+        {% endif %}
+      </div>
+
+      {# Why this host is listed. verdict_detail arrives via **m from the
+         collector cache (collector_v2/aggregator.py), so it may be absent on a
+         cold cache — every lookup degrades to drawing nothing. A deviation is
+         rendered deliberately quieter than a breach: it means "unusual for this
+         host" while still inside configured limits. See
+         docs/plans/ALERT_NOISE_AND_VERDICT_UX_PLAN.md §4. #}
+      {% set _vd = issue.verdict_detail or {} %}
+      {% set _pick = ((_vd | dictsort | selectattr('1.kind', 'equalto', 'floor') | list)
+                      or (_vd | dictsort | selectattr('1.kind', 'equalto', 'breach') | list)
+                      or (_vd | dictsort | selectattr('1.kind', 'equalto', 'deviation') | list)) | first %}
+      {% if _pick %}
+      {% set _pk = _pick[1].get('kind') %}
+      <div class="mt-2 pt-2 border-t border-[#E5E7EB] dark:border-[#334155] flex items-start gap-1.5 text-[11px] leading-snug
+                  {% if _pk == 'deviation' %}text-[#6B7280] dark:text-[#94A3B8]
+                  {% elif _pk == 'floor' or issue.status == 'critical' %}text-[#DC2626] dark:text-[#EF4444]
+                  {% else %}text-[#B45309] dark:text-[#FBBF24]{% endif %}">
+        <i data-lucide="{% if _pk == 'deviation' %}activity{% elif _pk == 'floor' %}alert-octagon{% else %}alert-triangle{% endif %}"
+           class="w-3 h-3 flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+        <span class="line-clamp-2">{{ _pick[1].get('reason', '') }}</span>
+      </div>
+      {% endif %}
+
+      <div class="text-[10px] text-[#9CA3AF] dark:text-[#475569] mt-2">
+        {{ t.click_details }}
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}

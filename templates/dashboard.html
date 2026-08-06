@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+{% block content %}
+
+{# Verdict header — "is anything wrong right now?". Rendered server-side on
+   first paint via {% include %}, AND refreshed on every prismRefresh (same
+   trigger as the stat cards / grid) so it never freezes at page-load values. #}
+<section class="mb-6" aria-live="polite"
+         hx-get="/partials/verdict-header" hx-trigger="prismRefresh from:body"
+         hx-swap="morph:innerHTML">
+  {% include "partials/verdict_header.html" %}
+</section>
+
+{% if server_count == 0 %}
+{# Onboarding empty state — shown to brand-new admins before any server is
+   configured. Without this, the dashboard is a sea of skeletons + nothing. #}
+<section class="mb-8">
+  <div class="bg-white dark:bg-[#1E293B] rounded-xl border-2 border-dashed border-[#E5E7EB] dark:border-[#334155] p-10 text-center">
+    <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-[#2563EB]/10 dark:bg-[#3B82F6]/20 flex items-center justify-center">
+      <i data-lucide="server" class="w-8 h-8 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    </div>
+    <h2 class="text-xl font-semibold mb-2">{{ t.get('welcome_to_prism', 'Welcome to Prism') }}</h2>
+    <p class="text-sm text-[#6B7280] dark:text-[#CBD5E1] mb-6 max-w-md mx-auto">
+      {{ t.get('no_servers_yet', "You haven't added any servers yet. Add your first server to start monitoring CPU, RAM, disk, and Windows updates across your fleet.") }}
+    </p>
+    <a href="/servers"
+       class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-white transition-colors">
+      <i data-lucide="plus" class="w-4 h-4"></i>
+      {{ t.get('add_first_server', 'Add Your First Server') }}
+    </a>
+  </div>
+</section>
+{% endif %}
+
+<!-- Restart Status Banner -->
+<section id="restart-status-banner" class="mb-8" style="display:none;">
+  <div id="restart-banner-inner" class="rounded-lg border p-4 flex items-start gap-3 relative">
+    <div class="flex-shrink-0 mt-0.5">
+      <i id="restart-banner-icon" data-lucide="refresh-cw" class="w-5 h-5"></i>
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span id="restart-banner-title" class="font-semibold text-sm"></span>
+        <span id="restart-banner-time" class="text-xs text-[#6B7280] dark:text-[#94A3B8]"></span>
+      </div>
+      <p id="restart-banner-summary" class="text-sm mt-1"></p>
+      <button type="button" id="restart-banner-toggle" data-action="toggleRestartDetails"
+        class="text-xs mt-2 underline cursor-pointer text-[#2563EB] dark:text-[#3B82F6] hover:opacity-80 bg-transparent border-0 p-0">
+        Show details
+      </button>
+      <div id="restart-banner-details" class="mt-3 hidden">
+        <div class="rounded border border-[#E5E7EB] dark:border-[#334155] overflow-hidden">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="bg-[#F9FAFB] dark:bg-[#0F172A]">
+                <th class="text-left px-3 py-2 font-medium text-[#6B7280] dark:text-[#94A3B8]">Server</th>
+                <th class="text-left px-3 py-2 font-medium text-[#6B7280] dark:text-[#94A3B8]">Status</th>
+                <th class="text-left px-3 py-2 font-medium text-[#6B7280] dark:text-[#94A3B8]">Message</th>
+              </tr>
+            </thead>
+            <tbody id="restart-banner-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <button type="button" data-action="dismissRestartBanner" title="Dismiss"
+      class="flex-shrink-0 p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors bg-transparent border-0 cursor-pointer">
+      <i data-lucide="x" class="w-4 h-4 text-[#6B7280] dark:text-[#94A3B8]"></i>
+    </button>
+  </div>
+</section>
+
+<!-- Status Overview Section -->
+<section class="mb-8">
+  <div hx-get="/partials/status-overview" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML">
+    <div class="animate-pulse grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white dark:bg-[#1E293B] rounded-lg p-6 border border-[#E5E7EB] dark:border-[#334155] h-24"></div>
+      <div class="bg-white dark:bg-[#1E293B] rounded-lg p-6 border border-[#E5E7EB] dark:border-[#334155] h-24"></div>
+      <div class="bg-white dark:bg-[#1E293B] rounded-lg p-6 border border-[#E5E7EB] dark:border-[#334155] h-24"></div>
+      <div class="bg-white dark:bg-[#1E293B] rounded-lg p-6 border border-[#E5E7EB] dark:border-[#334155] h-24"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Critical Issues Section -->
+<section class="mb-8">
+  <div id="htmx-critical" hx-get="/partials/critical-issues" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML">
+    <div class="animate-pulse bg-white dark:bg-[#1E293B] rounded-lg p-6 border border-[#E5E7EB] dark:border-[#334155]">
+      <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48"></div>
+    </div>
+  </div>
+</section>
+
+<!-- TLS Certificate Alerts (only shown when certs are expiring/expired/error) -->
+<section id="tls-alerts-section" class="mb-6 hidden">
+  <div hx-get="/partials/tls-overview" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML"
+       data-toggle-empty="tls-alerts-section">
+  </div>
+</section>
+
+<!-- Server Actions — what's actively happening RIGHT NOW (installs, restarts).
+     Sits above the Windows Updates section because it represents in-flight
+     work, while Updates below represents pending work. Auto-hides when no
+     server has an active install or restart lifecycle state. -->
+<section id="active-actions-section" class="mb-6 hidden">
+  <div hx-get="/partials/active-actions" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML"
+       data-toggle-empty="active-actions-section">
+  </div>
+</section>
+
+<!-- Windows Update Alerts — only shown when there are pending updates / errors -->
+<section id="updates-alerts-section" class="mb-6 hidden">
+  <div hx-get="/partials/updates-overview" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML"
+       data-toggle-empty="updates-alerts-section">
+  </div>
+</section>
+
+<!-- Incidents Section -->
+<!-- Incidents (only shown when there are open incidents) -->
+<section class="mb-6 hidden" id="incidents-section">
+  <h2 class="text-sm font-semibold mb-2 flex items-center gap-1.5">
+    <i data-lucide="alert-triangle" class="w-4 h-4 text-[#F59E0B]"></i>
+    {{ t.get('incidents', 'Incidents') }}
+    <span id="incident-count-badge" class="hidden px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-[#DC2626] text-white"></span>
+  </h2>
+  <div hx-get="/partials/incidents-panel" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML"
+       data-toggle-empty="incidents-section"
+       class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155]">
+  </div>
+</section>
+
+<!-- Server Grid + Activity Feed 2-column layout -->
+<div class="lg:grid lg:grid-cols-3 lg:gap-6">
+
+  <!-- Server Grid Section -->
+  <section class="mb-8 lg:col-span-2 lg:mb-0">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+      <div class="flex items-center gap-3 flex-wrap">
+        <h2 class="text-xl font-semibold flex items-center gap-2">
+          <i data-lucide="monitor" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+          {{ t.servers }}
+        </h2>
+        <div id="status-filter" class="flex items-center gap-1 flex-wrap">
+          <button type="button" data-action="setStatusFilter" data-args='["all"]' data-filter="all"
+            class="status-filter-btn active px-2.5 py-1 text-xs font-medium rounded-full transition-colors bg-[#2563EB] text-white">
+            All
+          </button>
+          <button type="button" data-action="setStatusFilter" data-args='["critical"]' data-filter="critical"
+            class="status-filter-btn px-2.5 py-1 text-xs font-medium rounded-full transition-colors border border-[#DC2626] text-[#DC2626] dark:border-[#EF4444] dark:text-[#EF4444] hover:bg-[#DC2626] hover:text-white dark:hover:bg-[#EF4444]">
+            Critical
+          </button>
+          <button type="button" data-action="setStatusFilter" data-args='["warning"]' data-filter="warning"
+            class="status-filter-btn px-2.5 py-1 text-xs font-medium rounded-full transition-colors border border-[#F59E0B] text-[#F59E0B] dark:border-[#FBBF24] dark:text-[#FBBF24] hover:bg-[#F59E0B] hover:text-white dark:hover:bg-[#FBBF24]">
+            Warning
+          </button>
+          <button type="button" data-action="setStatusFilter" data-args='["healthy"]' data-filter="healthy"
+            class="status-filter-btn px-2.5 py-1 text-xs font-medium rounded-full transition-colors border border-[#10B981] text-[#10B981] dark:border-[#34D399] dark:text-[#34D399] hover:bg-[#10B981] hover:text-white dark:hover:bg-[#34D399]">
+            Healthy
+          </button>
+          <button type="button" data-action="setStatusFilter" data-args='["offline"]' data-filter="offline"
+            class="status-filter-btn px-2.5 py-1 text-xs font-medium rounded-full transition-colors border border-[#9CA3AF] text-[#9CA3AF] dark:border-[#6B7280] dark:text-[#6B7280] hover:bg-[#9CA3AF] hover:text-white dark:hover:bg-[#6B7280]">
+            Offline
+          </button>
+        </div>
+      </div>
+      <div class="relative flex-shrink-0">
+        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280] dark:text-[#CBD5E1]"></i>
+        <input type="text" id="server-search" placeholder="{{ t.search_servers }}"
+          data-input="applyFilters"
+          class="pl-9 pr-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#1E293B] text-[#1F2937] dark:text-[#F8FAFC] placeholder-[#6B7280] dark:placeholder-[#CBD5E1] focus:outline-none focus:ring-2 focus:ring-[#2563EB] dark:focus:ring-[#3B82F6] w-48 sm:w-64">
+      </div>
+    </div>
+    <div id="server-grid-container" hx-get="/partials/server-grid" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML">
+      <div class="animate-pulse grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {% for _ in range(8) %}
+        <div class="bg-white dark:bg-[#1E293B] rounded-lg p-6 border border-[#E5E7EB] dark:border-[#334155] h-48"></div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Activity Feed Section (sidebar on desktop) -->
+  <section class="lg:col-span-1">
+    <h2 class="text-xl font-semibold flex items-center gap-2 mb-4">
+      <i data-lucide="activity" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+      {{ t.activity_feed }}
+    </h2>
+    <div hx-get="/partials/activity-feed" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML">
+      <div class="animate-pulse bg-white dark:bg-[#1E293B] rounded-lg p-6 border border-[#E5E7EB] dark:border-[#334155]">
+        <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-64 mb-3"></div>
+        <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-3"></div>
+        <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-56"></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script nonce="{{ csp_nonce }}">
+let activeStatusFilter = 'all';
+
+function setStatusFilter(status) {
+  activeStatusFilter = status;
+  // Update button styles
+  document.querySelectorAll('.status-filter-btn').forEach(btn => {
+    const filter = btn.getAttribute('data-filter');
+    if (filter === status) {
+      btn.classList.add('active', 'bg-[#2563EB]', 'text-white');
+      btn.classList.remove('border', 'hover:bg-[#DC2626]', 'hover:bg-[#F59E0B]', 'hover:bg-[#10B981]', 'hover:bg-[#9CA3AF]',
+        'hover:bg-[#EF4444]', 'hover:bg-[#FBBF24]', 'hover:bg-[#34D399]', 'hover:bg-[#6B7280]',
+        'text-[#DC2626]', 'text-[#F59E0B]', 'text-[#10B981]', 'text-[#9CA3AF]',
+        'dark:text-[#EF4444]', 'dark:text-[#FBBF24]', 'dark:text-[#34D399]', 'dark:text-[#6B7280]',
+        'border-[#DC2626]', 'border-[#F59E0B]', 'border-[#10B981]', 'border-[#9CA3AF]',
+        'dark:border-[#EF4444]', 'dark:border-[#FBBF24]', 'dark:border-[#34D399]', 'dark:border-[#6B7280]');
+    } else {
+      btn.classList.remove('active', 'bg-[#2563EB]', 'text-white');
+      // Restore original border/text classes based on filter type
+      const styles = {
+        all: ['border', 'border-[#E5E7EB]', 'text-[#6B7280]', 'dark:border-[#334155]', 'dark:text-[#CBD5E1]'],
+        critical: ['border', 'border-[#DC2626]', 'text-[#DC2626]', 'dark:border-[#EF4444]', 'dark:text-[#EF4444]', 'hover:bg-[#DC2626]', 'hover:text-white', 'dark:hover:bg-[#EF4444]'],
+        warning: ['border', 'border-[#F59E0B]', 'text-[#F59E0B]', 'dark:border-[#FBBF24]', 'dark:text-[#FBBF24]', 'hover:bg-[#F59E0B]', 'hover:text-white', 'dark:hover:bg-[#FBBF24]'],
+        healthy: ['border', 'border-[#10B981]', 'text-[#10B981]', 'dark:border-[#34D399]', 'dark:text-[#34D399]', 'hover:bg-[#10B981]', 'hover:text-white', 'dark:hover:bg-[#34D399]'],
+        offline: ['border', 'border-[#9CA3AF]', 'text-[#9CA3AF]', 'dark:border-[#6B7280]', 'dark:text-[#6B7280]', 'hover:bg-[#9CA3AF]', 'hover:text-white', 'dark:hover:bg-[#6B7280]']
+      };
+      (styles[filter] || styles.all).forEach(c => btn.classList.add(c));
+    }
+  });
+  applyFilters();
+}
+
+function applyFilters() {
+  const search = document.getElementById('server-search');
+  const q = (search ? search.value : '').toLowerCase().trim();
+  document.querySelectorAll('[data-server-card]').forEach(card => {
+    const name = (card.getAttribute('data-server-name') || '').toLowerCase();
+    const host = (card.getAttribute('data-server-host') || '').toLowerCase();
+    const status = (card.getAttribute('data-status') || '').toLowerCase();
+    const matchesSearch = !q || name.includes(q) || host.includes(q);
+    const matchesStatus = activeStatusFilter === 'all' || status === activeStatusFilter;
+    card.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
+  });
+}
+
+// Keep backward compat for any external callers
+function filterServers(query) { applyFilters(); }
+
+// Re-apply filters after HTMX swap refreshes the grid
+document.body.addEventListener('htmx:afterSwap', function(e) {
+  applyFilters();
+  // Auto-hide alert sections when their partial returned empty content.
+  // The hx-on::after-swap inline handler was unreliable on some browsers —
+  // do it here instead so TLS / Windows Updates reliably appear/disappear.
+  ['tls-alerts-section', 'updates-alerts-section'].forEach(function(id) {
+    const section = document.getElementById(id);
+    if (!section) return;
+    const inner = section.querySelector('[hx-get]');
+    if (!inner) return;
+    const hasContent = (inner.innerHTML || '').trim().length > 0;
+    section.classList.toggle('hidden', !hasContent);
+  });
+});
+
+// Dashboard-specific: incident badge updater (runs on prismRefresh from base.html)
+(function() {
+  function updateIncidentBadge() {
+    fetch('/api/incidents/open/count')
+      .then(r => { if (!r.ok) return r.text().then(t => { throw new Error(t.includes('CSRF') ? 'CSRF expired — refresh page' : 'HTTP ' + r.status); }); return r.json(); })
+      .then(data => {
+        const badge = document.getElementById('incident-count-badge');
+        if (!badge) return;
+        const count = data.count || 0;
+        if (count > 0) {
+          badge.textContent = count;
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+      })
+      .catch(() => {});
+  }
+  updateIncidentBadge();
+  document.body.addEventListener('prismRefresh', updateIncidentBadge);
+})();
+</script>
+
+<script nonce="{{ csp_nonce }}">
+// Apply dashboard display preferences
+(function() {
+  try {
+    const prefs = JSON.parse(localStorage.getItem('prism-dashboard-prefs') || '{}');
+    if (prefs.showCritical === false) {
+      const el = document.getElementById('htmx-critical');
+      if (el && el.parentElement) el.parentElement.style.display = 'none';
+    }
+    if (prefs.showStatus === false) {
+      const sections = document.querySelectorAll('section.mb-8');
+      if (sections[1]) sections[1].style.display = 'none';
+    }
+    if (prefs.showServers === false) {
+      const el = document.querySelector('section.mb-8.lg\\:col-span-2');
+      if (el) el.style.display = 'none';
+    }
+    if (prefs.showActivity === false) {
+      const el = document.querySelector('section.lg\\:col-span-1');
+      if (el) el.style.display = 'none';
+    }
+  } catch(e) {}
+})();
+</script>
+
+<script nonce="{{ csp_nonce }}">
+// ── Restart Status Banner ──
+let _restartBannerDismissed = false;
+
+function loadRestartStatus() {
+  if (_restartBannerDismissed) return;
+  fetch('/api/restart-status')
+    .then(r => { if (!r.ok) return r.text().then(t => { throw new Error(t.includes('CSRF') ? 'CSRF expired — refresh page' : 'HTTP ' + r.status); }); return r.json(); })
+    .then(data => {
+      const banner = document.getElementById('restart-status-banner');
+      if (!data.ok || !data.results || data.results.length === 0) {
+        banner.style.display = 'none';
+        return;
+      }
+      // Check if within last 24h
+      const latestRun = data.latest_run;
+      if (latestRun && latestRun.timestamp) {
+        const runTime = new Date(latestRun.timestamp);
+        const now = new Date();
+        if ((now - runTime) > 24 * 60 * 60 * 1000) {
+          banner.style.display = 'none';
+          return;
+        }
+      }
+
+      const results = data.results;
+      const succeeded = results.filter(r => r.status === 'success' || r.status === 'ok').length;
+      const failed = results.filter(r => r.status === 'error' || r.status === 'failed').length;
+      const total = results.length;
+      const allOk = failed === 0;
+
+      // Style banner
+      const inner = document.getElementById('restart-banner-inner');
+      const icon = document.getElementById('restart-banner-icon');
+      inner.className = 'rounded-lg border p-4 flex items-start gap-3 relative ' +
+        (allOk
+          ? 'bg-[#ECFDF5] dark:bg-[#064E3B]/30 border-[#10B981] dark:border-[#34D399]/50 text-[#065F46] dark:text-[#A7F3D0]'
+          : 'bg-[#FEF3C7] dark:bg-[#78350F]/30 border-[#F59E0B] dark:border-[#FBBF24]/50 text-[#92400E] dark:text-[#FDE68A]');
+
+      // Title and summary
+      document.getElementById('restart-banner-title').textContent =
+        allOk ? 'Restart schedule completed' : 'Restart schedule completed with errors';
+      document.getElementById('restart-banner-time').textContent =
+        latestRun && latestRun.timestamp ? 'Last run: ' + formatTs(latestRun.timestamp) : '';
+      document.getElementById('restart-banner-summary').textContent =
+        total + ' server' + (total !== 1 ? 's' : '') + ' processed \u2014 ' +
+        succeeded + ' succeeded' + (failed > 0 ? ', ' + failed + ' failed' : '');
+
+      // Build details table
+      const tbody = document.getElementById('restart-banner-table');
+      tbody.innerHTML = '';
+      results.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-t border-[#E5E7EB] dark:border-[#334155]';
+        const isOk = r.status === 'success' || r.status === 'ok';
+        tr.innerHTML =
+          '<td class="px-3 py-2 font-medium text-[#1F2937] dark:text-[#F8FAFC]">' + escapeHtml(r.server || r.name || 'Unknown') + '</td>' +
+          '<td class="px-3 py-2">' +
+            '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ' +
+              (isOk ? 'bg-[#D1FAE5] dark:bg-[#065F46] text-[#065F46] dark:text-[#A7F3D0]'
+                    : 'bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]') + '">' +
+              (isOk ? 'Success' : 'Failed') +
+            '</span>' +
+          '</td>' +
+          '<td class="px-3 py-2 text-[#6B7280] dark:text-[#94A3B8]">' + escapeHtml(r.message || r.error || '\u2014') + '</td>';
+        tbody.appendChild(tr);
+      });
+
+      // Re-init lucide icons for new elements
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      banner.style.display = '';
+    })
+    .catch(() => {});
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+}
+
+function toggleRestartDetails() {
+  const details = document.getElementById('restart-banner-details');
+  const btn = document.getElementById('restart-banner-toggle');
+  if (details.classList.contains('hidden')) {
+    details.classList.remove('hidden');
+    btn.textContent = 'Hide details';
+  } else {
+    details.classList.add('hidden');
+    btn.textContent = 'Show details';
+  }
+}
+
+function dismissRestartBanner() {
+  _restartBannerDismissed = true;
+  document.getElementById('restart-status-banner').style.display = 'none';
+}
+
+// Load on page init and auto-refresh every 30 seconds
+loadRestartStatus();
+setInterval(loadRestartStatus, 30000);
+</script>
+
+{% endblock %}

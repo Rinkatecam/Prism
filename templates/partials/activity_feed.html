@@ -1,0 +1,72 @@
+<!-- Activity Feed - consolidated events timeline -->
+{% if events | length == 0 %}
+<div class="bg-white dark:bg-[#1E293B] rounded-lg p-6 border border-[#E5E7EB] dark:border-[#334155] text-center">
+  <i data-lucide="clock" class="w-8 h-8 mx-auto mb-2 text-[#6B7280] dark:text-[#CBD5E1]"></i>
+  <p class="text-sm text-[#6B7280] dark:text-[#CBD5E1]">{{ t.no_events }}</p>
+</div>
+{% else %}
+<div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] overflow-hidden max-h-[400px] overflow-y-auto">
+  {% for event in events %}
+  <a href="/server/{{ event.server_name }}" class="flex items-start gap-3 px-4 py-3 cursor-pointer {% if not loop.last %}border-b border-[#E5E7EB] dark:border-[#334155]{% endif %} hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]/50 transition-colors">
+    <!-- Timeline dot -->
+    <div class="flex flex-col items-center pt-1">
+      {% if event.resolved %}
+      <div class="timeline-dot timeline-dot-resolved"></div>
+      {% else %}
+      <div class="timeline-dot timeline-dot-{{ event.event_type }}"></div>
+      {% endif %}
+      {% if not loop.last %}
+      <div class="w-px h-full bg-[#E5E7EB] dark:bg-[#334155] mt-1"></div>
+      {% endif %}
+    </div>
+
+    <!-- Content -->
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 flex-wrap">
+        {% if event.resolved %}
+        <span class="badge badge-resolved">{{ t.resolved if t.resolved is defined else 'resolved' }}</span>
+        {% else %}
+        <span class="badge badge-{{ event.event_type }}">{{ event.event_type }}</span>
+        {% endif %}
+        <span class="text-sm font-medium text-[#2563EB] dark:text-[#3B82F6] truncate">
+          {{ event.server_name }}
+        </span>
+        {% if event.noise_score is defined and event.noise_score and event.noise_score > 30 %}
+        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium
+          {% if event.noise_score > 70 %}bg-[#DC2626]/10 text-[#DC2626] dark:bg-[#EF4444]/10 dark:text-[#EF4444]
+          {% elif event.noise_score > 50 %}bg-[#F59E0B]/10 text-[#F59E0B] dark:bg-[#FBBF24]/10 dark:text-[#FBBF24]
+          {% else %}bg-[#6B7280]/10 text-[#6B7280] dark:bg-[#94A3B8]/10 dark:text-[#94A3B8]{% endif %}"
+          title="{{ t.noisy_alert if t.noisy_alert is defined else 'Noisy alert' }}: {{ t.noise_score if t.noise_score is defined else 'Score' }} {{ event.noise_score }}">
+          <i data-lucide="volume-2" class="w-3 h-3"></i>
+          {{ event.noise_score }}
+        </span>
+        {% endif %}
+      </div>
+
+      <p class="text-xs text-[#374151] dark:text-[#E2E8F0] mt-0.5 truncate">
+        {{ event.message }}
+      </p>
+
+      <!-- Time info -->
+      <div class="flex items-center gap-2 flex-wrap mt-1 text-[10px] text-[#9CA3AF] dark:text-[#64748B]">
+        {% if event.resolved and event.resolved_at %}
+          <span>{{ fmt_time(event.first_seen) }} &rarr; {{ fmt_time(event.resolved_at) }}</span>
+        {% elif event.count > 1 %}
+          <span>{{ t.since if t.since is defined else 'since' }} {{ fmt_time(event.first_seen) }}</span>
+          <span class="px-1.5 py-0.5 rounded-full bg-[#F3F4F6] dark:bg-[#334155] text-[#6B7280] dark:text-[#94A3B8] font-medium">&times;{{ event.count }}</span>
+        {% else %}
+          <span>{{ fmt_time(event.first_seen) }}</span>
+        {% endif %}
+
+        {% if not event.resolved and event.event_type in ('critical', 'warning', 'offline') %}
+          <span class="inline-flex items-center gap-0.5 text-[#DC2626] dark:text-[#EF4444] font-medium">
+            <i data-lucide="circle-dot" class="w-3 h-3"></i>
+            {{ t.ongoing if t.ongoing is defined else 'ongoing' }}
+          </span>
+        {% endif %}
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}

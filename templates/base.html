@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="{{ lang | default('en') }}" id="html-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prism - Server Monitoring</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='img/favicon-16.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
+
+  <!-- Tailwind CSS — self-hosted (LAN-resilient: styling survives an internet
+       outage). Vendored runtime build under static/vendor. -->
+  <script src="{{ url_for('static', filename='vendor/tailwind-3.4.17.js') }}"></script>
+  <script nonce="{{ csp_nonce }}">
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            surface: { light: '#FFFFFF', dark: '#1E293B' },
+            bg: { light: '#F9FAFB', dark: '#0F172A' },
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- HTMX config (must be before htmx script) -->
+  <meta name="htmx-config" content='{"selfRequestsOnly": true}'>
+
+  <!-- CSRF token for JS fetch calls -->
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+
+  <!-- HTMX — self-hosted, pinned version -->
+  <script src="{{ url_for('static', filename='vendor/htmx-2.0.4.min.js') }}"></script>
+  <!-- Idiomorph extension — DOM-diffing swaps instead of innerHTML replacement.
+       This makes every htmx swap smooth: only changed nodes are touched, icons
+       stay in place, no flash/layout-shift on periodic dashboard refreshes. -->
+  <script src="{{ url_for('static', filename='vendor/idiomorph-0.3.0-ext.min.js') }}"></script>
+
+  <!-- Chart.js — self-hosted, pinned version -->
+  <script src="{{ url_for('static', filename='vendor/chart-4.4.7.umd.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='vendor/chartjs-plugin-annotation-3.0.1.min.js') }}"></script>
+
+  <!-- Lucide Icons — self-hosted, pinned version -->
+  <script src="{{ url_for('static', filename='vendor/lucide-0.344.0.js') }}"></script>
+
+  <!-- Custom styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+
+  <!-- Theme initialization (no flash) -->
+  <script nonce="{{ csp_nonce }}">
+    (function() {
+      const theme = localStorage.getItem('prism-theme') || 'light';
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+    })();
+  </script>
+
+  {# Global custom tooltip — shared across every page. Any element with
+     data-tip-title (+ optional data-tip-desc) gets a styled hover popup
+     instead of the native browser title= tooltip. Page-local scripts can
+     call window.__prismBindTooltips() after injecting new tip elements. #}
+  <style>
+    #ps-tooltip {
+      position: fixed; z-index: 9999; pointer-events: none;
+      max-width: 360px; padding: 10px 12px;
+      background: #1E293B; border: 1px solid #334155; border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      opacity: 0; transform: translateY(4px);
+      transition: opacity 0.15s, transform 0.15s;
+      font-size: 11px; color: #CBD5E1;
+    }
+    #ps-tooltip.visible { opacity: 1; transform: translateY(0); }
+    #ps-tooltip .tip-title { font-weight: 700; font-size: 12px; color: #F9FAFB; margin-bottom: 4px; }
+    #ps-tooltip .tip-desc { line-height: 1.5; color: #94A3B8; white-space: pre-wrap; }
+
+    /* Values that change during morph (numbers, bar widths, colors) get a
+       smooth CSS transition instead of snapping. */
+    .metric-value, .metric-bar-fill, .badge { transition: all 250ms ease-out; }
+  </style>
+</head>
+<body class="bg-[#F9FAFB] dark:bg-[#0F172A] text-[#1F2937] dark:text-[#F8FAFC] min-h-screen transition-colors duration-200"
+      hx-ext="morph">
+
+  <!-- Global custom tooltip (one per page) -->
+  <div id="ps-tooltip"></div>
+
+  <!-- Sidebar (collapsible nav area below the top bar) -->
+  <aside id="sidebar" class="fixed top-14 left-0 z-50 flex flex-col bg-white dark:bg-[#1E293B] border-r border-[#E5E7EB] dark:border-[#334155] transition-all duration-200 w-56 sidebar-expanded overflow-hidden" style="bottom:0">
+
+    <!-- Navigation -->
+    <nav class="flex-1 py-3 px-2 space-y-1 overflow-y-auto overflow-x-hidden">
+      <a href="/" class="sidebar-link {% if request.path == '/' %}sidebar-link-active{% endif %}" aria-label="Dashboard">
+        <i data-lucide="layout-dashboard" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="sidebar-label">{{ t.dashboard }}</span>
+      </a>
+      <a href="/reports" class="sidebar-link {% if request.path == '/reports' %}sidebar-link-active{% endif %}" aria-label="Reports">
+        <i data-lucide="file-bar-chart" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="sidebar-label">{{ t.reports }}</span>
+      </a>
+      <a href="/topology" class="sidebar-link {% if request.path == '/topology' %}sidebar-link-active{% endif %}" aria-label="Topology">
+        <i data-lucide="network" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="sidebar-label">{{ t.topology }}</span>
+      </a>
+
+      <!-- Divider -->
+      <div class="border-t border-[#E5E7EB] dark:border-[#334155] my-2 mx-1"></div>
+
+      <a href="/servers" class="sidebar-link {% if request.path == '/servers' or request.path.startswith('/server/') %}sidebar-link-active{% endif %}" aria-label="Servers">
+        <i data-lucide="server" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="sidebar-label">{{ t.get('servers_page', 'Servers') }}</span>
+      </a>
+      <a href="/monitoring" class="sidebar-link {% if request.path == '/monitoring' %}sidebar-link-active{% endif %}" aria-label="Monitoring">
+        <i data-lucide="activity" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="sidebar-label">{{ t.get('monitoring_page', 'Monitoring') }}</span>
+      </a>
+      <a href="/operations" class="sidebar-link {% if request.path == '/operations' %}sidebar-link-active{% endif %}" aria-label="Operations">
+        <i data-lucide="wrench" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="sidebar-label">{{ t.get('operations_page', 'Operations') }}</span>
+      </a>
+      <a href="/workflows" class="sidebar-link {% if request.path == '/workflows' %}sidebar-link-active{% endif %}" aria-label="Workflows">
+        <i data-lucide="git-branch" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="sidebar-label">{{ t.get('workflows_page', 'Workflows') }}</span>
+      </a>
+      <a href="/settings" class="sidebar-link {% if request.path == '/settings' %}sidebar-link-active{% endif %}" aria-label="Settings">
+        <i data-lucide="settings" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="sidebar-label">{{ t.settings }}</span>
+      </a>
+      <a href="/admin/rbac" class="sidebar-link {% if request.path == '/admin/rbac' %}sidebar-link-active{% endif %}" aria-label="RBAC">
+        <i data-lucide="shield-check" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="sidebar-label">{{ t.get('rbac_admin', 'RBAC') }}</span>
+      </a>
+      {% if compliance_enabled %}
+      <a href="/compliance" class="sidebar-link {% if request.path.startswith('/compliance') %}sidebar-link-active{% endif %}" aria-label="Compliance">
+        <i data-lucide="clipboard-check" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="sidebar-label">{{ t.get('compliance', 'Compliance') }}</span>
+      </a>
+      {% endif %}
+    </nav>
+
+    <!-- Bottom: user + collapse toggle + logout -->
+    <div class="border-t border-[#E5E7EB] dark:border-[#334155] px-2 py-3 overflow-hidden space-y-1">
+      <div class="user-row flex items-center gap-1">
+        <div class="sidebar-link cursor-default flex-1 min-w-0">
+          <i data-lucide="user" class="w-5 h-5 flex-shrink-0 text-[#6B7280] dark:text-[#CBD5E1]"></i>
+          <span class="sidebar-label text-sm text-[#6B7280] dark:text-[#CBD5E1] truncate">
+            {% if session.get('username') %}{{ session.username }}{% else %}dev{% endif %}
+          </span>
+        </div>
+        <!-- Desktop collapse toggle (mobile uses the header menu button instead). -->
+        <button data-action="toggle-sidebar" class="sidebar-collapse-btn hidden md:flex items-center justify-center p-1.5 rounded-md hover:bg-[#F1F5F9] dark:hover:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1] flex-shrink-0" title="Toggle sidebar" aria-label="Collapse sidebar">
+          <i data-lucide="panel-left" class="w-5 h-5"></i>
+        </button>
+      </div>
+      {% if session.get('username') %}
+      <a href="/logout" class="sidebar-link text-[#DC2626] dark:text-[#EF4444] hover:bg-[#FEE2E2] dark:hover:bg-[#7F1D1D]/30" title="{{ t.sign_out }}">
+        <i data-lucide="log-out" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="sidebar-label text-sm">{{ t.sign_out }}</span>
+      </a>
+      {% endif %}
+    </div>
+  </aside>
+
+  <!-- Unified top bar: brand on the left, live controls on the right. One
+       full-width strip, so the logo shares the same bar as the pulse widget
+       and the theme toggle; the sidebar nav starts below it. -->
+  <header id="topbar" class="fixed top-0 left-0 right-0 z-[51] h-14 bg-white dark:bg-[#1E293B] border-b border-[#E5E7EB] dark:border-[#334155] flex items-center gap-3 px-3 transition-colors duration-200">
+    <!-- Mobile-only menu toggle (opens the off-canvas nav). Desktop uses the
+         collapse control in the sidebar footer, next to the username. -->
+    <button data-action="toggle-sidebar" class="md:hidden p-1.5 rounded-md hover:bg-[#F1F5F9] dark:hover:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1] flex-shrink-0" title="Toggle sidebar" aria-label="Toggle sidebar">
+      <i data-lucide="panel-left" class="w-5 h-5"></i>
+    </button>
+    <!-- Brand -->
+    <a href="/" class="flex items-center gap-2 text-[#2563EB] dark:text-[#3B82F6] font-bold text-lg whitespace-nowrap">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="" class="w-7 h-7 flex-shrink-0" width="28" height="28">
+      <span class="prism-wordmark">Prism</span>
+    </a>
+    <!-- Spacer pushes the live controls to the right -->
+    <div class="flex-1"></div>
+    <!-- Collector pulse widget — ECG-style live heartbeat. Replaces the
+         old #last-update wifi indicator. See static/js/pulse-monitor.js. -->
+    <div id="collector-pulse" class="collector-pulse" role="button" tabindex="0"
+         aria-label="{{ t.get('pulse_aria_label', 'Collector live activity — click for details') }}">
+      <span class="pulse-dot pulse-dot--warming" data-pulse-dot></span>
+      <canvas class="pulse-canvas" width="140" height="28" aria-hidden="true"></canvas>
+      <span class="pulse-counter" data-pulse-counter>--</span>
+    </div>
+    <!-- Own error indicator — does NOT share #htmx-error-banner, which
+         is silenced by every successful HTMX swap (audit H2). -->
+    <span id="pulse-error" class="pulse-error" role="status" style="display:none"
+          title="{{ t.get('pulse_error_unreachable', 'Cannot reach collector — retrying') }}">
+      <i data-lucide="cloud-off" class="w-3.5 h-3.5"></i>
+    </span>
+    <!-- Hover dropdown panel — populated dynamically by PulseMonitor. -->
+    <div id="pulse-panel" class="pulse-panel" role="region"
+         aria-label="{{ t.get('pulse_aria_panel', 'Collector activity detail') }}"
+         style="display:none"></div>
+    <button data-action="toggle-theme" class="p-1.5 rounded-md hover:bg-[#F1F5F9] dark:hover:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1]" title="Toggle theme" aria-label="Toggle dark mode">
+      <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+      <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
+    </button>
+  </header>
+
+  <!-- HTMX error banner -->
+  <div id="htmx-error-banner" class="htmx-error-banner" role="alert" aria-live="polite" style="display:none">
+    <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0"></i>
+    <span>Connection lost. Data may be stale. Retrying...</span>
+  </div>
+
+  <!-- Backdrop for the mobile off-canvas sidebar (click to close) -->
+  <div id="sidebar-backdrop" data-action="close-mobile-sidebar" aria-hidden="true"></div>
+
+  <!-- Main content -->
+  <main id="main-content" class="transition-all duration-200 pt-14 min-h-screen" style="margin-left:14rem">
+    {% block breadcrumb %}{% endblock %}
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <!-- Global timezone config + formatter -->
+  <script nonce="{{ csp_nonce }}">
+    const PRISM_TZ = {
+      timezone: {{ app_settings.timezone | default('Europe/Berlin') | tojson }},
+      date_format: {{ app_settings.date_format | default('DD.MM.YYYY') | tojson }},
+      time_format: {{ app_settings.time_format | default('24h') | tojson }},
+    };
+    /**
+     * Convert ISO-8601 UTC timestamp to configured timezone + format.
+     * @param {string} iso - e.g. "2026-04-02T08:30:00Z"
+     * @param {boolean} [timeOnly=false] - return only time portion
+     */
+    function formatTs(iso, timeOnly) {
+      if (!iso) return '';
+      try {
+        const dt = new Date(iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z');
+        if (isNaN(dt.getTime())) return iso.substring(0, 16);
+        const opts = { timeZone: PRISM_TZ.timezone };
+        const y = dt.toLocaleString('en-CA', { ...opts, year: 'numeric' }).padStart(4, '0');
+        const m = dt.toLocaleString('en-CA', { ...opts, month: '2-digit' });
+        const d = dt.toLocaleString('en-CA', { ...opts, day: '2-digit' });
+        let h, min, ampm = '';
+        if (PRISM_TZ.time_format === '12h') {
+          const hStr = dt.toLocaleString('en-US', { ...opts, hour: 'numeric', hour12: true }).replace(/\u202f/g, ' ');
+          const parts = hStr.match(/(\d+)\s*(AM|PM)/i);
+          if (parts) { h = parts[1].padStart(2, '0'); ampm = ' ' + parts[2]; }
+          else { h = '00'; }
+          min = dt.toLocaleString('en-CA', { ...opts, minute: '2-digit' }).padStart(2, '0');
+        } else {
+          h = dt.toLocaleString('en-GB', { ...opts, hour: '2-digit', hour12: false }).padStart(2, '0');
+          min = dt.toLocaleString('en-CA', { ...opts, minute: '2-digit' }).padStart(2, '0');
+        }
+        const timeStr = h + ':' + min + ampm;
+        if (timeOnly) return timeStr;
+        let dateStr;
+        switch (PRISM_TZ.date_format) {
+          case 'YYYY-MM-DD': dateStr = `${y}-${m}-${d}`; break;
+          case 'MM/DD/YYYY': dateStr = `${m}/${d}/${y}`; break;
+          case 'DD/MM/YYYY': dateStr = `${d}/${m}/${y}`; break;
+          default:           dateStr = `${d}.${m}.${y}`; break;
+        }
+        return dateStr + ' ' + timeStr;
+      } catch (e) {
+        return iso.replace('T', ' ').replace('Z', '').substring(0, 16);
+      }
+    }
+  </script>
+
+  <!-- Theme toggle script -->
+  <script nonce="{{ csp_nonce }}">
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.classList.toggle('dark');
+      localStorage.setItem('prism-theme', isDark ? 'dark' : 'light');
+      lucide.createIcons();
+    }
+
+    // ── Global custom tooltip (data-tip-title / data-tip-desc) ──
+    (function initGlobalTooltip() {
+      const tip = document.getElementById('ps-tooltip');
+      if (!tip) return;
+      function show(e) {
+        const el = e.currentTarget;
+        const title = el.getAttribute('data-tip-title') || '';
+        const desc  = el.getAttribute('data-tip-desc') || '';
+        tip.innerHTML = '<div class="tip-title">' + title + '</div><div class="tip-desc">' + desc + '</div>';
+        tip.classList.add('visible');
+        position(e);
+      }
+      function hide() { tip.classList.remove('visible'); }
+      function position(e) {
+        const pad = 12;
+        const r = tip.getBoundingClientRect();
+        let x = e.clientX + 14;
+        let y = e.clientY + 14;
+        if (x + r.width + pad > window.innerWidth) x = e.clientX - r.width - 14;
+        if (y + r.height + pad > window.innerHeight) y = e.clientY - r.height - 14;
+        tip.style.left = Math.max(pad, x) + 'px';
+        tip.style.top  = Math.max(pad, y) + 'px';
+      }
+      function bindAll() {
+        document.querySelectorAll('[data-tip-title]').forEach(el => {
+          if (el.__tipBound) return;
+          el.__tipBound = true;
+          el.addEventListener('mouseenter', show);
+          el.addEventListener('mousemove', position);
+          el.addEventListener('mouseleave', hide);
+        });
+      }
+      document.addEventListener('DOMContentLoaded', bindAll);
+      document.body.addEventListener('htmx:afterSwap', bindAll);
+      // Expose for page scripts that inject new tip elements dynamically
+      window.__prismBindTooltips = bindAll;
+      window.__rebindTooltips = bindAll; // legacy alias used by server_detail.html
+    })();
+
+    // Translation strings for the collector-pulse ECG widget. The
+    // implementation lives in static/js/pulse-monitor.js; we just hand
+    // it the localized labels via this global. Adding a new key here
+    // requires a matching entry in i18n.py for all 5 languages — see
+    // pulse_* keys in that file.
+    window.PULSE_I18N = {
+      title_healthy:    {{ t.get("pulse_title_healthy",  "All systems normal")        | tojson }},
+      title_degraded:   {{ t.get("pulse_title_degraded", "Fleet degraded")            | tojson }},
+      title_critical:   {{ t.get("pulse_title_critical", "Collector under stress")    | tojson }},
+      title_dead:       {{ t.get("pulse_title_dead",     "Collector unreachable")     | tojson }},
+      title_warming:    {{ t.get("pulse_title_warming",  "Warming up")                | tojson }},
+      bpm:              {{ t.get("pulse_bpm",            "BPM")                       | tojson }},
+      in_flight:        {{ t.get("pulse_in_flight",      "IN FLIGHT")                 | tojson }},
+      recent:           {{ t.get("pulse_recent",         "RECENT")                    | tojson }},
+      silent:           {{ t.get("pulse_silent",         "SILENT")                    | tojson }},
+      sub_supervisor:   {{ t.get("pulse_sub_supervisor", "Supervisor")                | tojson }},
+      sub_aggregator:   {{ t.get("pulse_sub_aggregator", "Aggregator")                | tojson }},
+      sub_workers:      {{ t.get("pulse_sub_workers",    "Workers")                   | tojson }},
+      sub_periodics:    {{ t.get("pulse_sub_periodics",  "Periodics")                 | tojson }},
+      open_operations:  {{ t.get("pulse_open_operations","Open Operations → System Health") | tojson }},
+      no_recent:        {{ t.get("pulse_no_recent",      "No events in window")       | tojson }},
+      no_samples_yet:   {{ t.get("pulse_no_samples_yet", "no samples yet")            | tojson }},
+      silent_for:       {{ t.get("pulse_silent_for",     "silent for")                | tojson }},
+    };
+
+    // Initialize Lucide icons
+    document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
+    document.body.addEventListener('htmx:afterSwap', () => lucide.createIcons());
+
+    // ── Safe JSON fetch helper ─────────────────────────────────────────
+    // Many fetch() calls do .then(r => r.json()) which crashes when the
+    // server returns HTML (CSRF error, login redirect, 500 page). This
+    // helper checks r.ok first and throws a readable error instead of
+    // "Unexpected token '<'".
+    window.prismFetch = function(url, opts) {
+      return fetch(url, opts).then(r => {
+        const ct = (r.headers.get('content-type') || '');
+        if (!r.ok || !ct.includes('json')) {
+          return r.text().then(body => {
+            // Try to extract a short error from HTML if that's what we got
+            let msg = 'HTTP ' + r.status;
+            if (body.includes('CSRF')) msg = 'CSRF token expired — please refresh the page';
+            else if (body.includes('login')) msg = 'Session expired — please log in again';
+            else if (r.status === 500) msg = 'Server error (500)';
+            else if (r.status === 404) msg = 'Endpoint not found (404)';
+            throw new Error(msg);
+          });
+        }
+        return r.json();
+      });
+    };
+
+    // ── CSRF token keep-alive ──────────────────────────────────────────
+    // Refresh the meta tag every 30 min so pages left open all day never
+    // hit "CSRF token expired". The server now sets WTF_CSRF_TIME_LIMIT=None
+    // so tokens technically don't expire, but session regeneration can still
+    // invalidate them — this keeps the meta tag in sync.
+    (function() {
+      function refreshCsrfToken() {
+        fetch('/api/csrf-token')
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            if (data && data.token) {
+              const meta = document.querySelector('meta[name="csrf-token"]');
+              if (meta) meta.setAttribute('content', data.token);
+            }
+          })
+          .catch(() => {});
+      }
+      setInterval(refreshCsrfToken, 1800000); // 30 min
+    })();
+
+    // ── Global collector-status poller ──────────────────────────────────
+    // Fires a 'prismRefresh' CustomEvent on <body> whenever the collector
+    // ingests new data. Under v1 this corresponds to the end of a cycle;
+    // under v2 it advances on every aggregator tick (i.e. every Result
+    // persisted). EVERY page inherits this, so dashboard HTMX partials,
+    // server-detail JS fetches, topology auto-refresh, etc. all react to
+    // the same signal. Previously this lived only in dashboard.html.
+    (function() {
+      let _lastCycle = 0;
+      const POLL_MS = 5000;
+      async function checkForNewData() {
+        try {
+          const data = await prismFetch('/api/collector-status');
+          const cycle = data.last_cycle || 0;
+          if (cycle > _lastCycle && _lastCycle > 0) {
+            document.body.dispatchEvent(new CustomEvent('prismRefresh'));
+          }
+          _lastCycle = cycle;
+        } catch(e) {}
+      }
+      checkForNewData(); // baseline, doesn't fire prismRefresh
+      setInterval(checkForNewData, POLL_MS);
+    })();
+
+    // ── ts-local auto-converter ────────────────────────────────────────
+    // Any element with class="ts-local" and data-ts="<ISO UTC>" gets its
+    // textContent replaced with the formatTs() output (configured timezone).
+    // Runs on DOMContentLoaded + after every HTMX swap so partials that
+    // render raw UTC with the ts-local pattern get converted automatically.
+    function convertTsLocalElements(root) {
+      (root || document).querySelectorAll('.ts-local[data-ts]').forEach(function(el) {
+        var ts = el.getAttribute('data-ts');
+        if (ts && typeof formatTs === 'function') {
+          var converted = formatTs(ts);
+          if (converted && converted !== ts) el.textContent = converted;
+        }
+      });
+    }
+    document.addEventListener('DOMContentLoaded', function() { convertTsLocalElements(); });
+    document.body.addEventListener('htmx:afterSwap', function(e) {
+      convertTsLocalElements(e.detail.target);
+    });
+    // Also run on prismRefresh in case JS-rendered content uses ts-local
+    document.body.addEventListener('prismRefresh', function() { convertTsLocalElements(); });
+
+    // Idiomorph morph:innerHTML handles smooth DOM-diffing swaps natively —
+    // only changed nodes are touched, so there's no flash or layout shift.
+  </script>
+
+  <!-- HTMX error handling -->
+  <script nonce="{{ csp_nonce }}">
+    (function() {
+      var banner = document.getElementById('htmx-error-banner');
+      function showBanner() {
+        if (banner) {
+          banner.style.display = 'flex';
+          lucide.createIcons({ nodes: [banner] });
+        }
+      }
+      function hideBanner() {
+        if (banner) banner.style.display = 'none';
+      }
+      document.body.addEventListener('htmx:responseError', showBanner);
+      document.body.addEventListener('htmx:sendError', showBanner);
+      document.body.addEventListener('htmx:timeout', showBanner);
+      document.body.addEventListener('htmx:afterSwap', hideBanner);
+    })();
+  </script>
+
+  <!-- Global Modal System -->
+  <div id="prism-modal-overlay" class="fixed inset-0 z-[9998] hidden bg-black/50 backdrop-blur-sm" data-action="modal-backdrop"></div>
+  <div id="prism-modal" class="fixed z-[9999] hidden top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-[#1E293B] rounded-xl shadow-2xl border border-[#E5E7EB] dark:border-[#334155] w-[380px] overflow-hidden">
+    <div class="px-5 pt-5 pb-3">
+      <div class="flex items-center gap-3 mb-3">
+        <div id="prism-modal-icon" class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"></div>
+        <h3 id="prism-modal-title" class="font-semibold text-sm text-[#111827] dark:text-[#F9FAFB]"></h3>
+      </div>
+      <p id="prism-modal-message" class="text-xs text-[#6B7280] dark:text-[#CBD5E1] leading-relaxed"></p>
+      <input type="text" id="prism-modal-input" class="hidden w-full mt-3 px-3 py-1.5 text-sm rounded-lg border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#8B5CF6] outline-none">
+    </div>
+    <div id="prism-modal-buttons" class="flex justify-end gap-2 px-5 pb-4"></div>
+  </div>
+
+  <script nonce="{{ csp_nonce }}">
+    let _prismModalResolve = null;
+
+    function _prismModalCancel() {
+      document.getElementById('prism-modal-overlay').classList.add('hidden');
+      document.getElementById('prism-modal').classList.add('hidden');
+      if (_prismModalResolve) _prismModalResolve(null);
+      _prismModalResolve = null;
+    }
+
+    // Replaces alert() — shows message with OK button
+    window.pAlert = function(message, title) {
+      return new Promise(resolve => {
+        _prismModalResolve = resolve;
+        const modal = document.getElementById('prism-modal');
+        const overlay = document.getElementById('prism-modal-overlay');
+        document.getElementById('prism-modal-icon').innerHTML = '<i data-lucide="info" class="w-5 h-5 text-[#2563EB]"></i>';
+        document.getElementById('prism-modal-icon').className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-[#2563EB]/10';
+        document.getElementById('prism-modal-title').textContent = title || 'Info';
+        document.getElementById('prism-modal-message').innerHTML = message;
+        document.getElementById('prism-modal-input').classList.add('hidden');
+        document.getElementById('prism-modal-buttons').innerHTML = `
+          <button data-action="modal-ok" class="px-4 py-1.5 text-sm font-medium rounded-lg bg-[#2563EB] text-white hover:opacity-90">OK</button>`;
+        overlay.classList.remove('hidden');
+        modal.classList.remove('hidden');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      });
+    };
+
+    // Shared toast (UX gap: pages had 3 divergent feedback systems). A page
+    // that declares its own `function showToast` shadows this global; pages
+    // without one (rbac, etc.) get consistent feedback for free.
+    window.showToast = function(msg, type = 'info') {
+      let container = document.getElementById('prism-toast-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'prism-toast-container';
+        container.setAttribute('aria-live', 'polite');
+        container.style.cssText = 'position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;';
+        document.body.appendChild(container);
+      }
+      const colors = {
+        error:   { bg: '#FEF2F2', border: '#FECACA', text: '#991B1B', icon: 'x-circle' },
+        success: { bg: '#F0FDF4', border: '#BBF7D0', text: '#166534', icon: 'check-circle' },
+        info:    { bg: '#EFF6FF', border: '#BFDBFE', text: '#1E40AF', icon: 'info' },
+        warn:    { bg: '#FFFBEB', border: '#FDE68A', text: '#92400E', icon: 'alert-triangle' },
+      };
+      const c = colors[type] || colors.info;
+      const toast = document.createElement('div');
+      toast.style.cssText = `pointer-events:auto;display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:8px;border:1px solid ${c.border};background:${c.bg};color:${c.text};font-size:13px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.1);opacity:0;transform:translateX(20px);transition:all 0.3s;max-width:380px;`;
+      const icon = document.createElement('i'); icon.setAttribute('data-lucide', c.icon);
+      icon.style.cssText = 'width:16px;height:16px;flex-shrink:0;';
+      const span = document.createElement('span'); span.textContent = msg;  // textContent — no HTML injection
+      toast.appendChild(icon); toast.appendChild(span);
+      container.appendChild(toast);
+      if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [toast] });
+      requestAnimationFrame(() => { toast.style.opacity = '1'; toast.style.transform = 'translateX(0)'; });
+      setTimeout(() => {
+        toast.style.opacity = '0'; toast.style.transform = 'translateX(20px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    };
+
+    // Fleet sparklines — inject a tiny 24h "worst resource %" SVG polyline into
+    // each [data-sparkline] card slot. ONE grouped fetch, cached 2 min, redrawn
+    // after HTMX grid swaps. No Chart.js-per-card cost.
+    let _sparkCache = null, _sparkAt = 0;
+    function _drawSparklines(series) {
+      document.querySelectorAll('[data-sparkline]').forEach(slot => {
+        const pts = series[slot.getAttribute('data-sparkline')];
+        if (!pts || !pts.length) { slot.innerHTML = ''; return; }
+        const w = 100, h = 24, n = pts.length, coords = [];
+        pts.forEach((v, i) => {
+          if (v == null) return;
+          const x = n > 1 ? (i / (n - 1)) * w : 0;
+          const y = h - (Math.max(0, Math.min(100, v)) / 100) * h;
+          coords.push(x.toFixed(1) + ',' + y.toFixed(1));
+        });
+        if (coords.length < 2) { slot.innerHTML = ''; return; }
+        let last = 0;
+        for (let i = pts.length - 1; i >= 0; i--) { if (pts[i] != null) { last = pts[i]; break; } }
+        const stroke = last >= 90 ? '#DC2626' : last >= 75 ? '#F59E0B' : '#10B981';
+        slot.innerHTML = '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="width:100%;height:100%;display:block;overflow:visible" role="img" aria-label="24-hour load trend, latest ' + Math.round(last) + '%"><polyline fill="none" stroke="' + stroke + '" stroke-width="1.5" vector-effect="non-scaling-stroke" points="' + coords.join(' ') + '"/></svg>';
+      });
+    }
+    window.renderSparklines = function() {
+      if (!document.querySelector('[data-sparkline]')) return;
+      if (_sparkCache && (Date.now() - _sparkAt < 120000)) { _drawSparklines(_sparkCache); return; }
+      fetch('/api/servers/sparklines').then(r => r.json()).then(d => {
+        if (!d || !d.ok) return;
+        _sparkCache = d.series || {}; _sparkAt = Date.now();
+        _drawSparklines(_sparkCache);
+      }).catch(() => {});
+    };
+    document.addEventListener('DOMContentLoaded', () => window.renderSparklines());
+    document.addEventListener('htmx:afterSettle', () => window.renderSparklines());
+
+    // Replaces confirm() — shows message with Cancel/Confirm buttons, returns Promise<boolean>
+    window.pConfirm = function(message, title) {
+      return new Promise(resolve => {
+        _prismModalResolve = resolve;
+        const modal = document.getElementById('prism-modal');
+        const overlay = document.getElementById('prism-modal-overlay');
+        document.getElementById('prism-modal-icon').innerHTML = '<i data-lucide="alert-triangle" class="w-5 h-5 text-[#F59E0B]"></i>';
+        document.getElementById('prism-modal-icon').className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-[#F59E0B]/10';
+        document.getElementById('prism-modal-title').textContent = title || 'Confirm';
+        document.getElementById('prism-modal-message').innerHTML = message;
+        document.getElementById('prism-modal-input').classList.add('hidden');
+        document.getElementById('prism-modal-buttons').innerHTML = `
+          <button data-action="modal-cancel" class="px-4 py-1.5 text-sm font-medium rounded-lg border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#334155]">Cancel</button>
+          <button data-action="modal-ok" class="px-4 py-1.5 text-sm font-medium rounded-lg bg-[#DC2626] text-white hover:opacity-90">Confirm</button>`;
+        overlay.classList.remove('hidden');
+        modal.classList.remove('hidden');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      });
+    };
+
+    // Like pConfirm but with a labelled checkbox. Returns Promise<{confirmed, option}>
+    window.pConfirmWithOption = function(message, optionLabel, optionDefault, title) {
+      return new Promise(resolve => {
+        _prismModalResolve = function(val) { resolve(val); };
+        const modal = document.getElementById('prism-modal');
+        const overlay = document.getElementById('prism-modal-overlay');
+        document.getElementById('prism-modal-icon').innerHTML = '<i data-lucide="alert-triangle" class="w-5 h-5 text-[#F59E0B]"></i>';
+        document.getElementById('prism-modal-icon').className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-[#F59E0B]/10';
+        document.getElementById('prism-modal-title').textContent = title || 'Confirm';
+        const msgEl = document.getElementById('prism-modal-message');
+        msgEl.innerHTML = message +
+          '<label class="flex items-center gap-2 mt-4 cursor-pointer select-none text-sm">' +
+            '<input id="prism-modal-option-cb" type="checkbox" ' + (optionDefault ? 'checked' : '') +
+              ' class="w-4 h-4 rounded border-[#E5E7EB] dark:border-[#334155] text-[#DC2626] focus:ring-[#DC2626]">' +
+            '<span>' + optionLabel + '</span>' +
+          '</label>';
+        document.getElementById('prism-modal-input').classList.add('hidden');
+        document.getElementById('prism-modal-buttons').innerHTML =
+          '<button data-action="modal-opt-cancel" ' +
+            'class="px-4 py-1.5 text-sm font-medium rounded-lg border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#334155]">Cancel</button>' +
+          '<button data-action="modal-opt-ok" ' +
+            'class="px-4 py-1.5 text-sm font-medium rounded-lg bg-[#DC2626] text-white hover:opacity-90">Confirm</button>';
+        overlay.classList.remove('hidden');
+        modal.classList.remove('hidden');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      });
+    };
+
+    // Replaces prompt() — shows input field with Cancel/OK, returns Promise<string|null>
+    window.pPrompt = function(message, defaultValue, title) {
+      return new Promise(resolve => {
+        _prismModalResolve = resolve;
+        const modal = document.getElementById('prism-modal');
+        const overlay = document.getElementById('prism-modal-overlay');
+        document.getElementById('prism-modal-icon').innerHTML = '<i data-lucide="edit-3" class="w-5 h-5 text-[#8B5CF6]"></i>';
+        document.getElementById('prism-modal-icon').className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-[#8B5CF6]/10';
+        document.getElementById('prism-modal-title').textContent = title || 'Input';
+        document.getElementById('prism-modal-message').innerHTML = message;
+        const input = document.getElementById('prism-modal-input');
+        input.classList.remove('hidden');
+        input.value = defaultValue || '';
+        input.focus();
+        document.getElementById('prism-modal-buttons').innerHTML = `
+          <button data-action="modal-prompt-cancel" class="px-4 py-1.5 text-sm font-medium rounded-lg border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#334155]">Cancel</button>
+          <button data-action="modal-prompt-ok" class="px-4 py-1.5 text-sm font-medium rounded-lg bg-[#8B5CF6] text-white hover:opacity-90">OK</button>`;
+        overlay.classList.remove('hidden');
+        modal.classList.remove('hidden');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      });
+    };
+  </script>
+
+  <!-- Sidebar toggle -->
+  <script nonce="{{ csp_nonce }}">
+    function closeMobileSidebar() {
+      document.getElementById('sidebar').classList.remove('sidebar-mobile-open');
+      const bd = document.getElementById('sidebar-backdrop');
+      if (bd) bd.classList.remove('open');
+    }
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const main = document.getElementById('main-content');
+      // Below md the sidebar is off-canvas: the toggle slides it in/out over a
+      // backdrop instead of collapsing width (which would leave content cramped).
+      if (window.innerWidth < 768) {
+        const open = sidebar.classList.toggle('sidebar-mobile-open');
+        const bd = document.getElementById('sidebar-backdrop');
+        if (bd) bd.classList.toggle('open', open);
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        return;
+      }
+      const collapsed = sidebar.classList.toggle('sidebar-collapsed');
+      sidebar.classList.toggle('sidebar-expanded', !collapsed);
+      if (collapsed) {
+        sidebar.style.width = '4rem';
+        main.style.marginLeft = '4rem';
+      } else {
+        sidebar.style.width = '14rem';
+        main.style.marginLeft = '14rem';
+      }
+      localStorage.setItem('prism-sidebar', collapsed ? 'collapsed' : 'expanded');
+      lucide.createIcons();
+    }
+    // Restore sidebar state
+    (function() {
+      const saved = localStorage.getItem('prism-sidebar');
+      if (saved === 'collapsed') {
+        const sidebar = document.getElementById('sidebar');
+        const main = document.getElementById('main-content');
+        sidebar.classList.add('sidebar-collapsed');
+        sidebar.classList.remove('sidebar-expanded');
+        sidebar.style.width = '4rem';
+        main.style.marginLeft = '4rem';
+      }
+    })();
+  </script>
+
+  <!-- Delegated action dispatch (CSP hardening) — replaces inline on*=
+       handlers with data-action + a registry, so 'unsafe-inline' can be dropped
+       from script-src once every page is migrated. Delegation on document also
+       catches dynamically-inserted elements (e.g. the JS-built modal buttons). -->
+  <script nonce="{{ csp_nonce }}">
+    (function () {
+      const A = window._prismActions = window._prismActions || {};
+      window.registerActions = function (map) { Object.assign(A, map); };
+      function run(el, e, key) {
+        const fn = A[key];
+        if (fn) { fn(el, e); return; }
+        // Fallback: data-action names a GLOBAL function; data-args is a JSON
+        // array of its arguments (encode with the tojson filter in templates).
+        const g = window[key];
+        if (typeof g === 'function') {
+          let args = [];
+          const raw = el.getAttribute('data-args');
+          if (raw) { try { args = JSON.parse(raw); } catch (_) {} }
+          g.apply(el, args);
+        }
+      }
+      // Bubbling events → event delegation on document.
+      const _evtAttr = { click: 'data-action', change: 'data-change', submit: 'data-submit', input: 'data-input', mousedown: 'data-mousedown', mouseup: 'data-mouseup' };
+      Object.keys(_evtAttr).forEach(function (evt) {
+        document.addEventListener(evt, function (e) {
+          const el = e.target.closest('[' + _evtAttr[evt] + ']');
+          if (el) run(el, e, el.getAttribute(_evtAttr[evt]));
+        });
+      });
+      // Non-bubbling hover events → attach directly (idempotent; re-run after
+      // HTMX swaps so freshly-inserted rows get their handlers).
+      window._prismBindHover = function (root) {
+        (root || document).querySelectorAll('[data-mouseenter]:not([data-me-bound])').forEach(function (el) {
+          el.setAttribute('data-me-bound', '1');
+          el.addEventListener('mouseenter', function (e) { run(el, e, el.getAttribute('data-mouseenter')); });
+        });
+        (root || document).querySelectorAll('[data-mouseleave]:not([data-ml-bound])').forEach(function (el) {
+          el.setAttribute('data-ml-bound', '1');
+          el.addEventListener('mouseleave', function (e) { run(el, e, el.getAttribute('data-mouseleave')); });
+        });
+      };
+      document.addEventListener('DOMContentLoaded', function () { window._prismBindHover(); });
+      document.addEventListener('htmx:afterSettle', function () { window._prismBindHover(); });
+      // Toggle a section's visibility when its HTMX target swaps in empty
+      // content — replaces per-element hx-on::after-swap (inline JS under CSP).
+      document.body.addEventListener('htmx:afterSwap', function (e) {
+        const el = e.target;
+        if (!el || !el.getAttribute) return;
+        const tgt = el.getAttribute('data-toggle-empty');
+        if (tgt) {
+          const sec = document.getElementById(tgt);
+          if (sec) sec.classList.toggle('hidden', el.innerHTML.trim() === '');
+        }
+      });
+      // Auto-dismiss the "all healthy" banner. Hosted here (not on the swapped-in
+      // critical-issues partial) so that partial stays inline-script-free —
+      // per-request nonces don't match across an HTMX fragment fetch.
+      // "All systems healthy" auto-dismiss.
+      //
+      // The state MUST live in JS, not in the DOM. This partial is swapped with
+      // hx-swap="morph:innerHTML" on every prismRefresh — which under v2 fires
+      // on every aggregator tick, roughly every 5s — and idiomorph reconciles
+      // attributes and inline styles to match the incoming HTML. So a
+      // data-fade-armed marker was stripped and the opacity reset on every
+      // swap, re-arming a fresh 10s timer that never got to finish. The banner
+      // reappeared at full opacity every few seconds on a fleet that had been
+      // clean for hours.
+      //
+      // Now: shown once per healthy STREAK, then stays gone until something
+      // actually breaks. When the banner is absent (i.e. there are issues) the
+      // state resets, so a genuine recovery announces itself again — which is
+      // the only moment the message carries information.
+      // The dismissal is a CLASS ON <body>, not JS state and not an inline
+      // style, because both of those are applied too late. Measured: hiding
+      // the node from the htmx:afterSettle handler gave display:flex AT
+      // settle and none milliseconds later — the morph inserts a visible node
+      // and the browser can paint it before the handler runs. CSS resolves
+      // before paint, and <body> is never replaced (swaps target inner
+      // containers), so the rule in app.css hides a freshly-morphed banner the
+      // instant it lands, with no timing dependency.
+      let _healthyBannerTimer = null;
+
+      function _prismFadeHealthy(root) {
+        const b = (root || document).querySelector('#healthy-banner');
+
+        if (!b) {
+          // There are issues. Cancel any pending dismiss and clear the class so
+          // a genuine recovery announces itself — the only moment the message
+          // carries information.
+          if (_healthyBannerTimer) { clearTimeout(_healthyBannerTimer); _healthyBannerTimer = null; }
+          document.body.classList.remove('healthy-dismissed');
+          return;
+        }
+        if (document.body.classList.contains('healthy-dismissed')) return;  // CSS has it
+        if (_healthyBannerTimer) return;                                    // counting down
+
+        _healthyBannerTimer = setTimeout(function () {
+          _healthyBannerTimer = null;
+          // Re-query: morph may have replaced the node captured above.
+          const el = document.querySelector('#healthy-banner');
+          if (!el) { document.body.classList.add('healthy-dismissed'); return; }
+          el.style.opacity = '0';            // 500ms CSS transition, then CSS owns it
+          setTimeout(function () {
+            document.body.classList.add('healthy-dismissed');
+          }, 500);
+        }, 10000);
+      }
+      document.addEventListener('DOMContentLoaded', function () { _prismFadeHealthy(); });
+      document.addEventListener('htmx:afterSettle', function () { _prismFadeHealthy(); });
+      // Resolve an incident. Hosted here (not on the swapped-in incidents
+      // partial) for the same nonce reason; invoked via data-action="resolveIncident".
+      window.resolveIncident = function (id) {
+        const notes = document.getElementById('resolution-notes-' + id);
+        const body = { status: 'resolved' };
+        if (notes && notes.value.trim()) body.resolution_notes = notes.value.trim();
+        // The PUT is state-changing → Flask-WTF requires the CSRF token; without
+        // it the request 400s ("CSRF token missing") and the button appears dead.
+        const csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+        fetch('/api/incidents/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+          body: JSON.stringify(body)
+        }).then(function (r) { return r.json(); }).then(function (data) {
+          if (data.ok) { document.body.dispatchEvent(new CustomEvent('prismRefresh')); }
+        }).catch(function () { /* network error — leave the incident open */ });
+      };
+      window.registerActions({
+        // Generic reusable actions.
+        'stop-prop': function (el, e) { e.stopPropagation(); },
+        'goto': function (el) { const h = el.getAttribute('data-href'); if (h) window.location.href = h; },
+        'toggle-detail': function (el) { const d = el.querySelector('.incident-detail'); if (d) d.classList.toggle('hidden'); },
+        'toggle-sidebar': function () { toggleSidebar(); },
+        'toggle-theme': function () { toggleTheme(); },
+        'close-mobile-sidebar': function () { closeMobileSidebar(); },
+        'modal-backdrop': function (el, e) { if (e.target === el) _prismModalCancel(); },
+        'modal-ok': function () { _prismModalResolve(true); _prismModalCancel(); },
+        'modal-cancel': function () { _prismModalResolve(false); _prismModalCancel(); },
+        'modal-opt-cancel': function () { _prismModalResolve({ confirmed: false, option: false }); _prismModalCancel(); },
+        'modal-opt-ok': function () { _prismModalResolve({ confirmed: true, option: document.getElementById('prism-modal-option-cb').checked }); _prismModalCancel(); },
+        'modal-prompt-cancel': function () { _prismModalResolve(null); _prismModalCancel(); },
+        'modal-prompt-ok': function () { _prismModalResolve(document.getElementById('prism-modal-input').value); _prismModalCancel(); },
+      });
+    })();
+  </script>
+
+  <!-- Collector pulse monitor (ECG-style topbar widget) -->
+  <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/pulse-monitor.js') }}"></script>
+</body>
+</html>

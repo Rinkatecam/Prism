@@ -1,0 +1,245 @@
+<!-- Single server card -->
+{% set name = server.server_name %}
+{% set status = server.status %}
+{% set cpu = server.cpu_percent %}
+{% set ram = server.ram_percent %}
+{% set disk_c = server.disk_c_percent %}
+{% set disk_d = server.disk_d_percent %}
+{% set thresholds = server.thresholds or {} %}
+{% set host = server.host %}
+{# Fused-verdict "elevated but normal for this server" marker — see
+   docs/plans/DETECTION_FUSION_PLAN.md §2/§7/§8. May be entirely absent
+   (cold cache after restart, or the fusion layer not deployed yet), so
+   every lookup below degrades to "not elevated" rather than crashing. #}
+{% set verdict_detail = server.get('verdict_detail') or {} %}
+{# Install-state takes over the badge when active. See views.partial_server_grid
+   for the _INSTALL_STATUSES_DOMINANT set that decides which states dominate.
+   The aggregator clears the row once stabilising completes; a 20 min
+   janitor in collector_v2/periodics.py covers servers that never return. #}
+{% set istate = server.install_state %}
+{% set istatus = istate.status if istate else None %}
+{% set _install_labels = {
+    'queued': 'Queued',
+    'searching': 'Searching',
+    'downloading': 'Downloading',
+    'installing': 'Installing',
+    'restart_required': 'Restart needed',
+    'rebooting': 'Rebooting',
+    'stabilising': 'Stabilising',
+} %}
+{# Border colour conveys severity at a glance even on monochrome devices —
+   amber for in-flight install work, indigo for restart phases. #}
+{% set _install_border = {
+    'queued': '!border-l-[#6366F1]',
+    'searching': '!border-l-[#6366F1]',
+    'downloading': '!border-l-[#F59E0B]',
+    'installing': '!border-l-[#F59E0B]',
+    'restart_required': '!border-l-[#8B5CF6]',
+    'rebooting': '!border-l-[#8B5CF6]',
+    'stabilising': '!border-l-[#10B981]',
+} %}
+
+<a href="/server/{{ name }}"
+   data-server-card
+   data-server-name="{{ name }}"
+   data-server-host="{{ host }}"
+   data-status="{{ status }}"
+   {% if istatus %}data-install-status="{{ istatus }}"{% endif %}
+   class="server-card block bg-white dark:bg-[#1E293B] rounded-lg p-4 border border-[#E5E7EB] dark:border-[#334155] cursor-pointer
+          {% if istatus %}border-l-4 {{ _install_border.get(istatus, '!border-l-[#6366F1]') }}{% elif status == 'critical' %}border-l-4 !border-l-[#DC2626] dark:!border-l-[#EF4444]{% elif status == 'warning' %}border-l-4 !border-l-[#F59E0B] dark:!border-l-[#FBBF24]{% elif status == 'offline' %}border-l-4 !border-l-[#9CA3AF] opacity-60{% endif %}">
+
+  <!-- Header: name + badge -->
+  <div class="flex items-center justify-between mb-3">
+    <div class="min-w-0">
+      <div class="font-semibold text-sm truncate">{{ name }}</div>
+    </div>
+    {% if istatus %}
+    {# Install-lifecycle badge replaces the threshold-status badge while
+       the lifecycle is active. The threshold status is still computed and
+       still drives alert dispatch underneath — the operator just sees
+       what the server is DOING right now, not "offline" during a reboot. #}
+    <span class="badge badge-{{ istatus }} flex-shrink-0 ml-2 flex items-center gap-1" title="{{ istate.message or '' }}">
+      {% if istatus in ('downloading', 'installing') %}
+      <i data-lucide="loader" class="w-3 h-3 animate-spin"></i>
+      {% elif istatus == 'rebooting' %}
+      <i data-lucide="rotate-cw" class="w-3 h-3 animate-spin"></i>
+      {% elif istatus == 'stabilising' %}
+      <i data-lucide="check-circle" class="w-3 h-3"></i>
+      {% elif istatus == 'restart_required' %}
+      <i data-lucide="alert-circle" class="w-3 h-3"></i>
+      {% endif %}
+      <span>{{ _install_labels.get(istatus, istatus) }}</span>
+    </span>
+    {% else %}
+    <span class="badge badge-{{ status }} flex-shrink-0 ml-2">{{ status }}</span>
+    {% endif %}
+  </div>
+
+  <!-- Tag pills -->
+  {% if server.tags %}
+  <div class="flex flex-wrap gap-1 mt-1 mb-2">
+    {% for tag in server.tags %}
+    <span class="px-1.5 py-0 text-[9px] font-medium rounded-full"
+          style="color: {{ tag.color }}; background-color: {{ tag.color }}15; border: 1px solid {{ tag.color }}30;">
+      {{ tag.name }}
+    </span>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Metric bars -->
+  {% if cpu is not none and status != 'unknown' %}
+  <div class="space-y-2">
+    {% macro metric_bar(label, value, warn, crit, metric_key) %}
+    {% if value is not none and value >= 0 %}
+    {# Per-metric elevated-normal marker: baseline says this value is normal
+       for this server even though it's statically over threshold. Never
+       raises an error when verdict_detail/metric entry is missing. #}
+    {% set _mv = verdict_detail.get(metric_key) if metric_key else None %}
+    {% set _elevated = _mv.get('elevated', false) if _mv else false %}
+    {% set _reason = _mv.get('reason', '') if _mv else '' %}
+    {# `kind` classifies how loudly to render this metric — see
+       FusedVerdict.detail(). Absent on rows cached before this change, so it
+       degrades to '' and nothing extra is drawn. #}
+    {% set _kind = _mv.get('kind', '') if _mv else '' %}
+    <div>
+      <div class="flex justify-between text-xs mb-0.5">
+        <span class="text-[#6B7280] dark:text-[#CBD5E1]">{{ label }}</span>
+        <span class="font-medium inline-flex items-center gap-1 {% if crit is not none and value >= crit %}text-[#DC2626] dark:text-[#EF4444]{% elif warn is not none and value >= warn %}text-[#F59E0B] dark:text-[#FBBF24]{% elif _kind == 'deviation' %}text-[#6B7280] dark:text-[#CBD5E1]{% else %}text-[#1F2937] dark:text-[#F8FAFC]{% endif %}">
+          {{ value | round(1) }}%
+          {% if _elevated %}
+          <span class="inline-block w-1.5 h-1.5 rounded-full bg-[#8B5CF6] dark:bg-[#A78BFA] cursor-help"
+                data-tip-title="{{ t.get('elevated_normal_title', 'Normal for this server') }}"
+                data-tip-desc="{{ _reason }}"
+                aria-label="{{ t.get('elevated_normal_title', 'Normal for this server') }}"></span>
+          {% elif _kind in ('suppressed', 'spike') %}
+          {# Almost-silent observation. Either the baseline finds this odd but a
+             raise gate ruled it not worth alerting on, or it IS over threshold
+             but hasn't lasted long enough to be a condition (kind='spike').
+             Neutral grey, never amber, and the server still counts as healthy
+             in every summary. #}
+          <span class="inline-block w-1.5 h-1.5 rounded-full bg-[#9CA3AF] dark:bg-[#64748B] opacity-70 cursor-help"
+                data-tip-title="{{ t.get('observation_title', 'Observation — not alerting') }}"
+                data-tip-desc="{{ _reason }}"
+                aria-label="{{ t.get('observation_title', 'Observation — not alerting') }}"></span>
+          {% elif _kind == 'deviation' %}
+          {# Soft signal: absolutely within limits, only unusual for THIS host.
+             Hollow ring, not a filled severity dot. #}
+          <span class="inline-block w-1.5 h-1.5 rounded-full border border-[#F59E0B] dark:border-[#FBBF24] cursor-help"
+                data-tip-title="{{ t.get('deviation_title', 'Differs from this server\'s baseline') }}"
+                data-tip-desc="{{ _reason }}"
+                aria-label="{{ t.get('deviation_title', 'Differs from this server\'s baseline') }}"></span>
+          {% endif %}
+        </span>
+      </div>
+      <div class="metric-bar">
+        <div class="metric-bar-fill {% if crit is not none and value >= crit %}bg-[#DC2626] dark:bg-[#EF4444]{% elif warn is not none and value >= warn %}bg-[#F59E0B] dark:bg-[#FBBF24]{% else %}bg-[#10B981]{% endif %}"
+             style="width: {{ [value, 100] | min }}%"></div>
+      </div>
+    </div>
+    {% endif %}
+    {% endmacro %}
+
+    {{ metric_bar("CPU", cpu, thresholds.get('cpu_warning'), thresholds.get('cpu_critical'), 'cpu') }}
+    {{ metric_bar("RAM", ram, thresholds.get('ram_warning'), thresholds.get('ram_critical'), 'ram') }}
+    {{ metric_bar("Disk C:", disk_c, thresholds.get('disk_warning'), thresholds.get('disk_critical'), 'disk_c') }}
+    {{ metric_bar("Disk D:", disk_d, thresholds.get('disk_warning'), thresholds.get('disk_critical'), 'disk_d') }}
+  </div>
+  {% elif istatus %}
+  {# During the install lifecycle the metric rows are usually stale (server
+     is busy or rebooting). Show the install message instead of a misleading
+     "server unreachable" — operators glancing at the tile should see WHY
+     this server isn't reporting numbers. #}
+  <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1] italic py-4 text-center">
+    {% if istatus == 'rebooting' %}
+    <i data-lucide="rotate-cw" class="w-4 h-4 inline mb-1 animate-spin"></i><br>
+    {% elif istatus in ('downloading', 'installing') %}
+    <i data-lucide="loader" class="w-4 h-4 inline mb-1 animate-spin"></i><br>
+    {% elif istatus == 'stabilising' %}
+    <i data-lucide="check-circle" class="w-4 h-4 inline mb-1 text-[#10B981]"></i><br>
+    {% else %}
+    <i data-lucide="clock" class="w-4 h-4 inline mb-1"></i><br>
+    {% endif %}
+    {{ istate.message or _install_labels.get(istatus, istatus) }}
+  </div>
+  {% elif status == 'unknown' %}
+  <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1] italic py-4 text-center">
+    {{ t.waiting_collection }}
+  </div>
+  {% elif status == 'offline' %}
+  <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1] italic py-4 text-center">
+    <i data-lucide="wifi-off" class="w-4 h-4 inline mb-1"></i><br>
+    {{ t.server_unreachable }}
+  </div>
+  {% endif %}
+
+  {# ── Why is this card flagged? ──────────────────────────────────────────
+     The dashboard used to show a bare severity badge and nothing else, so the
+     only way to learn WHY a host was amber was to open it — and a real
+     threshold breach looked identical to a statistical blip well inside safe
+     limits. The data was already here in verdict_detail; it just wasn't drawn.
+
+     Picks the single most important entry: floor > breach > deviation, matching
+     the severity ordering the aggregator uses to headline events. Install
+     lifecycle keeps its own message above, so this is skipped while active. #}
+  {% if verdict_detail and not istatus and status in ('warning', 'critical') %}
+  {% set _floor = verdict_detail | dictsort | selectattr('1.kind', 'equalto', 'floor') | list %}
+  {% set _breach = verdict_detail | dictsort | selectattr('1.kind', 'equalto', 'breach') | list %}
+  {% set _dev = verdict_detail | dictsort | selectattr('1.kind', 'equalto', 'deviation') | list %}
+  {% set _pick = (_floor or _breach or _dev) | first %}
+  {% if _pick %}
+  {% set _pk = _pick[1].get('kind') %}
+  <div class="mt-2 pt-2 border-t border-[#E5E7EB] dark:border-[#334155]">
+    <div class="flex items-start gap-1.5 text-[11px] leading-snug
+                {% if _pk == 'deviation' %}text-[#6B7280] dark:text-[#94A3B8]
+                {% elif _pk == 'floor' %}text-[#DC2626] dark:text-[#EF4444]
+                {% elif status == 'critical' %}text-[#DC2626] dark:text-[#EF4444]
+                {% else %}text-[#B45309] dark:text-[#FBBF24]{% endif %}">
+      {% if _pk == 'deviation' %}
+      <i data-lucide="activity" class="w-3 h-3 flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      {% elif _pk == 'floor' %}
+      <i data-lucide="alert-octagon" class="w-3 h-3 flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      {% else %}
+      <i data-lucide="alert-triangle" class="w-3 h-3 flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      {% endif %}
+      {# Full text in the tooltip; the line itself clamps to two lines so cards
+         in a grid keep a predictable height. #}
+      <span class="line-clamp-2 cursor-help"
+            data-tip-title="{% if _pk == 'deviation' %}{{ t.get('deviation_title', 'Differs from this server\'s baseline') }}{% else %}{{ t.get('why_flagged_title', 'Why this server is flagged') }}{% endif %}"
+            data-tip-desc="{{ _pick[1].get('reason', '') }}">{{ _pick[1].get('reason', '') }}</span>
+    </div>
+    {% if _pk == 'deviation' %}
+    <div class="text-[10px] text-[#9CA3AF] dark:text-[#64748B] mt-0.5 pl-[18px]">
+      {{ t.get('within_limits_note', 'Within configured limits — unusual for this host only.') }}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% endif %}
+
+  {# 24h worst-resource sparkline — SVG is injected client-side from
+     /api/servers/sparklines (see base.html renderSparklines). Only for servers
+     actively reporting metrics; empty slot survives HTMX grid re-renders. #}
+  {% if cpu is not none and status not in ('unknown', 'offline') %}
+  <div class="mt-2 h-6" data-sparkline="{{ name }}" aria-hidden="true"></div>
+  {% endif %}
+
+  <!-- Timestamp + staleness flag (S1-6 from AUDIT-2026-05).
+       The stale badge appears when last collection is older than 2.5× the
+       poll interval — i.e., the collector's executor timed out for this
+       server and never wrote a fresh row. Without this, the tile shows
+       "healthy" forever for an unreachable host.  -->
+  {% if server.timestamp %}
+  <div class="flex items-center justify-end gap-2 mt-2">
+    {% if server.is_stale %}
+    <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-[#F59E0B]/15 text-[#F59E0B] border border-[#F59E0B]/30"
+          title="Last collection {{ (server.staleness_seconds // 60) | int }}m ago — collector may have timed out for this server.">
+      stale
+    </span>
+    {% endif %}
+    <span class="text-[10px] text-[#9CA3AF] dark:text-[#475569]">
+      {{ fmt_time(server.timestamp) }}
+    </span>
+  </div>
+  {% endif %}
+</a>

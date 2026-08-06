@@ -1,0 +1,420 @@
+{% extends "base.html" %}
+{% block title %}{{ sop.id }} {{ sop.title }} — Prism{% endblock %}
+
+{% block content %}
+<div class="p-6 max-w-7xl mx-auto">
+
+  <!-- Breadcrumb -->
+  <nav class="text-xs text-[#6B7280] dark:text-[#9CA3AF] mb-3 flex items-center gap-1">
+    <a href="/compliance" class="hover:underline">{{ t.get('compliance', 'Compliance') }}</a>
+    <i data-lucide="chevron-right" class="w-3 h-3"></i>
+    <span class="font-medium">{{ sop.id }}</span>
+  </nav>
+
+  {# Three-column grid: doc | (TOC + status) — same overall feel as
+     compliance.html but with an extra navigation column. On screens
+     narrower than ``lg`` everything stacks. #}
+  <div class="grid grid-cols-1 lg:grid-cols-[220px_1fr_320px] gap-6">
+
+    <!-- LEFT: table of contents (populated from the API response) -->
+    <aside class="hidden lg:block">
+      <div id="toc-card" class="sticky top-4 bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4">
+        <div class="text-xs font-semibold uppercase tracking-wide text-[#6B7280] dark:text-[#9CA3AF] mb-2">
+          {{ t.get('on_this_page', 'On this page') }}
+        </div>
+        <nav id="toc" class="text-xs space-y-1">
+          <div class="text-[#9CA3AF]">{{ t.get('loading', 'Loading…') }}</div>
+        </nav>
+      </div>
+    </aside>
+
+    <!-- CENTER: rendered SOP content -->
+    <div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-6 lg:p-8">
+      <article id="sop-body" class="doc-prose">
+        <div class="text-sm text-[#6B7280] dark:text-[#9CA3AF]">{{ t.get('loading', 'Loading…') }}</div>
+      </article>
+    </div>
+
+    <!-- RIGHT: status + record execution + history -->
+    <aside class="space-y-4">
+
+      <div id="status-card" class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4 sticky top-4">
+        <div class="text-xs font-semibold uppercase tracking-wide text-[#6B7280] dark:text-[#9CA3AF] mb-2">
+          {{ t.get('status', 'Status') }}
+        </div>
+        <div id="status-badge" class="mb-3"><span class="opacity-50">{{ t.get('loading', 'Loading…') }}</span></div>
+        <dl id="status-meta" class="text-xs text-[#6B7280] dark:text-[#9CA3AF] space-y-1"></dl>
+
+        <hr class="my-4 border-[#E5E7EB] dark:border-[#334155]">
+
+        <div class="text-xs font-semibold uppercase tracking-wide text-[#6B7280] dark:text-[#9CA3AF] mb-2">
+          {{ t.get('record_execution', 'Record execution') }}
+        </div>
+        <form id="exec-form" class="space-y-2">
+          <div>
+            <label class="text-xs text-[#6B7280] dark:text-[#9CA3AF] block mb-1">{{ t.get('result', 'Result') }}</label>
+            <select id="exec-result" class="w-full text-xs px-2 py-1.5 rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+              <option value="pass">{{ t.get('result_pass', 'Pass') }}</option>
+              <option value="partial">{{ t.get('result_partial', 'Partial') }}</option>
+              <option value="fail">{{ t.get('result_fail', 'Fail') }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs text-[#6B7280] dark:text-[#9CA3AF] block mb-1">{{ t.get('notes', 'Notes') }}</label>
+            <textarea id="exec-notes" rows="4" maxlength="2000" class="w-full text-xs px-2 py-1.5 rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" placeholder="{{ t.get('notes_placeholder', 'Brief description of what was verified...') }}"></textarea>
+          </div>
+          <div>
+            <label class="text-xs text-[#6B7280] dark:text-[#9CA3AF] block mb-1">{{ t.get('evidence_ref', 'Evidence reference (optional)') }}</label>
+            <input id="exec-evidence" type="text" maxlength="500" class="w-full text-xs px-2 py-1.5 rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" placeholder="e.g., data/sop_records/acl_review_2026Q2.csv">
+          </div>
+          <button type="submit" class="w-full mt-2 px-3 py-2 text-xs font-medium rounded bg-[#8B5CF6] text-white hover:opacity-90">
+            {{ t.get('record', 'Record') }}
+          </button>
+          <div id="exec-feedback" class="text-xs mt-1"></div>
+        </form>
+
+        <hr class="my-4 border-[#E5E7EB] dark:border-[#334155]">
+
+        <a id="raw-link" href="/api/sop/{{ sop.id }}/raw" target="_blank"
+           class="text-xs text-[#6B7280] dark:text-[#9CA3AF] hover:underline inline-flex items-center gap-1">
+          <i data-lucide="file-code-2" class="w-3 h-3"></i>
+          {{ t.get('view_raw_markdown', 'View raw markdown') }}
+        </a>
+      </div>
+
+      <!-- History card -->
+      <div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4">
+        <div class="text-xs font-semibold uppercase tracking-wide text-[#6B7280] dark:text-[#9CA3AF] mb-2">
+          {{ t.get('execution_history', 'Execution history') }}
+        </div>
+        <div id="history" class="text-xs space-y-2"></div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Floating scroll-to-top button (appears once the doc has scrolled) -->
+  <button id="scroll-top" type="button"
+          class="hidden fixed bottom-6 right-6 w-10 h-10 rounded-full bg-[#8B5CF6] text-white shadow-lg hover:opacity-90 z-50"
+          aria-label="{{ t.get('scroll_to_top', 'Scroll to top') }}">
+    <i data-lucide="arrow-up" class="w-4 h-4 mx-auto"></i>
+  </button>
+</div>
+
+{# Doc-prose CSS lives in a shared partial so the two doc pages
+   (compliance_sop.html + compliance_doc.html) cannot drift apart. #}
+{% include "_compliance_doc_styles.html" %}
+
+<script nonce="{{ csp_nonce }}">
+(function() {
+  const SOP_ID = {{ sop.id | tojson }};
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+
+  async function loadAll() {
+    await Promise.all([loadRendered(), loadStatus(), loadHistory()]);
+  }
+
+  async function loadRendered() {
+    try {
+      const r = await fetch(`/api/sop/${SOP_ID}/render`, { credentials: 'same-origin' });
+      if (!r.ok) throw new Error('http ' + r.status);
+      const data = await r.json();
+      // HTML comes from server-rendered markdown of a repo-controlled doc; safe.
+      document.getElementById('sop-body').innerHTML = data.html;
+      paintToc(data.toc || []);
+      // Re-init Lucide icons inside the freshly-loaded body (the
+      // anchor-hash glyphs are SVG icons set via data-lucide).
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+      }
+      addHeadingAnchors();
+      addCodeCopyButtons();
+      decorateStatusBadges('#sop-body');
+      wrapTablesForScroll('#sop-body');
+    } catch (e) {
+      document.getElementById('sop-body').innerHTML = '<p class="text-[#DC2626]">Failed to load: ' + e + '</p>';
+    }
+  }
+
+  function paintToc(toc) {
+    const navEl = document.getElementById('toc');
+    if (!toc || toc.length === 0) {
+      navEl.innerHTML = '<div class="text-[#9CA3AF]">{{ t.get('no_sections', 'No sections') }}</div>';
+      return;
+    }
+    navEl.innerHTML = '';
+    for (const item of toc) {
+      const a = document.createElement('a');
+      a.href = '#' + item.id;
+      a.textContent = item.text;
+      // Level-based class drives the indent + de-emphasis in
+      // _compliance_doc_styles.html. Truncate so a long finding title
+      // ("F-075 — No static-analysis enforcement of universal RBAC")
+      // doesn't wrap and break the sidebar grid.
+      a.className = 'block py-0.5 truncate text-[#374151] dark:text-[#D1D5DB] toc-l' + item.level;
+      a.title = item.text;  // hover-tooltip when truncated
+      a.dataset.targetId = item.id;
+      navEl.appendChild(a);
+    }
+    setupScrollSpy(toc);
+  }
+
+  function setupScrollSpy(toc) {
+    // Highlight the TOC entry matching whichever heading is closest to
+    // the top of the viewport. Uses IntersectionObserver so it's cheap
+    // even on the 30-entry findings register.
+    if (!('IntersectionObserver' in window)) return;
+    const headings = toc
+      .map(item => document.getElementById(item.id))
+      .filter(Boolean);
+    if (!headings.length) return;
+    const activeMap = new Map();
+    const links = document.querySelectorAll('#toc a[data-target-id]');
+    const linkByTarget = new Map();
+    links.forEach(a => linkByTarget.set(a.dataset.targetId, a));
+
+    const obs = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        activeMap.set(e.target.id, e.isIntersecting);
+      }
+      // Pick the first heading currently intersecting the viewport;
+      // fall back to the last one we passed.
+      let activeId = null;
+      for (const h of headings) {
+        if (activeMap.get(h.id)) { activeId = h.id; break; }
+      }
+      if (!activeId) {
+        // Find the last heading whose top is above the viewport.
+        const y = window.scrollY + 100;
+        for (const h of headings) {
+          if (h.offsetTop <= y) activeId = h.id;
+        }
+      }
+      links.forEach(a => a.classList.toggle('active', a.dataset.targetId === activeId));
+      // Auto-scroll the TOC so the active entry stays visible in the
+      // sidebar's scroll container.
+      if (activeId) {
+        const activeLink = linkByTarget.get(activeId);
+        if (activeLink) {
+          const nav = document.getElementById('toc');
+          const linkTop = activeLink.offsetTop;
+          const linkBottom = linkTop + activeLink.offsetHeight;
+          if (linkTop < nav.scrollTop) nav.scrollTop = linkTop - 20;
+          else if (linkBottom > nav.scrollTop + nav.clientHeight) {
+            nav.scrollTop = linkBottom - nav.clientHeight + 20;
+          }
+        }
+      }
+    }, {
+      // Margin pulls the "active zone" to the top third of the viewport
+      // so the highlighted entry matches what the operator is actually
+      // reading, not what's just scrolling into view at the bottom.
+      rootMargin: '0px 0px -66% 0px',
+      threshold: 0,
+    });
+    headings.forEach(h => obs.observe(h));
+  }
+
+  function addHeadingAnchors() {
+    // Add a "#" affordance to every H2/H3/H4 with an id so operators
+    // can copy-link to a specific section.
+    const heads = document.querySelectorAll(
+      '#sop-body h2[id], #sop-body h3[id], #sop-body h4[id]'
+    );
+    heads.forEach((h) => {
+      if (h.querySelector('.doc-anchor')) return;  // idempotent
+      const a = document.createElement('a');
+      a.href = '#' + h.id;
+      a.className = 'doc-anchor';
+      a.setAttribute('aria-label', '{{ t.get('link_to_section', 'Link to section') }}');
+      a.textContent = '#';
+      h.appendChild(a);
+    });
+  }
+
+  function wrapTablesForScroll(rootSelector) {
+    // Wrap each <table> in a div.table-scroll so wide tables get
+    // horizontal scrolling inside the card instead of pushing the
+    // whole page sideways. The wrapping is idempotent: skip tables
+    // already inside a .table-scroll.
+    document.querySelectorAll(rootSelector + ' table').forEach((tbl) => {
+      if (tbl.parentElement && tbl.parentElement.classList.contains('table-scroll')) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'table-scroll';
+      tbl.parentNode.insertBefore(wrap, tbl);
+      wrap.appendChild(tbl);
+    });
+  }
+
+  function decorateStatusBadges(rootSelector) {
+    // Wrap the "CLOSED" / "RISK-ACCEPTED" / "OPEN" bolded status words
+    // (which sit right after their emoji prefix) in a coloured pill.
+    // CSS can't target text content; this small walker does it once
+    // after the article HTML is injected.
+    const map = [
+      { needle: 'CLOSED',         cls: 'badge-closed' },
+      { needle: 'RISK-ACCEPTED',  cls: 'badge-risk' },
+      { needle: 'ACCEPTED',       cls: 'badge-risk' },
+      { needle: 'OPEN',           cls: 'badge-open' },
+    ];
+    document.querySelectorAll(rootSelector + ' strong').forEach((s) => {
+      const txt = s.textContent.trim();
+      for (const { needle, cls } of map) {
+        if (txt === needle) {
+          s.classList.add(cls);
+          return;
+        }
+      }
+    });
+  }
+
+  function addCodeCopyButtons() {
+    document.querySelectorAll('#sop-body pre.doc-code').forEach((pre) => {
+      if (pre.querySelector('.code-copy')) return;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'code-copy';
+      btn.textContent = '{{ t.get('copy', 'Copy') }}';
+      btn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(pre.querySelector('code')?.innerText || '');
+          btn.textContent = '✓';
+          setTimeout(() => { btn.textContent = '{{ t.get('copy', 'Copy') }}'; }, 1200);
+        } catch (e) {
+          btn.textContent = '✗';
+        }
+      });
+      pre.appendChild(btn);
+    });
+  }
+
+  async function loadStatus() {
+    try {
+      const r = await fetch(`/api/sop/${SOP_ID}`, { credentials: 'same-origin' });
+      if (!r.ok) throw new Error('http ' + r.status);
+      const data = await r.json();
+      paintStatus(data);
+    } catch (e) {
+      document.getElementById('status-badge').innerHTML = '<span class="text-[#DC2626]">Error</span>';
+    }
+  }
+
+  function paintStatus(s) {
+    const badgeColors = {
+      current:  { c: '#10B981', t: 'Current' },
+      due_soon: { c: '#F59E0B', t: 'Due soon' },
+      overdue:  { c: '#DC2626', t: 'OVERDUE' },
+      never:    { c: '#DC2626', t: 'Never executed' },
+      n_a:      { c: '#6B7280', t: 'Per-event' },
+    };
+    const e = badgeColors[s.status] || badgeColors.n_a;
+    document.getElementById('status-badge').innerHTML =
+      `<span style="background:${e.c}15;color:${e.c};border:1px solid ${e.c}40" class="px-2 py-1 rounded font-medium">${e.t}</span>`;
+    const meta = document.getElementById('status-meta');
+    const fmt = (iso) => iso ? new Date(iso).toLocaleString() : '—';
+    const rows = [
+      ['Owner', s.owner_role],
+      ['Cadence', s.cadence_days ? s.cadence_days + ' days' : 'Per-event'],
+      ['Last run', fmt(s.last_executed_at)],
+      ['Next due', s.next_due_at ? fmt(s.next_due_at) : '—'],
+    ];
+    if (s.days_overdue > 0) rows.push(['Overdue', s.days_overdue + ' days']);
+    meta.innerHTML = rows.map(([k, v]) => `<div class="flex justify-between gap-3"><dt>${k}:</dt><dd class="text-right">${v}</dd></div>`).join('');
+  }
+
+  async function loadHistory() {
+    try {
+      const r = await fetch(`/api/sop/${SOP_ID}/history?limit=10`, { credentials: 'same-origin' });
+      const data = await r.json();
+      const div = document.getElementById('history');
+      if (!data.history || data.history.length === 0) {
+        div.innerHTML = '<div class="text-[#9CA3AF]">No executions recorded yet.</div>';
+        return;
+      }
+      // F-PHD-3 (XSS defence): build DOM with createElement + textContent so
+      // markup embedded in operator-supplied ``notes`` / ``executed_by``
+      // values can't execute.
+      div.innerHTML = '';
+      for (const h of data.history) {
+        const card = document.createElement('div');
+        const borderColor = h.result === 'fail' ? '#DC2626'
+                          : (h.result === 'partial' ? '#F59E0B' : '#10B981');
+        card.style.cssText = 'border-left: 2px solid ' + borderColor + '; padding-left: 0.5rem;';
+
+        const tsRow = document.createElement('div');
+        tsRow.className = 'font-medium';
+        tsRow.textContent = new Date(h.executed_at).toLocaleString();
+        card.appendChild(tsRow);
+
+        const userRow = document.createElement('div');
+        userRow.className = 'text-[#6B7280]';
+        const userSpan = document.createElement('span');
+        userSpan.textContent = h.executed_by + ' — ';
+        userRow.appendChild(userSpan);
+        const resultSpan = document.createElement('span');
+        resultSpan.className = 'font-medium';
+        resultSpan.textContent = h.result;
+        userRow.appendChild(resultSpan);
+        card.appendChild(userRow);
+
+        if (h.notes) {
+          const notesRow = document.createElement('div');
+          notesRow.className = 'text-[#9CA3AF] mt-1 text-xs';
+          const noteText = h.notes.length > 200
+            ? h.notes.substring(0, 200) + '…'
+            : h.notes;
+          notesRow.textContent = noteText;
+          card.appendChild(notesRow);
+        }
+
+        div.appendChild(card);
+      }
+    } catch (e) {
+      document.getElementById('history').innerHTML = '<div class="text-[#DC2626]">Error loading history</div>';
+    }
+  }
+
+  document.getElementById('exec-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const body = {
+      result: document.getElementById('exec-result').value,
+      notes: document.getElementById('exec-notes').value,
+      evidence_ref: document.getElementById('exec-evidence').value,
+    };
+    const fb = document.getElementById('exec-feedback');
+    fb.textContent = 'Saving...';
+    fb.className = 'text-xs mt-1 text-[#6B7280]';
+    try {
+      const r = await fetch(`/api/sop/${SOP_ID}/execute`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify(body),
+      });
+      const data = await r.json();
+      if (!r.ok || !data.ok) throw new Error(data.error || ('http ' + r.status));
+      fb.textContent = '✓ Recorded';
+      fb.className = 'text-xs mt-1 text-[#10B981]';
+      document.getElementById('exec-notes').value = '';
+      document.getElementById('exec-evidence').value = '';
+      // Refresh everything so [[csv:KEY]] live data + history reflect the new row.
+      await loadAll();
+    } catch (err) {
+      fb.textContent = '✗ ' + err.message;
+      fb.className = 'text-xs mt-1 text-[#DC2626]';
+    }
+  });
+
+  // Scroll-to-top button: show after the doc has scrolled a couple of viewports.
+  const scrollBtn = document.getElementById('scroll-top');
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 600) scrollBtn.classList.remove('hidden');
+    else scrollBtn.classList.add('hidden');
+  }, { passive: true });
+  scrollBtn.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  document.addEventListener('DOMContentLoaded', loadAll);
+})();
+</script>
+{% endblock %}

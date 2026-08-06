@@ -1,0 +1,2345 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold flex items-center gap-2">
+    <i data-lucide="server" class="w-6 h-6 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    {{ t.servers }}
+  </h1>
+</div>
+
+<!-- Status message (shown after save) -->
+<div id="save-message" class="hidden mb-4 rounded-lg p-3 text-sm"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 1 — Server List
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="mb-8">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-semibold">{{ t.servers }} ({{ servers | length }})</h2>
+    <div class="flex items-center gap-2">
+      <button data-action="showGuide"
+              class="px-3 py-1.5 text-sm font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] flex items-center gap-1">
+        <i data-lucide="book-open" class="w-4 h-4"></i>
+        {{ t.setup_guide }}
+      </button>
+      <button data-action="discoverServers"
+              class="px-3 py-1.5 text-sm font-medium rounded border border-[#10B981] dark:border-[#34D399] text-[#10B981] dark:text-[#34D399] hover:bg-[#10B981]/10 flex items-center gap-1">
+        <i data-lucide="radar" class="w-4 h-4"></i>
+        {{ t.discover_servers }}
+      </button>
+      <button data-action="exportServersCSV"
+              class="px-3 py-1.5 text-sm font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] flex items-center gap-1">
+        <i data-lucide="download" class="w-4 h-4"></i>
+        {{ t.csv_export }}
+      </button>
+      <button data-action="_srvClickCsvImport"
+              class="px-3 py-1.5 text-sm font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] flex items-center gap-1">
+        <i data-lucide="upload" class="w-4 h-4"></i>
+        {{ t.csv_import }}
+      </button>
+      <input type="file" id="csv-import-input" accept=".csv" class="hidden" data-change="_srvImportCsv">
+      <button data-action="showAddForm"
+              class="px-3 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        {{ t.add_server }}
+      </button>
+    </div>
+  </div>
+
+  {% if servers | length == 0 %}
+  <div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155]">
+    <div class="text-sm text-[#9CA3AF] dark:text-[#475569] text-center py-8">
+      <i data-lucide="server" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
+      <p>{{ t.no_servers }}</p>
+      <p class="text-[10px] mt-1 opacity-60">Click "Add Server" or "Discover Servers" to get started</p>
+    </div>
+  </div>
+  {% else %}
+  <div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-[#E5E7EB] dark:border-[#334155] text-left">
+            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.name }}</th>
+            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.host }}</th>
+            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('status', 'Status') }}</th>
+            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1] hidden sm:table-cell">{{ t.type }}</th>
+            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1] hidden md:table-cell">{{ t.port }}</th>
+            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1] text-right">{{ t.actions }}</th>
+          </tr>
+        </thead>
+          {% for s in servers %}
+          <tbody class="server-group border-b border-[#E5E7EB] dark:border-[#334155]"
+                 data-index="{{ loop.index0 }}" data-server-name="{{ s.name }}"
+                 data-mouseenter="_srvShowInfo" data-mouseleave="_srvHideInfo">
+          <tr class="hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]/50 cursor-default">
+            <td class="px-4 py-2">
+              <span class="font-medium">{{ s.name }}</span>
+              <span class="server-tags-{{ loop.index0 }} inline-flex flex-wrap gap-1 ml-2"></span>
+              <button data-action="_srvAssignTagMenu" data-args='[{{ s.name | tojson }}, {{ loop.index0 }}]' class="p-0.5 text-[#9CA3AF] hover:text-[#8B5CF6] align-middle" title="Manage tags">
+                <i data-lucide="tag" class="w-3 h-3"></i>
+              </button>
+            </td>
+            <td class="px-4 py-2 text-[#6B7280] dark:text-[#CBD5E1] font-mono text-xs">{{ s.host }}</td>
+            <td class="px-4 py-2 whitespace-nowrap" data-server-status="{{ s.name }}"><span class="text-[10px] text-[#9CA3AF] uppercase">&mdash;</span></td>
+            <td class="px-4 py-2 text-[#6B7280] dark:text-[#CBD5E1] text-xs hidden sm:table-cell">{{ s.type | replace('_', ' ') | title }}</td>
+            <td class="px-4 py-2 text-[#6B7280] dark:text-[#CBD5E1] text-xs hidden md:table-cell">{{ s.port }}</td>
+            <td class="px-4 py-2 text-right whitespace-nowrap">
+              <button data-action="testConnection" data-args="[{{ loop.index0 }}]" class="p-1 text-[#6B7280] dark:text-[#CBD5E1] hover:text-[#10B981] dark:hover:text-[#34D399]" title="{{ t.test_connection }}" aria-label="{{ t.test_connection }}" id="test-btn-{{ loop.index0 }}">
+                <i data-lucide="plug" class="w-4 h-4"></i>
+              </button>
+              <button data-action="editServer" data-args="[{{ loop.index0 }}]" class="p-1 text-[#6B7280] dark:text-[#CBD5E1] hover:text-[#2563EB] dark:hover:text-[#3B82F6] ml-1" title="{{ t.edit }}" aria-label="{{ t.edit }}">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+              </button>
+              <button data-action="deleteServer" data-args="[{{ loop.index0 }}]" class="p-1 text-[#6B7280] dark:text-[#CBD5E1] hover:text-[#DC2626] dark:hover:text-[#EF4444] ml-1" title="{{ t.delete }}" aria-label="{{ t.delete }}">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </td>
+          </tr>
+          <tr id="server-info-{{ loop.index0 }}" style="display:none;">
+            <td colspan="6" class="px-0 py-0 border-0">
+              <div class="server-info-panel overflow-hidden transition-all duration-300 ease-in-out" style="max-height:0;">
+                <div class="py-2 px-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-[#6B7280] dark:text-[#CBD5E1] bg-[#F9FAFB] dark:bg-[#0F172A]/50">
+                  <span class="server-info-status"></span>
+
+                  <span class="server-info-transport"></span>
+                  <span class="server-info-auth"></span>
+                  <span class="server-info-metrics"></span>
+                  <span class="server-info-lastcheck"></span>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr id="test-result-{{ loop.index0 }}" class="hidden">
+            <td colspan="6" class="px-4 py-2">
+              <div class="test-result-box rounded p-2 text-sm"></div>
+            </td>
+          </tr>
+          </tbody>
+          {% endfor %}
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 1b — Tag Management
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="mb-8">
+  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+    <i data-lucide="tags" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    {{ t.get('tag_management', 'Tag Management') }}
+  </h2>
+  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155] space-y-4">
+    <!-- Add tag form -->
+    <div class="flex items-center gap-3">
+      <input type="text" id="new-tag-name" placeholder="Tag name..." class="px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+      <input type="color" id="new-tag-color" value="#6B7280" class="w-8 h-8 rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] cursor-pointer p-0.5">
+      <button data-action="createTag" class="px-3 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        {{ t.get('add_tag', 'Add Tag') }}
+      </button>
+    </div>
+    <!-- Tag list -->
+    <div id="tag-list" class="space-y-2"></div>
+    <div id="no-tags" class="text-sm text-[#9CA3AF] dark:text-[#475569] text-center py-8">
+      <i data-lucide="tags" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
+      <p>{{ t.get('no_tags', 'No tags created yet') }}</p>
+      <p class="text-[10px] mt-1 opacity-60">Use the form above to create your first tag</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 3b — Health Checks
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="mb-8">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-semibold flex items-center gap-2">
+      <i data-lucide="activity" class="w-5 h-5 text-[#2563EB]"></i>
+      {{ t.get('health_checks', 'Health Checks') }}
+    </h2>
+    <button data-action="toggleHcForm" class="px-3 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1">
+      <i data-lucide="plus" class="w-4 h-4"></i>
+      {{ t.get('add_health_check', 'Add Health Check') }}
+    </button>
+  </div>
+  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155]">
+
+    <!-- Add health check form (hidden by default, matches dependency design) -->
+    <div id="hc-add-form" class="hidden mb-4 p-4 rounded-lg border border-dashed border-[#E5E7EB] dark:border-[#334155] bg-[#F9FAFB] dark:bg-[#0F172A]/50">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+        <div>
+          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">Name</label>
+          <input type="text" id="hc-new-name" placeholder="e.g. SQL Listener" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+        </div>
+        <div>
+          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.get('server', 'Server') }}</label>
+          <select id="hc-new-server" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+            <option value="">--</option>
+            {% for s in servers %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.get('check_type', 'Type') }}</label>
+          <select id="hc-new-type" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" data-change="toggleNewHcFields">
+            <option value="tcp">TCP</option>
+            <option value="http">HTTP</option>
+            <option value="https">HTTPS</option>
+            <option value="udp">UDP</option>
+            <option value="icmp">ICMP (Ping)</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+        <div>
+          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.get('target_host', 'Host') }}</label>
+          <input type="text" id="hc-new-host" placeholder="hostname or IP" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono">
+        </div>
+        <div id="hc-new-port-wrap">
+          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.get('port', 'Port') }}</label>
+          <input type="number" id="hc-new-port" placeholder="443" min="1" max="65535" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+        </div>
+        <div id="hc-new-path-wrap" class="hidden">
+          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">HTTP Path</label>
+          <input type="text" id="hc-new-path" placeholder="/health" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono">
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button data-action="saveNewHealthCheck" class="px-4 py-1.5 text-sm font-medium rounded bg-[#10B981] text-white hover:opacity-90 flex items-center gap-1">
+          <i data-lucide="save" class="w-4 h-4"></i>
+          {{ t.get('save', 'Save') }}
+        </button>
+        <button data-action="toggleHcForm" class="px-4 py-1.5 text-sm font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#334155] flex items-center gap-1">
+          <i data-lucide="x" class="w-4 h-4"></i>
+          {{ t.get('cancel', 'Cancel') }}
+        </button>
+        <button data-action="testNewHealthCheck" class="px-4 py-1.5 text-sm font-medium rounded border border-[#F59E0B] text-[#F59E0B] hover:bg-[#F59E0B]/10 flex items-center gap-1 ml-auto">
+          <i data-lucide="zap" class="w-4 h-4"></i>
+          Test
+        </button>
+        <span id="hc-new-test-result" class="text-xs"></span>
+      </div>
+    </div>
+
+    <!-- Existing health checks list -->
+    <div id="health-check-list" class="space-y-2"></div>
+    <div id="no-health-checks" class="text-sm text-[#9CA3AF] dark:text-[#475569] text-center py-8">
+      <i data-lucide="activity" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
+      <p>{{ t.get('no_health_checks', 'No health checks configured') }}</p>
+      <p class="text-[10px] mt-1 opacity-60">Click "Add Health Check" to monitor ports and URLs</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 8b — Dependencies
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="mb-8">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-semibold flex items-center gap-2">
+      <i data-lucide="network" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+      {{ t.dependencies }}
+    </h2>
+    <button data-action="toggleDepForm" class="px-3 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1">
+      <i data-lucide="plus" class="w-4 h-4"></i>
+      {{ t.add_dependency }}
+    </button>
+  </div>
+  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155]">
+
+    <!-- Add dependency form (hidden by default) -->
+    <div id="dep-add-form" class="hidden mb-4 p-4 rounded-lg border border-dashed border-[#E5E7EB] dark:border-[#334155] bg-[#F9FAFB] dark:bg-[#0F172A]/50">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+        <div>
+          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.get('server', 'Server') }}</label>
+          <select id="dep-server-name" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+            <option value="">--</option>
+            {% for s in servers %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.depends_on }}</label>
+          <select id="dep-depends-on" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+            <option value="">--</option>
+            {% for s in servers %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.dependency_type }}</label>
+          <select id="dep-type" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" data-change="onDepTypeChange">
+            <option value="service">{{ t.dep_type_service }}</option>
+            <option value="database">{{ t.dep_type_database }}</option>
+            <option value="auth">{{ t.dep_type_auth }}</option>
+            <option value="dns">{{ t.dep_type_dns }}</option>
+            <option value="file_share">{{ t.dep_type_file_share }}</option>
+            <option value="custom">+ Custom...</option>
+          </select>
+          <input type="text" id="dep-custom-type" class="hidden w-full mt-1 px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" placeholder="Custom type name...">
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+        <div>
+          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">Target</label>
+          <select id="dep-target-mode" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" data-change="onDepTargetModeChange">
+            <option value="port">Port</option>
+            <option value="service">Service</option>
+            <option value="process">Process</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1" id="dep-target-label">Port</label>
+          <input type="number" id="dep-port" placeholder="443" min="1" max="65535"
+                 class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+          <div id="dep-service-wrap" class="hidden gap-1">
+            <input type="text" id="dep-service-name" class="flex-1 px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" placeholder="Service name">
+            <button type="button" data-action="_srvBrowseDepService" class="px-2 py-1.5 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F3F4F6] dark:hover:bg-[#334155] flex items-center gap-1" title="Browse from server">
+              <i data-lucide="list" class="w-3 h-3"></i> Browse
+            </button>
+          </div>
+          <div id="dep-process-wrap" class="hidden gap-1">
+            <input type="text" id="dep-process-name" class="flex-1 px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" placeholder="Process name">
+            <button type="button" data-action="_srvBrowseDepProcess" class="px-2 py-1.5 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F3F4F6] dark:hover:bg-[#334155] flex items-center gap-1" title="Browse from server">
+              <i data-lucide="list" class="w-3 h-3"></i> Browse
+            </button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.description }}</label>
+          <input type="text" id="dep-description" placeholder="Optional description"
+                 class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button data-action="addDependency"
+                class="px-4 py-1.5 text-sm font-medium rounded bg-[#10B981] text-white hover:opacity-90 flex items-center gap-1">
+          <i data-lucide="save" class="w-4 h-4"></i>
+          {{ t.get('save', 'Save') }}
+        </button>
+        <button data-action="toggleDepForm" class="px-4 py-1.5 text-sm font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#334155] flex items-center gap-1">
+          <i data-lucide="x" class="w-4 h-4"></i>
+          {{ t.get('cancel', 'Cancel') }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Existing dependencies table -->
+    <div id="deps-table-container">
+      <div class="text-sm text-[#9CA3AF] dark:text-[#475569] text-center py-8">
+        <i data-lucide="network" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
+        <p>{{ t.get('no_dependencies', 'No dependencies configured') }}</p>
+        <p class="text-[10px] mt-1 opacity-60">Click "Add Dependency" to define server relationships</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     Add / Edit Server Modal
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="server-modal" class="fixed inset-0 z-50 hidden">
+  <div class="fixed inset-0 bg-black/50" data-action="closeModal"></div>
+  <div class="fixed inset-0 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#E5E7EB] dark:border-[#334155] w-full max-w-lg max-h-[90vh] flex flex-col relative">
+      <div class="flex items-center justify-between p-4 border-b border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+        <h3 id="modal-title" class="text-lg font-semibold">{{ t.add_server }}</h3>
+        <button data-action="closeModal" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-4 space-y-4 overflow-y-auto flex-1">
+        <input type="hidden" id="edit-index" value="-1">
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium mb-1">{{ t.server_name }} *</label>
+            <input type="text" id="srv-name" placeholder="FileServer-01" required
+                   class="w-full px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1">{{ t.host_ip }} *</label>
+            <input type="text" id="srv-host" placeholder="192.168.1.50" required
+                   class="w-full px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-medium mb-1">{{ t.type }}</label>
+            {# The dropdown is the default view. When user picks "+ Custom…",
+               it's replaced inline by a text input with save/cancel buttons.
+               Clicking save adds the custom type to the dropdown + selects it.
+               Clicking cancel reverts to the dropdown. #}
+            <div id="srv-type-wrap">
+              <select id="srv-type" data-change="onServerTypeChange"
+                      class="w-full px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                <option value="file_server">{{ t.file_servers }}</option>
+                <option value="app_server">{{ t.app_servers }}</option>
+                <option value="domain_controller">{{ t.domain_controllers }}</option>
+                <option value="database_server">{{ t.database_servers }}</option>
+                <option value="web_server">{{ t.web_servers }}</option>
+                <option value="mail_server">{{ t.mail_servers }}</option>
+                <option value="print_server">{{ t.print_servers }}</option>
+                <option value="backup_server">{{ t.backup_servers }}</option>
+                <option value="_custom">+ {{ t.get('custom_type', 'Custom') }}...</option>
+              </select>
+              <div id="srv-custom-input" class="hidden relative">
+                <input type="text" id="srv-custom-type" placeholder="{{ t.get('custom_type_name', 'e.g. proxy_server') }}"
+                       class="w-full pl-3 pr-16 py-1.5 text-sm rounded border border-[#10B981] dark:border-[#10B981] bg-white dark:bg-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#10B981]">
+                <div class="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5">
+                  <button type="button" data-action="confirmCustomType" title="{{ t.get('save', 'Save') }}"
+                    class="p-1 rounded hover:bg-[#10B981]/20 text-[#10B981]">
+                    <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                  </button>
+                  <button type="button" data-action="cancelCustomType" title="{{ t.get('cancel', 'Cancel') }}"
+                    class="p-1 rounded hover:bg-[#DC2626]/20 text-[#DC2626]">
+                    <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1">{{ t.username }}</label>
+            <input type="text" id="srv-user" placeholder="administrator"
+                   class="w-full px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+          </div>
+          <div>
+            <label for="srv-port" class="block text-xs font-medium mb-1">{{ t.port }}</label>
+            <input type="number" id="srv-port" value="5985" min="1" max="65535" required
+                   class="w-full px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+          </div>
+        </div>
+
+        <!-- WinRM transport + RBAC tier (rolled together to keep the form
+             compact). use_https flips port 5985↔5986 on toggle. tier=0 marks
+             a critical server requiring admin ACL + dual approval. -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="flex items-center gap-2 pt-1">
+            <input type="checkbox" id="srv-https"
+                   data-change="_srvHttpsToggle"
+                   class="h-4 w-4 rounded border-[#E5E7EB] dark:border-[#334155]">
+            <label for="srv-https" class="text-xs">
+              {{ t.get('use_https', 'WinRM over HTTPS') }}
+              <span class="text-[10px] text-[#6B7280] dark:text-[#94A3B8]">(5986)</span>
+            </label>
+            <span id="srv-https-skip-wrap" class="hidden flex items-center gap-1 ml-2">
+              <input type="checkbox" id="srv-https-skip" class="h-3.5 w-3.5">
+              <label for="srv-https-skip" class="text-[10px] text-[#F59E0B]" title="Disables certificate validation. Use only during initial cert rollout.">
+                {{ t.get('skip_cert_verify', 'Skip cert verify') }}
+              </label>
+            </span>
+          </div>
+          <div>
+            <label for="srv-tier" class="block text-xs font-medium mb-1">
+              {{ t.get('rbac_tier', 'RBAC tier') }}
+            </label>
+            <select id="srv-tier"
+                    class="w-full px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+              <option value="0">{{ t.get('tier_0_critical', 'Tier 0 — Critical (DC, primary DB, mail)') }}</option>
+              <option value="1" selected>{{ t.get('tier_1_standard', 'Tier 1 — Standard') }}</option>
+              <option value="2">{{ t.get('tier_2_dev', 'Tier 2 — Dev / Test') }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="srv-pass" class="block text-xs font-medium mb-1">{{ t.password }}</label>
+          <div class="relative">
+            <input type="password" id="srv-pass" placeholder="Enter password"
+                   autocomplete="new-password"
+                   class="w-full px-3 py-1.5 pr-10 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+            <button type="button"
+                    aria-label="Toggle password visibility"
+                    data-action="_srvTogglePass"
+                    class="absolute inset-y-0 right-0 px-2 flex items-center text-[#6B7280] hover:text-[#2563EB] focus:outline-none focus:ring-2 focus:ring-[#2563EB] rounded-r"
+                    aria-pressed="false">
+              <i data-lucide="eye" class="w-4 h-4" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Thresholds -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-xs font-medium">{{ t.thresholds }}</label>
+            <button data-action="applyDefaults" class="text-xs text-[#2563EB] dark:text-[#3B82F6] hover:underline">{{ t.reset_defaults }}</button>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.cpu_warning }}</label>
+              <input type="number" id="th-cpu-warn" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+            </div>
+            <div>
+              <label class="block text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.cpu_critical }}</label>
+              <input type="number" id="th-cpu-crit" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+            </div>
+            <div>
+              <label class="block text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.ram_warning }}</label>
+              <input type="number" id="th-ram-warn" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+            </div>
+            <div>
+              <label class="block text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.ram_critical }}</label>
+              <input type="number" id="th-ram-crit" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+            </div>
+            <div>
+              <label class="block text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.disk_warning }}</label>
+              <input type="number" id="th-disk-warn" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+            </div>
+            <div>
+              <label class="block text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.disk_critical }}</label>
+              <input type="number" id="th-disk-crit" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Modal test result -->
+      <div id="modal-test-result" class="hidden px-4 pt-2 flex-shrink-0">
+        <div class="test-result-box rounded p-2 text-sm"></div>
+      </div>
+      <div class="flex justify-between gap-2 p-4 border-t border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+        <button data-action="testConnectionFromModal" id="modal-test-btn"
+                class="px-4 py-1.5 text-sm rounded border border-[#10B981] dark:border-[#34D399] text-[#10B981] dark:text-[#34D399] hover:bg-[#10B981]/10 flex items-center gap-1.5">
+          <i data-lucide="plug" class="w-4 h-4"></i>
+          {{ t.test_connection }}
+        </button>
+        <div class="flex gap-2">
+          <button data-action="closeModal" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.cancel }}</button>
+          <button data-action="saveServer" class="px-4 py-1.5 text-sm rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90">{{ t.save }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Setup Guide Modal -->
+<div id="guide-modal" class="fixed inset-0 z-50 hidden">
+  <div class="fixed inset-0 bg-black/50" data-action="closeGuide"></div>
+  <div class="fixed inset-0 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#E5E7EB] dark:border-[#334155] w-full max-w-2xl max-h-[90vh] flex flex-col relative">
+      <div class="flex items-center justify-between p-4 border-b border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+        <h3 class="text-lg font-semibold flex items-center gap-2">
+          <i data-lucide="book-open" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+          {{ t.server_setup_guide }}
+        </h3>
+        <button data-action="closeGuide" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-5 space-y-5 text-sm overflow-y-auto flex-1">
+
+        <!-- Step 1 -->
+        <div class="flex gap-3">
+          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-[#2563EB] dark:bg-[#3B82F6] text-white flex items-center justify-center text-xs font-bold">1</div>
+          <div>
+            <div class="font-semibold mb-1">{{ t.step_enable_winrm }}</div>
+            <p class="text-[#6B7280] dark:text-[#CBD5E1] mb-2">RDP into the server and open an <strong>{{ t.step_elevated_ps }}</strong> (Run as Administrator):</p>
+            <pre class="bg-[#F3F4F6] dark:bg-[#0F172A] rounded p-2 text-xs font-mono overflow-x-auto">winrm quickconfig -force</pre>
+            <p class="text-[#6B7280] dark:text-[#CBD5E1] mt-1 text-xs">This enables the WinRM service and opens the firewall for port 5985 (HTTP).</p>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="flex gap-3">
+          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-[#2563EB] dark:bg-[#3B82F6] text-white flex items-center justify-center text-xs font-bold">2</div>
+          <div>
+            <div class="font-semibold mb-1">{{ t.step_verify_winrm }}</div>
+            <p class="text-[#6B7280] dark:text-[#CBD5E1] mb-2">Still on the target server, check the listener configuration:</p>
+            <pre class="bg-[#F3F4F6] dark:bg-[#0F172A] rounded p-2 text-xs font-mono overflow-x-auto">winrm enumerate winrm/config/listener</pre>
+            <p class="text-[#6B7280] dark:text-[#CBD5E1] mt-1 text-xs">You should see <code>Transport = HTTP</code> and <code>Port = 5985</code>.</p>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="flex gap-3">
+          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-[#2563EB] dark:bg-[#3B82F6] text-white flex items-center justify-center text-xs font-bold">3</div>
+          <div>
+            <div class="font-semibold mb-1">{{ t.step_check_auth }}</div>
+            <p class="text-[#6B7280] dark:text-[#CBD5E1] mb-2">On the target server, verify Negotiate or Kerberos is enabled:</p>
+            <pre class="bg-[#F3F4F6] dark:bg-[#0F172A] rounded p-2 text-xs font-mono overflow-x-auto">winrm get winrm/config/service/auth</pre>
+            <p class="text-[#6B7280] dark:text-[#CBD5E1] mt-1 text-xs">Ensure <code>Negotiate = true</code> or <code>Kerberos = true</code> is shown.</p>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="flex gap-3">
+          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-[#2563EB] dark:bg-[#3B82F6] text-white flex items-center justify-center text-xs font-bold">4</div>
+          <div>
+            <div class="font-semibold mb-1">{{ t.step_test_connectivity }}</div>
+            <p class="text-[#6B7280] dark:text-[#CBD5E1] mb-2">On the Prism host, open PowerShell and test the connection:</p>
+            <pre class="bg-[#F3F4F6] dark:bg-[#0F172A] rounded p-2 text-xs font-mono overflow-x-auto">Test-WSMan -ComputerName SERVER.DOMAIN.COM</pre>
+            <p class="text-[#6B7280] dark:text-[#CBD5E1] mt-1 text-xs">If this fails, check firewall rules and DNS resolution. Use the FQDN, not the IP address.</p>
+          </div>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="flex gap-3">
+          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-[#2563EB] dark:bg-[#3B82F6] text-white flex items-center justify-center text-xs font-bold">5</div>
+          <div>
+            <div class="font-semibold mb-1">{{ t.step_add_server }}</div>
+            <p class="text-[#6B7280] dark:text-[#CBD5E1] mb-2">Click <strong>"Add Server"</strong> and fill in the fields:</p>
+            <ul class="text-[#6B7280] dark:text-[#CBD5E1] list-disc list-inside space-y-1">
+              <li><strong>Name</strong> — Display name (e.g. <code>FileServer-01</code>)</li>
+              <li><strong>Host</strong> — Use the FQDN (e.g. <code>SERVER.AD.DOMAIN.COM</code>), not the IP</li>
+              <li><strong>Username</strong> — Domain format: <code>DOMAIN\username</code> (e.g. <code>EXAMPLE\Administrator</code>)</li>
+              <li><strong>Password</strong> — The account password (stored encrypted)</li>
+              <li><strong>Port</strong> — Default <code>5985</code> for HTTP</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Step 6 -->
+        <div class="flex gap-3">
+          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-[#10B981] text-white flex items-center justify-center text-xs font-bold">6</div>
+          <div>
+            <div class="font-semibold mb-1">{{ t.step_test_connection }}</div>
+            <p class="text-[#6B7280] dark:text-[#CBD5E1] mb-2">Click the <strong>"Test Connection"</strong> button in the modal or the <i data-lucide="plug" class="w-3.5 h-3.5 inline"></i> icon in the server table. You should see a green success message with the server hostname.</p>
+          </div>
+        </div>
+
+        <!-- Troubleshooting -->
+        <div class="border-t border-[#E5E7EB] dark:border-[#334155] pt-4">
+          <div class="font-semibold mb-2 flex items-center gap-1.5">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-[#F59E0B]"></i>
+            {{ t.get('troubleshooting', 'Troubleshooting') }}
+          </div>
+          <div class="space-y-2 text-[#6B7280] dark:text-[#CBD5E1]">
+            <div><strong>{{ t.troubleshoot_timeout }}</strong> — Check that port 5985 is open in Windows Firewall on the target. Run <code>Get-NetFirewallRule -Name "WINRM*"</code> to verify.</div>
+            <div><strong>{{ t.troubleshoot_auth_failed }}</strong> — Verify the username format is <code>DOMAIN\user</code>. Test with PowerShell first:
+              <pre class="bg-[#F3F4F6] dark:bg-[#0F172A] rounded p-2 text-xs font-mono overflow-x-auto mt-1">$cred = Get-Credential
+Invoke-Command -ComputerName SERVER.DOMAIN.COM -Credential $cred -ScriptBlock { $env:COMPUTERNAME }</pre>
+            </div>
+            <div><strong>{{ t.troubleshoot_host_not_found }}</strong> — Use the FQDN instead of the IP. Kerberos authentication requires the full domain name to work properly.</div>
+            <div><strong>{{ t.troubleshoot_access_denied }}</strong> — The account needs WinRM access. Add it to the <code>Remote Management Users</code> group on the target server, or use a domain admin account.</div>
+          </div>
+        </div>
+
+      </div>
+      <div class="flex justify-end p-4 border-t border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+        <button data-action="closeGuide" class="px-4 py-1.5 text-sm rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Server Confirmation Modal -->
+<div id="delete-modal" class="fixed inset-0 z-[60] hidden">
+  <div class="fixed inset-0 bg-black/50"></div>
+  <div class="fixed inset-0 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#DC2626]/30 dark:border-[#EF4444]/30 w-full max-w-md relative">
+      <div class="flex items-center justify-between p-4 border-b border-[#FCA5A5] dark:border-[#7F1D1D]">
+        <h3 class="text-lg font-semibold text-[#DC2626] dark:text-[#EF4444] flex items-center gap-2">
+          <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+          <span id="delete-modal-title">{{ t.get('delete_server', 'Delete Server') }}?</span>
+        </h3>
+        <button data-action="closeDeleteModal" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-4 space-y-4">
+        <div class="text-sm text-[#6B7280] dark:text-[#CBD5E1]">
+          {{ t.get('delete_server_warning', 'This will remove the server and its monitoring configuration.') }}
+        </div>
+        <div>
+          <label class="block text-xs font-medium mb-1">{{ t.get('type_name_to_confirm', 'Type the server name to confirm:') }}</label>
+          <input type="text" id="delete-confirm-input" autocomplete="off"
+                 class="w-full px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono"
+                 data-input="checkDeleteConfirmation">
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 p-4 border-t border-[#E5E7EB] dark:border-[#334155]">
+        <button data-action="closeDeleteModal" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.cancel }}</button>
+        <button id="delete-confirm-btn" data-action="confirmDeleteServer" disabled
+                class="px-4 py-1.5 text-sm font-medium rounded bg-[#DC2626] dark:bg-[#EF4444] text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+          {{ t.delete }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AD Discovery Modal -->
+<div id="discovery-modal" class="fixed inset-0 z-[60] hidden">
+  <div class="fixed inset-0 bg-black/50" data-action="closeDiscoveryModal"></div>
+  <div class="fixed inset-0 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#E5E7EB] dark:border-[#334155] w-full max-w-2xl max-h-[80vh] flex flex-col relative">
+      <div class="flex items-center justify-between p-4 border-b border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+        <h3 class="text-lg font-semibold flex items-center gap-2">
+          <i data-lucide="radar" class="w-5 h-5 text-[#10B981]"></i>
+          {{ t.discovered_servers }}
+        </h3>
+        <button data-action="closeDiscoveryModal" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-4 overflow-y-auto flex-1">
+        <div id="discovery-status" class="text-sm text-[#6B7280] dark:text-[#CBD5E1] mb-3"></div>
+        <div id="discovery-list" class="space-y-1"></div>
+      </div>
+      <div class="flex justify-between items-center gap-2 p-4 border-t border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <button data-action="selectAllDiscovered" class="px-3 py-1 text-xs font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">
+            {{ t.get('select_all', 'Select All') }}
+          </button>
+          <span id="discovery-selected-count" class="text-xs text-[#6B7280] dark:text-[#CBD5E1]"></span>
+        </div>
+        <div class="flex gap-2">
+          <button data-action="closeDiscoveryModal" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.cancel }}</button>
+          <button data-action="addDiscoveredServers" id="add-discovered-btn"
+                  class="px-4 py-1.5 text-sm rounded bg-[#10B981] text-white hover:opacity-90 flex items-center gap-1">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            {{ t.add_selected }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     JavaScript
+     ═══════════════════════════════════════════════════════════════ -->
+<script nonce="{{ csp_nonce }}">
+// CSRF token -- resolved once on page load, used by all fetch POST calls
+let csrfToken = '';
+document.addEventListener('DOMContentLoaded', () => {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta) csrfToken = meta.getAttribute('content');
+});
+
+// Server names list (used by health checks, dependencies, etc.)
+const _serverNames = [{% for s in servers %}'{{ s.name }}'{{ ',' if not loop.last }}{% endfor %}];
+
+// HTML escape helper
+function _escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ── Config Loading ──
+let configData = null;
+
+function loadConfig() {
+  return fetch('/api/config').then(r => r.json()).then(data => { configData = data; return data; });
+}
+
+document.addEventListener('DOMContentLoaded', () => loadConfig());
+
+// ── Threshold Defaults ──
+const DEFAULTS = {
+  file_server:        { cpu_warning: 75, cpu_critical: 90, ram_warning: 80, ram_critical: 90, disk_warning: 70, disk_critical: 85 },
+  app_server:         { cpu_warning: 70, cpu_critical: 85, ram_warning: 75, ram_critical: 85, disk_warning: 70, disk_critical: 85 },
+  domain_controller:  { cpu_warning: 40, cpu_critical: 60, ram_warning: 80, ram_critical: 90, disk_warning: 75, disk_critical: 90 },
+  database_server:    { cpu_warning: 70, cpu_critical: 85, ram_warning: 70, ram_critical: 85, disk_warning: 70, disk_critical: 85 },
+  web_server:         { cpu_warning: 70, cpu_critical: 85, ram_warning: 75, ram_critical: 90, disk_warning: 75, disk_critical: 90 },
+  mail_server:        { cpu_warning: 75, cpu_critical: 90, ram_warning: 92, ram_critical: 96, disk_warning: 70, disk_critical: 85 },
+  print_server:       { cpu_warning: 80, cpu_critical: 95, ram_warning: 80, ram_critical: 90, disk_warning: 75, disk_critical: 90 },
+  backup_server:      { cpu_warning: 80, cpu_critical: 95, ram_warning: 80, ram_critical: 90, disk_warning: 70, disk_critical: 85 },
+  other:              { cpu_warning: 75, cpu_critical: 90, ram_warning: 80, ram_critical: 90, disk_warning: 75, disk_critical: 90 },
+};
+
+function applyDefaults() {
+  const type = getServerType();
+  const d = DEFAULTS[type] || DEFAULTS.other;
+  document.getElementById('th-cpu-warn').value = d.cpu_warning;
+  document.getElementById('th-cpu-crit').value = d.cpu_critical;
+  document.getElementById('th-ram-warn').value = d.ram_warning;
+  document.getElementById('th-ram-crit').value = d.ram_critical;
+  document.getElementById('th-disk-warn').value = d.disk_warning;
+  document.getElementById('th-disk-crit').value = d.disk_critical;
+}
+
+// ── Custom server type handling ──
+// When user picks "+ Custom…" in the dropdown, the dropdown hides and an
+// inline text input appears in the same spot with check/x buttons inside.
+// Check = add the typed name to the dropdown + select it. X = cancel.
+
+function onServerTypeChange() {
+  const sel = document.getElementById('srv-type');
+  if (sel.value === '_custom') {
+    // Swap dropdown for inline input
+    sel.classList.add('hidden');
+    const wrap = document.getElementById('srv-custom-input');
+    wrap.classList.remove('hidden');
+    const inp = document.getElementById('srv-custom-type');
+    inp.value = '';
+    inp.focus();
+    lucide.createIcons({ nodes: [wrap] });
+    // Enter key = confirm
+    inp.onkeydown = function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); confirmCustomType(); }
+      if (e.key === 'Escape') cancelCustomType();
+    };
+  } else {
+    applyDefaults();
+  }
+}
+
+function confirmCustomType() {
+  const inp = document.getElementById('srv-custom-type');
+  const raw = (inp.value || '').trim();
+  if (!raw) { cancelCustomType(); return; }
+  // Normalize: lowercase, spaces→underscores, strip non-alphanumeric
+  const slug = raw.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+  if (!slug) { cancelCustomType(); return; }
+  // Check if it already exists in the dropdown — if so, just select it (no duplicate)
+  const sel = document.getElementById('srv-type');
+  const existing = Array.from(sel.options).find(o => o.value === slug && o.value !== '_custom');
+  if (existing) {
+    sel.value = slug;
+    sel.classList.remove('hidden');
+    document.getElementById('srv-custom-input').classList.add('hidden');
+    applyDefaults();
+    return;
+  }
+  // Add to dropdown + select it
+  ensureCustomTypeInDropdown(slug);
+  sel.value = slug;
+  // Swap back to dropdown
+  sel.classList.remove('hidden');
+  document.getElementById('srv-custom-input').classList.add('hidden');
+  applyDefaults();
+}
+
+function cancelCustomType() {
+  const sel = document.getElementById('srv-type');
+  sel.value = 'file_server'; // revert to first built-in
+  sel.classList.remove('hidden');
+  document.getElementById('srv-custom-input').classList.add('hidden');
+  document.getElementById('srv-custom-type').value = '';
+  applyDefaults();
+}
+
+function getServerType() {
+  const sel = document.getElementById('srv-type');
+  // If custom input is visible, the user hasn't confirmed yet
+  if (sel.classList.contains('hidden')) return 'file_server';
+  return sel.value === '_custom' ? 'file_server' : sel.value;
+}
+
+function setServerType(type) {
+  const sel = document.getElementById('srv-type');
+  ensureCustomTypeInDropdown(type);
+  sel.value = type;
+  sel.classList.remove('hidden');
+  document.getElementById('srv-custom-input').classList.add('hidden');
+}
+
+function ensureCustomTypeInDropdown(type) {
+  if (!type || type === '_custom') return;
+  const sel = document.getElementById('srv-type');
+  if (Array.from(sel.options).some(o => o.value === type)) return;
+  const customOpt = sel.querySelector('option[value="_custom"]');
+  const newOpt = document.createElement('option');
+  newOpt.value = type;
+  newOpt.textContent = type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  sel.insertBefore(newOpt, customOpt);
+}
+
+function populateCustomServerTypes() {
+  loadConfig().then(data => {
+    const builtIn = new Set([
+      'file_server', 'app_server', 'domain_controller', 'database_server',
+      'web_server', 'mail_server', 'print_server', 'backup_server'
+    ]);
+    (data.servers || []).forEach(s => {
+      if (s.type && !builtIn.has(s.type)) ensureCustomTypeInDropdown(s.type);
+    });
+  });
+}
+document.addEventListener('DOMContentLoaded', populateCustomServerTypes);
+
+// ═══════════════════════════════════════════════════════════════
+// Server Add / Edit / Delete
+// ═══════════════════════════════════════════════════════════════
+
+function showAddForm() {
+  document.getElementById('modal-title').textContent = {{ t.add_server | tojson }};
+  document.getElementById('edit-index').value = -1;
+  document.getElementById('srv-name').value = '';
+  document.getElementById('srv-host').value = '';
+  setServerType('file_server');
+  document.getElementById('srv-user').value = 'administrator';
+  document.getElementById('srv-pass').value = '';
+  document.getElementById('srv-pass').placeholder = 'Enter password';
+  document.getElementById('srv-port').value = 5985;
+  // Defaults for new server
+  var _h = document.getElementById('srv-https'); if (_h) _h.checked = false;
+  var _hs = document.getElementById('srv-https-skip'); if (_hs) _hs.checked = false;
+  var _hsw = document.getElementById('srv-https-skip-wrap'); if (_hsw) _hsw.style.display = 'none';
+  var _t = document.getElementById('srv-tier'); if (_t) _t.value = '1';
+  applyDefaults();
+  document.getElementById('server-modal').classList.remove('hidden');
+  lucide.createIcons();
+}
+
+function editServer(index) {
+  loadConfig().then(data => {
+    const s = data.servers[index];
+    if (!s) return;
+    document.getElementById('modal-title').textContent = {{ t.edit | tojson }} + ' ' + {{ t.get('server', 'Server') | tojson }};
+    document.getElementById('edit-index').value = index;
+    document.getElementById('srv-name').value = s.name;
+    document.getElementById('srv-host').value = s.host;
+    setServerType(s.type || 'file_server');
+    document.getElementById('srv-user').value = s.username || 'administrator';
+    // Password is masked from API -- show empty field with placeholder hint
+    document.getElementById('srv-pass').value = '';
+    document.getElementById('srv-pass').placeholder = 'Leave blank to keep current password';
+    document.getElementById('srv-port').value = s.port || 5985;
+    var _h = document.getElementById('srv-https'); if (_h) _h.checked = !!s.use_https;
+    var _hs = document.getElementById('srv-https-skip'); if (_hs) _hs.checked = !!s.https_skip_verify;
+    var _hsw = document.getElementById('srv-https-skip-wrap'); if (_hsw) _hsw.style.display = s.use_https ? 'flex' : 'none';
+    var _tier = document.getElementById('srv-tier'); if (_tier) _tier.value = String(s.tier == null ? 1 : s.tier);
+    const t = s.thresholds || {};
+    document.getElementById('th-cpu-warn').value = t.cpu_warning || 75;
+    document.getElementById('th-cpu-crit').value = t.cpu_critical || 90;
+    document.getElementById('th-ram-warn').value = t.ram_warning || 80;
+    document.getElementById('th-ram-crit').value = t.ram_critical || 90;
+    document.getElementById('th-disk-warn').value = t.disk_warning || 75;
+    document.getElementById('th-disk-crit').value = t.disk_critical || 90;
+    document.getElementById('server-modal').classList.remove('hidden');
+    lucide.createIcons();
+  });
+}
+
+async function closeModal(force) {
+  if (!force && isModalDirty()) {
+    if (!await pConfirm({{ t.get('discard_changes', 'Discard unsaved changes?') | tojson }})) return;
+  }
+  document.getElementById('server-modal').classList.add('hidden');
+  document.getElementById('modal-test-result').classList.add('hidden');
+}
+
+// --- Delete Server with Confirmation Modal ---
+let deleteServerIndex = -1;
+let deleteServerName = '';
+
+function deleteServer(index) {
+  loadConfig().then(data => {
+    const s = data.servers[index];
+    if (!s) return;
+    deleteServerIndex = index;
+    deleteServerName = s.name;
+    document.getElementById('delete-modal-title').textContent = {{ t.get('delete_server', 'Delete Server') | tojson }} + ' \u2014 ' + s.name + '?';
+    document.getElementById('delete-confirm-input').value = '';
+    document.getElementById('delete-confirm-btn').disabled = true;
+    document.getElementById('delete-modal').classList.remove('hidden');
+    lucide.createIcons();
+    document.getElementById('delete-confirm-input').focus();
+  });
+}
+
+function checkDeleteConfirmation() {
+  const input = document.getElementById('delete-confirm-input').value.trim();
+  document.getElementById('delete-confirm-btn').disabled = (input !== deleteServerName);
+}
+
+function confirmDeleteServer() {
+  if (deleteServerIndex < 0) return;
+  const nameToDelete = deleteServerName;
+  loadConfig().then(data => {
+    data.servers.splice(deleteServerIndex, 1);
+    closeDeleteModal();
+    // Wipe all historical data for this server (metrics, events, logs,
+    // dependencies, etc.) BEFORE saving the new config, so the dashboard
+    // immediately stops showing it as offline. The DELETE endpoint also
+    // clears the in-memory collector caches.
+    fetch('/api/servers/' + encodeURIComponent(nameToDelete) + '/data', {
+      method: 'DELETE',
+      headers: { 'X-CSRFToken': csrfToken },
+    }).catch(() => { /* not blocking — proceed with config save anyway */ })
+      .finally(() => saveServerConfig(data));
+  });
+}
+
+function closeDeleteModal() {
+  document.getElementById('delete-modal').classList.add('hidden');
+  deleteServerIndex = -1;
+  deleteServerName = '';
+}
+
+function saveServer() {
+  const index = parseInt(document.getElementById('edit-index').value);
+  const passwordField = document.getElementById('srv-pass').value;
+  // If editing and password field is empty, send the mask to preserve existing password
+  const password = (index >= 0 && passwordField === '') ? '********' : passwordField;
+  const server = {
+    name: document.getElementById('srv-name').value.trim(),
+    host: document.getElementById('srv-host').value.trim(),
+    type: getServerType(),
+    username: document.getElementById('srv-user').value.trim() || 'administrator',
+    password: password,
+    port: parseInt(document.getElementById('srv-port').value) || 5985,
+    use_https: !!document.getElementById('srv-https')?.checked,
+    https_skip_verify: !!document.getElementById('srv-https-skip')?.checked,
+    tier: parseInt(document.getElementById('srv-tier')?.value || '1', 10),
+    thresholds: {
+      cpu_warning:  parseInt(document.getElementById('th-cpu-warn').value),
+      cpu_critical: parseInt(document.getElementById('th-cpu-crit').value),
+      ram_warning:  parseInt(document.getElementById('th-ram-warn').value),
+      ram_critical: parseInt(document.getElementById('th-ram-crit').value),
+      disk_warning: parseInt(document.getElementById('th-disk-warn').value),
+      disk_critical:parseInt(document.getElementById('th-disk-crit').value),
+    },
+  };
+
+  if (!server.name || !server.host) {
+    pAlert('Server name and host are required.');
+    return;
+  }
+
+  loadConfig().then(data => {
+    if (index >= 0) {
+      data.servers[index] = server;
+    } else {
+      data.servers.push(server);
+    }
+    saveServerConfig(data);
+  });
+}
+
+// Save config -- only updates servers array, preserves all other settings
+function saveServerConfig(data) {
+  fetch('/api/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify(data),
+  })
+  .then(r => r.json())
+  .then(result => {
+    const msg = document.getElementById('save-message');
+    if (result.ok) {
+      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+      msg.textContent = {{ t.config_saved | tojson }};
+      msg.classList.remove('hidden');
+      closeModal(true);
+      setTimeout(() => location.reload(), 500);
+    } else {
+      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      msg.textContent = 'Error: ' + (result.error || 'Unknown error');
+      msg.classList.remove('hidden');
+    }
+  })
+  .catch(err => {
+    pAlert('Failed to save: ' + err.message);
+  });
+}
+
+// ── Test Connection ──
+
+function showTestResult(container, result) {
+  const box = container.querySelector('.test-result-box');
+  if (result.ok) {
+    box.className = 'test-result-box rounded p-2 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+    box.innerHTML = '<strong>&#10003; <span class="test-msg"></span></strong>';
+    box.querySelector('.test-msg').textContent = result.message || 'Connected';
+  } else {
+    box.className = 'test-result-box rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+    box.innerHTML = '<strong>&#10007; <span class="test-msg"></span></strong>'
+      + (result.detail ? '<br><span class="test-detail text-xs opacity-80"></span>' : '');
+    box.querySelector('.test-msg').textContent = result.error || 'Failed';
+    if (result.detail) {
+      box.querySelector('.test-detail').textContent = result.detail;
+    }
+  }
+  container.classList.remove('hidden');
+}
+
+function setTestLoading(container, btn) {
+  const box = container.querySelector('.test-result-box');
+  box.className = 'test-result-box rounded p-2 text-sm bg-[#F3F4F6] dark:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1]';
+  box.innerHTML = '<span class="inline-block animate-spin mr-2">&#9696;</span> Testing connection...';
+  container.classList.remove('hidden');
+  if (btn) btn.disabled = true;
+}
+
+function doTestConnection(payload, container, btn) {
+  setTestLoading(container, btn);
+  fetch('/api/test-connection', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify(payload),
+  })
+  .then(r => r.json())
+  .then(result => showTestResult(container, result))
+  .catch(err => showTestResult(container, { ok: false, error: 'Request failed', detail: err.message }))
+  .finally(() => { if (btn) btn.disabled = false; });
+}
+
+function testConnection(index) {
+  loadConfig().then(data => {
+    const s = data.servers[index];
+    if (!s) return;
+    const container = document.getElementById('test-result-' + index);
+    const btn = document.getElementById('test-btn-' + index);
+    // Send server name so the API can look up the real (decrypted) password
+    doTestConnection({ name: s.name, host: s.host, username: s.username, password: s.password, port: s.port }, container, btn);
+  });
+}
+
+function testConnectionFromModal() {
+  const container = document.getElementById('modal-test-result');
+  const btn = document.getElementById('modal-test-btn');
+  const payload = {
+    host: document.getElementById('srv-host').value.trim(),
+    username: document.getElementById('srv-user').value.trim() || 'administrator',
+    password: document.getElementById('srv-pass').value,
+    port: parseInt(document.getElementById('srv-port').value) || 5985,
+    use_https: !!document.getElementById('srv-https')?.checked,
+    https_skip_verify: !!document.getElementById('srv-https-skip')?.checked,
+  };
+  if (!payload.host) {
+    showTestResult(container, { ok: false, error: 'Host is required' });
+    return;
+  }
+  doTestConnection(payload, container, btn);
+}
+
+// ── Server Info Hover Accordion ──
+
+let serverStatusCache = null;
+let serverStatusFetchTime = 0;
+let hoverTimers = {};
+
+const STATUS_COLORS = {
+  healthy:  'bg-[#10B981] text-white',
+  warning:  'bg-[#F59E0B] text-white',
+  critical: 'bg-[#DC2626] text-white',
+  offline:  'bg-[#6B7280] text-white',
+  unknown:  'bg-[#9CA3AF] text-white',
+};
+
+function fetchServerStatus() {
+  if (serverStatusCache && Date.now() - serverStatusFetchTime < 10000) {
+    return Promise.resolve(serverStatusCache);
+  }
+  return fetch('/api/servers').then(r => r.json()).then(data => {
+    serverStatusCache = {};
+    data.forEach(s => { serverStatusCache[s.name] = s; });
+    serverStatusFetchTime = Date.now();
+    return serverStatusCache;
+  });
+}
+
+// Persistent Status column — populate every server row's status badge + last
+// check from the same cached /api/servers fetch the hover panel uses, so fleet
+// health is visible without hovering. Refreshed on a slow interval.
+function populateStatusColumn() {
+  const cells = document.querySelectorAll('[data-server-status]');
+  if (!cells.length) return;
+  fetchServerStatus().then(cache => {
+    cells.forEach(cell => {
+      const s = cache[cell.getAttribute('data-server-status')];
+      if (!s) { cell.innerHTML = '<span class="text-[10px] text-[#9CA3AF] uppercase">unknown</span>'; return; }
+      const cls = STATUS_COLORS[s.status] || STATUS_COLORS.unknown;
+      const age = s.last_check ? formatAge(s.last_check) : 'never';
+      cell.innerHTML =
+        '<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ' + cls + '">' + s.status + '</span>' +
+        '<span class="text-[10px] text-[#9CA3AF] ml-2">' + age + '</span>';
+    });
+  }).catch(() => {});
+}
+document.addEventListener('DOMContentLoaded', populateStatusColumn);
+setInterval(populateStatusColumn, 15000);
+
+function formatAge(isoStr) {
+  if (!isoStr) return 'never';
+  const ts = isoStr.endsWith('Z') ? isoStr : isoStr + 'Z';
+  const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+  if (isNaN(diff)) return 'unknown';
+  if (diff < 60) return diff + 's ago';
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+  return Math.floor(diff / 3600) + 'h ago';
+}
+
+function showServerInfo(index, name) {
+  hoverTimers[index] = setTimeout(() => {
+    const infoRow = document.getElementById('server-info-' + index);
+    infoRow.style.display = '';
+
+    fetchServerStatus().then(cache => {
+      const s = cache[name];
+      const panel = infoRow.querySelector('.server-info-panel');
+
+      if (s) {
+        const statusClass = STATUS_COLORS[s.status] || STATUS_COLORS.unknown;
+        panel.querySelector('.server-info-status').innerHTML =
+          '<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ' + statusClass + '">' + s.status + '</span>';
+        const proto = (s.auth_protocol || 'unknown').charAt(0).toUpperCase() + (s.auth_protocol || 'unknown').slice(1);
+        panel.querySelector('.server-info-transport').textContent = 'Transport: HTTP/WinRM (port ' + (s.port || 5985) + ')';
+        panel.querySelector('.server-info-auth').textContent = 'Auth: ' + proto;
+        panel.querySelector('.server-info-lastcheck').textContent = 'Last check: ' + formatAge(s.last_check);
+
+        if (s.cpu !== null) {
+          panel.querySelector('.server-info-metrics').textContent =
+            'CPU: ' + s.cpu + '% | RAM: ' + s.ram + '% | Disk C: ' + (s.disk_c >= 0 ? s.disk_c + '%' : 'N/A') +
+            (s.disk_d !== null && s.disk_d >= 0 ? ' | Disk D: ' + s.disk_d + '%' : '');
+        } else {
+          panel.querySelector('.server-info-metrics').textContent = 'No metrics yet';
+        }
+      } else {
+        panel.querySelector('.server-info-status').innerHTML =
+          '<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ' + STATUS_COLORS.unknown + '">unknown</span>';
+        panel.querySelector('.server-info-transport').textContent = '';
+        panel.querySelector('.server-info-auth').textContent = '';
+        panel.querySelector('.server-info-metrics').textContent = 'Not collected yet';
+        panel.querySelector('.server-info-lastcheck').textContent = '';
+      }
+
+      requestAnimationFrame(() => { panel.style.maxHeight = panel.scrollHeight + 'px'; });
+    });
+  }, 150);
+}
+
+function hideServerInfo(index) {
+  clearTimeout(hoverTimers[index]);
+  const infoRow = document.getElementById('server-info-' + index);
+  const panel = infoRow.querySelector('.server-info-panel');
+  panel.style.maxHeight = '0';
+  setTimeout(() => {
+    if (panel.style.maxHeight === '0' || panel.style.maxHeight === '0px') {
+      infoRow.style.display = 'none';
+    }
+  }, 300);
+}
+
+// ── Setup Guide ──
+function showGuide() {
+  document.getElementById('guide-modal').classList.remove('hidden');
+  lucide.createIcons();
+}
+function closeGuide() {
+  document.getElementById('guide-modal').classList.add('hidden');
+}
+
+// ── Modal Backdrop Protection (dirty state tracking) ──
+let serverModalDirty = false;
+let serverModalInitialState = {};
+
+function captureModalState() {
+  serverModalInitialState = {
+    name: document.getElementById('srv-name').value,
+    host: document.getElementById('srv-host').value,
+    type: getServerType(),
+    user: document.getElementById('srv-user').value,
+    pass: document.getElementById('srv-pass').value,
+    port: document.getElementById('srv-port').value,
+    cpuWarn: document.getElementById('th-cpu-warn').value,
+    cpuCrit: document.getElementById('th-cpu-crit').value,
+    ramWarn: document.getElementById('th-ram-warn').value,
+    ramCrit: document.getElementById('th-ram-crit').value,
+    diskWarn: document.getElementById('th-disk-warn').value,
+    diskCrit: document.getElementById('th-disk-crit').value,
+  };
+  serverModalDirty = false;
+}
+
+function isModalDirty() {
+  return (
+    document.getElementById('srv-name').value !== serverModalInitialState.name ||
+    document.getElementById('srv-host').value !== serverModalInitialState.host ||
+    getServerType() !== serverModalInitialState.type ||
+    document.getElementById('srv-user').value !== serverModalInitialState.user ||
+    document.getElementById('srv-pass').value !== serverModalInitialState.pass ||
+    document.getElementById('srv-port').value !== serverModalInitialState.port ||
+    document.getElementById('th-cpu-warn').value !== serverModalInitialState.cpuWarn ||
+    document.getElementById('th-cpu-crit').value !== serverModalInitialState.cpuCrit ||
+    document.getElementById('th-ram-warn').value !== serverModalInitialState.ramWarn ||
+    document.getElementById('th-ram-crit').value !== serverModalInitialState.ramCrit ||
+    document.getElementById('th-disk-warn').value !== serverModalInitialState.diskWarn ||
+    document.getElementById('th-disk-crit').value !== serverModalInitialState.diskCrit
+  );
+}
+
+// Wrap showAddForm and editServer to capture state after populating the modal
+const _origShowAddForm = showAddForm;
+showAddForm = function() {
+  _origShowAddForm();
+  captureModalState();
+};
+
+const _origEditServer = editServer;
+editServer = function(index) {
+  _origEditServer(index);
+  // captureModalState after the async loadConfig completes
+  setTimeout(captureModalState, 200);
+};
+
+// Close modals on Escape key
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (!document.getElementById('delete-modal').classList.contains('hidden')) {
+      closeDeleteModal();
+    } else if (!document.getElementById('server-modal').classList.contains('hidden')) {
+      closeModal();
+    } else {
+      closeGuide();
+    }
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Bulk Server Operations — CSV Export / Import
+// ═══════════════════════════════════════════════════════════════
+
+function exportServersCSV() {
+  window.location.href = '/api/servers/export-csv';
+}
+
+function importServersCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    fetch('/api/servers/import-csv', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify({ csv: e.target.result }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      const msg = document.getElementById('save-message');
+      if (data.ok) {
+        let text = data.imported + ' ' + {{ t.import_success | tojson }};
+        if (data.skipped > 0) text += ', ' + data.skipped + ' ' + {{ t.import_skipped | tojson }};
+        if (data.errors && data.errors.length > 0) text += '. Errors: ' + data.errors.join('; ');
+        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+        msg.textContent = text;
+        msg.classList.remove('hidden');
+        if (data.imported > 0) setTimeout(() => location.reload(), 1500);
+      } else {
+        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+        msg.textContent = 'Error: ' + (data.error || 'Import failed');
+        msg.classList.remove('hidden');
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    })
+    .catch(err => pAlert('Import failed: ' + err.message));
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AD Discovery
+// ═══════════════════════════════════════════════════════════════
+
+let discoveredServers = [];
+
+function discoverServers() {
+  const modal = document.getElementById('discovery-modal');
+  const status = document.getElementById('discovery-status');
+  const list = document.getElementById('discovery-list');
+
+  modal.classList.remove('hidden');
+  status.innerHTML = '<span class="inline-block animate-spin mr-2">&#9696;</span> ' + {{ t.discovering | tojson }};
+  list.innerHTML = '';
+  lucide.createIcons();
+
+  fetch('/api/discover-servers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({}),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.ok) {
+      status.textContent = 'Error: ' + (data.error || 'Discovery failed');
+      status.className = 'text-sm text-[#DC2626] dark:text-[#EF4444] mb-3';
+      return;
+    }
+    discoveredServers = data.servers || [];
+    status.textContent = data.total + ' computers found, ' + data.new + ' new';
+    status.className = 'text-sm text-[#10B981] dark:text-[#34D399] mb-3';
+
+    if (discoveredServers.length === 0) {
+      list.innerHTML = '<div class="text-sm text-[#6B7280] dark:text-[#CBD5E1] py-4 text-center">' + {{ t.no_servers_found | tojson }} + '</div>';
+      return;
+    }
+
+    list.innerHTML = discoveredServers.map((s, i) => {
+      const disabled = s.already_monitored ? 'disabled' : '';
+      const opacity = s.already_monitored ? 'opacity-50' : '';
+      const badge = s.already_monitored ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-[#F1F5F9] dark:bg-[#334155] text-[#6B7280]">Monitored</span>' : '';
+      return `<label class="flex items-center gap-3 p-2 rounded hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]/50 cursor-pointer ${opacity}">
+        <input type="checkbox" class="discovery-cb rounded border-gray-300" data-index="${i}" ${disabled}>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium truncate">${s.name} ${badge}</div>
+          <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1] truncate">${s.host} ${s.os ? '\u2014 ' + s.os : ''}</div>
+        </div>
+      </label>`;
+    }).join('');
+
+    // Update selected count on change
+    list.querySelectorAll('.discovery-cb').forEach(cb => {
+      cb.addEventListener('change', updateDiscoveryCount);
+    });
+  })
+  .catch(err => {
+    status.textContent = 'Error: ' + err.message;
+    status.className = 'text-sm text-[#DC2626] dark:text-[#EF4444] mb-3';
+  });
+}
+
+function selectAllDiscovered() {
+  const cbs = document.querySelectorAll('.discovery-cb:not(:disabled)');
+  const allChecked = Array.from(cbs).every(cb => cb.checked);
+  cbs.forEach(cb => cb.checked = !allChecked);
+  updateDiscoveryCount();
+}
+
+function updateDiscoveryCount() {
+  const checked = document.querySelectorAll('.discovery-cb:checked').length;
+  document.getElementById('discovery-selected-count').textContent = checked + ' selected';
+}
+
+function addDiscoveredServers() {
+  const checked = document.querySelectorAll('.discovery-cb:checked');
+  if (checked.length === 0) return;
+
+  loadConfig().then(data => {
+    checked.forEach(cb => {
+      const s = discoveredServers[parseInt(cb.dataset.index)];
+      if (!s) return;
+      data.servers.push({
+        name: s.name,
+        host: s.host,
+        type: 'other',
+        username: 'administrator',
+        password: '',
+        port: 5985,
+        thresholds: {},
+      });
+    });
+    saveServerConfig(data);
+    closeDiscoveryModal();
+  });
+}
+
+function closeDiscoveryModal() {
+  document.getElementById('discovery-modal').classList.add('hidden');
+  discoveredServers = [];
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Tag Management
+// ═══════════════════════════════════════════════════════════════
+
+function loadTags() {
+  fetch('/api/tags', { headers: { 'X-CSRFToken': csrfToken } })
+    .then(r => r.json())
+    .then(data => {
+      const list = document.getElementById('tag-list');
+      const noTags = document.getElementById('no-tags');
+      const tags = data.tags || [];
+      if (tags.length === 0) {
+        list.innerHTML = '';
+        noTags.classList.remove('hidden');
+        return;
+      }
+      noTags.classList.add('hidden');
+      list.innerHTML = tags.map(tag => `
+        <div class="flex items-center justify-between p-2 rounded border border-[#E5E7EB] dark:border-[#334155] bg-[#F9FAFB] dark:bg-[#0F172A]" data-tag-id="${tag.id}">
+          <div class="flex items-center gap-2">
+            <span class="w-4 h-4 rounded-full flex-shrink-0" style="background-color: ${_escHtml(tag.color || '#6B7280')}"></span>
+            <span class="text-sm font-medium tag-name-display">${_escHtml(tag.name)}</span>
+            <span class="text-[10px] text-[#9CA3AF] dark:text-[#475569]">${tag.server_count || 0} server${(tag.server_count || 0) !== 1 ? 's' : ''}</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <button data-action="editTag" data-args='${JSON.stringify([tag.id, tag.name, tag.color || '#6B7280']).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}'
+                    class="p-1 text-[#6B7280] dark:text-[#CBD5E1] hover:text-[#2563EB] dark:hover:text-[#3B82F6]" title="Edit">
+              <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+            </button>
+            <button data-action="deleteTag" data-args="[${tag.id}]"
+                    class="p-1 text-[#6B7280] dark:text-[#CBD5E1] hover:text-[#DC2626] dark:hover:text-[#EF4444]" title="Delete">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    })
+    .catch(err => console.error('Failed to load tags:', err));
+}
+
+function createTag() {
+  const nameInput = document.getElementById('new-tag-name');
+  const colorInput = document.getElementById('new-tag-color');
+  const name = nameInput.value.trim();
+  if (!name) { nameInput.focus(); return; }
+
+  fetch('/api/tags', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({ name: name, color: colorInput.value }),
+  })
+    .then(r => r.json())
+    .then(result => {
+      if (result.ok) {
+        nameInput.value = '';
+        colorInput.value = '#6B7280';
+        loadTags();
+      } else {
+        pAlert(result.error || 'Failed to create tag');
+      }
+    })
+    .catch(err => pAlert('Network error: ' + err.message));
+}
+
+async function deleteTag(id) {
+  if (!await pConfirm('Delete this tag? It will be removed from all servers.')) return;
+  fetch('/api/tags/' + id, {
+    method: 'DELETE',
+    headers: { 'X-CSRFToken': csrfToken },
+  })
+    .then(r => r.json())
+    .then(result => {
+      if (result.ok) loadTags();
+      else pAlert(result.error || 'Failed to delete tag');
+    })
+    .catch(err => pAlert('Network error: ' + err.message));
+}
+
+function editTag(id, currentName, currentColor) {
+  const row = document.querySelector(`[data-tag-id="${id}"]`);
+  if (!row) return;
+  const nameDisplay = row.querySelector('.tag-name-display');
+  const existingName = nameDisplay.textContent;
+
+  // Replace name display with inline edit
+  row.querySelector('.flex.items-center.gap-2').innerHTML = `
+    <input type="color" class="edit-tag-color w-6 h-6 rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] cursor-pointer p-0.5" value="${currentColor}">
+    <input type="text" class="edit-tag-name px-2 py-0.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" value="${_escHtml(existingName)}">
+  `;
+  row.querySelector('.flex.items-center.gap-1').innerHTML = `
+    <button data-action="saveEditTag" data-args="[${id}]" class="p-1 text-[#10B981] hover:text-[#059669]" title="Save">
+      <i data-lucide="check" class="w-3.5 h-3.5"></i>
+    </button>
+    <button data-action="loadTags" class="p-1 text-[#6B7280] hover:text-[#DC2626]" title="Cancel">
+      <i data-lucide="x" class="w-3.5 h-3.5"></i>
+    </button>
+  `;
+  lucide.createIcons();
+  row.querySelector('.edit-tag-name').focus();
+}
+
+function saveEditTag(id) {
+  const row = document.querySelector(`[data-tag-id="${id}"]`);
+  if (!row) return;
+  const name = row.querySelector('.edit-tag-name').value.trim();
+  const color = row.querySelector('.edit-tag-color').value;
+  if (!name) return;
+
+  fetch('/api/tags/' + id, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({ name: name, color: color }),
+  })
+    .then(r => r.json())
+    .then(result => {
+      if (result.ok) loadTags();
+      else pAlert(result.error || 'Failed to update tag');
+    })
+    .catch(err => pAlert('Network error: ' + err.message));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Health Checks
+// ═══════════════════════════════════════════════════════════════
+
+function loadHealthChecks() {
+  fetch('/api/health-checks/config', { headers: { 'X-CSRFToken': csrfToken } })
+    .then(r => r.json())
+    .then(data => {
+      const list = document.getElementById('health-check-list');
+      const noChecks = document.getElementById('no-health-checks');
+      const checks = data.config || data.checks || [];
+      list.innerHTML = '';
+      if (checks.length === 0) {
+        noChecks.classList.remove('hidden');
+      } else {
+        noChecks.classList.add('hidden');
+        checks.forEach(c => {
+          // Map DB column names to UI field names
+          addHealthCheckRow({
+            id: c.id,
+            name: c.name || '',
+            server: c.server_name || c.server,
+            check_type: c.check_type,
+            host: c.target_host || c.host,
+            port: c.target_port || c.port,
+            http_path: c.http_path,
+          });
+        });
+      }
+    })
+    .catch(err => console.error('Failed to load health checks:', err));
+}
+
+function editHealthCheck(row) {
+  const id = row.dataset.hcId;
+  if (!id) return;
+
+  // Read data from the row's display text
+  // Fetch full data from API
+  fetch('/api/health-checks/config', { headers: { 'X-CSRFToken': csrfToken } })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) return;
+      const hc = (data.config || []).find(c => String(c.id) === String(id));
+      if (!hc) return;
+
+      // Show form and populate
+      const form = document.getElementById('hc-add-form');
+      form.classList.remove('hidden');
+      lucide.createIcons({ nodes: [form] });
+
+      document.getElementById('hc-new-name').value = hc.name || '';
+      document.getElementById('hc-new-server').value = hc.server_name || '';
+      document.getElementById('hc-new-type').value = hc.check_type || 'tcp';
+      document.getElementById('hc-new-host').value = hc.target_host || '';
+      document.getElementById('hc-new-port').value = hc.target_port || '';
+      document.getElementById('hc-new-path').value = hc.http_path || '';
+      toggleNewHcFields();
+
+      // Delete the old one so saving creates a fresh entry
+      fetch('/api/health-checks/config/' + id, { method: 'DELETE', headers: { 'X-CSRFToken': csrfToken } })
+        .then(() => loadHealthChecks());
+
+      form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+}
+
+function toggleHcForm() {
+  const form = document.getElementById('hc-add-form');
+  form.classList.toggle('hidden');
+  if (!form.classList.contains('hidden')) {
+    lucide.createIcons({ nodes: [form] });
+    document.getElementById('hc-new-name').focus();
+  }
+}
+
+function toggleNewHcFields() {
+  const type = document.getElementById('hc-new-type').value;
+  document.getElementById('hc-new-port-wrap').classList.toggle('hidden', type === 'icmp');
+  document.getElementById('hc-new-path-wrap').classList.toggle('hidden', type !== 'http' && type !== 'https');
+}
+
+function saveNewHealthCheck() {
+  const name = document.getElementById('hc-new-name').value.trim();
+  const server = document.getElementById('hc-new-server').value;
+  const type = document.getElementById('hc-new-type').value;
+  const host = document.getElementById('hc-new-host').value.trim();
+  const port = type === 'icmp' ? 0 : parseInt(document.getElementById('hc-new-port').value) || 0;
+  const httpPath = document.getElementById('hc-new-path').value.trim() || '/';
+
+  if (!server || !host) { pAlert('Server and Host are required'); return; }
+  if (type !== 'icmp' && !port) { pAlert('Port is required'); return; }
+
+  fetch('/api/health-checks/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({ server_name: server, check_type: type, target_host: host, target_port: port, http_path: httpPath, name: name }),
+  })
+  .then(r => r.json())
+  .then(result => {
+    if (result.ok) {
+      // Clear form and hide
+      document.getElementById('hc-new-name').value = '';
+      document.getElementById('hc-new-host').value = '';
+      document.getElementById('hc-new-port').value = '';
+      document.getElementById('hc-new-path').value = '';
+      document.getElementById('hc-add-form').classList.add('hidden');
+      loadHealthChecks();
+    } else {
+      pAlert(result.error || 'Failed to save health check');
+    }
+  })
+  .catch(err => pAlert('Error: ' + err.message));
+}
+
+function testNewHealthCheck() {
+  const type = document.getElementById('hc-new-type').value;
+  const host = document.getElementById('hc-new-host').value.trim();
+  const port = type === 'icmp' ? 0 : parseInt(document.getElementById('hc-new-port').value) || 0;
+  const httpPath = document.getElementById('hc-new-path').value.trim() || '/';
+  const resultEl = document.getElementById('hc-new-test-result');
+
+  if (!host) { pAlert('Host is required to test'); return; }
+
+  resultEl.textContent = 'Testing...';
+  resultEl.className = 'text-xs text-[#6B7280]';
+
+  fetch('/api/health-checks/probe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({ host, port, check_type: type, http_path: httpPath }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok && data.result) {
+      const r = data.result;
+      if (r.status === 'up') {
+        resultEl.textContent = '✓ Up (' + (r.response_time_ms || 0).toFixed(0) + 'ms)';
+        resultEl.className = 'text-xs text-[#10B981] font-medium';
+      } else {
+        resultEl.textContent = '✗ Down: ' + (r.error || 'unreachable');
+        resultEl.className = 'text-xs text-[#DC2626] font-medium';
+      }
+    } else {
+      resultEl.textContent = '✗ ' + (data.error || 'Probe failed');
+      resultEl.className = 'text-xs text-[#DC2626]';
+    }
+  })
+  .catch(err => { resultEl.textContent = '✗ ' + err.message; resultEl.className = 'text-xs text-[#DC2626]'; });
+}
+
+function addHealthCheckRow(data) {
+  // Renders a saved health check as a compact info row (not editable)
+  const list = document.getElementById('health-check-list');
+  document.getElementById('no-health-checks').classList.add('hidden');
+
+  if (!data || !data.id) return; // Only render saved items
+
+  const row = document.createElement('div');
+  row.className = 'flex items-center gap-3 px-3 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#334155] bg-[#F9FAFB] dark:bg-[#0F172A]/50 hc-row';
+  row.dataset.hcId = data.id;
+
+  const name = data.name || data.check_type.toUpperCase();
+  const host = data.host || data.target_host || '';
+  const port = data.port || data.target_port || '';
+  const type = (data.check_type || 'tcp').toUpperCase();
+  const path = data.http_path || '';
+  const server = data.server || data.server_name || '';
+  const portDisplay = data.check_type === 'icmp' ? '' : ':' + port;
+  const pathDisplay = (data.check_type === 'http' || data.check_type === 'https') && path ? path : '';
+
+  row.innerHTML = `
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-semibold text-[#111827] dark:text-[#F9FAFB]">${_escHtml(name)}</span>
+        <span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#3B82F6]/20 dark:text-[#3B82F6]">${type}</span>
+      </div>
+      <div class="text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mt-0.5 font-mono">${_escHtml(server)} → ${_escHtml(host)}${portDisplay}${pathDisplay ? ' ' + _escHtml(pathDisplay) : ''}</div>
+    </div>
+    <button data-action="_srvEditHc" class="p-1.5 text-[#6B7280] hover:text-[#2563EB] rounded hover:bg-[#2563EB]/10" title="Edit">
+      <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+    </button>
+    <button data-action="_srvDeleteHc" class="p-1.5 text-[#6B7280] hover:text-[#DC2626] rounded hover:bg-[#DC2626]/10" title="Delete">
+      <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+    </button>
+  `;
+  list.appendChild(row);
+  lucide.createIcons({ nodes: [row] });
+}
+
+function toggleHcFields(row) {
+  const type = row.querySelector('.hc-type').value;
+  const pathInput = row.querySelector('.hc-http-path');
+  const portInput = row.querySelector('.hc-port');
+  // Show http_path only for HTTP/HTTPS
+  if (type === 'http' || type === 'https') pathInput.classList.remove('hidden');
+  else pathInput.classList.add('hidden');
+  // Hide port for ICMP (no port needed)
+  if (type === 'icmp') portInput.classList.add('hidden');
+  else portInput.classList.remove('hidden');
+}
+
+function saveHealthCheck(row) {
+  const id = row.dataset.hcId;
+  const checkType = row.querySelector('.hc-type').value;
+  const payload = {
+    name: row.querySelector('.hc-name').value.trim(),
+    server: row.querySelector('.hc-server').value,
+    check_type: checkType,
+    host: row.querySelector('.hc-host').value.trim(),
+    port: checkType === 'icmp' ? 0 : (parseInt(row.querySelector('.hc-port').value) || null),
+    http_path: row.querySelector('.hc-http-path').value.trim() || null,
+  };
+  if (!payload.host) { row.querySelector('.hc-host').focus(); return; }
+
+  const url = id ? '/api/health-checks/config/' + id : '/api/health-checks/config';
+  const method = id ? 'PUT' : 'POST';
+
+  fetch(url, {
+    method: method,
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify(payload),
+  })
+    .then(r => r.json())
+    .then(result => {
+      if (result.ok) {
+        if (result.id) row.dataset.hcId = result.id;
+        const res = row.querySelector('.hc-result');
+        res.innerHTML = '<span class="text-[#10B981]">Saved</span>';
+        res.classList.remove('hidden');
+        setTimeout(() => res.classList.add('hidden'), 2000);
+      } else {
+        pAlert(result.error || 'Failed to save health check');
+      }
+    })
+    .catch(err => pAlert('Network error: ' + err.message));
+}
+
+async function deleteHealthCheck(row) {
+  const id = row.dataset.hcId;
+  if (!id) {
+    row.remove();
+    updateHcNoItemsMsg();
+    return;
+  }
+  if (!await pConfirm('Delete this health check?')) return;
+
+  fetch('/api/health-checks/config/' + id, {
+    method: 'DELETE',
+    headers: { 'X-CSRFToken': csrfToken },
+  })
+    .then(r => r.json())
+    .then(result => {
+      if (result.ok) {
+        row.remove();
+        updateHcNoItemsMsg();
+      } else {
+        pAlert(result.error || 'Failed to delete health check');
+      }
+    })
+    .catch(err => pAlert('Network error: ' + err.message));
+}
+
+function updateHcNoItemsMsg() {
+  const list = document.getElementById('health-check-list');
+  const noChecks = document.getElementById('no-health-checks');
+  if (list.children.length === 0) noChecks.classList.remove('hidden');
+  else noChecks.classList.add('hidden');
+}
+
+function testHealthCheck(row) {
+  const checkType = row.querySelector('.hc-type').value;
+  const payload = {
+    check_type: checkType,
+    host: row.querySelector('.hc-host').value.trim(),
+    port: checkType === 'icmp' ? 0 : (parseInt(row.querySelector('.hc-port').value) || null),
+    http_path: row.querySelector('.hc-http-path').value.trim() || null,
+  };
+  if (!payload.host) { row.querySelector('.hc-host').focus(); return; }
+
+  const resultEl = row.querySelector('.hc-result');
+  resultEl.textContent = 'Probing...';
+  resultEl.className = 'hc-result text-xs ml-1 text-[#6B7280]';
+
+  fetch('/api/health-checks/probe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify(payload),
+  })
+    .then(r => r.json())
+    .then(result => {
+      if (result.ok && result.status === 'healthy') {
+        resultEl.innerHTML = `<span class="text-[#10B981]">Healthy (${result.response_ms || 0}ms)</span>`;
+      } else if (result.ok) {
+        resultEl.innerHTML = `<span class="text-[#F59E0B]">${_escHtml(result.status || 'Unknown')}</span>`;
+      } else {
+        resultEl.innerHTML = `<span class="text-[#DC2626]">${_escHtml(result.error || 'Probe failed')}</span>`;
+      }
+      resultEl.classList.remove('hidden');
+    })
+    .catch(err => {
+      resultEl.innerHTML = `<span class="text-[#DC2626]">${_escHtml(err.message)}</span>`;
+      resultEl.classList.remove('hidden');
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Dependencies (F8)
+// ═══════════════════════════════════════════════════════════════
+
+const DEP_TYPE_LABELS = {
+  service: {{ t.dep_type_service | tojson }},
+  database: {{ t.dep_type_database | tojson }},
+  auth: {{ t.dep_type_auth | tojson }},
+  dns: {{ t.dep_type_dns | tojson }},
+  file_share: {{ t.dep_type_file_share | tojson }},
+  custom: {{ t.dep_type_custom | tojson }},
+};
+
+function toggleDepForm() {
+  const form = document.getElementById('dep-add-form');
+  form.classList.toggle('hidden');
+  if (!form.classList.contains('hidden')) {
+    lucide.createIcons({ nodes: [form] });
+  }
+}
+
+function onDepTypeChange() {
+  const sel = document.getElementById('dep-type');
+  const customInput = document.getElementById('dep-custom-type');
+  if (sel.value === 'custom') {
+    customInput.classList.remove('hidden');
+    customInput.focus();
+  } else {
+    customInput.classList.add('hidden');
+    customInput.value = '';
+  }
+}
+
+function onDepTargetModeChange() {
+  const mode = document.getElementById('dep-target-mode').value;
+  // Port: simple show/hide
+  document.getElementById('dep-port').classList.toggle('hidden', mode !== 'port');
+  // Service/Process wraps: toggle both `hidden` AND `flex` so Tailwind classes
+  // don't fight — `hidden` + `flex` on the same element has undefined
+  // precedence depending on class source order.
+  const svc = document.getElementById('dep-service-wrap');
+  const prc = document.getElementById('dep-process-wrap');
+  svc.classList.toggle('hidden', mode !== 'service');
+  svc.classList.toggle('flex',   mode === 'service');
+  prc.classList.toggle('hidden', mode !== 'process');
+  prc.classList.toggle('flex',   mode === 'process');
+}
+
+function browseDepService(btnEl) {
+  const targetServer = document.getElementById('dep-depends-on').value;
+  if (!targetServer) { pAlert('Select a target server first'); return; }
+  fetch('/api/servers/' + encodeURIComponent(targetServer) + '/services', { headers: { 'X-CSRFToken': csrfToken } })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) { pAlert(data.error || 'Failed to load services'); return; }
+      showDepBrowsePopup(data.services || [], 'dep-service-name', 'service', btnEl);
+    })
+    .catch(err => pAlert('Failed to load services: ' + err.message));
+}
+
+function browseDepProcess(btnEl) {
+  const targetServer = document.getElementById('dep-depends-on').value;
+  if (!targetServer) { pAlert('Select a target server first'); return; }
+  fetch('/api/servers/' + encodeURIComponent(targetServer) + '/processes', { headers: { 'X-CSRFToken': csrfToken } })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) { pAlert(data.error || 'Failed to load processes'); return; }
+      showDepBrowsePopup(data.processes || [], 'dep-process-name', 'process', btnEl);
+    })
+    .catch(err => pAlert('Failed to load processes: ' + err.message));
+}
+
+function showDepBrowsePopup(items, inputId, type, btnEl) {
+  const existing = document.getElementById('dep-browse-popup');
+  if (existing) existing.remove();
+
+  // btnEl passed in from browseDepService/browseDepProcess — the previous
+  // implementation relied on the implicit global `event` which is undefined
+  // after an async fetch, so the popup never anchored and the whole call
+  // silently failed in Firefox.
+  const btn = btnEl || document.activeElement;
+  const rect = btn.getBoundingClientRect();
+
+  const popup = document.createElement('div');
+  popup.id = 'dep-browse-popup';
+  popup.style.cssText = 'position:fixed;z-index:9999;left:' + rect.left + 'px;top:' + (rect.bottom+4) + 'px;' +
+    'background:#1E293B;border:1px solid #334155;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.3);' +
+    'min-width:240px;max-height:300px;overflow:hidden;display:flex;flex-direction:column;';
+
+  const searchHtml = '<input type="text" placeholder="Search..." data-input="_srvFilterDepBrowse"' +
+    ' class="w-full px-3 py-1.5 text-xs border-b border-[#334155] bg-transparent text-[#CBD5E1] outline-none">';
+
+  const listHtml = items.sort(function(a, b) {
+    const aRun = (a.status||'').toLowerCase() === 'running' ? 0 : 1;
+    const bRun = (b.status||'').toLowerCase() === 'running' ? 0 : 1;
+    return aRun - bRun || (a.name||'').localeCompare(b.name||'');
+  }).map(function(item) {
+    const name = item.name || item.Name || '';
+    const display = item.display_name || item.DisplayName || '';
+    const status = (item.status || '').toLowerCase();
+    const dot = status === 'running' ? '<span class="w-1.5 h-1.5 rounded-full bg-[#10B981] flex-shrink-0"></span>' : '';
+    return '<div class="dep-browse-item flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-[#334155] text-xs text-[#CBD5E1]"' +
+      ' data-name="' + name + '" data-action="selectDepBrowseItem" data-args=\'' + JSON.stringify([name, inputId]).replace(/&/g, "&amp;").replace(/'/g, "&#39;") + '\'>' +
+      dot + '<span class="font-medium">' + name + '</span>' +
+      '<span class="text-[10px] text-[#64748B] truncate ml-auto">' + display + '</span></div>';
+  }).join('');
+
+  popup.innerHTML = searchHtml + '<div class="overflow-y-auto" style="max-height:260px;">' + listHtml + '</div>';
+  document.body.appendChild(popup);
+  popup.querySelector('input').focus();
+
+  setTimeout(function() {
+    document.addEventListener('click', function _close(e) {
+      if (!popup.contains(e.target)) { popup.remove(); document.removeEventListener('click', _close); }
+    });
+  }, 10);
+}
+
+window.filterDepBrowse = function(q) {
+  const items = document.querySelectorAll('.dep-browse-item');
+  const query = q.toLowerCase();
+  items.forEach(function(el) {
+    el.style.display = el.dataset.name.toLowerCase().includes(query) ? '' : 'none';
+  });
+};
+
+window.selectDepBrowseItem = function(name, inputId) {
+  document.getElementById(inputId).value = name;
+  const popup = document.getElementById('dep-browse-popup');
+  if (popup) popup.remove();
+};
+
+function loadDepsTable() {
+  fetch('/api/dependencies')
+    .then(r => r.json())
+    .then(data => {
+      const container = document.getElementById('deps-table-container');
+      if (!data.ok || !data.dependencies || data.dependencies.length === 0) {
+        const _noDepsMsg = {{ t.get('no_dependencies', 'No dependencies configured') | tojson }};
+        container.innerHTML = `
+          <div class="text-sm text-[#9CA3AF] dark:text-[#475569] text-center py-8">
+            <i data-lucide="network" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
+            <p>${_noDepsMsg}</p>
+            <p class="text-[10px] mt-1 opacity-60">Click "Add Dependency" to define server relationships</p>
+          </div>`;
+        lucide.createIcons({ nodes: [container] });
+        return;
+      }
+      const deps = data.dependencies;
+
+      // Collect unique custom types from loaded data and add to dropdown
+      const customTypes = new Set();
+      deps.forEach(d => {
+        if (d.custom_type_name) customTypes.add(d.custom_type_name);
+      });
+      const depTypeSelect = document.getElementById('dep-type');
+      if (depTypeSelect) {
+        depTypeSelect.querySelectorAll('option[data-custom]').forEach(o => o.remove());
+        customTypes.forEach(ct => {
+          const opt = document.createElement('option');
+          opt.value = ct; opt.textContent = ct; opt.dataset.custom = '1';
+          depTypeSelect.insertBefore(opt, depTypeSelect.querySelector('option[value="custom"]'));
+        });
+      }
+
+      let html = '<div class="overflow-x-auto"><table class="w-full text-sm">';
+      html += '<thead><tr class="border-b border-[#E5E7EB] dark:border-[#334155] text-left">';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.get('server', 'Server') | tojson }} + '</th>';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.depends_on | tojson }} + '</th>';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.dependency_type | tojson }} + '</th>';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">Target</th>';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.description | tojson }} + '</th>';
+      html += '<th class="px-3 py-2"></th>';
+      html += '</tr></thead><tbody>';
+      deps.forEach(d => {
+        const typeLabel = d.custom_type_name || DEP_TYPE_LABELS[d.dependency_type] || d.dependency_type;
+        // Build target info based on target_mode
+        let targetInfo = '-';
+        const mode = d.target_mode || 'port';
+        if (mode === 'port' && d.port) targetInfo = 'Port: ' + d.port;
+        else if (mode === 'service' && d.service_name) targetInfo = 'Service: ' + d.service_name;
+        else if (mode === 'process' && d.process_name) targetInfo = 'Process: ' + d.process_name;
+        else if (d.port) targetInfo = 'Port: ' + d.port;
+
+        html += '<tr class="border-b border-[#E5E7EB] dark:border-[#334155]">';
+        html += '<td class="px-3 py-2">' + d.server_name + '</td>';
+        html += '<td class="px-3 py-2">' + d.depends_on + '</td>';
+        html += '<td class="px-3 py-2"><span class="text-[10px] px-1.5 py-0.5 rounded bg-[#E5E7EB] dark:bg-[#334155]">' + typeLabel + '</span></td>';
+        html += '<td class="px-3 py-2 text-[#6B7280] dark:text-[#CBD5E1]">' + targetInfo + '</td>';
+        html += '<td class="px-3 py-2 text-[#6B7280] dark:text-[#CBD5E1]">' + (d.description || '-') + '</td>';
+        html += '<td class="px-3 py-2 text-right whitespace-nowrap">';
+        html += '<button data-action="editDependency" data-args="[' + d.id + ']" class="text-[#6B7280] hover:text-[#2563EB] p-1" title="Edit"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>';
+        html += '<button data-action="removeDependency" data-args="[' + d.id + ']" class="text-[#6B7280] hover:text-[#DC2626] p-1 ml-1" title="' + {{ t.remove_dependency | tojson }} + '"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>';
+        html += '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+      lucide.createIcons();
+    })
+    .catch(() => {
+      document.getElementById('deps-table-container').innerHTML =
+        '<div class="text-xs text-[#DC2626] text-center py-4">Failed to load dependencies</div>';
+    });
+}
+
+function addDependency() {
+  const serverName = document.getElementById('dep-server-name').value;
+  const dependsOn = document.getElementById('dep-depends-on').value;
+  const type = document.getElementById('dep-type').value;
+  const customTypeName = type === 'custom' ? document.getElementById('dep-custom-type').value.trim() : '';
+  const targetMode = document.getElementById('dep-target-mode').value;
+  const description = document.getElementById('dep-description').value;
+
+  if (!serverName || !dependsOn) {
+    pAlert('Please select both server and dependency target');
+    return;
+  }
+  if (serverName === dependsOn) {
+    pAlert('A server cannot depend on itself');
+    return;
+  }
+  if (type === 'custom' && !customTypeName) {
+    pAlert('Please enter a custom type name');
+    return;
+  }
+
+  const payload = {
+    server_name: serverName,
+    depends_on: dependsOn,
+    dependency_type: type === 'custom' ? customTypeName : type,
+    custom_type_name: customTypeName || null,
+    target_mode: targetMode,
+    port: targetMode === 'port' ? (parseInt(document.getElementById('dep-port').value) || null) : null,
+    service_name: targetMode === 'service' ? document.getElementById('dep-service-name').value.trim() : null,
+    process_name: targetMode === 'process' ? document.getElementById('dep-process-name').value.trim() : null,
+    description: description || null,
+  };
+
+  fetch('/api/dependencies', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify(payload),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      document.getElementById('dep-port').value = '';
+      document.getElementById('dep-description').value = '';
+      document.getElementById('dep-service-name').value = '';
+      document.getElementById('dep-process-name').value = '';
+      document.getElementById('dep-custom-type').value = '';
+      document.getElementById('dep-add-form').classList.add('hidden');
+      loadDepsTable();
+    } else {
+      pAlert(data.error || 'Failed to add dependency');
+    }
+  })
+  .catch(e => pAlert('Error: ' + e.message));
+}
+
+function editDependency(depId) {
+  // Load the dependency data and populate the form
+  fetch('/api/dependencies')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) return;
+      const dep = (data.dependencies || []).find(d => d.id === depId);
+      if (!dep) return;
+
+      // Show form
+      const form = document.getElementById('dep-add-form');
+      form.classList.remove('hidden');
+      lucide.createIcons({ nodes: [form] });
+
+      // Populate fields
+      document.getElementById('dep-server-name').value = dep.server_name || '';
+      document.getElementById('dep-depends-on').value = dep.depends_on || '';
+
+      // Type
+      const typeSelect = document.getElementById('dep-type');
+      const depType = dep.custom_type_name || dep.dependency_type || 'service';
+      // Check if it's a standard type
+      const standardTypes = ['service', 'database', 'auth', 'dns', 'file_share'];
+      if (standardTypes.includes(depType)) {
+        typeSelect.value = depType;
+        document.getElementById('dep-custom-type').classList.add('hidden');
+      } else {
+        // Custom type — check if option exists, if not add it
+        let found = false;
+        for (const opt of typeSelect.options) {
+          if (opt.value === depType) { found = true; break; }
+        }
+        if (!found) {
+          const opt = document.createElement('option');
+          opt.value = depType; opt.textContent = depType; opt.dataset.custom = '1';
+          typeSelect.insertBefore(opt, typeSelect.querySelector('option[value="custom"]'));
+        }
+        typeSelect.value = depType;
+        document.getElementById('dep-custom-type').classList.add('hidden');
+      }
+
+      // Target mode
+      const mode = dep.target_mode || 'port';
+      document.getElementById('dep-target-mode').value = mode;
+      onDepTargetModeChange();
+
+      if (mode === 'port') document.getElementById('dep-port').value = dep.port || '';
+      else if (mode === 'service') document.getElementById('dep-service-name').value = dep.service_name || '';
+      else if (mode === 'process') document.getElementById('dep-process-name').value = dep.process_name || '';
+
+      document.getElementById('dep-description').value = dep.description || '';
+
+      // Delete the old dependency so saving creates a new one (simple edit = delete + re-add)
+      fetch('/api/dependencies/' + depId, { method: 'DELETE', headers: { 'X-CSRFToken': csrfToken } });
+
+      // Scroll to form
+      form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+}
+
+async function removeDependency(depId) {
+  if (!await pConfirm({{ t.remove_dependency | tojson }} + '?')) return;
+  fetch('/api/dependencies/' + depId, {
+    method: 'DELETE',
+    headers: { 'X-CSRFToken': csrfToken },
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) loadDepsTable();
+    else pAlert(data.error || 'Failed to remove');
+  })
+  .catch(e => pAlert('Error: ' + e.message));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Initialize on page load
+// ═══════════════════════════════════════════════════════════════
+
+// ── Server Tag Assignment ──
+let _allTags = [];
+let _serverTagMap = {}; // {serverName: [{id, name, color}]}
+
+function loadServerTags() {
+  // Load all tags for reference
+  fetch('/api/tags', { headers: { 'X-CSRFToken': csrfToken } })
+    .then(r => r.json())
+    .then(data => { _allTags = data.tags || []; });
+
+  // Load all assignments
+  {% for s in servers %}
+  fetch('/api/servers/{{ s.name }}/tags', { headers: { 'X-CSRFToken': csrfToken } })
+    .then(r => r.json())
+    .then(data => {
+      _serverTagMap['{{ s.name }}'] = data.tags || [];
+      renderServerTagPills('{{ s.name }}', {{ loop.index0 }});
+    });
+  {% endfor %}
+}
+
+function renderServerTagPills(serverName, idx) {
+  const container = document.querySelector('.server-tags-' + idx);
+  if (!container) return;
+  const tags = _serverTagMap[serverName] || [];
+  container.innerHTML = tags.map(t =>
+    `<span class="px-1.5 py-0 text-[9px] font-medium rounded-full cursor-pointer hover:opacity-70"
+           style="color:${t.color};background:${t.color}15;border:1px solid ${t.color}30;"
+           data-action="_srvRemoveTag" data-args='${JSON.stringify([serverName, t.id, idx]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}'
+           title="Click to remove">${t.name} ×</span>`
+  ).join('');
+}
+
+// ── data-action bridges (CSP: no inline on* handlers) ──
+function _srvHttpsToggle() {
+  var c = this, p = document.getElementById('srv-port');
+  if (c.checked && p.value == '5985') p.value = 5986;
+  else if (!c.checked && p.value == '5986') p.value = 5985;
+  document.getElementById('srv-https-skip-wrap').style.display = c.checked ? 'flex' : 'none';
+}
+function _srvTogglePass() {
+  var i = document.getElementById('srv-pass');
+  i.type = i.type === 'password' ? 'text' : 'password';
+  this.setAttribute('aria-pressed', i.type === 'text');
+}
+function _srvClickCsvImport() { document.getElementById('csv-import-input').click(); }
+function _srvImportCsv() { importServersCSV(this); }
+function _srvEditHc() { editHealthCheck(this.closest('.hc-row')); }
+function _srvDeleteHc() { deleteHealthCheck(this.closest('.hc-row')); }
+function _srvBrowseDepService() { browseDepService(this); }
+function _srvBrowseDepProcess() { browseDepProcess(this); }
+function _srvFilterDepBrowse() { filterDepBrowse(this.value); }
+function _srvRemoveTag(name, tagId, idx) { if (window.event) window.event.stopPropagation(); removeTagFromServer(name, tagId, idx); }
+function _srvAssignTagMenu(name, idx) { showTagAssign(name, idx, this); }
+function _srvShowInfo() { showServerInfo(Number(this.dataset.index), this.dataset.serverName); }
+function _srvHideInfo() { hideServerInfo(Number(this.dataset.index)); }
+
+function showTagAssign(serverName, idx, btnEl) {
+  // Show a small dropdown of available tags to assign
+  const existing = (_serverTagMap[serverName] || []).map(t => t.id);
+  const available = _allTags.filter(t => !existing.includes(t.id));
+
+  if (available.length === 0 && _allTags.length === 0) {
+    pAlert('Create tags first in the Tag Management section below.');
+    return;
+  }
+
+  // Create a small popup
+  const existingPopup = document.getElementById('tag-assign-popup');
+  if (existingPopup) existingPopup.remove();
+
+  const btn = btnEl || event.target.closest('button');
+  const rect = btn.getBoundingClientRect();
+
+  const popup = document.createElement('div');
+  popup.id = 'tag-assign-popup';
+  popup.style.cssText = `position:fixed;z-index:9999;left:${rect.left}px;top:${rect.bottom + 4}px;
+    background:#1E293B;border:1px solid #334155;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.3);
+    padding:6px;min-width:160px;max-height:200px;overflow-y:auto;`;
+
+  if (available.length === 0) {
+    popup.innerHTML = '<div class="text-[10px] text-[#9CA3AF] p-2 text-center">All tags assigned</div>';
+  } else {
+    popup.innerHTML = available.map(t =>
+      `<div data-action="assignTagToServer" data-args='${JSON.stringify([serverName, t.id, idx]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}'
+            class="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-[#334155] text-xs text-[#CBD5E1]">
+        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:${t.color}"></span>
+        ${t.name}
+      </div>`
+    ).join('');
+  }
+
+  document.body.appendChild(popup);
+
+  // Close on click outside
+  setTimeout(() => {
+    document.addEventListener('click', function _close(e) {
+      if (!popup.contains(e.target)) {
+        popup.remove();
+        document.removeEventListener('click', _close);
+      }
+    });
+  }, 10);
+}
+
+function assignTagToServer(serverName, tagId, idx) {
+  fetch(`/api/servers/${encodeURIComponent(serverName)}/tags`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({ tag_id: tagId }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      // Refresh this server's tags
+      fetch(`/api/servers/${encodeURIComponent(serverName)}/tags`, { headers: { 'X-CSRFToken': csrfToken } })
+        .then(r => r.json())
+        .then(d => {
+          _serverTagMap[serverName] = d.tags || [];
+          renderServerTagPills(serverName, idx);
+        });
+    }
+  });
+  const popup = document.getElementById('tag-assign-popup');
+  if (popup) popup.remove();
+}
+
+function removeTagFromServer(serverName, tagId, idx) {
+  fetch(`/api/servers/${encodeURIComponent(serverName)}/tags/${tagId}`, {
+    method: 'DELETE',
+    headers: { 'X-CSRFToken': csrfToken },
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      _serverTagMap[serverName] = (_serverTagMap[serverName] || []).filter(t => t.id !== tagId);
+      renderServerTagPills(serverName, idx);
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadTags();
+  loadHealthChecks();
+  loadDepsTable();
+  loadServerTags();
+});
+</script>
+
+{% endblock %}

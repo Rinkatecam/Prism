@@ -1,0 +1,13 @@
+# Development tools — NOT installed in production.
+#
+# These are operator tools for running tests, regenerating the lockfile,
+# and similar maintenance tasks. They are intentionally NOT hash-pinned
+# because they are not part of the deterministic production install.
+#
+# Install with:  pip install -r requirements-dev.txt
+# (in addition to the production install: pip install --require-hashes -r requirements.lock)
+
+pytest>=8.0
+pytest-cov
+pip-tools>=7.0
+pip-audit

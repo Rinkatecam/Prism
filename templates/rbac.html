@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% block content %}
+
+{# Per-server RBAC management UI.
+
+  This page is the admin counterpart to the /api/rbac/* endpoints.
+  Anything sensitive is enforced server-side: the API rejects callers
+  that aren't the backup admin or a wildcard-admin (/api/rbac.py:
+  _require_rbac_admin). The page itself is open to any authenticated
+  user — non-admins simply see a banner explaining they can't grant.
+
+  Three sections:
+    1. Permissive-mode banner + "permissions for me" summary
+    2. ACL grant/revoke table
+    3. Pending approvals queue (tier-0 dual-admin flow)
+#}
+
+<div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+  <h1 class="text-2xl font-bold flex items-center gap-2">
+    <i data-lucide="shield-check" class="w-6 h-6 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    {{ t.get('rbac_admin_title', 'Access Control') }}
+  </h1>
+  <button id="rbac-refresh"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]"
+          aria-label="Refresh ACL list">
+    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+    {{ t.get('refresh', 'Refresh') }}
+  </button>
+</div>
+
+<!-- Banner: permissive mode, lack-of-access, etc. -->
+<div id="rbac-banner" class="hidden mb-4 px-4 py-3 rounded-lg text-sm"></div>
+
+<!-- "What can I do" summary card -->
+<div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4 mb-4">
+  <h2 class="text-sm font-semibold mb-2 flex items-center gap-1.5">
+    <i data-lucide="user-check" class="w-4 h-4"></i>
+    {{ t.get('my_permissions', 'My permissions') }}
+  </h2>
+  <div id="rbac-me-summary" class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('loading', 'Loading…') }}</div>
+</div>
+
+<!-- ACL grant form -->
+<div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4 mb-4">
+  <h2 class="text-sm font-semibold mb-3 flex items-center gap-1.5">
+    <i data-lucide="user-plus" class="w-4 h-4"></i>
+    {{ t.get('grant_acl', 'Grant access') }}
+  </h2>
+  <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+    <input type="text" id="rbac-grant-user"
+           placeholder="{{ t.get('username', 'Username (bare, no DOMAIN\\\\)') }}"
+           class="px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]"
+           aria-label="Username to grant">
+    <select id="rbac-grant-server"
+            class="px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]"
+            aria-label="Server name">
+      <option value="*">* — {{ t.get('all_servers', 'All servers (wildcard)') }}</option>
+      {% for s in server_names %}
+        <option value="{{ s }}">{{ s }}</option>
+      {% endfor %}
+    </select>
+    <select id="rbac-grant-perm"
+            class="px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]"
+            aria-label="Permission level">
+      <option value="view">view</option>
+      <option value="control">control</option>
+      <option value="admin" selected>admin</option>
+    </select>
+    <button id="rbac-grant-btn"
+            class="px-3 py-1.5 text-sm font-medium rounded bg-[#2563EB] text-white hover:opacity-90 disabled:opacity-50"
+            aria-label="Grant access">
+      <i data-lucide="check" class="w-3.5 h-3.5 inline"></i>
+      {{ t.get('grant', 'Grant') }}
+    </button>
+  </div>
+  <p class="text-[10px] text-[#9CA3AF] dark:text-[#64748B] mt-2 italic">
+    {{ t.get('rbac_grant_hint', "Tip: granting any ACL exits permissive mode and starts enforcement for everyone.") }}
+  </p>
+</div>
+
+<!-- Existing ACLs -->
+<div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4 mb-4">
+  <h2 class="text-sm font-semibold mb-3 flex items-center gap-1.5">
+    <i data-lucide="list-checks" class="w-4 h-4"></i>
+    {{ t.get('current_acls', 'Current ACLs') }}
+  </h2>
+  <div id="rbac-acl-list" class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('loading', 'Loading…') }}</div>
+</div>
+
+<!-- Pending approvals -->
+<div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4">
+  <h2 class="text-sm font-semibold mb-3 flex items-center gap-1.5">
+    <i data-lucide="hourglass" class="w-4 h-4 text-[#F59E0B]"></i>
+    {{ t.get('pending_approvals', 'Pending approvals (tier-0)') }}
+  </h2>
+  <div id="rbac-approvals-list" class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('loading', 'Loading…') }}</div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+(function () {
+  'use strict';
+
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function showBanner(text, kind) {
+    const b = document.getElementById('rbac-banner');
+    if (!b) return;
+    if (!text) { b.classList.add('hidden'); return; }
+    const palette = {
+      info:  'bg-[#2563EB]/10 border border-[#2563EB]/30 text-[#1E40AF] dark:text-[#93C5FD]',
+      warn:  'bg-[#F59E0B]/10 border border-[#F59E0B]/30 text-[#92400E] dark:text-[#FCD34D]',
+      error: 'bg-[#DC2626]/10 border border-[#DC2626]/30 text-[#991B1B] dark:text-[#FCA5A5]',
+    };
+    b.className = 'mb-4 px-4 py-3 rounded-lg text-sm ' + (palette[kind] || palette.info);
+    b.textContent = text;
+  }
+
+  // ── /api/rbac/me — what can the current user do?
+  function loadMe() {
+    fetch('/api/rbac/me').then(r => r.json()).then(data => {
+      const div = document.getElementById('rbac-me-summary');
+      if (!div) return;
+      if (!data.ok) { div.textContent = data.error || 'Failed to load'; return; }
+      const head = `
+        <div class="mb-2"><b>${esc(data.user || '(no auth)')}</b>
+          ${data.is_backup_admin ? '<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-[#8B5CF6]/15 text-[#8B5CF6] font-bold">BACKUP ADMIN</span>' : ''}
+          ${data.permissive_mode ? '<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-[#F59E0B]/15 text-[#F59E0B] font-bold">PERMISSIVE</span>' : ''}
+          ${!data.auth_enabled ? '<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-[#94A3B8]/20 text-[#64748B] font-bold">AUTH OFF</span>' : ''}
+        </div>`;
+      const rows = Object.entries(data.permissions || {}).map(([srv, p]) => {
+        const tierBadge = p.tier === 0
+          ? '<span class="px-1 py-0.5 rounded text-[9px] bg-[#DC2626]/15 text-[#DC2626] font-bold ml-1">T0</span>'
+          : (p.tier === 2 ? '<span class="px-1 py-0.5 rounded text-[9px] bg-[#94A3B8]/15 text-[#64748B] font-bold ml-1">T2</span>' : '');
+        const permClr = { admin: '#10B981', control: '#2563EB', view: '#6B7280', none: '#DC2626' }[p.permission] || '#6B7280';
+        return `<tr><td class="py-0.5 pr-3 font-mono">${esc(srv)}${tierBadge}</td><td style="color:${permClr}" class="font-bold">${esc(p.permission)}</td></tr>`;
+      }).join('');
+      div.innerHTML = head + (rows ? `<table class="text-[11px]"><tbody>${rows}</tbody></table>` : '<i>No servers configured</i>');
+
+      if (data.permissive_mode && data.auth_enabled) {
+        showBanner('No ACLs configured yet. Any authenticated user has full access (tier-0 servers excepted). Grant the first ACL to start enforcement.', 'warn');
+      } else {
+        showBanner('', null);
+      }
+    });
+  }
+
+  // ── /api/rbac/acl — list + revoke
+  function loadAcl() {
+    fetch('/api/rbac/acl').then(r => {
+      if (r.status === 403) {
+        document.getElementById('rbac-acl-list').innerHTML =
+          '<i>Only backup admins or wildcard admins can view ACLs.</i>';
+        return null;
+      }
+      return r.json();
+    }).then(data => {
+      if (!data) return;
+      const div = document.getElementById('rbac-acl-list');
+      if (!div) return;
+      if (!data.ok) { div.textContent = data.error || 'Failed'; return; }
+      if (!data.acl.length) { div.innerHTML = '<i>No ACLs yet — system is in permissive mode.</i>'; return; }
+      const rows = data.acl.map(r => {
+        return `<tr class="border-t border-[#E5E7EB] dark:border-[#334155]">
+          <td class="py-1.5 pr-3 font-mono">${esc(r.username)}</td>
+          <td class="py-1.5 pr-3 font-mono">${esc(r.server_name)}</td>
+          <td class="py-1.5 pr-3"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#2563EB]/10 text-[#2563EB]">${esc(r.permission)}</span></td>
+          <td class="py-1.5 pr-3 text-[10px]">${esc(r.granted_by)} · ${esc(r.granted_at)}</td>
+          <td class="py-1.5 text-right">
+            <button data-revoke-user="${esc(r.username)}" data-revoke-server="${esc(r.server_name)}"
+                    class="text-[#DC2626] hover:underline text-[11px]" aria-label="Revoke ACL">
+              Revoke
+            </button>
+          </td>
+        </tr>`;
+      }).join('');
+      div.innerHTML = `
+        <table class="w-full text-xs">
+          <thead><tr class="text-[10px] uppercase text-[#9CA3AF]">
+            <th class="text-left py-1 pr-3">User</th>
+            <th class="text-left py-1 pr-3">Server</th>
+            <th class="text-left py-1 pr-3">Perm</th>
+            <th class="text-left py-1 pr-3">Granted</th>
+            <th></th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+      div.querySelectorAll('[data-revoke-user]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const user = btn.getAttribute('data-revoke-user');
+          const srv = btn.getAttribute('data-revoke-server');
+          if (!await pConfirm(`Revoke '${user}' on '${srv}'?`)) return;
+          fetch('/api/rbac/revoke', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({ username: user, server_name: srv }),
+          }).then(r => r.json()).then(d => {
+            if (!d.ok) { showToast(d.error || 'Revoke failed', 'error'); return; }
+            loadAcl(); loadMe();
+          });
+        });
+      });
+    });
+  }
+
+  // ── /api/approvals — pending tier-0 requests
+  function loadApprovals() {
+    fetch('/api/approvals').then(r => r.json()).then(data => {
+      const div = document.getElementById('rbac-approvals-list');
+      if (!div) return;
+      if (!data.ok) { div.textContent = data.error || 'Failed'; return; }
+      if (!data.approvals.length) { div.innerHTML = '<i>No pending approvals.</i>'; return; }
+      div.innerHTML = data.approvals.map(a => `
+        <div class="flex items-center justify-between gap-3 py-2 border-b border-[#E5E7EB] dark:border-[#334155] last:border-0">
+          <div>
+            <div class="text-xs"><b>${esc(a.requested_by)}</b> wants <b class="text-[#F59E0B]">${esc(a.action)}</b> on <b>${esc(a.server_name)}</b></div>
+            <div class="text-[10px] text-[#9CA3AF]">Requested ${esc(a.requested_at)} · expires ${esc(a.expires_at)} · #${a.id}</div>
+          </div>
+          <div class="flex gap-1.5">
+            <button data-decide-id="${a.id}" data-decide-ok="1"
+                    class="px-3 py-1 text-[11px] rounded bg-[#10B981] text-white hover:opacity-90"
+                    aria-label="Approve request">Approve</button>
+            <button data-decide-id="${a.id}" data-decide-ok="0"
+                    class="px-3 py-1 text-[11px] rounded border border-[#DC2626] text-[#DC2626] hover:bg-[#DC2626]/10"
+                    aria-label="Reject request">Reject</button>
+          </div>
+        </div>
+      `).join('');
+      div.querySelectorAll('[data-decide-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-decide-id');
+          const approved = btn.getAttribute('data-decide-ok') === '1';
+          fetch('/api/approvals/' + encodeURIComponent(id) + '/decide', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({ approved }),
+          }).then(r => r.json()).then(d => {
+            if (!d.ok) { showToast(d.error || 'Decision failed', 'error'); return; }
+            loadApprovals();
+          });
+        });
+      });
+    });
+  }
+
+  // Grant button
+  document.getElementById('rbac-grant-btn')?.addEventListener('click', () => {
+    const user = document.getElementById('rbac-grant-user').value.trim();
+    const srv = document.getElementById('rbac-grant-server').value;
+    const perm = document.getElementById('rbac-grant-perm').value;
+    if (!user) { showToast('Username required', 'warn'); return; }
+    fetch('/api/rbac/grant', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify({ username: user, server_name: srv, permission: perm }),
+    }).then(r => r.json()).then(d => {
+      if (!d.ok) { showToast(d.error || 'Grant failed', 'error'); return; }
+      document.getElementById('rbac-grant-user').value = '';
+      loadAcl(); loadMe();
+    });
+  });
+
+  document.getElementById('rbac-refresh')?.addEventListener('click', () => {
+    loadMe(); loadAcl(); loadApprovals();
+  });
+
+  // Initial load + periodic refresh of approvals (they expire after 1h)
+  loadMe(); loadAcl(); loadApprovals();
+  setInterval(loadApprovals, 30000);
+})();
+</script>
+
+{% endblock %}

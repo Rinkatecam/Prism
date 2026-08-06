@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Test (hash-pinned install)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-py3.13-${{ hashFiles('requirements.lock') }}
+          restore-keys: |
+            pip-${{ runner.os }}-py3.13-
+
+      - name: Install runtime dependencies (hash-verified)
+        # --require-hashes refuses to install any package whose wheel/sdist hash
+        # is not listed in requirements.lock. This is the production install
+        # path; CI failure here means lock drift and must be fixed before merge.
+        # Note: pywin32 is sys_platform=='win32' only and is silently skipped on Linux runners.
+        run: pip install --require-hashes -r requirements.lock
+
+      - name: Install dev tools
+        run: pip install -r requirements-dev.txt
+
+      - name: Smoke import
+        run: python -c "import app; print('OK')"
+
+      - name: Run pytest
+        run: pytest
+
+  audit:
+    name: Dependency vulnerability audit
+    runs-on: ubuntu-latest
+    # Don't fail the build on findings yet — Sprint-3 hardens this to fail-on-Critical.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-py3.13-${{ hashFiles('requirements.lock') }}
+          restore-keys: |
+            pip-${{ runner.os }}-py3.13-
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Audit requirements.lock
+        # Print findings; do not fail. Hardening to "fail on Critical" is Sprint-3.
+        run: pip-audit -r requirements.lock --disable-pip || true

@@ -1,0 +1,117 @@
+{# Dashboard widget — Server Actions panel.
+
+   Shows every server currently undergoing an install or restart
+   lifecycle state. Empty body when nothing is happening (the parent
+   section auto-hides itself in dashboard.html via hx-on::after-swap).
+
+   The "Actions" panel sits ABOVE the Windows Updates panel because it
+   reflects work that's actively in flight RIGHT NOW. The Updates panel
+   below shows pending work (updates that need to be installed) and
+   doesn't always overlap — a server might have 23 pending updates and
+   no active install (shown only in Updates) or be mid-reboot with the
+   install already complete (shown only in Actions).
+#}
+{%- if items -%}
+<div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-sm font-semibold flex items-center gap-2">
+      <i data-lucide="activity" class="w-4 h-4 text-[#8B5CF6] dark:text-[#A78BFA]"></i>
+      {{ t.get('server_actions', 'Server Actions') }}
+      <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-[#8B5CF6]/10 text-[#8B5CF6] dark:bg-[#A78BFA]/20 dark:text-[#C4B5FD]">
+        {{ items | length }}
+      </span>
+    </h2>
+    <span class="text-[10px] text-[#9CA3AF]">
+      {{ t.get('actions_live', 'Live') }}
+    </span>
+  </div>
+
+  <div class="space-y-2">
+    {% for it in items %}
+    {#- Color + icon per status. Mirrors the badge classes in
+        partials/server_card.html so the dashboard visual language stays
+        consistent across the Actions panel and the server tiles. -#}
+    {%- set _status_color = {
+      'rebooting':        ('border-[#8B5CF6]/40 bg-[#8B5CF6]/5', '#8B5CF6'),
+      'stabilising':      ('border-[#10B981]/40 bg-[#10B981]/5', '#10B981'),
+      'restart_required': ('border-[#8B5CF6]/40 bg-[#8B5CF6]/5', '#8B5CF6'),
+      'installing':       ('border-[#F59E0B]/40 bg-[#F59E0B]/5', '#F59E0B'),
+      'downloading':      ('border-[#F59E0B]/40 bg-[#F59E0B]/5', '#F59E0B'),
+      'searching':        ('border-[#6366F1]/40 bg-[#6366F1]/5', '#6366F1'),
+      'queued':           ('border-[#6366F1]/40 bg-[#6366F1]/5', '#6366F1'),
+    } -%}
+    {%- set _color = _status_color.get(it.status, ('border-[#9CA3AF]/40 bg-[#9CA3AF]/5', '#9CA3AF')) -%}
+    {%- set _label = {
+      'rebooting':        t.get('action_rebooting',        'Rebooting'),
+      'stabilising':      t.get('action_stabilising',      'Stabilising'),
+      'restart_required': t.get('action_restart_required', 'Restart required'),
+      'installing':       t.get('action_installing',       'Installing'),
+      'downloading':      t.get('action_downloading',      'Downloading'),
+      'searching':        t.get('action_searching',        'Searching for updates'),
+      'queued':           t.get('action_queued',           'Queued'),
+    }.get(it.status, it.status) -%}
+
+    <a href="/server/{{ it.server_name }}"
+       class="flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] {{ _color[0] }}"
+       title="{{ it.message }}">
+      {#- Icon: spinner for in-progress states, rotate for rebooting,
+          check-circle for stabilising. Matches the server_card.html
+          icon choices so operators see the same visual cues. -#}
+      {%- if it.status == 'rebooting' -%}
+      <i data-lucide="rotate-cw" class="w-5 h-5 flex-shrink-0 animate-spin" style="color: {{ _color[1] }};"></i>
+      {%- elif it.status == 'stabilising' -%}
+      <i data-lucide="check-circle" class="w-5 h-5 flex-shrink-0" style="color: {{ _color[1] }};"></i>
+      {%- elif it.status == 'restart_required' -%}
+      <i data-lucide="alert-circle" class="w-5 h-5 flex-shrink-0" style="color: {{ _color[1] }};"></i>
+      {%- elif it.status in ('installing', 'downloading') -%}
+      <i data-lucide="loader" class="w-5 h-5 flex-shrink-0 animate-spin" style="color: {{ _color[1] }};"></i>
+      {%- elif it.status == 'searching' -%}
+      <i data-lucide="search" class="w-5 h-5 flex-shrink-0" style="color: {{ _color[1] }};"></i>
+      {%- else -%}
+      <i data-lucide="clock" class="w-5 h-5 flex-shrink-0" style="color: {{ _color[1] }};"></i>
+      {%- endif %}
+
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs font-semibold">{{ it.server_name }}</span>
+          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full"
+                style="background-color: {{ _color[1] }}1A; color: {{ _color[1] }};">
+            {{ _label }}
+          </span>
+          {#- Elapsed time chip — gives the operator a quick "is this
+              taking unusually long?" read. The 20-minute reboot janitor
+              and the 90-minute install stall guard fire at the limits
+              of these durations, so when this chip approaches them
+              that's the operator's cue to investigate. -#}
+          {%- if it.elapsed_s is not none and it.elapsed_s > 5 %}
+          <span class="text-[10px] text-[#9CA3AF] dark:text-[#64748B]">
+            {%- if it.elapsed_s < 60 %}{{ it.elapsed_s }}s
+            {%- elif it.elapsed_s < 3600 %}{{ (it.elapsed_s // 60) }}m
+            {%- else %}{{ (it.elapsed_s // 3600) }}h {{ ((it.elapsed_s % 3600) // 60) }}m
+            {%- endif %}
+          </span>
+          {%- endif %}
+          {%- if it.restart_after and it.status in ('installing', 'downloading', 'queued', 'searching') %}
+          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] rounded-full bg-[#E0E7FF] dark:bg-[#312E81]/40 text-[#3730A3] dark:text-[#A5B4FC]"
+                title="{{ t.get('auto_restart_armed_tip', 'Auto-restart is armed — server will reboot when install finishes.') }}">
+            <i data-lucide="rotate-cw" class="w-2.5 h-2.5"></i>
+            {{ t.get('auto_restart_label', 'auto-restart') }}
+          </span>
+          {%- endif %}
+        </div>
+        <div class="text-[11px] text-[#6B7280] dark:text-[#CBD5E1] mt-0.5 truncate">
+          {%- if it.message -%}
+          {{ it.message }}
+          {%- elif it.status == 'installing' and it.installed_count -%}
+          {{ t.get('action_installed_n', 'Installed') }} {{ it.installed_count }} {{ t.get('updates_lower', 'updates') }}
+          {%- else -%}
+          {{ t.get('click_details', 'Click for details') }}
+          {%- endif -%}
+        </div>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-[#9CA3AF] flex-shrink-0"></i>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{%- endif -%}

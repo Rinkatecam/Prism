@@ -1,0 +1,109 @@
+name: Verify Release Signatures
+
+# Sanity check: if the current ref points at (or is reachable from) a tag in
+# vX.Y.Z form, fetch the corresponding Sigstore signature from the published
+# release and run `cosign verify-blob` against the expected GitHub identity.
+#
+# This is a smoke test that the release workflow's outputs are still
+# verifiable — it protects against a future change that silently breaks the
+# verification path. It is a no-op when no matching tag is found, so PRs and
+# pre-tag pushes do not fail.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Spot-check signed release tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # we need tags
+
+      - name: Find a vX.Y.Z tag at HEAD (no-op if none)
+        id: tag
+        run: |
+          set -euo pipefail
+          # Match an exact tag at the current commit, prefer the most recent.
+          TAG="$(git tag --points-at HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1 || true)"
+          if [ -z "${TAG}" ]; then
+            echo "No vX.Y.Z tag at HEAD — nothing to verify."
+            echo "tag=" >> "$GITHUB_OUTPUT"
+          else
+            echo "Found tag: ${TAG}"
+            echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install cosign
+        if: steps.tag.outputs.tag != ''
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: "v2.2.4"
+
+      - name: Download release artifacts
+        if: steps.tag.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p _verify
+          cd _verify
+          # If the release isn't published yet (e.g. tag pushed but release job
+          # still running) gh will return non-zero. Treat that as a soft skip.
+          if ! gh release download "${TAG}" --repo "${GITHUB_REPOSITORY}" --pattern '*'; then
+            echo "Release ${TAG} not yet published — skipping verification."
+            echo "SKIP=1" >> "$GITHUB_ENV"
+          fi
+          ls -la
+
+      - name: Verify tarball signature (cosign verify-blob)
+        if: steps.tag.outputs.tag != '' && env.SKIP != '1'
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          cd _verify
+          VERSION="${TAG#v}"
+          TARBALL="prism-${TAG}.tar.gz"
+          IDENTITY="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@refs/tags/${TAG}"
+          ISSUER="https://token.actions.githubusercontent.com"
+          echo "Verifying ${TARBALL} against identity ${IDENTITY}"
+          cosign verify-blob \
+            --certificate "${TARBALL}.pem" \
+            --signature "${TARBALL}.sig" \
+            --certificate-identity "${IDENTITY}" \
+            --certificate-oidc-issuer "${ISSUER}" \
+            "${TARBALL}"
+          echo "OK: tarball signature verifies."
+
+      - name: Verify SHA256SUMS signature
+        if: steps.tag.outputs.tag != '' && env.SKIP != '1'
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          cd _verify
+          IDENTITY="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@refs/tags/${TAG}"
+          ISSUER="https://token.actions.githubusercontent.com"
+          cosign verify-blob \
+            --certificate "SHA256SUMS.pem" \
+            --signature "SHA256SUMS.sig" \
+            --certificate-identity "${IDENTITY}" \
+            --certificate-oidc-issuer "${ISSUER}" \
+            SHA256SUMS
+          echo "OK: SHA256SUMS signature verifies."
+
+      - name: Verify checksum matches tarball bytes
+        if: steps.tag.outputs.tag != '' && env.SKIP != '1'
+        run: |
+          set -euo pipefail
+          cd _verify
+          sha256sum -c SHA256SUMS
+          echo "OK: tarball SHA256 matches SHA256SUMS."

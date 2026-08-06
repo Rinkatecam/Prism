@@ -1,0 +1,13 @@
+flask==3.1.*
+flask-wtf>=1.2,<2.0
+flask-limiter>=3.0,<4.0
+pypsrp>=0.8,<1.0
+waitress==3.0.*
+cryptography>=42.0,<44.0
+ldap3>=2.9,<3.0
+reportlab>=4.0,<5.0
+# pywin32 is required only on Windows. Used for DPAPI key wrapping
+# (crypto_utils.py) so the Fernet key is bound to the running user account
+# rather than sitting on disk in plain text. Linux/macOS dev environments
+# fall back to the plain-text key automatically.
+pywin32>=306; sys_platform == 'win32'

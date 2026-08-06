@@ -1,0 +1,788 @@
+/* Prism - Custom Styles */
+
+/* Status colors as CSS custom properties */
+:root {
+  --color-healthy: #10B981;
+  --color-warning: #F59E0B;
+  --color-critical: #DC2626;
+  --color-offline: #9CA3AF;
+  --color-info: #2563EB;
+  --color-resolved: #10B981;
+
+  /* ── Brand palette ──
+     Violet base + turquoise accent, mirroring the aperture-ring logo and the
+     PRISM wordmark. These drive the app *chrome* (nav, focus, links, buttons,
+     top-strip) — the semantic status colours above are deliberately left alone
+     so healthy/warning/critical/info stay instantly legible. */
+  --brand-violet:         #7C3AED;
+  --brand-violet-lite:    #8B5CF6;
+  --brand-turquoise:      #2DD4BF;
+  --brand-turquoise-lite: #5EEAD4;
+  --brand-grad: linear-gradient(95deg, #7C3AED 0%, #8B5CF6 55%, #2DD4BF 100%);
+  --brand-violet-tint:    rgba(124, 58, 237, 0.08);
+  --brand-violet-tint-hover: rgba(124, 58, 237, 0.14);
+}
+
+.dark {
+  --color-warning: #FBBF24;
+  --color-critical: #EF4444;
+  --color-info: #3B82F6;
+
+  /* Brand lifts a step in dark mode for contrast against the slate canvas. */
+  --brand-violet:         #A78BFA;
+  --brand-violet-lite:    #C4B5FD;
+  --brand-turquoise:      #5EEAD4;
+  --brand-turquoise-lite: #99F6E4;
+  --brand-grad: linear-gradient(95deg, #A78BFA 0%, #B79CFA 55%, #5EEAD4 100%);
+  --brand-violet-tint:    rgba(167, 139, 250, 0.14);
+  --brand-violet-tint-hover: rgba(167, 139, 250, 0.22);
+}
+
+/* Status badge pill */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1.4;
+}
+.badge-healthy  { background: #D1FAE5; color: #065F46; }
+.badge-warning  { background: #FEF3C7; color: #92400E; }
+.badge-critical { background: #FEE2E2; color: #991B1B; }
+.badge-offline  { background: #F3F4F6; color: #4B5563; }
+.badge-resolved { background: #D1FAE5; color: #065F46; }
+.badge-info     { background: #DBEAFE; color: #1E40AF; }
+.badge-unknown  { background: #F3F4F6; color: #4B5563; }
+
+.dark .badge-healthy  { background: #064E3B; color: #6EE7B7; }
+.dark .badge-warning  { background: #78350F; color: #FCD34D; }
+.dark .badge-critical { background: #7F1D1D; color: #FCA5A5; }
+.dark .badge-offline  { background: #374151; color: #9CA3AF; }
+.dark .badge-resolved { background: #064E3B; color: #6EE7B7; }
+.dark .badge-info     { background: #1E3A5F; color: #93C5FD; }
+.dark .badge-unknown  { background: #374151; color: #9CA3AF; }
+
+.badge-anomaly  { background: #FEF3C7; color: #92400E; }
+.badge-rate_anomaly { background: #FFF7ED; color: #9A3412; }
+.badge-correlated { background: #EDE9FE; color: #6B21A8; }
+
+.dark .badge-anomaly  { background: #78350F; color: #FCD34D; }
+.dark .badge-rate_anomaly { background: #7C2D12; color: #FDBA74; }
+.dark .badge-correlated { background: #581C87; color: #C4B5FD; }
+
+/* Install / restart lifecycle badges. Colours pair with the left-border
+   accent on .server-card (see partials/server_card.html ``_install_border``
+   map). Three rough buckets:
+     * queued / searching     — indigo  ("not started yet, but pending")
+     * downloading / installing — amber  ("active work in progress")
+     * restart_required / rebooting — purple ("waiting on reboot")
+     * stabilising            — green  ("came back, settling")
+   The lifecycle is owned by routes/api/updates.py and the v2 aggregator;
+   the dashboard tile just renders whatever ``install_state.status`` carries.
+*/
+.badge-queued            { background: #EDE9FE; color: #4338CA; }
+.badge-searching         { background: #EDE9FE; color: #4338CA; }
+.badge-downloading       { background: #FEF3C7; color: #92400E; }
+.badge-installing        { background: #FEF3C7; color: #92400E; }
+.badge-restart_required  { background: #F3E8FF; color: #6B21A8; }
+.badge-rebooting         { background: #F3E8FF; color: #6B21A8; }
+.badge-stabilising       { background: #D1FAE5; color: #065F46; }
+
+.dark .badge-queued            { background: #312E81; color: #C7D2FE; }
+.dark .badge-searching         { background: #312E81; color: #C7D2FE; }
+.dark .badge-downloading       { background: #78350F; color: #FCD34D; }
+.dark .badge-installing        { background: #78350F; color: #FCD34D; }
+.dark .badge-restart_required  { background: #581C87; color: #C4B5FD; }
+.dark .badge-rebooting         { background: #581C87; color: #C4B5FD; }
+.dark .badge-stabilising       { background: #064E3B; color: #6EE7B7; }
+
+/* Progress bar */
+.metric-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: #E5E7EB;
+  overflow: hidden;
+}
+.dark .metric-bar {
+  background: #334155;
+}
+.metric-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+/* Server card hover */
+.server-card {
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.server-card:hover {
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  transform: translateY(-1px);
+}
+
+/* Status left border for issue cards */
+.border-status-critical { border-left: 4px solid var(--color-critical); }
+.border-status-warning  { border-left: 4px solid var(--color-warning); }
+.border-status-offline  { border-left: 4px solid var(--color-offline); }
+
+/* Timeline dot */
+.timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.timeline-dot-critical { background: var(--color-critical); }
+.timeline-dot-warning  { background: var(--color-warning); }
+.timeline-dot-resolved { background: var(--color-resolved); }
+.timeline-dot-info     { background: var(--color-info); }
+.timeline-dot-offline  { background: var(--color-offline); }
+
+/* Timeline dots for new event types */
+.timeline-dot-anomaly  { background: var(--color-warning); }
+.timeline-dot-rate_anomaly { background: #F97316; }
+.timeline-dot-correlated { background: #8B5CF6; }
+
+/* Metric number (monospace, large) */
+.metric-value {
+  font-size: 32px;
+  font-weight: 700;
+  font-family: ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, 'Courier New', monospace;
+  line-height: 1;
+}
+
+/* Smooth HTMX transitions */
+.htmx-swapping { opacity: 0; transition: opacity 0.1s ease; }
+.htmx-settling { opacity: 1; transition: opacity 0.2s ease; }
+
+/* Scrollbar styling — light mode */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #F1F5F9; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* Scrollbar styling — dark mode */
+.dark ::-webkit-scrollbar-track { background: #1E293B; }
+.dark ::-webkit-scrollbar-thumb { background: #475569; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #64748B; }
+
+/* Firefox scrollbar */
+* { scrollbar-width: thin; scrollbar-color: #CBD5E1 #F1F5F9; }
+.dark * { scrollbar-color: #475569 #1E293B; }
+
+/* Number input spinner arrows — dark mode fix */
+.dark input[type="number"]::-webkit-inner-spin-button,
+.dark input[type="number"]::-webkit-outer-spin-button {
+  filter: invert(1);
+}
+
+/* Select dropdown arrow — dark mode fix */
+.dark select {
+  color-scheme: dark;
+}
+
+/* ── Sidebar ── */
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: #6B7280;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.sidebar-link:hover {
+  background: #F1F5F9;
+  color: #1F2937;
+}
+.dark .sidebar-link {
+  color: #CBD5E1;
+}
+.dark .sidebar-link:hover {
+  background: #334155;
+  color: #F8FAFC;
+}
+.sidebar-link-active {
+  background: var(--brand-violet-tint);
+  color: var(--brand-violet);
+}
+.sidebar-link-active:hover {
+  background: var(--brand-violet-tint-hover);
+  color: var(--brand-violet);
+}
+.dark .sidebar-link-active {
+  background: var(--brand-violet-tint);
+  color: var(--brand-violet-lite);
+}
+.dark .sidebar-link-active:hover {
+  background: var(--brand-violet-tint-hover);
+  color: var(--brand-violet-lite);
+}
+/* Left accent bar — violet→turquoise, HUD-style, grows in on activation. */
+.sidebar-link { position: relative; }
+.sidebar-link-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 62%;
+  border-radius: 0 3px 3px 0;
+  background: var(--brand-grad);
+  box-shadow: 0 0 6px rgba(139, 92, 246, 0.45);
+}
+/* Collapsed rail centres icons, so anchor the accent bar to the edge only. */
+.sidebar-collapsed .sidebar-link-active::before { height: 50%; }
+
+/* Collapsed sidebar hides labels */
+.sidebar-collapsed .sidebar-label {
+  display: none;
+}
+.sidebar-expanded .sidebar-label {
+  display: inline;
+}
+
+/* Collapsed sidebar centers icons */
+.sidebar-collapsed .sidebar-link {
+  justify-content: center;
+  padding: 8px;
+}
+
+/* Bottom user row: username + collapse toggle sit inline when expanded; when
+   the rail collapses to 4rem they stack and centre so both still fit. */
+.sidebar-collapsed .user-row {
+  flex-direction: column;
+  gap: 4px;
+}
+.sidebar-collapsed .user-row .sidebar-link {
+  flex: none;
+}
+/* ── HTMX Error Banner ── */
+.htmx-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: sticky;
+  top: 56px; /* below the 14/h-14 topbar */
+  z-index: 35;
+  padding: 10px 16px;
+  background: #FEF3C7;
+  border-bottom: 1px solid #F59E0B;
+  color: #92400E;
+  font-size: 14px;
+  font-weight: 500;
+  margin-left: 0;
+}
+.dark .htmx-error-banner {
+  background: #78350F;
+  border-bottom-color: #FBBF24;
+  color: #FCD34D;
+}
+
+/* ── Breadcrumb ── */
+.breadcrumb {
+  max-width: 80rem; /* matches max-w-7xl */
+  margin: 0 auto;
+  padding: 12px 16px 0;
+  font-size: 13px;
+  color: #6B7280;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dark .breadcrumb {
+  color: #9CA3AF;
+}
+.breadcrumb a {
+  color: var(--brand-violet);
+  text-decoration: none;
+}
+.breadcrumb a:hover {
+  text-decoration: underline;
+}
+.dark .breadcrumb a {
+  color: var(--brand-violet-lite);
+}
+.breadcrumb .breadcrumb-sep {
+  color: #9CA3AF;
+  font-size: 11px;
+  user-select: none;
+}
+.dark .breadcrumb .breadcrumb-sep {
+  color: #6B7280;
+}
+
+.sidebar-collapsed nav {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+.sidebar-collapsed .border-t > .sidebar-link {
+  justify-content: center;
+  padding: 8px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Collector pulse widget — ECG-style topbar indicator.
+
+   Replaces the old wifi/wifi-off indicator. The widget consists of:
+     • a coloured dot reflecting overall fleet state
+     • a small Canvas2D strip scrolling left with beat spikes
+     • a fleet-up counter (e.g. "29/30")
+     • a dropdown panel on hover with per-server detail
+
+   See static/js/pulse-monitor.js for the rendering logic.
+   ───────────────────────────────────────────────────────────────────── */
+
+.collector-pulse {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+.collector-pulse:hover {
+  background-color: #F1F5F9;
+}
+.dark .collector-pulse:hover {
+  background-color: #334155;
+}
+
+.pulse-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #6B7280;
+  flex-shrink: 0;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+.pulse-dot--warming  { background-color: #8B5CF6; box-shadow: 0 0 6px rgba(139, 92, 246, 0.6); }
+.pulse-dot--healthy  { background-color: #10B981; box-shadow: 0 0 6px rgba(16, 185, 129, 0.6); }
+.pulse-dot--degraded { background-color: #F59E0B; box-shadow: 0 0 6px rgba(245, 158, 11, 0.7); }
+.pulse-dot--critical { background-color: #DC2626; box-shadow: 0 0 8px rgba(220, 38, 38, 0.8); animation: pulse-blink 1.2s ease-in-out infinite; }
+.pulse-dot--dead     { background-color: #6B7280; box-shadow: none; animation: pulse-blink 1.8s ease-in-out infinite; }
+
+@keyframes pulse-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+.pulse-canvas {
+  display: block;
+  border-radius: 3px;
+}
+
+.pulse-counter {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: #6B7280;
+  min-width: 38px;
+  text-align: right;
+}
+.dark .pulse-counter {
+  color: #CBD5E1;
+}
+
+/* Own error indicator — sibling of #collector-pulse, owned solely by
+   pulse-monitor.js. Kept separate from the shared #htmx-error-banner
+   because that banner is silenced by every successful HTMX swap and
+   would flicker against unrelated dashboard refreshes (audit H2). */
+.pulse-error {
+  display: none;
+  align-items: center;
+  color: #DC2626;
+  margin-left: 4px;
+  cursor: help;
+}
+.dark .pulse-error {
+  color: #F87171;
+}
+
+/* Reduced-motion: hide the live canvas entirely. The dot + counter still
+   convey state through colour + numbers. Per WCAG 2.3.3, users requesting
+   reduced motion expect NO continuous animation. */
+@media (prefers-reduced-motion: reduce) {
+  .pulse-canvas { display: none; }
+  .pulse-dot--critical, .pulse-dot--dead { animation: none; }
+}
+
+/* ── Hover dropdown panel ───────────────────────────────────────────── */
+
+.pulse-panel {
+  position: fixed;
+  top: 56px;           /* directly under the 56px (h-14) topbar */
+  right: 12px;
+  width: 480px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.06);
+  padding: 12px 14px;
+  z-index: 50;
+  font-size: 12px;
+  color: #1F2937;
+  animation: pulse-panel-in 0.15s ease-out;
+}
+.dark .pulse-panel {
+  background: #1E293B;
+  border-color: #334155;
+  color: #F8FAFC;
+}
+
+@keyframes pulse-panel-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse-panel { animation: none; }
+}
+
+.pulse-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #E5E7EB;
+}
+.dark .pulse-panel-head {
+  border-bottom-color: #334155;
+}
+
+.pulse-panel-title {
+  font-weight: 600;
+  font-size: 13px;
+}
+.pulse-panel-title--healthy  { color: #059669; }
+.pulse-panel-title--degraded { color: #D97706; }
+.pulse-panel-title--critical { color: #DC2626; }
+.pulse-panel-title--dead     { color: #6B7280; }
+.pulse-panel-title--warming  { color: #7C3AED; }
+.dark .pulse-panel-title--healthy  { color: #34D399; }
+.dark .pulse-panel-title--degraded { color: #FBBF24; }
+.dark .pulse-panel-title--critical { color: #F87171; }
+.dark .pulse-panel-title--dead     { color: #9CA3AF; }
+.dark .pulse-panel-title--warming  { color: #A78BFA; }
+
+.pulse-panel-bpm {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: #6B7280;
+}
+.dark .pulse-panel-bpm {
+  color: #CBD5E1;
+}
+
+.pulse-section {
+  margin-bottom: 10px;
+}
+.pulse-section:last-of-type { margin-bottom: 4px; }
+
+.pulse-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #6B7280;
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.dark .pulse-section-label {
+  color: #94A3B8;
+}
+
+.pulse-section-count {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 500;
+}
+
+.pulse-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.pulse-row:hover {
+  background-color: #F9FAFB;
+}
+.dark .pulse-row:hover {
+  background-color: #334155;
+}
+
+.pulse-row--empty {
+  color: #9CA3AF;
+  font-style: italic;
+  justify-content: center;
+}
+.pulse-row--fail .pulse-meta {
+  color: #DC2626;
+}
+.dark .pulse-row--fail .pulse-meta {
+  color: #F87171;
+}
+.pulse-row--ok .pulse-meta {
+  color: #059669;
+}
+.dark .pulse-row--ok .pulse-meta {
+  color: #34D399;
+}
+
+.pulse-srv {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 500;
+}
+
+.pulse-meta {
+  color: #6B7280;
+  font-size: 10.5px;
+}
+.dark .pulse-meta {
+  color: #CBD5E1;
+}
+
+.pulse-section--subs {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #E5E7EB;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+}
+.dark .pulse-section--subs {
+  border-top-color: #334155;
+}
+
+.pulse-sub {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+.pulse-sub--ok   { color: #059669; }
+.pulse-sub--fail { color: #DC2626; }
+.dark .pulse-sub--ok   { color: #34D399; }
+.dark .pulse-sub--fail { color: #F87171; }
+
+.pulse-cta {
+  display: block;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #E5E7EB;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--brand-violet);
+  text-decoration: none;
+}
+.pulse-cta:hover {
+  color: var(--brand-violet-lite);
+  text-decoration: underline;
+}
+.dark .pulse-cta {
+  border-top-color: #334155;
+  color: var(--brand-violet-lite);
+}
+.dark .pulse-cta:hover {
+  color: var(--brand-turquoise-lite);
+}
+
+/* ── Accessibility: a single global keyboard-focus ring ──
+   The app had zero :focus styles, so keyboard users had no idea where they
+   were. :focus-visible only shows the ring for keyboard (not mouse) focus. */
+:focus-visible {
+  outline: 2px solid var(--brand-violet);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+/* Never suppress the ring on interactive elements. */
+a:focus-visible, button:focus-visible, [role="button"]:focus-visible,
+input:focus-visible, select:focus-visible, textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--brand-violet);
+  outline-offset: 2px;
+}
+
+/* ── Print: strip chrome so Reports / Compliance docs print clean ── */
+@media print {
+  .sidebar, #sidebar, nav[aria-label], .topbar, #topbar,
+  .pulse-widget, #pulse-widget, .no-print { display: none !important; }
+  main, .main-content, #main-content { margin-left: 0 !important; width: 100% !important; }
+  body { background: #fff !important; color: #000 !important; }
+}
+
+/* ── Mobile off-canvas sidebar (responsive nav) ──
+   Below md the fixed 14rem sidebar slides off-canvas and the content reclaims
+   the full width; the topbar toggle opens it over a backdrop. Desktop layout
+   (width-based collapse) is untouched. */
+#sidebar-backdrop { display: none; }
+@media (max-width: 767px) {
+  #main-content { margin-left: 0 !important; }
+  #sidebar { transform: translateX(-100%); }
+  #sidebar.sidebar-mobile-open { transform: translateX(0); box-shadow: 0 10px 40px rgba(0,0,0,0.45); }
+  #sidebar-backdrop {
+    position: fixed; inset: 3.5rem 0 0 0; z-index: 40;
+    background: rgba(0,0,0,0.4);
+  }
+  #sidebar-backdrop.open { display: block; }
+  /* The off-canvas panel is always the full labelled nav on mobile, never the
+     desktop icon-only collapse (which localStorage may have left applied). */
+  #sidebar { width: 14rem !important; }
+  #sidebar .sidebar-label { display: inline !important; opacity: 1 !important; }
+  #sidebar .sidebar-link { justify-content: flex-start !important; }
+}
+@media (min-width: 768px) {
+  #sidebar { transform: none !important; }   /* never off-canvas on desktop */
+  #sidebar-backdrop { display: none !important; }
+}
+
+/* ── Prism wordmark ─────────────────────────────────────────────────────────
+   Chakra Petch (vendored, OFL) — violet base with a turquoise highlight
+   accent at the tail, mirroring the logo's purple ring + cyan arcs. */
+@font-face {
+  font-family: 'Chakra Petch';
+  src: url('/static/vendor/fonts/chakra-petch-600.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+.prism-wordmark {
+  font-family: 'Chakra Petch', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #8B5CF6; /* fallback where background-clip:text is unsupported */
+  background: linear-gradient(95deg, #7C3AED 0%, #8B5CF6 58%, #2DD4BF 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.dark .prism-wordmark {
+  color: #A78BFA;
+  background: linear-gradient(95deg, #A78BFA 0%, #B79CFA 55%, #5EEAD4 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ── Nav labels in the brand font (Chakra Petch Medium) ───────────────────── */
+@font-face {
+  font-family: 'Chakra Petch';
+  src: url('/static/vendor/fonts/chakra-petch-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+.sidebar-link {
+  font-family: 'Chakra Petch', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  letter-spacing: 0.015em;
+}
+
+/* ── Top strip (topbar + sidebar header): soft elevation, rounded controls,
+      and a violet→turquoise hairline accent that flows across the whole strip
+      (violet under the logo, dissolving into turquoise across the bar). ──── */
+/* NB: do NOT set position here — #topbar carries Tailwind's `.fixed`, and an ID
+   selector would override it (un-sticking the bar). `position: fixed` is itself
+   a positioned ancestor, so the ::after accent anchors to it correctly. */
+#topbar {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+.dark #topbar {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.40);
+  border-color: #334155;
+}
+/* Violet→turquoise accent hairline under the bar: strong violet under the logo
+   on the left, sliding into turquoise, then dissolving so the right side (pulse
+   widget + controls) stays clean. Where it fades, the neutral border shows. */
+#topbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.55) 0%, rgba(139, 92, 246, 0.45) 9%, rgba(45, 212, 191, 0.34) 24%, transparent 58%);
+}
+.dark #topbar::after {
+  background: linear-gradient(90deg, rgba(167, 139, 250, 0.70) 0%, rgba(139, 92, 246, 0.55) 9%, rgba(94, 234, 212, 0.40) 24%, transparent 58%);
+}
+/* interactive controls in the top bar → consistent rounded-lg corners */
+#topbar button {
+  border-radius: 0.5rem;
+}
+
+/* ── Brand primary button ──
+   Violet→turquoise gradient with a lift + glow on hover. Used on the brand-
+   forward auth screens (login / setup); reusable anywhere a primary CTA should
+   read as "Prism" rather than generic blue. */
+.btn-brand {
+  background-image: var(--brand-grad);
+  color: #fff;
+  border: none;
+  transition: filter 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-brand:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.32);
+}
+.btn-brand:active {
+  transform: translateY(0);
+  filter: brightness(0.98);
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.25);
+}
+
+/* ── Nav hover micro-motion ──
+   Inactive links nudge right on hover (HUD feel). Active links hold still —
+   their accent bar already marks them. */
+.sidebar-link {
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.sidebar-link:not(.sidebar-link-active):hover {
+  transform: translateX(2px);
+}
+
+/* Scrollbar thumb picks up a faint violet on hover to match the chrome. */
+::-webkit-scrollbar-thumb:hover { background: #B4A0E8; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #7E6BB0; }
+
+/* Honour reduced-motion for every transform/lift added in this round. */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-link:not(.sidebar-link-active):hover,
+  .btn-brand:hover,
+  .btn-brand:active { transform: none; }
+}
+
+/* ── "All systems healthy" banner, once dismissed ──────────────────────────
+   The banner lives in a partial swapped with hx-swap="morph:innerHTML" on
+   every prismRefresh (~5s under collector v2). Hiding it from JS after the
+   swap is always one paint too late: the morph inserts a fresh, visible node
+   and the handler only hides it on htmx:afterSettle — measured as
+   display:flex at settle, then none milliseconds later, i.e. a flash on
+   every poll on a fleet that had been clean for hours.
+
+   The dismissal therefore has to be expressed in CSS, keyed off a class on
+   <body> — an element morph never replaces, since the swaps target inner
+   containers. Style resolution runs before paint, so a newly-inserted banner
+   is hidden the instant it lands, with no timing dependency at all. */
+body.healthy-dismissed #healthy-banner { display: none !important; }

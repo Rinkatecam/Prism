@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+{% block title %}{{ t.get('compliance', 'Compliance') }} — Prism{% endblock %}
+
+{% block content %}
+<div class="p-6 max-w-7xl mx-auto space-y-6">
+
+  <!-- Header -->
+  <div class="flex items-start justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-[#111827] dark:text-[#F9FAFB] flex items-center gap-2">
+        <i data-lucide="clipboard-check" class="w-6 h-6 text-[#8B5CF6]"></i>
+        {{ t.get('compliance_dashboard', 'Compliance Dashboard') }}
+      </h1>
+      <p class="text-sm text-[#6B7280] dark:text-[#CBD5E1] mt-1">
+        {{ t.get('compliance_subtitle', 'GAMP 5 CSV operational status — SOPs, audit chain, findings.') }}
+      </p>
+    </div>
+    <div class="flex gap-2">
+      <span class="text-xs text-[#6B7280] dark:text-[#9CA3AF]">
+        {{ t.get('csv_docs_at', 'CSV docs at') }}
+        <code class="bg-[#F3F4F6] dark:bg-[#0F172A] px-1.5 py-0.5 rounded">docs/csv/</code>
+      </span>
+    </div>
+  </div>
+
+  <!-- Readiness gauge + audit telemetry + findings tile -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+    <!-- Readiness card -->
+    <div id="readiness-card" class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4">
+      <div class="text-xs font-semibold uppercase tracking-wide text-[#6B7280] dark:text-[#9CA3AF] mb-2">
+        {{ t.get('overall_readiness', 'Overall readiness') }}
+      </div>
+      <div id="readiness-status" class="text-2xl font-bold text-[#10B981]">
+        <span class="opacity-50">{{ t.get('loading', 'Loading…') }}</span>
+      </div>
+      <div id="readiness-breakdown" class="mt-3 grid grid-cols-4 gap-2 text-xs">
+        <!-- filled by JS -->
+      </div>
+    </div>
+
+    <!-- Audit telemetry card -->
+    <div id="audit-card" class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4">
+      <div class="text-xs font-semibold uppercase tracking-wide text-[#6B7280] dark:text-[#9CA3AF] mb-2">
+        {{ t.get('audit_telemetry', 'Audit telemetry') }}
+      </div>
+      <div id="audit-blind" class="text-sm font-medium">
+        <span class="opacity-50">{{ t.get('loading', 'Loading…') }}</span>
+      </div>
+      <div id="audit-chain" class="text-xs text-[#6B7280] dark:text-[#9CA3AF] mt-2">
+        <!-- chain status -->
+      </div>
+    </div>
+
+    <!-- Findings tile -->
+    <a id="findings-card" href="/compliance/doc/CSV-17"
+       class="block bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4 hover:border-[#8B5CF6] transition-colors">
+      <div class="text-xs font-semibold uppercase tracking-wide text-[#6B7280] dark:text-[#9CA3AF] mb-2 flex items-center justify-between">
+        <span>{{ t.get('findings_register', 'Findings register') }}</span>
+        <i data-lucide="external-link" class="w-3 h-3"></i>
+      </div>
+      <div id="findings-status" class="text-2xl font-bold text-[#10B981]">
+        <span class="opacity-50">{{ t.get('loading', 'Loading…') }}</span>
+      </div>
+      <div id="findings-breakdown" class="mt-3 grid grid-cols-3 gap-2 text-xs"></div>
+    </a>
+  </div>
+
+  <!-- SOP cards -->
+  <div>
+    <h2 class="text-sm font-semibold text-[#111827] dark:text-[#F9FAFB] uppercase tracking-wide mb-3">
+      {{ t.get('standard_operating_procedures', 'Standard Operating Procedures') }}
+    </h2>
+    <div id="sop-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <!-- filled by JS -->
+      <div class="text-sm text-[#6B7280] dark:text-[#9CA3AF]">{{ t.get('loading', 'Loading…') }}</div>
+    </div>
+  </div>
+
+  <!-- CSV documentation index -->
+  <div>
+    <h2 class="text-sm font-semibold text-[#111827] dark:text-[#F9FAFB] uppercase tracking-wide mb-3">
+      {{ t.get('csv_documentation', 'CSV Documentation') }}
+    </h2>
+    <div id="csv-doc-index" class="space-y-4">
+      <div class="text-sm text-[#6B7280] dark:text-[#9CA3AF]">{{ t.get('loading', 'Loading…') }}</div>
+    </div>
+  </div>
+
+</div>
+
+<script nonce="{{ csp_nonce }}">
+(function() {
+  // ── Translations available to the JS — kept tiny + read from the
+  // server-side t dict via inline injection. Keeps the SOP cards
+  // operator-language-aware without an extra round-trip.
+  const T = {
+    open: {{ t.get('open', 'Open') | tojson }},
+    record_execution: {{ t.get('record_execution', 'Record execution') | tojson }},
+    last_run: {{ t.get('last_run', 'Last run') | tojson }},
+    next_due: {{ t.get('next_due', 'Next due') | tojson }},
+    never: {{ t.get('never_run', 'Never') | tojson }},
+    cadence_none: {{ t.get('cadence_none', 'Per-event (no fixed cadence)') | tojson }},
+    days_overdue: {{ t.get('days_overdue', 'days overdue') | tojson }},
+    status_current: {{ t.get('status_current', 'Current') | tojson }},
+    status_due_soon: {{ t.get('status_due_soon', 'Due soon') | tojson }},
+    status_overdue: {{ t.get('status_overdue', 'OVERDUE') | tojson }},
+    status_never: {{ t.get('status_never_label', 'Never executed') | tojson }},
+    status_n_a: {{ t.get('status_n_a', 'Per-event') | tojson }},
+  };
+
+  function statusBadge(status) {
+    const map = {
+      current:   { c: '#10B981', t: T.status_current },
+      due_soon:  { c: '#F59E0B', t: T.status_due_soon },
+      overdue:   { c: '#DC2626', t: T.status_overdue },
+      never:     { c: '#DC2626', t: T.status_never },
+      n_a:       { c: '#6B7280', t: T.status_n_a },
+    };
+    const e = map[status] || map.n_a;
+    return `<span style="background:${e.c}15;color:${e.c};border:1px solid ${e.c}40" class="px-2 py-0.5 rounded text-xs font-medium">${e.t}</span>`;
+  }
+
+  function fmtTs(iso) {
+    if (!iso || iso === '(never)') return T.never;
+    try { return new Date(iso).toLocaleString(); } catch (e) { return iso; }
+  }
+
+  async function load() {
+    try {
+      const r = await fetch('/api/system/csv-status', { credentials: 'same-origin' });
+      if (!r.ok) throw new Error('http ' + r.status);
+      const data = await r.json();
+      paint(data);
+    } catch (e) {
+      document.getElementById('readiness-status').textContent = 'Error loading';
+    }
+    // Doc index is a separate endpoint — load it in parallel.
+    loadDocIndex();
+  }
+
+  async function loadDocIndex() {
+    try {
+      const r = await fetch('/api/csv-doc', { credentials: 'same-origin' });
+      if (!r.ok) throw new Error('http ' + r.status);
+      const data = await r.json();
+      paintDocIndex(data.by_category || {});
+    } catch (e) {
+      document.getElementById('csv-doc-index').innerHTML =
+        '<div class="text-sm text-[#DC2626]">Failed to load docs</div>';
+    }
+  }
+
+  function paint(data) {
+    // Readiness card
+    const rd = data.readiness;
+    const ok = rd.ok;
+    const statusEl = document.getElementById('readiness-status');
+    statusEl.textContent = ok
+      ? `OK — ${rd.current} of ${rd.total} SOPs current`
+      : `Attention — ${rd.overdue} overdue, ${rd.never} never run`;
+    statusEl.className = 'text-2xl font-bold ' + (ok ? 'text-[#10B981]' : 'text-[#DC2626]');
+
+    const br = document.getElementById('readiness-breakdown');
+    br.innerHTML = `
+      <div class="text-center"><div class="text-lg font-semibold text-[#10B981]">${rd.current}</div><div class="text-[#6B7280]">${T.status_current}</div></div>
+      <div class="text-center"><div class="text-lg font-semibold text-[#F59E0B]">${rd.due_soon}</div><div class="text-[#6B7280]">${T.status_due_soon}</div></div>
+      <div class="text-center"><div class="text-lg font-semibold text-[#DC2626]">${rd.overdue}</div><div class="text-[#6B7280]">${T.status_overdue}</div></div>
+      <div class="text-center"><div class="text-lg font-semibold text-[#6B7280]">${rd.n_a}</div><div class="text-[#6B7280]">${T.status_n_a}</div></div>`;
+
+    // Audit telemetry
+    const a = data.audit || {};
+    const blindEl = document.getElementById('audit-blind');
+    if (a.audit_blind) {
+      blindEl.innerHTML = `<span class="text-[#DC2626] font-bold">⚠ AUDIT BLIND — ${a.insert_failures} insert / ${a.mirror_failures} mirror failures</span>`;
+    } else {
+      blindEl.innerHTML = '<span class="text-[#10B981] font-medium">✓ Audit subsystem healthy (0 failures)</span>';
+    }
+    const chainEl = document.getElementById('audit-chain');
+    if (a.last_chain_check) {
+      const age = a.last_chain_check.ts ? Math.max(0, Math.floor(Date.now()/1000 - a.last_chain_check.ts)) : null;
+      const ago = age != null ? (age < 60 ? `${age}s ago` : `${Math.floor(age/60)} min ago`) : '(unknown)';
+      const ok = a.last_chain_check.ok ? '✓ chain verified' : '⚠ CHAIN BROKEN: ' + (a.last_chain_check.first_break_reason || '');
+      chainEl.textContent = `Last chain check: ${ago} — ${ok} (checked ${a.last_chain_check.checked} rows)`;
+    } else {
+      chainEl.textContent = 'Audit chain verifier has not yet run — checks back hourly.';
+    }
+
+    // Findings tile
+    const f = data.findings || {};
+    const fs = document.getElementById('findings-status');
+    if (f.total != null) {
+      const open = f.open != null ? f.open : 0;
+      fs.textContent = (open === 0)
+        ? `OK — ${f.closed}+${f.risk_accepted} of ${f.total} disposed`
+        : `Open: ${open} of ${f.total}`;
+      fs.className = 'text-2xl font-bold ' + (open === 0 ? 'text-[#10B981]' : 'text-[#DC2626]');
+      document.getElementById('findings-breakdown').innerHTML = `
+        <div class="text-center"><div class="text-lg font-semibold text-[#10B981]">${f.closed}</div><div class="text-[#6B7280]">Closed</div></div>
+        <div class="text-center"><div class="text-lg font-semibold text-[#F59E0B]">${f.risk_accepted}</div><div class="text-[#6B7280]">Accepted</div></div>
+        <div class="text-center"><div class="text-lg font-semibold text-[#DC2626]">${f.open}</div><div class="text-[#6B7280]">Open</div></div>`;
+    } else {
+      fs.textContent = '(see CSV-17)';
+      fs.className = 'text-sm font-medium text-[#6B7280]';
+    }
+
+    // SOP cards
+    const grid = document.getElementById('sop-grid');
+    grid.innerHTML = '';
+    for (const s of data.sops) {
+      const card = document.createElement('div');
+      card.className = 'bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-3 flex flex-col gap-2';
+      const cadence = s.cadence_days ? `${s.cadence_days} d cadence` : T.cadence_none;
+      const overdueMsg = s.days_overdue > 0 ? `<span class="text-[#DC2626] text-xs">${s.days_overdue} ${T.days_overdue}</span>` : '';
+      card.innerHTML = `
+        <div class="flex items-start justify-between gap-2">
+          <div class="font-semibold text-sm text-[#111827] dark:text-[#F9FAFB]">${s.id} — ${s.title}</div>
+          ${statusBadge(s.status)}
+        </div>
+        <div class="text-xs text-[#6B7280] dark:text-[#9CA3AF]">${s.purpose}</div>
+        <div class="text-xs text-[#6B7280] dark:text-[#9CA3AF]">${cadence} · Owner: ${s.owner_role}</div>
+        <div class="text-xs text-[#6B7280] dark:text-[#9CA3AF]">
+          ${T.last_run}: ${fmtTs(s.last_executed_at)}
+          ${s.next_due_at ? ` · ${T.next_due}: ${fmtTs(s.next_due_at)}` : ''}
+          ${overdueMsg ? '· ' + overdueMsg : ''}
+        </div>
+        <div class="flex gap-2 mt-1">
+          <a href="/compliance/sop/${s.id}" class="text-xs px-2 py-1 rounded bg-[#8B5CF6] text-white hover:opacity-90 inline-flex items-center gap-1">
+            <i data-lucide="external-link" class="w-3 h-3"></i> ${T.open}
+          </a>
+        </div>`;
+      grid.appendChild(card);
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+
+  function paintDocIndex(byCategory) {
+    const container = document.getElementById('csv-doc-index');
+    container.innerHTML = '';
+    const categoryTitles = {
+      report: 'Reports',
+      spec: 'Specification (V-model left side)',
+      risk: 'Risk',
+      verification: 'Verification (V-model right side)',
+      trace: 'Traceability',
+      data_integrity: 'Data integrity & audit',
+      process: 'Process & governance',
+      appendix: 'Reference appendices',
+    };
+    for (const [cat, docs] of Object.entries(byCategory)) {
+      if (!docs.length) continue;
+      const section = document.createElement('div');
+      section.className = 'bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] overflow-hidden';
+      section.innerHTML = `
+        <div class="px-4 py-2 border-b border-[#E5E7EB] dark:border-[#334155] text-xs font-semibold uppercase tracking-wide text-[#6B7280] dark:text-[#9CA3AF]">${categoryTitles[cat] || cat}</div>
+        <ul class="divide-y divide-[#E5E7EB] dark:divide-[#334155]">
+          ${docs.map(d => `
+            <li>
+              <a href="/compliance/doc/${d.id}" class="flex items-start justify-between gap-3 px-4 py-2.5 hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] transition-colors">
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-[#111827] dark:text-[#F9FAFB]">
+                    <span class="font-mono text-xs text-[#6B7280] dark:text-[#9CA3AF]">${d.id}</span>
+                    &nbsp;${d.title}
+                  </div>
+                  <div class="text-xs text-[#6B7280] dark:text-[#9CA3AF] truncate">${d.short_desc}</div>
+                </div>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-[#9CA3AF] flex-shrink-0 mt-0.5"></i>
+              </a>
+            </li>`).join('')}
+        </ul>`;
+      container.appendChild(section);
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+
+  document.addEventListener('DOMContentLoaded', load);
+})();
+</script>
+{% endblock %}

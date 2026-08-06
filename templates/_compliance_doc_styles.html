@@ -1,0 +1,528 @@
+{# Shared prose CSS for compliance_sop.html and compliance_doc.html.
+   Kept in a partial so both pages render identically — drift between
+   the two stylesheets was an explicit pain-point pre-Wave-B.
+
+   Design notes:
+     * ``.doc-prose`` is the article wrapper. All selectors below are
+       scoped under it (rather than per-page #sop-body / #doc-body) so
+       the partial can drop into any future doc page without rewiring.
+     * Pygments classes (``.k``, ``.s2`` etc.) are styled minimally —
+       enough for keywords / strings / comments to read distinctly,
+       but no rainbow. Reads well in both light and dark mode.
+     * Tables get zebra-striping + a sticky header that's useful for
+       the 30-row traceability matrix and the 23-row CSV-doc index.
+     * Callouts (``.callout-note``, ``-tip``, ``-warning``, …) pick up
+       colour-coded left-borders and a tinted background so an
+       operator skimming a SOP sees "Warning:" before they read it.
+#}
+<style nonce="{{ csp_nonce }}">
+  /* ── article container ────────────────────────────────────────── */
+  .doc-prose {
+    font-size: 0.9rem;
+    line-height: 1.65;
+    color: #1F2937;
+    max-width: 75ch;
+  }
+  .dark .doc-prose { color: #E5E7EB; }
+  .doc-prose > *:first-child { margin-top: 0; }
+  .doc-prose > *:last-child { margin-bottom: 0; }
+
+  /* Lead paragraph — bigger and grey for the first paragraph after H1. */
+  .doc-prose h1 + p {
+    font-size: 1rem;
+    color: #4B5563;
+    line-height: 1.7;
+  }
+  .dark .doc-prose h1 + p { color: #9CA3AF; }
+
+  /* ── headings ─────────────────────────────────────────────────── */
+  .doc-prose h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0 0 1rem;
+    color: #111827;
+    border-bottom: 1px solid #E5E7EB;
+    padding-bottom: 0.5rem;
+    letter-spacing: -0.01em;
+  }
+  .dark .doc-prose h1 { color: #F9FAFB; border-bottom-color: #334155; }
+  .doc-prose h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 1.75rem 0 0.75rem;
+    color: #111827;
+    scroll-margin-top: 5rem;  /* so anchor jumps don't hide under the topbar */
+    letter-spacing: -0.005em;
+  }
+  .dark .doc-prose h2 { color: #F9FAFB; }
+  .doc-prose h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 1.25rem 0 0.5rem;
+    color: #1F2937;
+    scroll-margin-top: 5rem;
+  }
+  .dark .doc-prose h3 { color: #E5E7EB; }
+  .doc-prose h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 1rem 0 0.5rem;
+    color: #374151;
+    scroll-margin-top: 5rem;
+  }
+  .dark .doc-prose h4 { color: #D1D5DB; }
+
+  /* Anchor "#" that appears on hover — clickable copy-link affordance. */
+  .doc-prose .doc-anchor {
+    margin-left: 0.5rem;
+    color: #9CA3AF;
+    text-decoration: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    font-weight: 400;
+  }
+  .doc-prose h2:hover .doc-anchor,
+  .doc-prose h3:hover .doc-anchor,
+  .doc-prose h4:hover .doc-anchor { opacity: 1; }
+  .doc-prose .doc-anchor:hover { color: #8B5CF6; }
+
+  /* ── prose elements ──────────────────────────────────────────── */
+  .doc-prose p { margin: 0.6rem 0; }
+  .doc-prose ul, .doc-prose ol {
+    padding-left: 1.5rem;
+    margin: 0.6rem 0;
+  }
+  .doc-prose li { margin: 0.2rem 0; }
+  .doc-prose li > p { margin: 0.2rem 0; }
+  .doc-prose strong { font-weight: 600; color: #111827; }
+  .dark .doc-prose strong { color: #F9FAFB; }
+  .doc-prose em { font-style: italic; color: #4B5563; }
+  .dark .doc-prose em { color: #9CA3AF; }
+  .doc-prose hr {
+    border: 0;
+    border-top: 1px solid #E5E7EB;
+    margin: 1.5rem 0;
+  }
+  .dark .doc-prose hr { border-top-color: #334155; }
+  .doc-prose a { color: #2563EB; text-decoration: underline; }
+  .doc-prose a:hover { color: #1D4ED8; }
+  .dark .doc-prose a { color: #60A5FA; }
+  .dark .doc-prose a:hover { color: #93C5FD; }
+
+  /* ── inline code ─────────────────────────────────────────────── */
+  .doc-prose code {
+    background: #F3F4F6;
+    color: #6B21A8;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  }
+  .dark .doc-prose code {
+    background: #0F172A;
+    color: #C4B5FD;
+  }
+
+  /* ── code blocks (pygments-highlighted) ──────────────────────── */
+  .doc-prose pre.doc-code {
+    background: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    padding: 0.9rem 1rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 0.8rem 0;
+    position: relative;
+    font-size: 0.85rem;
+    line-height: 1.55;
+  }
+  .dark .doc-prose pre.doc-code {
+    background: #0F172A;
+    border-color: #334155;
+  }
+  .doc-prose pre.doc-code code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    font-size: 0.85rem;
+    border-radius: 0;
+  }
+  /* Language label in the top-right corner. */
+  .doc-prose pre.doc-code[data-lang]:not([data-lang=""])::before {
+    content: attr(data-lang);
+    position: absolute;
+    top: 0.4rem;
+    right: 2.6rem;
+    font-size: 0.65rem;
+    color: #9CA3AF;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  /* Copy button — JS attaches it to every pre.doc-code on render. */
+  .doc-prose pre.doc-code .code-copy {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.45rem;
+    background: rgba(139, 92, 246, 0.1);
+    color: #8B5CF6;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  .doc-prose pre.doc-code .code-copy:hover {
+    background: rgba(139, 92, 246, 0.2);
+  }
+
+  /* ── pygments token colours ──────────────────────────────────── */
+  /* A minimal, dual-mode palette. Light = "GitHub-ish", dark = a
+     low-saturation variant. Class names follow pygments' standard
+     short tokens (k=keyword, s=string, c=comment, …). */
+  .doc-prose .doc-code .k,   /* keyword */
+  .doc-prose .doc-code .kn,
+  .doc-prose .doc-code .kc,
+  .doc-prose .doc-code .kd   { color: #D946EF; font-weight: 600; }
+  .doc-prose .doc-code .s,   /* string */
+  .doc-prose .doc-code .s1,
+  .doc-prose .doc-code .s2,
+  .doc-prose .doc-code .sb   { color: #16A34A; }
+  .doc-prose .doc-code .c,   /* comment */
+  .doc-prose .doc-code .c1,
+  .doc-prose .doc-code .cm   { color: #6B7280; font-style: italic; }
+  .doc-prose .doc-code .nb,  /* builtin */
+  .doc-prose .doc-code .nf,  /* function name */
+  .doc-prose .doc-code .nc   { color: #2563EB; }
+  .doc-prose .doc-code .m,   /* number */
+  .doc-prose .doc-code .mi,
+  .doc-prose .doc-code .mf   { color: #DC2626; }
+  .doc-prose .doc-code .o    { color: #4B5563; }  /* operator */
+  .doc-prose .doc-code .err  { color: #DC2626; background: rgba(220,38,38,0.1); }
+
+  .dark .doc-prose .doc-code .k,
+  .dark .doc-prose .doc-code .kn,
+  .dark .doc-prose .doc-code .kc,
+  .dark .doc-prose .doc-code .kd { color: #F0ABFC; }
+  .dark .doc-prose .doc-code .s,
+  .dark .doc-prose .doc-code .s1,
+  .dark .doc-prose .doc-code .s2,
+  .dark .doc-prose .doc-code .sb { color: #86EFAC; }
+  .dark .doc-prose .doc-code .c,
+  .dark .doc-prose .doc-code .c1,
+  .dark .doc-prose .doc-code .cm { color: #9CA3AF; }
+  .dark .doc-prose .doc-code .nb,
+  .dark .doc-prose .doc-code .nf,
+  .dark .doc-prose .doc-code .nc { color: #93C5FD; }
+  .dark .doc-prose .doc-code .m,
+  .dark .doc-prose .doc-code .mi,
+  .dark .doc-prose .doc-code .mf { color: #FCA5A5; }
+  .dark .doc-prose .doc-code .o  { color: #D1D5DB; }
+
+  /* ── tables ──────────────────────────────────────────────────── */
+  /* Wide tables — the traceability matrix has 5+ columns of long
+     text, the findings register has 6-column summary tables — used to
+     bust out of the card and force the whole page to scroll
+     horizontally. The template JS now wraps every <table> in a
+     ``.table-scroll`` div which keeps the overflow inside the card.
+     The border + border-radius live on the wrapper so the rounded
+     corners survive even when the inner table is wider than the
+     viewport. */
+  .doc-prose .table-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    margin: 1rem 0;
+    max-width: 100%;
+  }
+  .dark .doc-prose .table-scroll {
+    border-color: #334155;
+  }
+  /* Scrollbar styling matches the TOC for visual consistency. */
+  .doc-prose .table-scroll::-webkit-scrollbar { height: 8px; }
+  .doc-prose .table-scroll::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.18);
+    border-radius: 4px;
+  }
+  .doc-prose .table-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(0,0,0,0.28);
+  }
+  .dark .doc-prose .table-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.18);
+  }
+  .dark .doc-prose .table-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.28);
+  }
+  .doc-prose .table-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.18) transparent;
+  }
+  .dark .doc-prose .table-scroll {
+    scrollbar-color: rgba(255,255,255,0.18) transparent;
+  }
+
+  .doc-prose table {
+    border-collapse: collapse;
+    margin: 0;          /* margin moves to the .table-scroll wrapper */
+    font-size: 0.85rem;
+    width: 100%;
+    table-layout: auto;
+    /* Note: NOT setting ``min-width: max-content``. We let the browser
+       auto-size cells against the available width — combined with
+       ``word-break: break-word`` on the cells, long URL / file-path
+       tokens wrap inside the column rather than forcing horizontal
+       scroll for the whole table. The ``.table-scroll`` wrapper is
+       the safety net for tables that genuinely can't fit (10+ columns
+       with mostly-short tokens, e.g., the traceability matrix). */
+  }
+  /* For tables NOT wrapped by JS yet (e.g., for tests / SSR fallback),
+     fall back to the previous self-contained styling. */
+  .doc-prose > table {
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    overflow: hidden;
+    min-width: 0;
+  }
+  .dark .doc-prose > table { border-color: #334155; }
+  .doc-prose th, .doc-prose td {
+    border: 1px solid #E5E7EB;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+    /* Allow long URL / file-path cells to wrap inside the column
+       rather than forcing the column to be as wide as the longest
+       unbroken string. ``word-break: break-word`` is the modern
+       equivalent of the legacy ``overflow-wrap: anywhere``. */
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .dark .doc-prose th, .dark .doc-prose td { border-color: #334155; }
+  .doc-prose thead th {
+    background: #F3F4F6;
+    font-weight: 600;
+    color: #111827;
+    /* No position: sticky — sticky positioning conflicts with the
+       ``overflow-x: auto`` on .table-scroll wrappers, and the page
+       scrolls as a whole anyway (no fixed-height card containers),
+       so the only behaviour sticky-on-page-scroll would buy is
+       "header pokes through the dashboard topbar" which isn't
+       what we want. Pinned header for VERY long tables was a nice-
+       to-have; the horizontal-overflow fix is the higher-value
+       improvement. */
+  }
+  .dark .doc-prose thead th {
+    background: #1E293B;
+    color: #F9FAFB;
+  }
+  /* Zebra rows for legibility on long tables. */
+  .doc-prose tbody tr:nth-child(even) td { background: #F9FAFB; }
+  .dark .doc-prose tbody tr:nth-child(even) td { background: rgba(15, 23, 42, 0.5); }
+  .doc-prose tbody tr:hover td { background: #FAF5FF; }
+  .dark .doc-prose tbody tr:hover td { background: rgba(139, 92, 246, 0.08); }
+
+  /* ── blockquotes — plain quote (no callout class) ─────────────── */
+  .doc-prose blockquote {
+    border-left: 4px solid #E5E7EB;
+    padding: 0.5rem 1rem;
+    margin: 0.8rem 0;
+    color: #4B5563;
+    background: rgba(243, 244, 246, 0.5);
+    border-radius: 0 6px 6px 0;
+  }
+  .dark .doc-prose blockquote {
+    border-left-color: #334155;
+    color: #D1D5DB;
+    background: rgba(30, 41, 59, 0.3);
+  }
+  /* F-PHD-1 visual: live values get a green pill inside blockquotes. */
+  .doc-prose blockquote strong {
+    background: #F0FDF4;
+    padding: 0.0625rem 0.4rem;
+    border-radius: 3px;
+    color: #16A34A;
+  }
+  .dark .doc-prose blockquote strong {
+    background: #052e16;
+    color: #4ADE80;
+  }
+
+  /* ── callout blockquotes (Note / Warning / Tip / Important / Danger) ── */
+  .doc-prose blockquote.callout {
+    position: relative;
+    padding-left: 2.75rem;
+    border-radius: 8px;
+    border-left-width: 4px;
+  }
+  .doc-prose blockquote.callout::before {
+    position: absolute;
+    left: 0.85rem;
+    top: 0.7rem;
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+  .doc-prose blockquote.callout-note {
+    background: #EFF6FF;
+    border-left-color: #2563EB;
+    color: #1E3A8A;
+  }
+  .doc-prose blockquote.callout-note::before { content: 'ⓘ'; color: #2563EB; }
+  .dark .doc-prose blockquote.callout-note {
+    background: rgba(37, 99, 235, 0.12);
+    color: #BFDBFE;
+  }
+  .doc-prose blockquote.callout-tip {
+    background: #ECFDF5;
+    border-left-color: #10B981;
+    color: #064E3B;
+  }
+  .doc-prose blockquote.callout-tip::before { content: '💡'; }
+  .dark .doc-prose blockquote.callout-tip {
+    background: rgba(16, 185, 129, 0.12);
+    color: #A7F3D0;
+  }
+  .doc-prose blockquote.callout-important {
+    background: #FAF5FF;
+    border-left-color: #8B5CF6;
+    color: #4C1D95;
+  }
+  .doc-prose blockquote.callout-important::before { content: '★'; color: #8B5CF6; }
+  .dark .doc-prose blockquote.callout-important {
+    background: rgba(139, 92, 246, 0.12);
+    color: #DDD6FE;
+  }
+  .doc-prose blockquote.callout-warning {
+    background: #FFFBEB;
+    border-left-color: #F59E0B;
+    color: #7C2D12;
+  }
+  .doc-prose blockquote.callout-warning::before { content: '⚠'; color: #F59E0B; }
+  .dark .doc-prose blockquote.callout-warning {
+    background: rgba(245, 158, 11, 0.12);
+    color: #FCD34D;
+  }
+  .doc-prose blockquote.callout-danger {
+    background: #FEF2F2;
+    border-left-color: #DC2626;
+    color: #7F1D1D;
+  }
+  .doc-prose blockquote.callout-danger::before { content: '✕'; color: #DC2626; }
+  .dark .doc-prose blockquote.callout-danger {
+    background: rgba(220, 38, 38, 0.12);
+    color: #FCA5A5;
+  }
+
+  /* ── TOC sidebar styling for active-link highlight (set via JS) ─ */
+  #toc a.active {
+    color: #8B5CF6;
+    font-weight: 600;
+  }
+  /* Cap the side-TOC's height on register-style docs (17_FINDINGS has
+     35+ entries with H4 included). The card itself stays sticky; only
+     the inner nav scrolls so the doc body and right rail aren't
+     pushed off-screen. The ``max-height`` uses ``calc`` so the TOC
+     can use almost the full viewport minus the topbar + a little
+     breathing room. */
+  #toc-card {
+    max-height: calc(100vh - 6rem);
+    display: flex;
+    flex-direction: column;
+  }
+  #toc {
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-right: 0.25rem;
+  }
+  /* TOC level indents — level 2 is flush, level 3 indented once,
+     level 4 indented twice. Level 4 entries (finding-card titles)
+     also get smaller text so 30 of them fit comfortably. */
+  #toc a {
+    border-left: 2px solid transparent;
+    padding-left: 0.5rem;
+    margin-left: -0.5rem;
+    transition: border-left-color 0.12s, color 0.12s;
+  }
+  #toc a.toc-l2 { font-weight: 500; }
+  #toc a.toc-l3 { padding-left: 1.25rem; }
+  #toc a.toc-l4 {
+    padding-left: 2rem;
+    font-size: 0.7rem;
+    line-height: 1.45;
+    color: #6B7280;
+  }
+  .dark #toc a.toc-l4 { color: #9CA3AF; }
+  #toc a:hover { border-left-color: #C4B5FD; }
+  #toc a.active {
+    border-left-color: #8B5CF6;
+    background: rgba(139, 92, 246, 0.06);
+  }
+  /* Scrollbar styling for the TOC overflow (webkit + Firefox). */
+  #toc::-webkit-scrollbar { width: 6px; }
+  #toc::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.15);
+    border-radius: 3px;
+  }
+  .dark #toc::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+  }
+  #toc { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.15) transparent; }
+  .dark #toc { scrollbar-color: rgba(255,255,255,0.15) transparent; }
+
+  /* ── Status-line badges (✅ CLOSED / ⚠ RISK-ACCEPTED / 🚧 OPEN) ── */
+  /* Status lines on finding cards get a coloured pill so 30 cards
+     read as a green/amber/red pattern at a glance. CSS can't target
+     text content directly, so the matching JS in the template walks
+     the rendered article after load and adds the ``.badge-…`` class
+     to the appropriate ``<strong>`` element.  Falls back to plain
+     bold + emoji if JS is disabled — still readable, just less loud. */
+  .doc-prose .badge-closed,
+  .doc-prose .badge-risk,
+  .doc-prose .badge-open {
+    display: inline-block;
+    padding: 0.05rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.78em;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-left: 0.15rem;
+    margin-right: 0.25rem;
+    border: 1px solid transparent;
+  }
+  .doc-prose .badge-closed {
+    background: #DCFCE7;
+    color: #166534;
+    border-color: #86EFAC;
+  }
+  .dark .doc-prose .badge-closed {
+    background: rgba(16, 185, 129, 0.18);
+    color: #86EFAC;
+    border-color: rgba(134, 239, 172, 0.35);
+  }
+  .doc-prose .badge-risk {
+    background: #FEF3C7;
+    color: #92400E;
+    border-color: #FCD34D;
+  }
+  .dark .doc-prose .badge-risk {
+    background: rgba(245, 158, 11, 0.18);
+    color: #FCD34D;
+    border-color: rgba(252, 211, 77, 0.35);
+  }
+  .doc-prose .badge-open {
+    background: #FEE2E2;
+    color: #991B1B;
+    border-color: #FCA5A5;
+  }
+  .dark .doc-prose .badge-open {
+    background: rgba(220, 38, 38, 0.18);
+    color: #FCA5A5;
+    border-color: rgba(252, 165, 165, 0.35);
+  }
+
+  /* Respect motion preference for the scroll button hover transitions. */
+  @media (prefers-reduced-motion: reduce) {
+    .doc-prose .doc-anchor { transition: none; }
+  }
+</style>

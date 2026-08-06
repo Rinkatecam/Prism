@@ -1,0 +1,1232 @@
+{# ══════════════════════════════════════════════════════════════════
+   Server Comparison — shared partial
+   ══════════════════════════════════════════════════════════════════
+
+   Lived on /reports until 2026-08-06. Moved to /monitoring because it is an
+   interactive question-ASKING tool, while Reports is meant to be a page of
+   answers you can hand to someone. It arrived here whole — the cap work
+   (MAX_COMPARE_SERVERS, 240-point bucketed series, cap-aware select-all,
+   filter/None/Invert) came with it unchanged.
+
+   Kept as a PARTIAL rather than pasted into monitoring.html so the markup and
+   its ~870 lines of JS stay in one place and cannot drift if it is ever shown
+   somewhere else.
+
+   Requires from the render context: `t` (translations) and `csp_nonce`.
+   `max_compare_servers` comes from the global inject_locale context processor,
+   so any view can include this without extra plumbing.
+
+   Chart.js is loaded globally by base.html, so no extra <script> is needed.
+#}
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 4 — Server Comparison
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="mb-8">
+  <div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-6">
+    <h2 class="text-lg font-semibold mb-1 flex items-center gap-2">
+      <i data-lucide="bar-chart-3" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+      {{ t.server_comparison }}
+    </h2>
+    <p class="text-xs text-[#6B7280] dark:text-[#94A3B8] mb-4">{{ t.comparison_desc }}</p>
+
+    <!-- Controls -->
+    <div class="flex flex-wrap items-end gap-3 mb-4">
+      <div class="flex-1 min-w-[200px]">
+        <label class="block text-xs font-medium mb-1">{{ t.select_servers }}</label>
+        <div id="compare-category-buttons" class="flex flex-wrap gap-1.5 mb-2"></div>
+        <div class="flex flex-wrap items-center gap-1.5 mb-2">
+          <input type="search" id="compare-filter" data-input="compareFilterServers"
+                 placeholder="{{ t.get('filter_servers', 'Filter servers...') }}"
+                 class="text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1 w-40"
+                 autocomplete="off">
+          <button data-action="compareSelectAll" class="text-[11px] px-2 py-1 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.get('select_all', 'All') }}</button>
+          <button data-action="compareSelectNone" class="text-[11px] px-2 py-1 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.get('select_none', 'None') }}</button>
+          <button data-action="compareInvert" class="text-[11px] px-2 py-1 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.get('select_invert', 'Invert') }}</button>
+        </div>
+        <div id="compare-server-checkboxes" class="flex flex-wrap gap-2 text-xs max-h-40 overflow-y-auto"></div>
+        <div id="compare-selection-hint" class="text-[11px] text-[#6B7280] dark:text-[#94A3B8] mt-1"></div>
+      </div>
+      <div>
+        <label class="block text-xs font-medium mb-1">{{ t.time_range }}</label>
+        <select id="compare-hours" class="text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1.5">
+          <option value="24">{{ t.hours_24 }}</option>
+          <option value="48">{{ t.hours_48 }}</option>
+          <option value="168">{{ t.hours_168 }}</option>
+          <option value="720">{{ t.hours_720 }}</option>
+        </select>
+      </div>
+      <button id="btn-compare" data-action="loadComparison" disabled class="text-xs font-medium px-4 py-1.5 rounded bg-[#2563EB] hover:bg-[#1D4ED8] text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#2563EB]">
+        {{ t.compare }} <span id="btn-compare-count"></span>
+      </button>
+      <button id="btn-compare-events" data-action="loadEventComparison" disabled class="text-xs font-medium px-4 py-1.5 rounded bg-[#8B5CF6] hover:bg-[#7C3AED] text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#8B5CF6]">
+        {{ t.compare_events | default('Compare Windows Events') }} <span id="btn-compare-events-count"></span>
+      </button>
+      <!-- Presets -->
+      <div class="flex items-center gap-2">
+        <select id="preset-select" class="text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1.5">
+          <option value="">{{ t.presets }}...</option>
+        </select>
+        <button data-action="loadPreset" class="text-xs px-2 py-1.5 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]" title="{{ t.load_preset }}">
+          <i data-lucide="folder-open" class="w-3.5 h-3.5"></i>
+        </button>
+        <button data-action="savePreset" class="text-xs px-2 py-1.5 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]" title="{{ t.save_preset }}">
+          <i data-lucide="save" class="w-3.5 h-3.5"></i>
+        </button>
+        <button data-action="deletePreset" class="text-xs px-2 py-1.5 rounded border border-[#DC2626]/30 text-[#DC2626] hover:bg-[#FEE2E2] dark:hover:bg-[#7F1D1D]/30" title="{{ t.delete_preset }}">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Comparison charts -->
+    <div id="compare-empty" class="text-center text-sm text-[#6B7280] dark:text-[#94A3B8] py-8">
+      {{ t.select_servers }}
+    </div>
+    <div id="compare-charts" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg p-4">
+          <h3 class="text-sm font-semibold mb-2">{{ t.cpu }}</h3>
+          <div class="relative h-[200px]"><canvas id="chart-cpu"></canvas></div>
+        </div>
+        <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg p-4">
+          <h3 class="text-sm font-semibold mb-2">{{ t.ram }}</h3>
+          <div class="relative h-[200px]"><canvas id="chart-ram"></canvas></div>
+        </div>
+        <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg p-4">
+          <h3 class="text-sm font-semibold mb-2">{{ t.disk_c }}</h3>
+          <div class="relative h-[200px]"><canvas id="chart-disk-c"></canvas></div>
+        </div>
+        <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg p-4">
+          <h3 class="text-sm font-semibold mb-2">{{ t.disk_d }}</h3>
+          <div class="relative h-[200px]"><canvas id="chart-disk-d"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Chart overlay toggles -->
+      <div class="flex flex-wrap items-center gap-2 mt-2">
+        <button id="btn-fleet-band" data-action="toggleFleetBand" class="text-xs px-3 py-1 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] transition-colors">
+          <i data-lucide="layers" class="w-3.5 h-3.5 inline mr-1"></i>
+          <span id="fleet-band-label">{{ t.show_fleet_band }}</span>
+        </button>
+        <button id="btn-event-markers" data-action="toggleEventMarkers" class="text-xs px-3 py-1 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] transition-colors">
+          <i data-lucide="git-commit" class="w-3.5 h-3.5 inline mr-1"></i>
+          <span id="event-markers-label">{{ t.show_events_overlay }}</span>
+        </button>
+        <button data-action="downloadComparisonPDF" class="text-xs px-3 py-1 rounded border border-[#DC2626]/30 text-[#DC2626] hover:bg-[#FEE2E2] dark:hover:bg-[#7F1D1D]/30 transition-colors">
+          <i data-lucide="file-text" class="w-3.5 h-3.5 inline mr-1"></i>
+          {{ t.get('download_comparison_pdf', 'Download PDF') }}
+        </button>
+      </div>
+
+      <!-- Current metrics comparison table -->
+      <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="bg-[#F9FAFB] dark:bg-[#0F172A]">
+              <th class="px-3 py-2 text-left font-medium">{{ t.server }}</th>
+              <th class="px-3 py-2 text-center font-medium">{{ t.status }}</th>
+              <th class="px-3 py-2 text-center font-medium">{{ t.cpu }}</th>
+              <th class="px-3 py-2 text-center font-medium">{{ t.ram }}</th>
+              <th class="px-3 py-2 text-center font-medium">{{ t.disk_c }}</th>
+              <th class="px-3 py-2 text-center font-medium">{{ t.disk_d }}</th>
+            </tr>
+          </thead>
+          <tbody id="compare-table-body"></tbody>
+        </table>
+      </div>
+
+      <!-- Statistics table -->
+      <div id="compare-stats" class="hidden">
+        <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
+          <i data-lucide="bar-chart-2" class="w-4 h-4 text-[#6B7280]"></i>
+          {{ t.statistics }}
+        </h3>
+        <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="bg-[#F9FAFB] dark:bg-[#0F172A]">
+                <th class="px-3 py-2 text-left font-medium">{{ t.server }}</th>
+                <th class="px-3 py-2 text-left font-medium">{{ t.get('metric', 'Metric') }}</th>
+                <th class="px-3 py-2 text-center font-medium">{{ t.minimum }}</th>
+                <th class="px-3 py-2 text-center font-medium">{{ t.maximum }}</th>
+                <th class="px-3 py-2 text-center font-medium">{{ t.mean }}</th>
+                <th class="px-3 py-2 text-center font-medium">{{ t.median }}</th>
+                <th class="px-3 py-2 text-center font-medium">{{ t.p95 }}</th>
+                <th class="px-3 py-2 text-center font-medium">{{ t.trend_slope }}</th>
+              </tr>
+            </thead>
+            <tbody id="stats-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Business-hours annotations -->
+      <div id="compare-annotations" class="hidden">
+        <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
+          <i data-lucide="clock" class="w-4 h-4 text-[#8B5CF6]"></i>
+          {{ t.business_hours_avg }} / {{ t.off_hours_avg }}
+        </h3>
+        <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="bg-[#F9FAFB] dark:bg-[#0F172A]">
+                <th class="px-3 py-2 text-left font-medium">{{ t.server }}</th>
+                <th class="px-3 py-2 text-left font-medium">{{ t.get('metric', 'Metric') }}</th>
+                <th class="px-3 py-2 text-center font-medium">{{ t.business_hours_avg }}</th>
+                <th class="px-3 py-2 text-center font-medium">{{ t.off_hours_avg }}</th>
+                <th class="px-3 py-2 text-center font-medium">{{ t.fleet_deviation }}</th>
+              </tr>
+            </thead>
+            <tbody id="annotations-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Event comparison results -->
+    <div id="compare-events-loading" class="hidden text-center text-sm text-[#6B7280] dark:text-[#94A3B8] py-8">
+      <i data-lucide="loader-2" class="w-5 h-5 inline-block animate-spin"></i>
+    </div>
+    <div id="compare-events-results" class="hidden space-y-4">
+      <!-- Filters -->
+      <div class="flex flex-wrap items-center gap-3 py-2">
+        <div class="flex items-center gap-1.5">
+          <label class="text-[10px] font-semibold uppercase text-[#6B7280] dark:text-[#94A3B8]">{{ t.level }}:</label>
+          <select id="evt-filter-level" data-change="applyEventFilters" class="text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1">
+            <option value="">{{ t.all }}</option>
+            <option value="Critical">{{ t.level_critical }}</option>
+            <option value="Error">{{ t.level_error }}</option>
+            <option value="Warning">{{ t.level_warning }}</option>
+            <option value="Information">{{ t.level_information }}</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <label class="text-[10px] font-semibold uppercase text-[#6B7280] dark:text-[#94A3B8]">{{ t.source }}:</label>
+          <select id="evt-filter-source" data-change="applyEventFilters" class="text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1">
+            <option value="">{{ t.all }}</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <label class="text-[10px] font-semibold uppercase text-[#6B7280] dark:text-[#94A3B8]">{{ t.search }}:</label>
+          <input id="evt-filter-search" data-input="applyEventFilters" type="text" placeholder="{{ t.filter_messages }}"
+            class="text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1 w-48">
+        </div>
+        <button data-action="clearEventFilters" class="text-xs text-[#6B7280] dark:text-[#94A3B8] hover:text-[#2563EB] dark:hover:text-[#3B82F6] transition-colors">
+          {{ t.clear_filters }}
+        </button>
+      </div>
+      <!-- Active filter indicators -->
+      <div id="active-filter-chips" class="flex flex-wrap items-center gap-2 py-1 min-h-[28px]">
+        <span id="filter-chips-empty" class="text-[10px] text-[#94A3B8] italic">{{ t.get('no_filters_applied', 'No filters applied') }}</span>
+      </div>
+      <!-- Common events (on all servers) -->
+      <div>
+        <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
+          <i data-lucide="check-check" class="w-4 h-4 text-[#10B981]"></i>
+          {{ t.common_events | default('Common Events') }}
+          <span id="common-events-count" class="text-xs font-normal text-[#6B7280] dark:text-[#94A3B8]"></span>
+        </h3>
+        <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="bg-[#F9FAFB] dark:bg-[#0F172A]">
+                <th class="px-3 py-2 text-left font-medium">{{ t.event_id }}</th>
+                <th class="px-3 py-2 text-left font-medium">{{ t.source }}</th>
+                <th class="px-3 py-2 text-center font-medium">{{ t.level }}</th>
+                <th class="px-3 py-2 text-left font-medium">{{ t.message }}</th>
+                <th class="px-3 py-2 text-center font-medium">{{ t.counts_per_server }}</th>
+              </tr>
+            </thead>
+            <tbody id="common-events-body"></tbody>
+          </table>
+        </div>
+        <div id="common-pager" class="hidden flex items-center justify-center gap-3 mt-2"></div>
+      </div>
+      <!-- Unique events (not on all servers) -->
+      <div>
+        <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
+          <i data-lucide="split" class="w-4 h-4 text-[#F59E0B]"></i>
+          {{ t.unique_events | default('Unique Events') }}
+          <span id="unique-events-count" class="text-xs font-normal text-[#6B7280] dark:text-[#94A3B8]"></span>
+        </h3>
+        <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="bg-[#F9FAFB] dark:bg-[#0F172A]">
+                <th class="px-3 py-2 text-left font-medium">{{ t.event_id }}</th>
+                <th class="px-3 py-2 text-left font-medium">{{ t.source }}</th>
+                <th class="px-3 py-2 text-center font-medium">{{ t.level }}</th>
+                <th class="px-3 py-2 text-left font-medium">{{ t.message }}</th>
+                <th class="px-3 py-2 text-center font-medium">{{ t.present_on }}</th>
+                <th class="px-3 py-2 text-center font-medium">{{ t.missing_on }}</th>
+              </tr>
+            </thead>
+            <tbody id="unique-events-body"></tbody>
+          </table>
+        </div>
+        <div id="unique-pager" class="hidden flex items-center justify-center gap-3 mt-2"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script nonce="{{ csp_nonce }}">
+// ── Server Comparison ─────────────────────────────────────────────
+// Self-contained: its own CSRF token, its own bootstrap. It shares no
+// state with the host page, so including it twice would be wasteful but
+// not broken.
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+const CHART_COLORS = [
+  '#2563EB', '#10B981', '#F59E0B', '#DC2626', '#8B5CF6', '#EC4899'
+];
+let compareCharts = {};
+
+// ── Populate server dropdowns on load ──
+
+const MAX_COMPARE = {{ max_compare_servers | default(50) }};
+
+function updateCompareButtonState() {
+  const boxes = Array.from(document.querySelectorAll('.compare-cb'));
+  const checked = boxes.filter(cb => cb.checked).length;
+  const btnCompare = document.getElementById('btn-compare');
+  const btnCompareEvents = document.getElementById('btn-compare-events');
+  const countSpan = document.getElementById('btn-compare-count');
+  const countSpanEvents = document.getElementById('btn-compare-events-count');
+  const hint = document.getElementById('compare-selection-hint');
+
+  // Hard-stop at the cap: once it is reached, every UNCHECKED box is disabled,
+  // so the API limit becomes unreachable through the UI rather than being
+  // discovered as a 400 after the click. Checked boxes stay enabled so the user
+  // can always deselect.
+  const atCap = checked >= MAX_COMPARE;
+  boxes.forEach(cb => {
+    const lock = atCap && !cb.checked;
+    cb.disabled = lock;
+    cb.closest('label').classList.toggle('opacity-40', lock);
+    cb.closest('label').classList.toggle('cursor-not-allowed', lock);
+  });
+
+  const enabled = checked >= 2 && checked <= MAX_COMPARE;
+  btnCompare.disabled = !enabled;
+  btnCompareEvents.disabled = !enabled;
+  countSpan.textContent = checked > 0 ? `(${checked})` : '';
+  countSpanEvents.textContent = checked > 0 ? `(${checked})` : '';
+
+  if (hint) {
+    if (checked === 0) {
+      hint.textContent = '{{ t.get("select_at_least_two", "Select at least 2 servers") }}';
+      hint.className = 'text-[11px] text-[#6B7280] dark:text-[#94A3B8] mt-1';
+    } else if (checked === 1) {
+      hint.textContent = '{{ t.get("select_at_least_two", "Select at least 2 servers") }}';
+      hint.className = 'text-[11px] text-[#F59E0B] dark:text-[#FBBF24] mt-1';
+    } else if (atCap) {
+      hint.textContent = `${checked} / ${MAX_COMPARE} — {{ t.get("compare_cap_reached", "maximum reached") }}`;
+      hint.className = 'text-[11px] text-[#F59E0B] dark:text-[#FBBF24] mt-1';
+    } else {
+      hint.textContent = `${checked} / ${MAX_COMPARE} {{ t.get("selected_lc", "selected") }}`;
+      hint.className = 'text-[11px] text-[#6B7280] dark:text-[#94A3B8] mt-1';
+    }
+  }
+}
+
+// Bulk selection helpers, exposed as globals so the delegated data-action
+// dispatcher in base.html resolves them.
+function compareSelectAll() {
+  const boxes = Array.from(document.querySelectorAll('.compare-cb'));
+  // Respect the cap rather than checking everything and failing: take the first
+  // MAX_COMPARE. With MAX_COMPARE (50) above the current fleet (29) this selects
+  // the whole fleet, but it stays correct if the fleet outgrows the cap.
+  boxes.forEach((cb, i) => { cb.disabled = false; cb.checked = i < MAX_COMPARE; });
+  updateCompareButtonState();
+}
+function compareSelectNone() {
+  document.querySelectorAll('.compare-cb').forEach(cb => { cb.disabled = false; cb.checked = false; });
+  updateCompareButtonState();
+}
+function compareInvert() {
+  const boxes = Array.from(document.querySelectorAll('.compare-cb'));
+  const wanted = boxes.filter(cb => !cb.checked);
+  boxes.forEach(cb => { cb.disabled = false; cb.checked = false; });
+  wanted.slice(0, MAX_COMPARE).forEach(cb => { cb.checked = true; });
+  updateCompareButtonState();
+}
+function compareFilterServers(el) {
+  const q = (el.value || '').trim().toLowerCase();
+  document.querySelectorAll('#compare-server-checkboxes label').forEach(l => {
+    l.classList.toggle('hidden', q !== '' && !l.textContent.toLowerCase().includes(q));
+  });
+}
+
+// ── Export Preview Info ──
+
+function updateFilterChips() {
+  const container = document.getElementById('active-filter-chips');
+  if (!container) return;
+  const emptyLabel = document.getElementById('filter-chips-empty');
+
+  const level = document.getElementById('evt-filter-level').value;
+  const source = document.getElementById('evt-filter-source').value;
+  const search = document.getElementById('evt-filter-search').value.trim();
+
+  const chips = [];
+
+  if (level) {
+    chips.push({ label: `{{ t.get('level', 'Level') }}: ${level}`, clear: () => { document.getElementById('evt-filter-level').value = ''; applyEventFilters(); } });
+  }
+  if (source) {
+    chips.push({ label: `{{ t.get('source', 'Source') }}: ${source}`, clear: () => { document.getElementById('evt-filter-source').value = ''; applyEventFilters(); } });
+  }
+  if (search) {
+    chips.push({ label: `{{ t.get('search', 'Search') }}: ${search}`, clear: () => { document.getElementById('evt-filter-search').value = ''; applyEventFilters(); } });
+  }
+
+  // Remove old chips (but keep the empty label element)
+  container.querySelectorAll('.filter-chip, .filter-count-badge').forEach(el => el.remove());
+
+  if (chips.length === 0) {
+    if (emptyLabel) emptyLabel.classList.remove('hidden');
+    return;
+  }
+
+  if (emptyLabel) emptyLabel.classList.add('hidden');
+
+  // Add count badge
+  const countBadge = document.createElement('span');
+  countBadge.className = 'filter-count-badge inline-flex items-center gap-1 text-[10px] font-semibold text-[#2563EB] dark:text-[#3B82F6]';
+  countBadge.textContent = `${chips.length} {{ t.get('filters_active', 'filters active') }}`;
+  container.appendChild(countBadge);
+
+  // Add chips
+  chips.forEach(chip => {
+    const el = document.createElement('span');
+    el.className = 'filter-chip inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#3B82F6]/10 dark:text-[#3B82F6] border border-[#2563EB]/20 dark:border-[#3B82F6]/20';
+    el.innerHTML = `${chip.label} <button class="ml-0.5 hover:text-[#DC2626] transition-colors font-bold">&times;</button>`;
+    el.querySelector('button').onclick = (e) => { e.stopPropagation(); chip.clear(); };
+    container.appendChild(el);
+  });
+}
+
+// ── CSV Downloads ──
+
+async function loadComparison() {
+  const checked = [...document.querySelectorAll('.compare-cb:checked')].map(cb => cb.value);
+  if (checked.length < 2) {
+    pAlert('{{ t.select_servers }} (min. 2)');
+    return;
+  }
+
+  const hours = document.getElementById('compare-hours').value;
+  const url = `/api/servers/compare?servers=${encodeURIComponent(checked.join(','))}&hours=${hours}`;
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.error) { pAlert(data.error); return; }
+
+    document.getElementById('compare-empty').classList.add('hidden');
+    document.getElementById('compare-charts').classList.remove('hidden');
+
+    renderComparisonCharts(data.servers, checked);
+    renderComparisonTable(data.servers, checked);
+
+    // Cache fleet stats for band overlay
+    const metricKeys = ['cpu_percent', 'ram_percent', 'disk_c_percent', 'disk_d_percent'];
+    metricKeys.forEach(mk => {
+      _fleetBandData[mk] = computeFleetStats(data.servers, checked, mk);
+    });
+    // Pre-load event markers
+    loadEventMarkers(checked, hours);
+    // Reset overlay states
+    _fleetBandActive = false;
+    _eventMarkersActive = false;
+    document.getElementById('fleet-band-label').textContent = {{ t.show_fleet_band | tojson }};
+    document.getElementById('event-markers-label').textContent = {{ t.show_events_overlay | tojson }};
+
+    // Load stats
+    try {
+      const statsRes = await fetch(`/api/servers/compare-stats?servers=${encodeURIComponent(checked.join(','))}&hours=${hours}`);
+      const statsData = await statsRes.json();
+      if (!statsData.error) renderStatsTable(statsData);
+    } catch(e) { console.error('Stats load failed:', e); }
+
+    // Load segmented annotations
+    try {
+      const segRes = await fetch(`/api/servers/compare-segmented?servers=${encodeURIComponent(checked.join(','))}&hours=${hours}`);
+      const segData = await segRes.json();
+      if (!segData.error) renderSegmentedAnnotations(segData);
+    } catch(e) { console.error('Segmented load failed:', e); }
+  } catch (e) {
+    console.error('Comparison failed:', e);
+  }
+}
+
+function renderComparisonCharts(servers, names) {
+  const metrics = [
+    { key: 'cpu_percent', canvasId: 'chart-cpu' },
+    { key: 'ram_percent', canvasId: 'chart-ram' },
+    { key: 'disk_c_percent', canvasId: 'chart-disk-c' },
+    { key: 'disk_d_percent', canvasId: 'chart-disk-d' },
+  ];
+
+  const isDark = document.documentElement.classList.contains('dark');
+  const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+  const textColor = isDark ? '#CBD5E1' : '#6B7280';
+
+  metrics.forEach(({ key, canvasId }) => {
+    if (compareCharts[canvasId]) compareCharts[canvasId].destroy();
+
+    const datasets = names.map((name, i) => {
+      const history = servers[name]?.history || [];
+      return {
+        label: name,
+        data: history.map(h => ({
+          x: new Date(h.timestamp.endsWith('Z') ? h.timestamp : h.timestamp + 'Z').getTime(),
+          y: h[key]
+        })).filter(p => !isNaN(p.x)),
+        borderColor: CHART_COLORS[i % CHART_COLORS.length],
+        backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + '20',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        tension: 0.3,
+        fill: false,
+      };
+    });
+
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    compareCharts[canvasId] = new Chart(ctx, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'nearest', intersect: false },
+        scales: {
+          x: {
+            type: 'linear',
+            ticks: {
+              maxTicksLimit: 8,
+              font: { size: 10 },
+              color: textColor,
+              callback: function(val) {
+                const dt = new Date(val);
+                if (isNaN(dt.getTime())) return '';
+                const iso = dt.toISOString();
+                const full = formatTs(iso, false);
+                // Strip the year to keep it short: "07.04.2026 14:30" → "07.04 14:30"
+                return full.replace(/[./\-]\d{4}/, '').replace(/\d{4}[./\-]/, '').trim();
+              }
+            },
+            grid: { color: gridColor },
+          },
+          y: {
+            min: 0, max: 100,
+            ticks: { font: { size: 10 }, color: textColor, callback: v => v + '%' },
+            grid: { color: gridColor },
+          },
+        },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { font: { size: 10 }, color: textColor, boxWidth: 12 },
+          },
+          tooltip: {
+            callbacks: {
+              title: function(items) {
+                if (items.length > 0 && items[0].parsed.x) {
+                  return formatTs(new Date(items[0].parsed.x).toISOString());
+                }
+                return '';
+              },
+              label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(1)}%`,
+            },
+          },
+        },
+      },
+    });
+  });
+}
+
+function renderComparisonTable(servers, names) {
+  const tbody = document.getElementById('compare-table-body');
+  tbody.innerHTML = '';
+
+  const statusColors = {
+    healthy: 'text-[#10B981]',
+    warning: 'text-[#F59E0B]',
+    critical: 'text-[#DC2626]',
+    offline: 'text-[#6B7280]',
+    unknown: 'text-[#6B7280]',
+  };
+
+  names.forEach(name => {
+    const srv = servers[name];
+    const latest = srv?.latest;
+    const status = latest?.status || 'unknown';
+    const row = document.createElement('tr');
+    row.className = 'border-t border-[#E5E7EB] dark:border-[#334155]';
+    row.innerHTML = `
+      <td class="px-3 py-2 font-medium">${name}</td>
+      <td class="px-3 py-2 text-center ${statusColors[status] || ''} font-medium">${status}</td>
+      <td class="px-3 py-2 text-center">${latest?.cpu != null ? latest.cpu.toFixed(1) + '%' : '—'}</td>
+      <td class="px-3 py-2 text-center">${latest?.ram != null ? latest.ram.toFixed(1) + '%' : '—'}</td>
+      <td class="px-3 py-2 text-center">${latest?.disk_c != null ? latest.disk_c.toFixed(1) + '%' : '—'}</td>
+      <td class="px-3 py-2 text-center">${latest?.disk_d != null ? latest.disk_d.toFixed(1) + '%' : '—'}</td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+// ── Event Comparison ──
+let _lastEventData = null;  // cached data — only refreshes on button click
+
+async function loadEventComparison() {
+  const checked = [...document.querySelectorAll('.compare-cb:checked')].map(cb => cb.value);
+  if (checked.length < 2) {
+    pAlert('Select at least 2 servers');
+    return;
+  }
+
+  const hours = document.getElementById('compare-hours').value;
+  const loading = document.getElementById('compare-events-loading');
+  const results = document.getElementById('compare-events-results');
+  loading.classList.remove('hidden');
+  results.classList.add('hidden');
+
+  try {
+    const res = await fetch(`/api/servers/compare-events?servers=${encodeURIComponent(checked.join(','))}&hours=${hours}`);
+    const data = await res.json();
+    if (data.error) { pAlert(data.error); loading.classList.add('hidden'); return; }
+
+    _lastEventData = data;
+    loading.classList.add('hidden');
+    results.classList.remove('hidden');
+    document.getElementById('compare-empty').classList.add('hidden');
+
+    // Populate source filter dropdown from data
+    const sources = new Set();
+    [...(data.common || []), ...(data.unique || [])].forEach(e => { if (e.source) sources.add(e.source); });
+    const srcSelect = document.getElementById('evt-filter-source');
+    srcSelect.innerHTML = '<option value="">All</option>';
+    [...sources].sort().forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s; opt.textContent = s;
+      srcSelect.appendChild(opt);
+    });
+
+    // Reset filters
+    document.getElementById('evt-filter-level').value = '';
+    document.getElementById('evt-filter-search').value = '';
+
+    renderEventComparison(data);
+    updateFilterChips();
+    lucide.createIcons();
+  } catch (e) {
+    console.error('Event comparison failed:', e);
+    loading.classList.add('hidden');
+  }
+}
+
+function applyEventFilters() {
+  if (!_lastEventData) return;
+  const level = document.getElementById('evt-filter-level').value;
+  const source = document.getElementById('evt-filter-source').value;
+  const search = document.getElementById('evt-filter-search').value.toLowerCase().trim();
+
+  function matches(evt) {
+    if (level && evt.level !== level) return false;
+    if (source && evt.source !== source) return false;
+    if (search && !(evt.message_short || '').toLowerCase().includes(search) &&
+        !(evt.message_full || '').toLowerCase().includes(search) &&
+        !(evt.source || '').toLowerCase().includes(search) &&
+        !String(evt.event_id || '').includes(search)) return false;
+    return true;
+  }
+
+  const filtered = {
+    ...(_lastEventData),
+    common: (_lastEventData.common || []).filter(matches),
+    unique: (_lastEventData.unique || []).filter(matches),
+  };
+  renderEventComparison(filtered);
+  updateFilterChips();
+}
+
+function clearEventFilters() {
+  document.getElementById('evt-filter-level').value = '';
+  document.getElementById('evt-filter-source').value = '';
+  document.getElementById('evt-filter-search').value = '';
+  if (_lastEventData) {
+    renderEventComparison(_lastEventData);
+  }
+  updateFilterChips();
+}
+
+function levelBadge(level) {
+  const colors = {
+    Critical: 'bg-[#DC2626]/10 text-[#DC2626] border-[#DC2626]/20',
+    Error: 'bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/20',
+    Warning: 'bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/20',
+    Information: 'bg-[#3B82F6]/10 text-[#3B82F6] border-[#3B82F6]/20',
+  };
+  const cls = colors[level] || 'bg-[#6B7280]/10 text-[#6B7280] border-[#6B7280]/20';
+  return `<span class="inline-block px-1.5 py-0.5 rounded border text-[10px] font-medium ${cls}">${level || '—'}</span>`;
+}
+
+function serverBadge(name, color) {
+  return `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${color}">${name}</span>`;
+}
+
+function serverBadgeGroup(names, cls, showCounts, countsMap) {
+  const MAX_INLINE = 3;
+  if (names.length === 0) return '<span class="text-[#94A3B8]">—</span>';
+  if (names.length <= MAX_INLINE) {
+    return names.map(n => {
+      const label = showCounts && countsMap ? n + ' (' + (countsMap[n] || 0) + ')' : n;
+      return serverBadge(label, cls);
+    }).join(' ');
+  }
+  // Collapse: show count badge with tooltip listing all server names
+  const tooltip = names.map(n => showCounts && countsMap ? n + ': ' + (countsMap[n] || 0) : n).join(', ');
+  return `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium cursor-default ${cls}" title="${tooltip}">${names.length} servers</span>`;
+}
+
+const PAGE_SIZE = 25;
+let _commonPage = 0, _uniquePage = 0;
+let _filteredData = null;
+
+function renderEventComparison(data) {
+  _filteredData = data;
+  _commonPage = 0;
+  _uniquePage = 0;
+
+  document.getElementById('unique-events-count').textContent = `(${data.unique.length} event types)`;
+  document.getElementById('common-events-count').textContent = `(${data.common.length} event types)`;
+
+  renderCommonPage();
+  renderUniquePage();
+}
+
+function renderCommonPage() {
+  const data = _filteredData;
+  if (!data) return;
+  const tbody = document.getElementById('common-events-body');
+  tbody.innerHTML = '';
+  const presentCls = 'bg-[#10B981]/10 text-[#10B981] border-[#10B981]/20 border';
+
+  if (data.common.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-4 text-center text-[#6B7280] dark:text-[#94A3B8]">No common events found across selected servers</td></tr>';
+    updatePager('common', 0, 0);
+    return;
+  }
+
+  const start = _commonPage * PAGE_SIZE;
+  const page = data.common.slice(start, start + PAGE_SIZE);
+  page.forEach(evt => {
+    const counts = serverBadgeGroup(data.server_list, presentCls, true, evt.servers);
+    const cols = `<td class="px-3 py-2 text-center"><div class="flex flex-wrap gap-1 justify-center">${counts}</div></td>`;
+    addEventRow(tbody, evt, cols, 5);
+  });
+  updatePager('common', data.common.length, start);
+  lucide.createIcons();
+}
+
+function renderUniquePage() {
+  const data = _filteredData;
+  if (!data) return;
+  const tbody = document.getElementById('unique-events-body');
+  tbody.innerHTML = '';
+  const presentCls = 'bg-[#10B981]/10 text-[#10B981] border-[#10B981]/20 border';
+  const missingCls = 'bg-[#DC2626]/10 text-[#DC2626] border-[#DC2626]/20 border';
+
+  if (data.unique.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="px-3 py-4 text-center text-[#6B7280] dark:text-[#94A3B8]">No unique events — all events are common across selected servers</td></tr>';
+    updatePager('unique', 0, 0);
+    return;
+  }
+
+  const start = _uniquePage * PAGE_SIZE;
+  const page = data.unique.slice(start, start + PAGE_SIZE);
+  page.forEach(evt => {
+    const present = serverBadgeGroup(evt.present_on, presentCls, true, evt.servers);
+    const missing = serverBadgeGroup(evt.missing_on, missingCls, false, null);
+    const cols = `
+      <td class="px-3 py-2 text-center"><div class="flex flex-wrap gap-1 justify-center">${present}</div></td>
+      <td class="px-3 py-2 text-center"><div class="flex flex-wrap gap-1 justify-center">${missing}</div></td>
+    `;
+    addEventRow(tbody, evt, cols, 6);
+  });
+  updatePager('unique', data.unique.length, start);
+  lucide.createIcons();
+}
+
+function updatePager(type, total, start) {
+  const pager = document.getElementById(`${type}-pager`);
+  if (!pager) return;
+  if (total <= PAGE_SIZE) {
+    pager.classList.add('hidden');
+    return;
+  }
+  pager.classList.remove('hidden');
+  const end = Math.min(start + PAGE_SIZE, total);
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const currentPage = Math.floor(start / PAGE_SIZE);
+  pager.innerHTML = `
+    <button data-action="pagePrev" data-args='["${type}"]'
+      class="px-2 py-0.5 rounded border border-[#E5E7EB] dark:border-[#334155] text-xs hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] transition-colors ${currentPage === 0 ? 'opacity-30 pointer-events-none' : ''}">&laquo; Prev</button>
+    <span class="text-xs text-[#6B7280] dark:text-[#94A3B8]">${start + 1}–${end} of ${total}</span>
+    <button data-action="pageNext" data-args='["${type}"]'
+      class="px-2 py-0.5 rounded border border-[#E5E7EB] dark:border-[#334155] text-xs hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] transition-colors ${currentPage >= totalPages - 1 ? 'opacity-30 pointer-events-none' : ''}">Next &raquo;</button>
+  `;
+}
+
+// Pagination helpers for the delegated data-action buttons (type = 'common'|'unique').
+function pagePrev(type) { if (type === 'common') { _commonPage--; renderCommonPage(); } else { _uniquePage--; renderUniquePage(); } }
+function pageNext(type) { if (type === 'common') { _commonPage++; renderCommonPage(); } else { _uniquePage++; renderUniquePage(); } }
+
+let _rowId = 0;
+function addEventRow(tbody, evt, cols, colSpan) {
+  const id = 'evt-detail-' + (_rowId++);
+  const row = document.createElement('tr');
+  row.className = 'border-t border-[#E5E7EB] dark:border-[#334155] cursor-pointer hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]/50 transition-colors';
+  row.onclick = () => {
+    const detail = document.getElementById(id);
+    const chevron = row.querySelector('.evt-chevron');
+    if (detail.classList.contains('hidden')) {
+      detail.classList.remove('hidden');
+      if (chevron) chevron.style.transform = 'rotate(90deg)';
+    } else {
+      detail.classList.add('hidden');
+      if (chevron) chevron.style.transform = '';
+    }
+  };
+  row.innerHTML = `
+    <td class="px-3 py-2 font-mono">
+      <span class="inline-flex items-center gap-1">
+        <i data-lucide="chevron-right" class="w-3 h-3 evt-chevron transition-transform"></i>
+        ${evt.event_id || '—'}
+      </span>
+    </td>
+    <td class="px-3 py-2">${evt.source}</td>
+    <td class="px-3 py-2 text-center">${levelBadge(evt.level)}</td>
+    <td class="px-3 py-2 max-w-[300px] truncate">${evt.message_short || '—'}</td>
+    ${cols}
+  `;
+  tbody.appendChild(row);
+
+  // Accordion detail row
+  const detailRow = document.createElement('tr');
+  detailRow.id = id;
+  detailRow.className = 'hidden';
+
+  const serverDetails = evt.server_details || {};
+  let serverRows = '';
+  for (const [name, info] of Object.entries(serverDetails)) {
+    const ts = typeof formatTs === 'function' ? formatTs(info.latest) : (info.latest || '').substring(0, 16);
+    serverRows += `
+      <tr class="border-t border-[#E5E7EB]/50 dark:border-[#334155]/50">
+        <td class="px-3 py-1.5 font-medium">${name}</td>
+        <td class="px-3 py-1.5 text-center">${info.count}</td>
+        <td class="px-3 py-1.5 text-center">${levelBadge(info.level)}</td>
+        <td class="px-3 py-1.5">${ts}</td>
+      </tr>`;
+  }
+
+  const fullMsg = (evt.message_full || evt.message_short || '—').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  detailRow.innerHTML = `
+    <td colspan="${colSpan}" class="px-4 py-3 bg-[#F9FAFB] dark:bg-[#0F172A]/60">
+      <div class="space-y-3">
+        <div>
+          <span class="text-[10px] font-semibold uppercase text-[#6B7280] dark:text-[#94A3B8]">Full Message</span>
+          <p class="text-xs mt-1 whitespace-pre-wrap break-words max-h-[200px] overflow-y-auto font-mono text-[#374151] dark:text-[#CBD5E1]">${fullMsg}</p>
+        </div>
+        <div>
+          <span class="text-[10px] font-semibold uppercase text-[#6B7280] dark:text-[#94A3B8]">Per-Server Breakdown</span>
+          <table class="w-full text-xs mt-1">
+            <thead>
+              <tr class="text-[10px] text-[#6B7280] dark:text-[#94A3B8]">
+                <th class="px-3 py-1 text-left font-medium">Server</th>
+                <th class="px-3 py-1 text-center font-medium">Count</th>
+                <th class="px-3 py-1 text-center font-medium">Level</th>
+                <th class="px-3 py-1 text-left font-medium">Latest</th>
+              </tr>
+            </thead>
+            <tbody>${serverRows}</tbody>
+          </table>
+        </div>
+      </div>
+    </td>
+  `;
+  tbody.appendChild(detailRow);
+}
+
+// ── JSON Downloads ──
+
+function downloadComparisonPDF() {
+  const checked = [...document.querySelectorAll('.compare-cb:checked')].map(cb => cb.value);
+  if (checked.length < 2) { pAlert('Select at least 2 servers'); return; }
+  const hours = document.getElementById('compare-hours').value;
+  window.location.href = `/api/reports/pdf/comparison?servers=${encodeURIComponent(checked.join(','))}&hours=${hours}`;
+}
+
+// ── SLA Section ──
+
+function renderStatsTable(data) {
+  const section = document.getElementById('compare-stats');
+  const tbody = document.getElementById('stats-table-body');
+  tbody.innerHTML = '';
+
+  if (!data.servers || Object.keys(data.servers).length === 0) {
+    section.classList.add('hidden');
+    return;
+  }
+
+  const metricLabels = {cpu_percent: '{{ t.cpu }}', ram_percent: '{{ t.ram }}', disk_c_percent: '{{ t.disk_c }}', disk_d_percent: '{{ t.disk_d }}'};
+
+  for (const [name, metrics] of Object.entries(data.servers).sort((a,b) => a[0].localeCompare(b[0]))) {
+    for (const [mk, s] of Object.entries(metrics)) {
+      // compute_metric_stats() returns None -> JSON null for a metric with no
+      // readings in the window — an absent disk D, or a server that was offline
+      // for the whole period. The loop dereferenced `s.` unguarded, so one such
+      // metric threw a TypeError and killed the WHOLE stats table, not just its
+      // own row. Pre-existing; it surfaced when a compared server had an absent
+      // drive.
+      if (!s) continue;
+      const trendColor = s.trend_per_day > 0.5 ? 'text-[#DC2626]' : (s.trend_per_day > 0.1 ? 'text-[#F59E0B]' : (s.trend_per_day < -0.1 ? 'text-[#2563EB]' : 'text-[#6B7280]'));
+      const trendArrow = s.trend_per_day > 0.1 ? '↑' : (s.trend_per_day < -0.1 ? '↓' : '→');
+
+      const row = document.createElement('tr');
+      row.className = 'border-t border-[#E5E7EB] dark:border-[#334155]';
+      row.innerHTML = `
+        <td class="px-3 py-1.5 font-medium">${name}</td>
+        <td class="px-3 py-1.5">${metricLabels[mk] || mk}</td>
+        <td class="px-3 py-1.5 text-center font-mono">${s.min?.toFixed(1) ?? '—'}</td>
+        <td class="px-3 py-1.5 text-center font-mono">${s.max?.toFixed(1) ?? '—'}</td>
+        <td class="px-3 py-1.5 text-center font-mono">${s.mean?.toFixed(1) ?? '—'}</td>
+        <td class="px-3 py-1.5 text-center font-mono">${s.median?.toFixed(1) ?? '—'}</td>
+        <td class="px-3 py-1.5 text-center font-mono">${s.p95?.toFixed(1) ?? '—'}</td>
+        <td class="px-3 py-1.5 text-center ${trendColor} font-medium">${trendArrow} ${s.trend_per_day?.toFixed(3) ?? '—'}%/d</td>
+      `;
+      tbody.appendChild(row);
+    }
+  }
+  section.classList.remove('hidden');
+}
+
+// ── Segmented Annotations ──
+function renderSegmentedAnnotations(data) {
+  const section = document.getElementById('compare-annotations');
+  const tbody = document.getElementById('annotations-table-body');
+  tbody.innerHTML = '';
+
+  if (!data.servers || Object.keys(data.servers).length === 0) {
+    section.classList.add('hidden');
+    return;
+  }
+
+  const metricLabels = {cpu_percent: '{{ t.cpu }}', ram_percent: '{{ t.ram }}', disk_c_percent: '{{ t.disk_c }}', disk_d_percent: '{{ t.disk_d }}'};
+
+  // Build annotation lookup
+  const annMap = {};
+  (data.annotations || []).forEach(a => { annMap[`${a.server}|${a.metric}`] = a; });
+
+  for (const [name, metrics] of Object.entries(data.servers).sort((a,b) => a[0].localeCompare(b[0]))) {
+    for (const [mk, seg] of Object.entries(metrics)) {
+      // Same null-metric guard as the stats table above — a metric with no
+      // readings comes back as null and `seg.business_hours` would throw.
+      if (!seg) continue;
+      const ann = annMap[`${name}|${mk}`];
+      let devBadge = '';
+      if (ann) {
+        if (ann.direction === 'above') {
+          devBadge = `<span class="badge badge-critical">↑ {{ t.significantly_above }}</span>`;
+        } else {
+          devBadge = `<span class="badge badge-info">↓ {{ t.significantly_below }}</span>`;
+        }
+      } else {
+        devBadge = '<span class="text-[#6B7280]">—</span>';
+      }
+
+      const row = document.createElement('tr');
+      row.className = 'border-t border-[#E5E7EB] dark:border-[#334155]';
+      row.innerHTML = `
+        <td class="px-3 py-1.5 font-medium">${name}</td>
+        <td class="px-3 py-1.5">${metricLabels[mk] || mk}</td>
+        <td class="px-3 py-1.5 text-center font-mono">${seg.business_hours?.mean?.toFixed(1) ?? '—'}%</td>
+        <td class="px-3 py-1.5 text-center font-mono">${seg.off_hours?.mean?.toFixed(1) ?? '—'}%</td>
+        <td class="px-3 py-1.5 text-center">${devBadge}</td>
+      `;
+      tbody.appendChild(row);
+    }
+  }
+  section.classList.remove('hidden');
+}
+
+// ── Fleet Band Overlay ──
+let _fleetBandActive = false;
+let _fleetBandData = {}; // cached per metric
+
+function computeFleetStats(servers, names, metricKey) {
+  // Collect all timestamps and values, then compute mean +/- stddev at aligned time points
+  // Use the first server's timestamps as the reference timeline
+  const refName = names.find(n => (servers[n]?.history || []).length > 0);
+  if (!refName) return { timestamps: [], means: [], uppers: [], lowers: [] };
+
+  const refHistory = servers[refName].history || [];
+  const timestamps = refHistory.map(h => {
+    const ts = h.timestamp;
+    return new Date(ts.endsWith('Z') ? ts : ts + 'Z').getTime();
+  }).filter(t => !isNaN(t));
+
+  const allSeries = names.map(n => (servers[n]?.history || []).map(h => h[metricKey]).filter(v => v != null));
+  const maxLen = Math.max(...allSeries.map(s => s.length));
+  const means = [], uppers = [], lowers = [];
+
+  for (let i = 0; i < maxLen; i++) {
+    const vals = allSeries.map(s => s[Math.min(i, s.length - 1)]).filter(v => v != null);
+    if (vals.length === 0) { means.push(null); uppers.push(null); lowers.push(null); continue; }
+    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const variance = vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length;
+    const std = Math.sqrt(variance);
+    means.push(mean);
+    uppers.push(Math.min(mean + std, 100));
+    lowers.push(Math.max(mean - std, 0));
+  }
+  return { timestamps, means, uppers, lowers };
+}
+
+function toggleFleetBand() {
+  _fleetBandActive = !_fleetBandActive;
+  const label = document.getElementById('fleet-band-label');
+  label.textContent = _fleetBandActive ? {{ t.hide_fleet_band | tojson }} : {{ t.show_fleet_band | tojson }};
+
+  const metrics = ['chart-cpu', 'chart-ram', 'chart-disk-c', 'chart-disk-d'];
+  const metricKeys = ['cpu_percent', 'ram_percent', 'disk_c_percent', 'disk_d_percent'];
+
+  metrics.forEach((canvasId, idx) => {
+    const chart = compareCharts[canvasId];
+    if (!chart) return;
+
+    if (_fleetBandActive) {
+      // Add band datasets using epoch timestamps
+      const stats = _fleetBandData[metricKeys[idx]];
+      if (!stats || !stats.timestamps) return;
+      const ts = stats.timestamps;
+
+      chart.data.datasets.push({
+        label: {{ t.fleet_average | tojson }} + ' +σ',
+        data: stats.uppers.map((v, i) => ({ x: ts[Math.min(i, ts.length - 1)], y: v })),
+        borderColor: 'rgba(107,114,128,0.3)',
+        backgroundColor: 'rgba(107,114,128,0.08)',
+        borderWidth: 1,
+        borderDash: [4, 4],
+        pointRadius: 0,
+        fill: '+1',
+        _isFleetBand: true,
+      });
+      chart.data.datasets.push({
+        label: {{ t.fleet_average | tojson }} + ' -σ',
+        data: stats.lowers.map((v, i) => ({ x: ts[Math.min(i, ts.length - 1)], y: v })),
+        borderColor: 'rgba(107,114,128,0.3)',
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderDash: [4, 4],
+        pointRadius: 0,
+        fill: false,
+        _isFleetBand: true,
+      });
+    } else {
+      // Remove band datasets
+      chart.data.datasets = chart.data.datasets.filter(ds => !ds._isFleetBand);
+    }
+    chart.update();
+  });
+}
+
+// ── Event Markers Overlay ──
+let _eventMarkersActive = false;
+let _eventMarkersData = null;
+
+async function loadEventMarkers(serverNames, hours) {
+  try {
+    const res = await fetch(`/api/servers/compare-events?servers=${encodeURIComponent(serverNames.join(','))}&hours=${hours}`);
+    const data = await res.json();
+    _eventMarkersData = data;
+  } catch(e) { console.error('Event markers load failed:', e); }
+}
+
+function toggleEventMarkers() {
+  _eventMarkersActive = !_eventMarkersActive;
+  const label = document.getElementById('event-markers-label');
+  label.textContent = _eventMarkersActive ? {{ t.hide_events_overlay | tojson }} : {{ t.show_events_overlay | tojson }};
+
+  const chartIds = ['chart-cpu', 'chart-ram', 'chart-disk-c', 'chart-disk-d'];
+  chartIds.forEach(canvasId => {
+    const chart = compareCharts[canvasId];
+    if (!chart) return;
+
+    if (_eventMarkersActive && _eventMarkersData) {
+      // Gather unique Critical/Error event timestamps
+      const annotations = {};
+      const allEvents = [...(_eventMarkersData.common || []), ...(_eventMarkersData.unique || [])];
+      allEvents.forEach(evt => {
+        if (!evt.level || (evt.level !== 'Critical' && evt.level !== 'Error')) return;
+        const details = evt.server_details || {};
+        for (const [srv, info] of Object.entries(details)) {
+          if (info.latest) {
+            const ts = info.latest;
+            const key = `evt_${ts}`;
+            if (!annotations[key]) {
+              annotations[key] = {
+                type: 'line',
+                xMin: ts,
+                xMax: ts,
+                borderColor: evt.level === 'Critical' ? 'rgba(220,38,38,0.5)' : 'rgba(245,158,11,0.5)',
+                borderWidth: 1,
+                borderDash: [3, 3],
+                label: {
+                  display: false,
+                  content: `${evt.source}: ${(evt.message_short || '').substring(0, 30)}`,
+                }
+              };
+            }
+          }
+        }
+      });
+      chart.options.plugins.annotation = { annotations };
+    } else {
+      chart.options.plugins.annotation = { annotations: {} };
+    }
+    chart.update();
+  });
+}
+
+// ── Presets ──
+function getPresets() {
+  try { return JSON.parse(localStorage.getItem('prism-compare-presets') || '{}'); } catch(e) { return {}; }
+}
+
+function refreshPresetDropdown() {
+  const sel = document.getElementById('preset-select');
+  const presets = getPresets();
+  sel.innerHTML = '<option value="">{{ t.presets }}...</option>';
+  for (const name of Object.keys(presets).sort()) {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    sel.appendChild(opt);
+  }
+}
+
+async function savePreset() {
+  const name = await pPrompt({{ t.preset_name | tojson }});
+  if (!name || !name.trim()) return;
+  const checked = [...document.querySelectorAll('.compare-cb:checked')].map(cb => cb.value);
+  const hours = document.getElementById('compare-hours').value;
+  const presets = getPresets();
+  presets[name.trim()] = { servers: checked, hours };
+  localStorage.setItem('prism-compare-presets', JSON.stringify(presets));
+  refreshPresetDropdown();
+}
+
+function loadPreset() {
+  const sel = document.getElementById('preset-select');
+  const name = sel.value;
+  if (!name) return;
+  const presets = getPresets();
+  const preset = presets[name];
+  if (!preset) return;
+
+  // Set checkboxes
+  document.querySelectorAll('.compare-cb').forEach(cb => {
+    cb.checked = preset.servers.includes(cb.value);
+  });
+  if (preset.hours) document.getElementById('compare-hours').value = preset.hours;
+  updateCompareButtonState();
+}
+
+function deletePreset() {
+  const sel = document.getElementById('preset-select');
+  const name = sel.value;
+  if (!name) return;
+  const presets = getPresets();
+  delete presets[name];
+  localStorage.setItem('prism-compare-presets', JSON.stringify(presets));
+  refreshPresetDropdown();
+}
+
+// Bootstrap: populate the category buttons and the server checkboxes.
+// This is the comparison half of what used to be one DOMContentLoaded handler
+// in reports.html; the export-dropdown half stayed behind. Both fetch
+// /api/servers — a duplicated ~50ms call, accepted so this partial has no
+// dependency on its host page having already fetched anything.
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const res = await fetch('/api/servers');
+    const servers = await res.json();
+    const names = servers.map(s => s.name).sort();
+
+    const serverTypes = {};
+    servers.forEach(s => { serverTypes[s.name] = s.type || 'other'; });
+    const categories = [...new Set(Object.values(serverTypes))].sort();
+
+    const catContainer = document.getElementById('compare-category-buttons');
+    const btnBase = 'text-xs font-medium px-4 py-1.5 rounded transition-colors cursor-pointer select-none';
+    const btnOff = 'bg-[#6B7280] hover:bg-[#4B5563] text-white';
+    const btnOn = 'bg-[#2563EB] hover:bg-[#1D4ED8] text-white';
+
+    function setCategoryCheckboxes(type) {
+      // Cap-aware. Checking every box for '__all__' against a smaller API limit
+      // is what made "All" a guaranteed 400 before the cap work.
+      let n = 0;
+      document.querySelectorAll('.compare-cb').forEach(cb => {
+        cb.disabled = false;
+        const wanted = type === '__all__' || serverTypes[cb.value] === type;
+        cb.checked = wanted && n < MAX_COMPARE;
+        if (cb.checked) n++;
+      });
+      updateCompareButtonState();
+    }
+
+    function flashAndSelect(btn, type) {
+      btn.className = btnBase + ' ' + btnOn;
+      setCategoryCheckboxes(type);
+      setTimeout(() => { btn.className = btnBase + ' ' + btnOff; }, 200);
+    }
+
+    const allBtn = document.createElement('button');
+    allBtn.textContent = {{ t.all | tojson }};
+    allBtn.dataset.cat = '__all__';
+    allBtn.className = btnBase + ' ' + btnOff;
+    allBtn.onclick = () => flashAndSelect(allBtn, '__all__');
+    catContainer.appendChild(allBtn);
+
+    categories.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.textContent = cat.replace(/_/g, ' ').replace(/\w/g, c => c.toUpperCase());
+      btn.dataset.cat = cat;
+      btn.className = btnBase + ' ' + btnOff;
+      btn.onclick = () => flashAndSelect(btn, cat);
+      catContainer.appendChild(btn);
+    });
+
+    const container = document.getElementById('compare-server-checkboxes');
+    names.forEach(n => {
+      const label = document.createElement('label');
+      label.className = 'inline-flex items-center gap-1 px-2 py-1 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] cursor-pointer select-none';
+      label.innerHTML = `<input type="checkbox" value="${n}" class="compare-cb rounded"> ${n}`;
+      container.appendChild(label);
+    });
+
+    document.getElementById('compare-server-checkboxes')
+            .addEventListener('change', updateCompareButtonState);
+
+    updateCompareButtonState();
+    refreshPresetDropdown();
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  } catch (e) {
+    console.error('Server comparison bootstrap failed:', e);
+  }
+});
+</script>

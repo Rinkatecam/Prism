@@ -1,0 +1,1970 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold flex items-center gap-2">
+    <i data-lucide="settings" class="w-6 h-6 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    {{ t.settings }}
+  </h1>
+</div>
+
+<!-- Status message (shown after save) -->
+<div id="save-message" class="hidden mb-4 rounded-lg p-3 text-sm"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 1 — General Settings (locale + retention, NO restart needed)
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="mb-8">
+  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+    <i data-lucide="settings-2" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    {{ t.general }}
+  </h2>
+  <div id="general-card" class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155] space-y-4">
+    {# Collector cadence rows moved to the Collector section below (2026-08-03).
+       General is now purely locale + retention. #}
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-sm font-medium">{{ t.data_retention }}</div>
+        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.data_retention_desc }}</div>
+      </div>
+      <div class="flex items-center gap-1">
+        <input type="number" id="retention-days" value="{{ settings.retention_days or 30 }}" min="1" max="365" required
+               class="general-input w-20 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+        <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.days }}</span>
+      </div>
+    </div>
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-sm font-medium">{{ t.language }}</div>
+        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.language_desc }}</div>
+      </div>
+      <select id="setting-language" class="general-input px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+        <option value="en" {% if settings.language == 'en' %}selected{% endif %}>{{ t.lang_en }}</option>
+        <option value="de" {% if settings.language == 'de' %}selected{% endif %}>{{ t.lang_de }}</option>
+        <option value="fr" {% if settings.language == 'fr' %}selected{% endif %}>{{ t.lang_fr }}</option>
+        <option value="es" {% if settings.language == 'es' %}selected{% endif %}>{{ t.lang_es }}</option>
+        <option value="ja" {% if settings.language == 'ja' %}selected{% endif %}>{{ t.lang_ja }}</option>
+      </select>
+    </div>
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-sm font-medium">{{ t.timezone }}</div>
+        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.timezone_desc }}</div>
+      </div>
+      <select id="setting-timezone" class="general-input px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+        <option value="Europe/Berlin" {% if settings.timezone == 'Europe/Berlin' %}selected{% endif %}>Europe/Berlin (CET/CEST)</option>
+        <option value="Europe/London" {% if settings.timezone == 'Europe/London' %}selected{% endif %}>Europe/London (GMT/BST)</option>
+        <option value="Europe/Paris" {% if settings.timezone == 'Europe/Paris' %}selected{% endif %}>Europe/Paris (CET/CEST)</option>
+        <option value="Europe/Zurich" {% if settings.timezone == 'Europe/Zurich' %}selected{% endif %}>Europe/Zurich (CET/CEST)</option>
+        <option value="Europe/Vienna" {% if settings.timezone == 'Europe/Vienna' %}selected{% endif %}>Europe/Vienna (CET/CEST)</option>
+        <option value="US/Eastern" {% if settings.timezone == 'US/Eastern' %}selected{% endif %}>US/Eastern (EST/EDT)</option>
+        <option value="US/Central" {% if settings.timezone == 'US/Central' %}selected{% endif %}>US/Central (CST/CDT)</option>
+        <option value="US/Pacific" {% if settings.timezone == 'US/Pacific' %}selected{% endif %}>US/Pacific (PST/PDT)</option>
+        <option value="Asia/Tokyo" {% if settings.timezone == 'Asia/Tokyo' %}selected{% endif %}>Asia/Tokyo (JST)</option>
+        <option value="UTC" {% if settings.timezone == 'UTC' %}selected{% endif %}>UTC</option>
+      </select>
+    </div>
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-sm font-medium">{{ t.date_format }}</div>
+        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.date_format_desc }}</div>
+      </div>
+      <select id="setting-date-format" class="general-input px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+        <option value="DD.MM.YYYY" {% if settings.date_format == 'DD.MM.YYYY' %}selected{% endif %}>DD.MM.YYYY (31.12.2026)</option>
+        <option value="YYYY-MM-DD" {% if settings.date_format == 'YYYY-MM-DD' %}selected{% endif %}>YYYY-MM-DD (2026-12-31)</option>
+        <option value="MM/DD/YYYY" {% if settings.date_format == 'MM/DD/YYYY' %}selected{% endif %}>MM/DD/YYYY (12/31/2026)</option>
+        <option value="DD/MM/YYYY" {% if settings.date_format == 'DD/MM/YYYY' %}selected{% endif %}>DD/MM/YYYY (31/12/2026)</option>
+      </select>
+    </div>
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-sm font-medium">{{ t.time_format }}</div>
+        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.time_format_desc }}</div>
+      </div>
+      <select id="setting-time-format" class="general-input px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+        <option value="24h" {% if settings.time_format == '24h' %}selected{% endif %}>24-hour (14:30)</option>
+        <option value="12h" {% if settings.time_format == '12h' %}selected{% endif %}>12-hour (2:30 PM)</option>
+      </select>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 2 — Collector (cadences live; worker pool needs restart)
+
+     All collector cadences plus the worker-pool size live here. The three
+     interval rows used to sit in "General" while the worker pool sat here
+     alone, with no cross-reference between them — they are one concern and
+     are now grouped (2026-08-03).
+
+     Only Worker Pool Size needs a restart, so the "Requires restart" pill is
+     on THAT ROW rather than the section header — a section-level badge would
+     be wrong for the three cadence rows, which take effect immediately.
+
+     NOTE on the `general-input` class on the three cadence inputs: that class
+     selects the JS *change-detection bucket*, not the visual section. These
+     fields belong in the General bucket because they apply live; Worker Pool
+     Size carries `security-input` because that bucket drives the
+     restart-confirmation modal. Moving them visually must not change those
+     class names — see captureGeneralState() / hasGeneralChanged().
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="mb-8">
+  <div class="flex items-center gap-3 mb-4">
+    <h2 class="text-lg font-semibold flex items-center gap-2">
+      <i data-lucide="cpu" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+      {{ t.get('collector_engine_section', 'Collector') }}
+    </h2>
+  </div>
+  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155] space-y-4">
+    {# All three interval rows below are *per-server* cadences. Each server
+       is scheduled independently (with a small hash-derived offset so the
+       fleet does not stampede on a tick boundary). Setting "60s" means
+       every server is polled every ~60s on its own clock — not that the
+       collector wakes up once per 60s and tries to poll everyone in batch.
+       The supervisor schedules per-check, per-server. The info-icon tooltips
+       below explain this to operators who hover over them. #}
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-sm font-medium flex items-center gap-1.5">
+          {{ t.poll_interval }}
+          <i data-lucide="info" class="w-3.5 h-3.5 text-[#9CA3AF] dark:text-[#64748B] cursor-help"
+             data-tip-title="{{ t.get('per_server_cadence_title', 'Per-server cadence') }}"
+             data-tip-desc="{{ t.get('poll_interval_tip_desc', 'Every server is polled on its own schedule, offset by a hash so the fleet does not stampede on a tick boundary. Setting 60s means each server is polled every ~60s independently — not that all servers are polled together once per minute.') }}"></i>
+        </div>
+        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.poll_interval_desc }}</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" data-action="syncNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-[#2563EB] hover:bg-[#1D4ED8] text-white transition-colors whitespace-nowrap">
+          {{ t.sync_now | default('Sync Now') }}
+        </button>
+        <input type="number" id="poll-interval" value="{{ ((settings.poll_interval_seconds or 60) / 60) | round(0) | int }}" min="1" max="60" step="1" required
+               class="general-input w-20 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+        <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.min }}</span>
+      </div>
+    </div>
+    {# Log collection interval — controls how often Windows event logs and
+       failed-login events are pulled. Read by collector_v2/supervisor.py via
+       the log_collection_interval_minutes setting. #}
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-sm font-medium flex items-center gap-1.5">
+          {{ t.get('log_collection_interval', 'Log Collection Interval') }}
+          <i data-lucide="info" class="w-3.5 h-3.5 text-[#9CA3AF] dark:text-[#64748B] cursor-help"
+             data-tip-title="{{ t.get('per_server_cadence_title', 'Per-server cadence') }}"
+             data-tip-desc="{{ t.get('log_collection_tip_desc', 'Event-log scrape runs on each server independently at this cadence. Higher value = lower WinRM load on the targets, but event-log warnings take longer to surface in the dashboard. Decoupled from the metrics interval — these run on their own clock.') }}"></i>
+        </div>
+        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('log_collection_interval_desc', 'How often to pull Windows event logs + failed login events from each server. Higher = less load on the targets.') }}</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" data-action="syncLogsNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-[#2563EB] hover:bg-[#1D4ED8] text-white transition-colors whitespace-nowrap">
+          {{ t.sync_now | default('Sync Now') }}
+        </button>
+        <input type="number" id="log-collection-interval" value="{{ settings.log_collection_interval_minutes or 5 }}" min="1" max="60" required
+               class="general-input w-20 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+        <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.min }}</span>
+      </div>
+    </div>
+    {# Windows Update check interval — how often the collector queries the
+       WU COM API on each server for pending updates. Default every 30 min. #}
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-sm font-medium flex items-center gap-1.5">
+          {{ t.get('update_check_interval', 'Update Check Interval') }}
+          <i data-lucide="info" class="w-3.5 h-3.5 text-[#9CA3AF] dark:text-[#64748B] cursor-help"
+             data-tip-title="{{ t.get('per_server_cadence_title', 'Per-server cadence') }}"
+             data-tip-desc="{{ t.get('update_check_tip_desc', 'Windows Update queries are spread across the fleet — at any given time only a small subset of servers is hitting the WU COM API, not all of them at once. This cadence is the per-server interval; the scheduler shards calls so collector load stays flat.') }}"></i>
+        </div>
+        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('update_check_interval_desc', 'How often to check each server for pending Windows Updates.') }}</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" data-action="syncUpdatesNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-[#2563EB] hover:bg-[#1D4ED8] text-white transition-colors whitespace-nowrap">
+          {{ t.sync_now | default('Sync Now') }}
+        </button>
+        <input type="number" id="update-check-interval" value="{{ settings.get('update_check_interval_minutes', 30) }}" min="10" max="120" required
+               class="general-input w-20 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+        <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.min }}</span>
+      </div>
+    </div>
+    <div class="border-t border-[#E5E7EB] dark:border-[#334155] pt-4"></div>
+    <div id="collector-v2-workers-row" class="flex items-center justify-between gap-4">
+      <div>
+        <div class="text-sm font-medium flex items-center gap-1.5 flex-wrap">
+          {{ t.get('collector_v2_workers_label', 'Worker pool size') }}
+          {# Restart pill lives on THIS row, not the section header — it is the
+             only field in the Collector section that needs one. #}
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#78350F]/30 text-[#92400E] dark:text-[#FCD34D] font-normal">{{ t.get('requires_restart', 'Requires restart') }}</span>
+          <i data-lucide="info" class="w-3.5 h-3.5 text-[#9CA3AF] dark:text-[#64748B] cursor-help"
+             data-tip-title="{{ t.get('collector_v2_workers_tip_title', 'Concurrent WinRM probes') }}"
+             data-tip-desc="{{ t.get('collector_v2_workers_tip_desc', 'Number of worker threads pulling check items from the queue and executing WinRM probes against your servers. Default 15 handles ~150 servers with comfortable headroom (each worker can sit on a slow Windows Update query for up to 120 s). Increase for larger fleets or if the operations page shows workers active_count consistently near the pool size.') }}"></i>
+        </div>
+        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1] mt-1">{{ t.get('collector_v2_workers_desc', 'Concurrent WinRM probes. Default 15 handles ~150 servers with headroom. Increase for larger fleets.') }}</div>
+      </div>
+      <div class="flex items-center gap-1">
+        <input type="number" id="collector-v2-workers" min="2" max="100" step="1"
+               value="{{ settings.get('collector_v2_num_workers', 15) }}"
+               class="security-input w-20 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 3 — Security & Access (RESTART required)
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="mb-8">
+  <div class="flex items-center gap-3 mb-4">
+    <h2 class="text-lg font-semibold flex items-center gap-2">
+      <i data-lucide="shield-check" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+      {{ t.security }}
+    </h2>
+    <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#78350F]/30 text-[#92400E] dark:text-[#FCD34D]">{{ t.get('requires_restart', 'Requires restart') }}</span>
+  </div>
+  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155] space-y-5">
+
+    <!-- TLS / HTTPS -->
+    <div>
+      <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
+        <i data-lucide="shield" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6]"></i>
+        {{ t.communication }}
+      </div>
+      <div class="space-y-3 pl-1">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.enable_https }}</div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="https-enabled" class="sr-only peer security-input"
+                   {% if settings.https.enabled %}checked{% endif %}>
+            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+          </label>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.cert_file }}</label>
+            <input type="text" id="https-cert" value="{{ settings.https.cert_file or '' }}" placeholder="C:\certs\prism.pem"
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs"
+                   data-change="checkCertExpiry">
+          </div>
+          <div>
+            <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.key_file }}</label>
+            <input type="text" id="https-key" value="{{ settings.https.key_file or '' }}" placeholder="C:\certs\prism-key.pem"
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+          </div>
+        </div>
+        <!-- HTTPS lockout warning -->
+        <div id="https-warning" class="hidden flex items-start gap-2 p-2.5 rounded bg-[#FEF3C7] dark:bg-[#78350F]/30 text-[#92400E] dark:text-[#FCD34D] text-xs">
+          <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
+          <span>{{ t.get('https_warning', 'Enabling HTTPS requires valid certificate and key files. Verify paths before saving.') }}</span>
+        </div>
+        <!-- Certificate expiry info -->
+        <div id="cert-expiry-info" class="hidden text-xs rounded p-2"></div>
+      </div>
+    </div>
+
+    <hr class="border-[#E5E7EB] dark:border-[#334155]">
+
+    <!-- Authentication -->
+    <div>
+      <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
+        <i data-lucide="lock" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6]"></i>
+        {{ t.authentication }}
+      </div>
+      <div class="space-y-3 pl-1">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.require_login }}</div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="auth-enabled" class="sr-only peer security-input"
+                   {% if settings.auth.enabled %}checked{% endif %}>
+            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+          </label>
+        </div>
+        <!-- Auth lockout warning -->
+        <div id="auth-warning" class="hidden flex items-start gap-2 p-2.5 rounded bg-[#FEE2E2] dark:bg-[#7F1D1D]/30 text-[#991B1B] dark:text-[#FCA5A5] text-xs">
+          <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
+          <span>{{ t.get('auth_lockout_warning', 'Warning: Enable at least one login method (LDAP or Backup Admin) before enabling authentication, or you may be locked out.') }}</span>
+        </div>
+        <!-- Backup Admin Account -->
+        {# Backup Admin card — reflects three states:
+             1. Configured: username + password_hash set in config.auth.backup_admin
+             2. Not set up, auth disabled: neutral hint (normal state if running open-access)
+             3. Not set up, auth enabled: red warning + Create Admin button → /setup
+        #}
+        {% set ba = settings.auth.get('backup_admin') or {} %}
+        {% set _ba_configured = ba.get('username') and ba.get('password_hash') %}
+        {% set _auth_enabled = settings.auth.get('enabled', false) %}
+        <div class="bg-[#F9FAFB] dark:bg-[#0F172A] rounded-lg p-3 border border-[#E5E7EB] dark:border-[#334155]">
+          <div class="flex items-center justify-between mb-1">
+            <div class="text-xs font-medium flex items-center gap-1.5">
+              <i data-lucide="shield" class="w-3.5 h-3.5 text-[#F59E0B]"></i>
+              {{ t.admin_account }}
+            </div>
+            {% if _ba_configured %}
+            <span class="badge badge-healthy text-[10px]">{{ t.get('configured', 'Configured') }}</span>
+            {% elif _auth_enabled %}
+            <span class="badge badge-offline text-[10px]">{{ t.get('not_configured', 'Not configured') }}</span>
+            {% else %}
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#F3F4F6] dark:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('not_set_up', 'Not set up') }}</span>
+            {% endif %}
+          </div>
+          <div class="text-[10px] text-[#6B7280] dark:text-[#CBD5E1]">{{ t.admin_account_desc }}</div>
+
+          {% if _ba_configured %}
+          <div class="mt-2 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-full bg-[#2563EB]/10 dark:bg-[#3B82F6]/10 flex items-center justify-center">
+                <i data-lucide="user" class="w-3.5 h-3.5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+              </div>
+              <div>
+                <div class="text-xs font-medium">{{ ba.username }}</div>
+                <div class="text-[10px] text-[#9CA3AF] dark:text-[#475569]">{{ t.current_admin }}</div>
+              </div>
+            </div>
+            <button type="button" data-action="showResetPasswordModal"
+                    class="px-2.5 py-1 text-[11px] font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-white dark:hover:bg-[#1E293B] flex items-center gap-1 transition-colors">
+              <i data-lucide="key" class="w-3 h-3"></i>
+              {{ t.reset_password }}
+            </button>
+          </div>
+          {% elif _auth_enabled %}
+          {# Auth is on but no admin exists — this is the dangerous state #}
+          <div class="mt-2 flex items-center justify-between gap-2">
+            <div class="flex-1 text-[10px] text-[#DC2626] dark:text-[#EF4444] flex items-start gap-1">
+              <i data-lucide="alert-triangle" class="w-3 h-3 flex-shrink-0 mt-0.5"></i>
+              <span>{{ t.get('no_admin_warning_auth_on', 'Authentication is enabled but no local admin account exists. You may be locked out if LDAP fails.') }}</span>
+            </div>
+            <a href="/setup" target="_blank"
+               class="px-2.5 py-1 text-[11px] font-medium rounded border border-[#10B981] dark:border-[#34D399] text-[#10B981] dark:text-[#34D399] hover:bg-[#10B981]/10 flex items-center gap-1 whitespace-nowrap">
+              <i data-lucide="user-plus" class="w-3 h-3"></i>
+              {{ t.get('create_admin', 'Create Admin') }}
+            </a>
+          </div>
+          {% else %}
+          {# Auth disabled + no admin — normal first-time state, no alarm #}
+          <div class="mt-2 flex items-center justify-between gap-2">
+            <div class="flex-1 text-[10px] text-[#6B7280] dark:text-[#CBD5E1] flex items-start gap-1">
+              <i data-lucide="info" class="w-3 h-3 flex-shrink-0 mt-0.5"></i>
+              <span>{{ t.get('no_admin_info', 'Authentication is currently disabled, so no local admin is required. You can create one now to keep access if you ever enable authentication.') }}</span>
+            </div>
+            <a href="/setup" target="_blank"
+               class="px-2.5 py-1 text-[11px] font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-white dark:hover:bg-[#1E293B] flex items-center gap-1 whitespace-nowrap">
+              <i data-lucide="user-plus" class="w-3 h-3"></i>
+              {{ t.get('create_admin', 'Create Admin') }}
+            </a>
+          </div>
+          {% endif %}
+        </div>
+
+        <div>
+          <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.auth_type }}</label>
+          <select id="auth-type"
+                  class="security-input w-full max-w-xs px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+            <option value="ldap" {% if settings.auth.type == 'ldap' %}selected{% endif %}>{{ t.ldap_ad }}</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.ldap_server_url }}</label>
+            <input type="text" id="auth-ldap-url" value="{{ settings.auth.ldap_url or '' }}" placeholder="ldap://dc01.ad.example.com:389"
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+          </div>
+          <div>
+            <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.ldap_base_dn }}</label>
+            <input type="text" id="auth-ldap-basedn" value="{{ settings.auth.ldap_base_dn or '' }}" placeholder="DC=ad,DC=example,DC=com"
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+          </div>
+        </div>
+        <!-- LDAP Bind Account (for AD Discovery) -->
+        <div class="bg-[#F9FAFB] dark:bg-[#0F172A] rounded-lg p-3 border border-[#E5E7EB] dark:border-[#334155]">
+          <div class="flex items-center gap-1.5 mb-2">
+            <i data-lucide="radar" class="w-3.5 h-3.5 text-[#10B981]"></i>
+            <span class="text-xs font-medium">{{ t.get('ldap_bind_account', 'LDAP Bind Account (for AD Discovery)') }}</span>
+          </div>
+          <div class="text-[10px] text-[#9CA3AF] dark:text-[#475569] mb-2">{{ t.get('ldap_bind_desc', 'Credentials used to query AD for computer objects. Use UPN format: user@domain.com') }}</div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.username }}</label>
+              <input type="text" id="auth-ldap-bind-user" value="{{ settings.auth.get('ldap_bind_user', '') }}"
+                     placeholder="administrator@ad.example.com"
+                     class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+            </div>
+            <div>
+              <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.password }}</label>
+              <input type="password" id="auth-ldap-bind-pass" value="" placeholder="{{ '••••••••' if settings.auth.get('ldap_bind_password') else 'Password' }}" autocomplete="off"
+                     class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-xs">
+            </div>
+          </div>
+        </div>
+        <!-- Allowed Users / Groups -->
+        <div>
+          <div class="flex items-center justify-between mb-0.5">
+            <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.allowed_users }}</label>
+            {# Query AD button — matches "Discover Servers" on servers.html
+               (green outline + radar icon). #}
+            <button type="button" data-action="openLdapPicker"
+                    class="px-3 py-1.5 text-sm font-medium rounded border border-[#10B981] dark:border-[#34D399] text-[#10B981] dark:text-[#34D399] hover:bg-[#10B981]/10 flex items-center gap-1">
+              <i data-lucide="radar" class="w-4 h-4"></i>
+              {{ t.get('query_ad', 'Query AD') }}
+            </button>
+          </div>
+          <div class="text-[10px] text-[#9CA3AF] dark:text-[#475569] mb-1">{{ t.allowed_users_desc }}</div>
+          <textarea id="auth-allowed-users" rows="3"
+                    placeholder="{{ t.allowed_users_placeholder }}"
+                    {# `or []` not `| default([])`: Jinja's default filter only
+                       substitutes for UNDEFINED, not None. A null on disk made
+                       this raise TypeError and 500 the whole page. #}
+                    class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">{{ (settings.auth.allowed_users or []) | join('\n') }}</textarea>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.session_timeout }}</div>
+          </div>
+          <div class="flex items-center gap-1">
+            <input type="number" id="auth-timeout" value="{{ settings.auth.session_timeout_minutes or 480 }}" min="5" max="1440" required
+                   class="security-input w-20 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+            <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.min }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 4 — Notifications (RESTART required)
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="mb-8">
+  <div class="flex items-center gap-3 mb-4">
+    <h2 class="text-lg font-semibold flex items-center gap-2">
+      <i data-lucide="bell" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+      {{ t.get('notifications', 'Notifications') }}
+    </h2>
+    <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#78350F]/30 text-[#92400E] dark:text-[#FCD34D]">{{ t.get('requires_restart', 'Requires restart') }}</span>
+  </div>
+  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155] space-y-5">
+
+    <!-- Email Alerts -->
+    <div>
+      <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
+        <i data-lucide="mail" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6]"></i>
+        {{ t.email_alerts }}
+      </div>
+      <div class="space-y-3 pl-1">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.enable_email }}</div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="email-enabled" class="sr-only peer security-input"
+                   {% if settings.email.enabled %}checked{% endif %}>
+            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+          </label>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.smtp_server }}</label>
+            <input type="text" id="email-smtp-server" value="{{ settings.email.smtp_server or '' }}" placeholder="smtp.gmail.com"
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+          </div>
+          <div>
+            <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.smtp_port }}</label>
+            <input type="number" id="email-smtp-port" value="{{ settings.email.smtp_port or 587 }}" min="1" max="65535"
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-xs">
+          </div>
+        </div>
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.use_tls }}</div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="email-use-tls" class="sr-only peer security-input"
+                   {% if settings.email.use_tls %}checked{% endif %}>
+            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+          </label>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.username }}</label>
+            <input type="text" id="email-username" value="{{ settings.email.username or '' }}" placeholder="user@example.com"
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+          </div>
+          <div>
+            <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.password }}</label>
+            <input type="password" id="email-password" value="" placeholder="{{ '••••••••' if settings.email.password else 'App password' }}" autocomplete="off"
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-xs">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.from_address }}</label>
+          <input type="text" id="email-from" value="{{ settings.email.from_address or '' }}" placeholder="prism@example.com"
+                 class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+        </div>
+        <div>
+          <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.recipients }}</label>
+          <input type="text" id="email-recipients" value="{{ settings.email.recipients | join(', ') }}" placeholder="admin@example.com, ops@example.com"
+                 class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+        </div>
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.send_on_critical }}</div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="email-send-critical" class="sr-only peer security-input"
+                   {% if settings.email.send_on_critical %}checked{% endif %}>
+            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+          </label>
+        </div>
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.send_on_warning }}</div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="email-send-warning" class="sr-only peer security-input"
+                   {% if settings.email.send_on_warning %}checked{% endif %}>
+            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+          </label>
+        </div>
+        <div>
+          <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.dashboard_url }}</label>
+          <input type="text" id="email-dashboard-url" value="{{ settings.email.dashboard_url or 'http://localhost:5000' }}" placeholder="http://localhost:5000"
+                 class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+        </div>
+        <div>
+          <button data-action="sendTestEmail" id="test-email-btn"
+                  class="px-3 py-1.5 text-sm rounded border border-[#10B981] dark:border-[#34D399] text-[#10B981] dark:text-[#34D399] hover:bg-[#10B981]/10 flex items-center gap-1.5">
+            <i data-lucide="send" class="w-4 h-4"></i>
+            {{ t.send_test_email }}
+          </button>
+          <div id="test-email-result" class="hidden mt-2 rounded p-2 text-sm"></div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="border-[#E5E7EB] dark:border-[#334155]">
+
+    <!-- Microsoft Teams Webhooks -->
+    <div>
+      <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
+        <i data-lucide="webhook" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6]"></i>
+        {{ t.teams_webhook }}
+      </div>
+      <div class="space-y-3 pl-1">
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.webhook_enabled }}</div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="webhook-enabled" class="sr-only peer security-input"
+                   {% if settings.get('webhooks', {}).get('enabled') %}checked{% endif %}>
+            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+          </label>
+        </div>
+        <div>
+          <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.webhook_url }}</label>
+          <input type="text" id="webhook-url" value="{{ settings.get('webhooks', {}).get('teams_webhook_url', '') }}"
+                 placeholder="https://outlook.office.com/webhook/..."
+                 class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.send_on_critical_webhook }}</div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="webhook-send-critical" class="sr-only peer security-input"
+                   {% if settings.get('webhooks', {}).get('send_on_critical', True) %}checked{% endif %}>
+            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+          </label>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.send_on_warning_webhook }}</div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="webhook-send-warning" class="sr-only peer security-input"
+                   {% if settings.get('webhooks', {}).get('send_on_warning', False) %}checked{% endif %}>
+            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+          </label>
+        </div>
+        <div>
+          <button data-action="sendTestWebhook" id="test-webhook-btn"
+                  class="px-3 py-1.5 text-sm rounded border border-[#10B981] dark:border-[#34D399] text-[#10B981] dark:text-[#34D399] hover:bg-[#10B981]/10 flex items-center gap-1.5">
+            <i data-lucide="send" class="w-4 h-4"></i>
+            {{ t.test_webhook }}
+          </button>
+          <div id="test-webhook-result" class="hidden mt-2 rounded p-2 text-sm"></div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="border-[#E5E7EB] dark:border-[#334155]">
+
+    <!-- Scheduled Reports -->
+    <div>
+      <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
+        <i data-lucide="calendar-clock" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6]"></i>
+        {{ t.scheduled_reports }}
+      </div>
+      <div class="space-y-4 pl-1">
+        <!-- Enable scheduled reports -->
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('enable_scheduled_reports', 'Enable scheduled reports') }}</div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="sched-enabled" class="sr-only peer security-input"
+                   {% if settings.get('scheduled_reports', {}).get('enabled') %}checked{% endif %}>
+            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] rounded-full peer-checked:bg-[#2563EB] transition-colors"></div>
+            <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
+          </label>
+        </div>
+
+        <!-- Daily report -->
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.daily_report }}</div>
+          <div class="flex items-center gap-2">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="sched-daily-enabled" class="sr-only peer security-input"
+                     {% if settings.get('scheduled_reports', {}).get('daily_enabled', True) %}checked{% endif %}>
+              <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] rounded-full peer-checked:bg-[#10B981] transition-colors"></div>
+              <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
+            </label>
+            <input type="time" id="sched-daily-time" value="{{ settings.get('scheduled_reports', {}).get('daily_time', '07:00') }}"
+                   class="security-input text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1">
+          </div>
+        </div>
+
+        <!-- Weekly report -->
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.weekly_report }}</div>
+          <div class="flex items-center gap-2">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="sched-weekly-enabled" class="sr-only peer security-input"
+                     {% if settings.get('scheduled_reports', {}).get('weekly_enabled', False) %}checked{% endif %}>
+              <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] rounded-full peer-checked:bg-[#10B981] transition-colors"></div>
+              <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
+            </label>
+            <select id="sched-weekly-day" class="security-input text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1">
+              {% for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] %}
+              <option value="{{ day }}" {% if settings.get('scheduled_reports', {}).get('weekly_day', 'monday') == day %}selected{% endif %}>
+                {{ day | capitalize }}
+              </option>
+              {% endfor %}
+            </select>
+            <input type="time" id="sched-weekly-time" value="{{ settings.get('scheduled_reports', {}).get('weekly_time', '07:00') }}"
+                   class="security-input text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1">
+          </div>
+        </div>
+
+        <!-- Email report + Include PDF -->
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('email_report', 'Send via email') }}</div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="sched-email-report" class="sr-only peer security-input"
+                   {% if settings.get('scheduled_reports', {}).get('email_report', True) %}checked{% endif %}>
+            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] rounded-full peer-checked:bg-[#2563EB] transition-colors"></div>
+            <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
+          </label>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('include_pdf', 'Include PDF attachment') }}</div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="sched-include-pdf" class="sr-only peer security-input"
+                   {% if settings.get('scheduled_reports', {}).get('include_pdf', True) %}checked{% endif %}>
+            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] rounded-full peer-checked:bg-[#2563EB] transition-colors"></div>
+            <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 5 — Display Preferences (localStorage)
+     ═══════════════════════════════════════════════════════════════ -->
+<section class="mb-8">
+  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+    <i data-lucide="sliders" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    {{ t.display_preferences }}
+  </h2>
+  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155] space-y-4">
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-sm font-medium">{{ t.default_time_range }}</div>
+        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('time_range_desc', 'Default time range for charts and reports') }}</div>
+      </div>
+      <select id="pref-time-range" data-change="savePreferences"
+              class="px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+        <option value="1">1 hour</option>
+        <option value="6">6 hours</option>
+        <option value="12">12 hours</option>
+        <option value="24" selected>24 hours</option>
+        <option value="168">7 days</option>
+        <option value="720">30 days</option>
+      </select>
+    </div>
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-sm font-medium">{{ t.auto_refresh_interval }}</div>
+        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('refresh_desc', 'How often the dashboard checks for new data') }}</div>
+      </div>
+      <select id="pref-refresh-interval" data-change="savePreferences"
+              class="px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+        <option value="5000">5 seconds</option>
+        <option value="10000">10 seconds</option>
+        <option value="30000">30 seconds</option>
+        <option value="60000">1 minute</option>
+        <option value="0">Off</option>
+      </select>
+    </div>
+    <div>
+      <div class="text-sm font-medium mb-2">{{ t.get('dashboard_sections', 'Dashboard Sections') }}</div>
+      <div class="grid grid-cols-2 gap-2">
+        <label class="flex items-center gap-2 text-sm cursor-pointer">
+          <input type="checkbox" id="pref-show-critical" checked data-change="savePreferences" class="rounded border-gray-300">
+          {{ t.get('critical_issues', 'Critical Issues') }}
+        </label>
+        <label class="flex items-center gap-2 text-sm cursor-pointer">
+          <input type="checkbox" id="pref-show-status" checked data-change="savePreferences" class="rounded border-gray-300">
+          {{ t.get('status_overview', 'Status Overview') }}
+        </label>
+        <label class="flex items-center gap-2 text-sm cursor-pointer">
+          <input type="checkbox" id="pref-show-servers" checked data-change="savePreferences" class="rounded border-gray-300">
+          {{ t.servers }}
+        </label>
+        <label class="flex items-center gap-2 text-sm cursor-pointer">
+          <input type="checkbox" id="pref-show-activity" checked data-change="savePreferences" class="rounded border-gray-300">
+          {{ t.activity_feed }}
+        </label>
+      </div>
+    </div>
+    <div id="pref-saved-msg" class="hidden text-xs text-[#10B981] dark:text-[#34D399]">{{ t.preferences_saved }}</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 6 — Sticky Bottom Save Bar
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="save-bar" class="fixed bottom-0 left-0 right-0 z-40 hidden transform translate-y-full transition-transform duration-300 ease-in-out">
+  <div class="bg-white dark:bg-[#1E293B] border-t border-[#E5E7EB] dark:border-[#334155] shadow-lg px-6 py-3">
+    <div class="max-w-5xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-2 h-2 rounded-full bg-[#F59E0B] animate-pulse"></div>
+        <span class="text-sm text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('unsaved_changes', 'You have unsaved changes') }}</span>
+        <span id="restart-badge" class="hidden text-[10px] px-2 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#78350F]/30 text-[#92400E] dark:text-[#FCD34D] flex items-center gap-1">
+          <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+          {{ t.get('will_restart', 'Server will restart') }}
+        </span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button data-action="cancelAllChanges" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">
+          {{ t.cancel }}
+        </button>
+        <button data-action="saveAllSettings" class="px-4 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1.5">
+          <i data-lucide="save" class="w-4 h-4"></i>
+          {{ t.save }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MODALS
+     ═══════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════════════════════════════════════════════════════════
+     LDAP Picker Modal — Query AD for users or groups.
+     Backed by POST /api/ldap/query (see routes/api.py).
+     Uses the current form values for LDAP URL / base DN / bind creds
+     and falls back to saved config when fields are blank or masked,
+     so the user can query BEFORE saving for the first time.
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="ldap-picker-modal" class="fixed inset-0 z-[70] hidden">
+  <div class="fixed inset-0 bg-black/50" data-action="closeLdapPicker"></div>
+  <div class="fixed inset-0 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#E5E7EB] dark:border-[#334155] w-full max-w-2xl max-h-[80vh] flex flex-col relative">
+      <div class="flex items-center justify-between p-4 border-b border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+        <h3 class="text-base font-semibold flex items-center gap-2">
+          <i data-lucide="search" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+          {{ t.get('ldap_picker_title', 'Query Active Directory') }}
+        </h3>
+        <button data-action="closeLdapPicker" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Kind toggle + search -->
+      <div class="px-4 pt-3 pb-2 flex-shrink-0 space-y-2">
+        <div class="flex items-center gap-2">
+          <div class="inline-flex rounded border border-[#E5E7EB] dark:border-[#334155] p-0.5 bg-[#F9FAFB] dark:bg-[#0F172A]">
+            <button type="button" data-action="setLdapPickerKind" data-args='["users"]' id="ldap-kind-users-btn"
+                    class="px-3 py-1 text-xs font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white">
+              <i data-lucide="user" class="inline w-3 h-3 mr-1"></i>
+              {{ t.get('users', 'Users') }}
+            </button>
+            <button type="button" data-action="setLdapPickerKind" data-args='["groups"]' id="ldap-kind-groups-btn"
+                    class="px-3 py-1 text-xs font-medium rounded text-[#6B7280] dark:text-[#CBD5E1]">
+              <i data-lucide="users" class="inline w-3 h-3 mr-1"></i>
+              {{ t.get('groups', 'Groups') }}
+            </button>
+          </div>
+          <input type="text" id="ldap-picker-search"
+                 placeholder="{{ t.get('search_filter', 'Search / filter...') }}"
+                 class="flex-1 px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#2563EB] focus:border-transparent outline-none">
+          <button type="button" data-action="runLdapPickerQuery" id="ldap-picker-search-btn"
+                  class="px-3 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1">
+            <i data-lucide="search" class="w-4 h-4"></i>
+            {{ t.get('search', 'Search') }}
+          </button>
+        </div>
+        <div class="text-[10px] text-[#9CA3AF] dark:text-[#475569]">
+          {{ t.get('ldap_picker_hint', 'Click a row to add it to Allowed Users. Results capped at 200.') }}
+        </div>
+      </div>
+
+      <!-- Results list -->
+      <div id="ldap-picker-list" class="px-4 py-2 overflow-y-auto flex-1" style="max-height: 400px;">
+        <div class="py-10 text-center">
+          <i data-lucide="search" class="w-10 h-10 mx-auto mb-2 text-[#9CA3AF] opacity-50"></i>
+          <p class="text-sm text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('ldap_picker_empty', 'Press Search to query AD') }}</p>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="flex justify-between items-center gap-2 p-4 border-t border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+        <span id="ldap-picker-count" class="text-[10px] text-[#9CA3AF] dark:text-[#475569]"></span>
+        <button data-action="closeLdapPicker" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.get('close', 'Close') }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div id="reset-pw-modal" class="fixed inset-0 z-[70] hidden">
+  <div class="fixed inset-0 bg-black/50" data-action="closeResetPasswordModal"></div>
+  <div class="fixed inset-0 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#E5E7EB] dark:border-[#334155] w-full max-w-sm relative">
+      <div class="flex items-center justify-between p-4 border-b border-[#E5E7EB] dark:border-[#334155]">
+        <h3 class="text-base font-semibold flex items-center gap-2">
+          <i data-lucide="key" class="w-5 h-5 text-[#F59E0B]"></i>
+          {{ t.change_admin_password }}
+        </h3>
+        <button data-action="closeResetPasswordModal" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-4 space-y-3">
+        <div id="reset-pw-error" class="hidden rounded-lg p-2.5 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]"></div>
+        <div id="reset-pw-success" class="hidden rounded-lg p-2.5 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]"></div>
+        <div>
+          <label class="block text-xs font-medium mb-1">{{ t.new_password }}</label>
+          <input type="password" id="reset-pw-new" placeholder="••••••••" minlength="8"
+                 class="w-full px-3 py-2 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#2563EB] dark:focus:ring-[#3B82F6] focus:border-transparent outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-medium mb-1">{{ t.confirm_new_password }}</label>
+          <input type="password" id="reset-pw-confirm" placeholder="••••••••" minlength="8"
+                 class="w-full px-3 py-2 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#2563EB] dark:focus:ring-[#3B82F6] focus:border-transparent outline-none">
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 p-4 border-t border-[#E5E7EB] dark:border-[#334155]">
+        <button data-action="closeResetPasswordModal" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.cancel }}</button>
+        <button data-action="submitResetPassword" class="px-4 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1.5">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          {{ t.reset_password }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Diff Confirmation Modal -->
+<div id="diff-modal" class="fixed inset-0 z-[70] hidden">
+  <div class="fixed inset-0 bg-black/50"></div>
+  <div class="fixed inset-0 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#E5E7EB] dark:border-[#334155] w-full max-w-lg max-h-[80vh] flex flex-col relative">
+      <div class="flex items-center justify-between p-4 border-b border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+        <h3 class="text-lg font-semibold flex items-center gap-2">
+          <i data-lucide="git-compare" class="w-5 h-5 text-[#F59E0B]"></i>
+          {{ t.review_changes }}
+        </h3>
+        <button data-action="closeDiffModal" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-4 overflow-y-auto flex-1">
+        <div id="diff-list" class="space-y-2"></div>
+      </div>
+      <div class="flex justify-between gap-2 p-4 border-t border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+        <button data-action="undoLastChange"
+                class="px-3 py-1.5 text-sm rounded border border-[#F59E0B] dark:border-[#FBBF24] text-[#F59E0B] dark:text-[#FBBF24] hover:bg-[#F59E0B]/10 flex items-center gap-1.5">
+          <i data-lucide="undo-2" class="w-4 h-4"></i>
+          {{ t.undo_last_change }}
+        </button>
+        <div class="flex gap-2">
+          <button data-action="closeDiffModal" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.cancel }}</button>
+          <button data-action="confirmSecuritySave" class="px-4 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1.5">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            {{ t.confirm_save }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+// CSRF token -- resolved once on page load, used by all fetch POST calls
+let csrfToken = '';
+document.addEventListener('DOMContentLoaded', () => {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta) csrfToken = meta.getAttribute('content');
+});
+
+// ── Reset Password Modal ──
+function showResetPasswordModal() {
+  document.getElementById('reset-pw-new').value = '';
+  document.getElementById('reset-pw-confirm').value = '';
+  document.getElementById('reset-pw-error').classList.add('hidden');
+  document.getElementById('reset-pw-success').classList.add('hidden');
+  document.getElementById('reset-pw-modal').classList.remove('hidden');
+  lucide.createIcons();
+  setTimeout(() => document.getElementById('reset-pw-new').focus(), 100);
+}
+
+function closeResetPasswordModal() {
+  document.getElementById('reset-pw-modal').classList.add('hidden');
+}
+
+function submitResetPassword() {
+  const newPw = document.getElementById('reset-pw-new').value;
+  const confirmPw = document.getElementById('reset-pw-confirm').value;
+  const errEl = document.getElementById('reset-pw-error');
+  const okEl = document.getElementById('reset-pw-success');
+  errEl.classList.add('hidden');
+  okEl.classList.add('hidden');
+
+  if (!newPw || newPw.length < 8) {
+    errEl.textContent = {{ t.password_min_length | tojson }};
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (newPw !== confirmPw) {
+    errEl.textContent = {{ t.passwords_dont_match | tojson }};
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  fetch('/admin/reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({ new_password: newPw, confirm_password: confirmPw }),
+  })
+  .then(r => r.json())
+  .then(result => {
+    if (result.ok) {
+      okEl.textContent = {{ t.password_reset_success | tojson }};
+      okEl.classList.remove('hidden');
+      setTimeout(() => closeResetPasswordModal(), 1500);
+    } else {
+      errEl.textContent = result.error || 'Unknown error';
+      errEl.classList.remove('hidden');
+    }
+  })
+  .catch(err => {
+    errEl.textContent = 'Network error: ' + err.message;
+    errEl.classList.remove('hidden');
+  });
+}
+
+// Sync Now -- force every server's next metrics check to fire immediately
+function syncNow(btn) {
+  _doSync(btn, '/api/sync-now');
+}
+
+// Sync Logs Now -- force every server's next log scrape to fire immediately
+function syncLogsNow(btn) {
+  _doSync(btn, '/api/sync-logs-now');
+}
+
+function syncUpdatesNow(btn) {
+  _doSync(btn, '/api/sync-updates-now');
+}
+
+// Delegated-action helpers — `this` is the clicked button (bound by the dispatcher).
+function syncNowBtn() { syncNow(this); }
+function syncLogsNowBtn() { syncLogsNow(this); }
+function syncUpdatesNowBtn() { syncUpdatesNow(this); }
+
+function _doSync(btn, url) {
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '{{ t.syncing | default("Syncing...") }}';
+  btn.classList.add('opacity-70');
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+  })
+    .then(r => r.json())
+    .then(data => {
+      btn.textContent = data.ok ? '{{ t.sync_done | default("Synced!") }}' : '{{ t.sync_failed | default("Failed") }}';
+      setTimeout(() => { btn.textContent = origText; btn.disabled = false; btn.classList.remove('opacity-70'); }, 2000);
+    })
+    .catch(() => {
+      btn.textContent = '{{ t.sync_failed | default("Failed") }}';
+      setTimeout(() => { btn.textContent = origText; btn.disabled = false; btn.classList.remove('opacity-70'); }, 2000);
+    });
+}
+
+// Load current config into JS
+let configData = null;
+
+function loadConfig() {
+  return fetch('/api/config').then(r => r.json()).then(data => { configData = data; return data; });
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => loadConfig());
+
+// --- General Settings change detection ---
+const generalInitial = {};
+function captureGeneralState() {
+  generalInitial.poll = document.getElementById('poll-interval').value;
+  generalInitial.logInterval = document.getElementById('log-collection-interval').value;
+  // Update Check Interval was tracked by NEITHER bucket, so editing it alone
+  // never opened the sticky Save bar — the value could only be saved by
+  // bundling it with some other tracked change. All three functions below must
+  // stay in sync or Cancel silently fails to revert this field.
+  generalInitial.updateInterval = document.getElementById('update-check-interval').value;
+  generalInitial.retention = document.getElementById('retention-days').value;
+  generalInitial.language = document.getElementById('setting-language').value;
+  generalInitial.timezone = document.getElementById('setting-timezone').value;
+  generalInitial.dateFormat = document.getElementById('setting-date-format').value;
+  generalInitial.timeFormat = document.getElementById('setting-time-format').value;
+}
+function hasGeneralChanged() {
+  return (
+    document.getElementById('poll-interval').value !== generalInitial.poll ||
+    document.getElementById('log-collection-interval').value !== generalInitial.logInterval ||
+    document.getElementById('update-check-interval').value !== generalInitial.updateInterval ||
+    document.getElementById('retention-days').value !== generalInitial.retention ||
+    document.getElementById('setting-language').value !== generalInitial.language ||
+    document.getElementById('setting-timezone').value !== generalInitial.timezone ||
+    document.getElementById('setting-date-format').value !== generalInitial.dateFormat ||
+    document.getElementById('setting-time-format').value !== generalInitial.timeFormat
+  );
+}
+function cancelGeneralSettings() {
+  document.getElementById('poll-interval').value = generalInitial.poll;
+  document.getElementById('log-collection-interval').value = generalInitial.logInterval;
+  document.getElementById('update-check-interval').value = generalInitial.updateInterval;
+  document.getElementById('retention-days').value = generalInitial.retention;
+  document.getElementById('setting-language').value = generalInitial.language;
+  document.getElementById('setting-timezone').value = generalInitial.timezone;
+  document.getElementById('setting-date-format').value = generalInitial.dateFormat;
+  document.getElementById('setting-time-format').value = generalInitial.timeFormat;
+}
+
+// --- Security Settings change detection ---
+const securityInitial = {};
+function captureSecurityState() {
+  securityInitial.httpsEnabled = document.getElementById('https-enabled').checked;
+  securityInitial.httpsCert = document.getElementById('https-cert').value;
+  securityInitial.httpsKey = document.getElementById('https-key').value;
+  securityInitial.authEnabled = document.getElementById('auth-enabled').checked;
+  securityInitial.authType = document.getElementById('auth-type').value;
+  securityInitial.ldapUrl = document.getElementById('auth-ldap-url').value;
+  securityInitial.ldapBaseDn = document.getElementById('auth-ldap-basedn').value;
+  securityInitial.ldapBindUser = document.getElementById('auth-ldap-bind-user').value;
+  securityInitial.ldapBindPass = document.getElementById('auth-ldap-bind-pass').value;
+  securityInitial.authTimeout = document.getElementById('auth-timeout').value;
+  securityInitial.authAllowedUsers = document.getElementById('auth-allowed-users').value;
+  securityInitial.emailEnabled = document.getElementById('email-enabled').checked;
+  securityInitial.emailSmtpServer = document.getElementById('email-smtp-server').value;
+  securityInitial.emailSmtpPort = document.getElementById('email-smtp-port').value;
+  securityInitial.emailUseTls = document.getElementById('email-use-tls').checked;
+  securityInitial.emailUsername = document.getElementById('email-username').value;
+  securityInitial.emailPassword = document.getElementById('email-password').value;
+  securityInitial.emailFrom = document.getElementById('email-from').value;
+  securityInitial.emailRecipients = document.getElementById('email-recipients').value;
+  securityInitial.emailSendCritical = document.getElementById('email-send-critical').checked;
+  securityInitial.emailSendWarning = document.getElementById('email-send-warning').checked;
+  securityInitial.emailDashboardUrl = document.getElementById('email-dashboard-url').value;
+  securityInitial.webhookEnabled = document.getElementById('webhook-enabled').checked;
+  securityInitial.webhookUrl = document.getElementById('webhook-url').value;
+  securityInitial.webhookSendCritical = document.getElementById('webhook-send-critical').checked;
+  securityInitial.webhookSendWarning = document.getElementById('webhook-send-warning').checked;
+  // Worker-pool size needs a restart to take effect, so it lives in
+  // the security-class change set (which triggers the restart diff).
+  securityInitial.collectorV2Workers = document.getElementById('collector-v2-workers').value;
+}
+function hasSecurityChanged() {
+  return (
+    document.getElementById('https-enabled').checked !== securityInitial.httpsEnabled ||
+    document.getElementById('https-cert').value !== securityInitial.httpsCert ||
+    document.getElementById('https-key').value !== securityInitial.httpsKey ||
+    document.getElementById('auth-enabled').checked !== securityInitial.authEnabled ||
+    document.getElementById('auth-type').value !== securityInitial.authType ||
+    document.getElementById('auth-ldap-url').value !== securityInitial.ldapUrl ||
+    document.getElementById('auth-ldap-basedn').value !== securityInitial.ldapBaseDn ||
+    document.getElementById('auth-ldap-bind-user').value !== securityInitial.ldapBindUser ||
+    document.getElementById('auth-ldap-bind-pass').value !== securityInitial.ldapBindPass ||
+    document.getElementById('auth-allowed-users').value !== securityInitial.authAllowedUsers ||
+    document.getElementById('auth-timeout').value !== securityInitial.authTimeout ||
+    document.getElementById('email-enabled').checked !== securityInitial.emailEnabled ||
+    document.getElementById('email-smtp-server').value !== securityInitial.emailSmtpServer ||
+    document.getElementById('email-smtp-port').value !== securityInitial.emailSmtpPort ||
+    document.getElementById('email-use-tls').checked !== securityInitial.emailUseTls ||
+    document.getElementById('email-username').value !== securityInitial.emailUsername ||
+    document.getElementById('email-password').value !== securityInitial.emailPassword ||
+    document.getElementById('email-from').value !== securityInitial.emailFrom ||
+    document.getElementById('email-recipients').value !== securityInitial.emailRecipients ||
+    document.getElementById('email-send-critical').checked !== securityInitial.emailSendCritical ||
+    document.getElementById('email-send-warning').checked !== securityInitial.emailSendWarning ||
+    document.getElementById('email-dashboard-url').value !== securityInitial.emailDashboardUrl ||
+    document.getElementById('webhook-enabled').checked !== securityInitial.webhookEnabled ||
+    document.getElementById('webhook-url').value !== securityInitial.webhookUrl ||
+    document.getElementById('webhook-send-critical').checked !== securityInitial.webhookSendCritical ||
+    document.getElementById('webhook-send-warning').checked !== securityInitial.webhookSendWarning ||
+    document.getElementById('collector-v2-workers').value !== securityInitial.collectorV2Workers
+  );
+}
+function cancelSecuritySettings() {
+  document.getElementById('https-enabled').checked = securityInitial.httpsEnabled;
+  document.getElementById('https-cert').value = securityInitial.httpsCert;
+  document.getElementById('https-key').value = securityInitial.httpsKey;
+  document.getElementById('auth-enabled').checked = securityInitial.authEnabled;
+  document.getElementById('auth-type').value = securityInitial.authType;
+  document.getElementById('auth-ldap-url').value = securityInitial.ldapUrl;
+  document.getElementById('auth-ldap-basedn').value = securityInitial.ldapBaseDn;
+  document.getElementById('auth-ldap-bind-user').value = securityInitial.ldapBindUser;
+  document.getElementById('auth-ldap-bind-pass').value = securityInitial.ldapBindPass;
+  document.getElementById('auth-allowed-users').value = securityInitial.authAllowedUsers;
+  document.getElementById('auth-timeout').value = securityInitial.authTimeout;
+  document.getElementById('email-enabled').checked = securityInitial.emailEnabled;
+  document.getElementById('email-smtp-server').value = securityInitial.emailSmtpServer;
+  document.getElementById('email-smtp-port').value = securityInitial.emailSmtpPort;
+  document.getElementById('email-use-tls').checked = securityInitial.emailUseTls;
+  document.getElementById('email-username').value = securityInitial.emailUsername;
+  document.getElementById('email-password').value = securityInitial.emailPassword;
+  document.getElementById('email-from').value = securityInitial.emailFrom;
+  document.getElementById('email-recipients').value = securityInitial.emailRecipients;
+  document.getElementById('email-send-critical').checked = securityInitial.emailSendCritical;
+  document.getElementById('email-send-warning').checked = securityInitial.emailSendWarning;
+  document.getElementById('email-dashboard-url').value = securityInitial.emailDashboardUrl;
+  document.getElementById('webhook-enabled').checked = securityInitial.webhookEnabled;
+  document.getElementById('webhook-url').value = securityInitial.webhookUrl;
+  document.getElementById('webhook-send-critical').checked = securityInitial.webhookSendCritical;
+  document.getElementById('webhook-send-warning').checked = securityInitial.webhookSendWarning;
+  document.getElementById('collector-v2-workers').value = securityInitial.collectorV2Workers;
+}
+
+// --- Unified change detection + sticky save bar ---
+function checkForChanges() {
+  const generalChanged = hasGeneralChanged();
+  const securityChanged = hasSecurityChanged();
+  const bar = document.getElementById('save-bar');
+  const restartBadge = document.getElementById('restart-badge');
+
+  if (generalChanged || securityChanged) {
+    bar.classList.remove('hidden');
+    requestAnimationFrame(() => {
+      bar.classList.remove('translate-y-full');
+    });
+    if (securityChanged) {
+      restartBadge.classList.remove('hidden');
+    } else {
+      restartBadge.classList.add('hidden');
+    }
+  } else {
+    bar.classList.add('translate-y-full');
+    setTimeout(() => bar.classList.add('hidden'), 300);
+  }
+}
+
+function cancelAllChanges() {
+  cancelGeneralSettings();
+  cancelSecuritySettings();
+  checkForChanges();
+}
+
+function saveAllSettings() {
+  if (!validateAllFields()) {
+    const msg = document.getElementById('save-message');
+    msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+    msg.textContent = {{ t.validation_summary | tojson }};
+    msg.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+
+  const securityChanged = hasSecurityChanged();
+  if (securityChanged) {
+    const changes = buildChangeList();
+    showDiffModal(changes);
+  } else {
+    // Only general settings changed, save without diff/restart
+    doSaveAllSettings(false);
+  }
+}
+
+let _settingsSaving = false;
+function doSaveAllSettings(needsRestart) {
+  // Re-entrancy guard — a double-click must not fire two /api/config POSTs
+  // (and two restarts). Cleared on every FAILURE path below; on success the
+  // page reloads, which resets it.
+  if (_settingsSaving) return;
+  _settingsSaving = true;
+  loadConfig().then(data => {
+    // General settings
+    data.settings = Object.assign(data.settings || {}, {
+      poll_interval_seconds: (parseInt(document.getElementById('poll-interval').value) || 1) * 60,
+      log_collection_interval_minutes: parseInt(document.getElementById('log-collection-interval').value) || 5,
+      update_check_interval_minutes: parseInt(document.getElementById('update-check-interval').value) || 30,
+      retention_days: parseInt(document.getElementById('retention-days').value) || 30,
+      language: document.getElementById('setting-language').value,
+      timezone: document.getElementById('setting-timezone').value,
+      date_format: document.getElementById('setting-date-format').value,
+      time_format: document.getElementById('setting-time-format').value,
+    });
+
+    // Security + notification settings (always include to preserve them)
+    data.settings.https = {
+      enabled: document.getElementById('https-enabled').checked,
+      cert_file: document.getElementById('https-cert').value.trim(),
+      key_file: document.getElementById('https-key').value.trim(),
+    };
+    // NOTE: the ldap_* keys below are STRIPPED by POST /api/config (defence in
+    // depth against directory hijack) — they are saved by POST /api/config/ldap
+    // instead, fired first below. They must still be SENT here: save_config's
+    // auth validation rewrites any *missing* ldap key to "", so omitting them
+    // would wipe the directory config rather than preserve it. Sent values are
+    // replaced with the on-disk ones server-side, which by then are the newly
+    // saved ones.
+    data.settings.auth = Object.assign({}, data.settings.auth || {}, {
+      enabled: document.getElementById('auth-enabled').checked,
+      type: document.getElementById('auth-type').value,
+      ldap_url: document.getElementById('auth-ldap-url').value.trim(),
+      ldap_base_dn: document.getElementById('auth-ldap-basedn').value.trim(),
+      ldap_user_filter: '(sAMAccountName={username})',
+      ldap_bind_user: document.getElementById('auth-ldap-bind-user').value.trim(),
+      ldap_bind_password: document.getElementById('auth-ldap-bind-pass').value.trim() || (data.settings?.auth?.ldap_bind_password || ''),
+      allowed_users: document.getElementById('auth-allowed-users').value.trim().split('\n').map(s => s.trim()).filter(Boolean),
+      session_timeout_minutes: parseInt(document.getElementById('auth-timeout').value) || 480,
+    });
+    data.settings.email = getEmailSettingsFromForm();
+    data.settings.scheduled_reports = {
+      enabled: document.getElementById('sched-enabled').checked,
+      daily_enabled: document.getElementById('sched-daily-enabled').checked,
+      daily_time: document.getElementById('sched-daily-time').value || '07:00',
+      weekly_enabled: document.getElementById('sched-weekly-enabled').checked,
+      weekly_day: document.getElementById('sched-weekly-day').value || 'monday',
+      weekly_time: document.getElementById('sched-weekly-time').value || '07:00',
+      email_report: document.getElementById('sched-email-report').checked,
+      include_pdf: document.getElementById('sched-include-pdf').checked,
+    };
+    data.settings.webhooks = {
+      enabled: document.getElementById('webhook-enabled').checked,
+      teams_webhook_url: document.getElementById('webhook-url').value.trim(),
+      send_on_critical: document.getElementById('webhook-send-critical').checked,
+      send_on_warning: document.getElementById('webhook-send-warning').checked,
+    };
+    // Collector worker pool size (restart-required). The historical
+    // collector_engine field is no longer written — v1 is gone and v2
+    // is the only collector. ``app.py`` ignores any leftover value
+    // in settings.json with a warning.
+    data.settings.collector_v2_num_workers = parseInt(document.getElementById('collector-v2-workers').value) || 15;
+
+    // Directory settings get their own admin-gated, audited endpoint. Fired
+    // FIRST so a rejected LDAP URL aborts before anything else is written —
+    // otherwise the user would get a partial save plus an error.
+    const ldapPayload = {
+      ldap_url: document.getElementById('auth-ldap-url').value.trim(),
+      ldap_base_dn: document.getElementById('auth-ldap-basedn').value.trim(),
+      ldap_user_filter: '(sAMAccountName={username})',
+      ldap_bind_user: document.getElementById('auth-ldap-bind-user').value.trim(),
+      // Empty means "unchanged" server-side — never blanks a stored password.
+      ldap_bind_password: document.getElementById('auth-ldap-bind-pass').value.trim(),
+    };
+
+    fetch('/api/config/ldap', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify(ldapPayload),
+    })
+    .then(r => r.json())
+    .then(ldapResult => {
+      if (!ldapResult.ok) {
+        const msg = document.getElementById('save-message');
+        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+        msg.textContent = 'Error: ' + (ldapResult.error || 'LDAP settings rejected');
+        msg.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        _settingsSaving = false;  // let the user correct the value and retry
+        return null;              // signals "abort" to the next stage
+      }
+      return fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify(data),
+      }).then(r => r.json());
+    })
+    .then(result => {
+      if (result === null) return;  // LDAP stage already reported the failure
+      const msg = document.getElementById('save-message');
+      if (result.ok) {
+        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+        // Hide save bar
+        const bar = document.getElementById('save-bar');
+        bar.classList.add('translate-y-full');
+        setTimeout(() => bar.classList.add('hidden'), 300);
+
+        if (needsRestart) {
+          msg.textContent = {{ t.config_saved | tojson }} + ' Server restarting...';
+          msg.classList.remove('hidden');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          fetch('/api/restart', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+          }).catch(() => {});
+          setTimeout(function pollRestart() {
+            fetch('/settings', { method: 'HEAD' })
+              .then(() => location.reload())
+              .catch(() => setTimeout(pollRestart, 1000));
+          }, 2000);
+        } else {
+          msg.textContent = {{ t.config_saved | tojson }};
+          msg.classList.remove('hidden');
+          setTimeout(() => location.reload(), 500);
+        }
+      } else {
+        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+        msg.textContent = 'Error: ' + (result.error || 'Unknown error');
+        msg.classList.remove('hidden');
+        _settingsSaving = false;  // let the user retry after a server-side error
+      }
+    })
+    .catch(err => { pAlert('Failed to save: ' + err.message); _settingsSaving = false; });
+  }).catch(() => { _settingsSaving = false; });  // loadConfig / builder failure
+}
+
+// Unified DOMContentLoaded for general + security listeners
+document.addEventListener('DOMContentLoaded', () => {
+  captureGeneralState();
+  captureSecurityState();
+  document.querySelectorAll('.general-input, .security-input').forEach(el => {
+    el.addEventListener('input', checkForChanges);
+    el.addEventListener('change', checkForChanges);
+  });
+});
+
+// --- Email helpers ---
+function getEmailSettingsFromForm() {
+  var raw = document.getElementById('email-recipients').value;
+  var recipients = raw.split(',').map(function(r) { return r.trim(); }).filter(function(r) { return r; });
+  return {
+    enabled: document.getElementById('email-enabled').checked,
+    smtp_server: document.getElementById('email-smtp-server').value.trim(),
+    smtp_port: parseInt(document.getElementById('email-smtp-port').value) || 587,
+    use_tls: document.getElementById('email-use-tls').checked,
+    username: document.getElementById('email-username').value.trim(),
+    password: document.getElementById('email-password').value.trim(),
+    from_address: document.getElementById('email-from').value.trim(),
+    recipients: recipients,
+    send_on_critical: document.getElementById('email-send-critical').checked,
+    send_on_warning: document.getElementById('email-send-warning').checked,
+    dashboard_url: document.getElementById('email-dashboard-url').value.trim() || 'http://localhost:5000',
+  };
+}
+
+function sendTestEmail() {
+  var btn = document.getElementById('test-email-btn');
+  var result = document.getElementById('test-email-result');
+  btn.disabled = true;
+  result.className = 'mt-2 rounded p-2 text-sm bg-[#F3F4F6] dark:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1]';
+  result.innerHTML = '<span class="inline-block animate-spin mr-2">&#9696;</span> Sending test email...';
+  result.classList.remove('hidden');
+
+  fetch('/api/test-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({ email: getEmailSettingsFromForm() }),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      result.className = 'mt-2 rounded p-2 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+      result.textContent = data.message || 'Test email sent successfully.';
+    } else {
+      result.className = 'mt-2 rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      result.textContent = data.error || 'Failed to send test email.';
+    }
+  })
+  .catch(function(err) {
+    result.className = 'mt-2 rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+    result.textContent = 'Request failed: ' + err.message;
+  })
+  .finally(function() { btn.disabled = false; });
+}
+
+// --- Certificate Expiry Check ---
+function checkCertExpiry() {
+  const certPath = document.getElementById('https-cert').value.trim();
+  const infoDiv = document.getElementById('cert-expiry-info');
+  if (!certPath) {
+    infoDiv.classList.add('hidden');
+    return;
+  }
+  infoDiv.classList.remove('hidden');
+  infoDiv.className = 'text-xs rounded p-2 bg-[#F3F4F6] dark:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1]';
+  infoDiv.textContent = 'Checking certificate...';
+
+  fetch('/api/cert-info?path=' + encodeURIComponent(certPath))
+    .then(r => r.json())
+    .then(data => {
+      if (!data.valid) {
+        infoDiv.className = 'text-xs rounded p-2 bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+        infoDiv.textContent = data.error || 'Invalid certificate';
+        return;
+      }
+      if (data.expired) {
+        infoDiv.className = 'text-xs rounded p-2 bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+        infoDiv.textContent = '\u26A0 Certificate EXPIRED on ' + data.not_after + ' (Subject: ' + data.subject + ', Issuer: ' + data.issuer + ')';
+      } else if (data.days_remaining <= 30) {
+        infoDiv.className = 'text-xs rounded p-2 bg-[#FEF3C7] dark:bg-[#78350F] text-[#92400E] dark:text-[#FDE68A]';
+        infoDiv.textContent = '\u26A0 Certificate expires in ' + data.days_remaining + ' days (' + data.not_after + ') \u2014 Subject: ' + data.subject + ', Issuer: ' + data.issuer;
+      } else {
+        infoDiv.className = 'text-xs rounded p-2 bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+        infoDiv.textContent = '\u2713 Certificate valid until ' + data.not_after + ' (' + data.days_remaining + ' days) \u2014 Subject: ' + data.subject + ', Issuer: ' + data.issuer;
+      }
+    })
+    .catch(() => {
+      infoDiv.className = 'text-xs rounded p-2 bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      infoDiv.textContent = 'Failed to check certificate';
+    });
+}
+
+// --- HTTPS Lockout Prevention ---
+document.addEventListener('DOMContentLoaded', () => {
+  const httpsToggle = document.getElementById('https-enabled');
+  const httpsWarning = document.getElementById('https-warning');
+  function updateHttpsWarning() {
+    if (httpsToggle.checked) {
+      httpsWarning.classList.remove('hidden');
+      lucide.createIcons();
+    } else {
+      httpsWarning.classList.add('hidden');
+    }
+  }
+  httpsToggle.addEventListener('change', updateHttpsWarning);
+  updateHttpsWarning();
+});
+
+// --- Auth Lockout Prevention ---
+document.addEventListener('DOMContentLoaded', () => {
+  const authToggle = document.getElementById('auth-enabled');
+  const authWarning = document.getElementById('auth-warning');
+  function updateAuthWarning() {
+    if (!authToggle.checked) {
+      authWarning.classList.add('hidden');
+      return;
+    }
+    const ldapUrl = document.getElementById('auth-ldap-url').value.trim();
+    let backupAdminConfigured = false;
+    const backupSection = authToggle.closest('.space-y-3');
+    if (backupSection) {
+      const healthyBadge = backupSection.querySelector('.badge-healthy');
+      if (healthyBadge) backupAdminConfigured = true;
+    }
+    if (!ldapUrl && !backupAdminConfigured) {
+      authWarning.classList.remove('hidden');
+      lucide.createIcons();
+    } else {
+      authWarning.classList.add('hidden');
+    }
+  }
+  authToggle.addEventListener('change', updateAuthWarning);
+  document.getElementById('auth-ldap-url').addEventListener('input', updateAuthWarning);
+  updateAuthWarning();
+});
+
+// --- Enhanced save validation ---
+function _validateBeforeSave() {
+  if (document.getElementById('https-enabled').checked) {
+    const cert = document.getElementById('https-cert').value.trim();
+    const key = document.getElementById('https-key').value.trim();
+    if (!cert || !key) {
+      const msg = document.getElementById('save-message');
+      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      msg.textContent = {{ t.get('https_cert_required', 'HTTPS is enabled but certificate or key file path is empty. Please provide both paths or disable HTTPS.') | tojson }};
+      msg.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return false;
+    }
+  }
+  if (document.getElementById('auth-enabled').checked) {
+    const ldapUrl = document.getElementById('auth-ldap-url').value.trim();
+    const backupSection = document.getElementById('auth-enabled').closest('.space-y-3');
+    const backupAdminConfigured = backupSection && backupSection.querySelector('.badge-healthy');
+    if (!ldapUrl && !backupAdminConfigured) {
+      const msg = document.getElementById('save-message');
+      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      msg.textContent = {{ t.get('auth_method_required', 'Authentication is enabled but no login method is configured. Set up LDAP or create an admin account first.') | tojson }};
+      msg.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return false;
+    }
+  }
+  const poll = parseInt(document.getElementById('poll-interval').value);
+  if (isNaN(poll) || poll < 1 || poll > 60) {
+    pAlert({{ t.get('invalid_poll', 'Poll interval must be between 1 and 60 minutes.') | tojson }});
+    return false;
+  }
+  const retention = parseInt(document.getElementById('retention-days').value);
+  if (isNaN(retention) || retention < 1 || retention > 365) {
+    pAlert({{ t.get('invalid_retention', 'Retention days must be between 1 and 365.') | tojson }});
+    return false;
+  }
+  const timeout = parseInt(document.getElementById('auth-timeout').value);
+  if (isNaN(timeout) || timeout < 5 || timeout > 1440) {
+    pAlert({{ t.get('invalid_timeout', 'Session timeout must be between 5 and 1440 minutes.') | tojson }});
+    return false;
+  }
+  return true;
+}
+
+// Wrap saveAllSettings with enhanced validation
+const _origSaveAllSettings = saveAllSettings;
+saveAllSettings = function() {
+  if (!_validateBeforeSave()) return;
+  _origSaveAllSettings();
+};
+
+// Close modals on Escape key
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (!document.getElementById('reset-pw-modal').classList.contains('hidden')) {
+      closeResetPasswordModal();
+    } else if (!document.getElementById('diff-modal').classList.contains('hidden')) {
+      closeDiffModal();
+    }
+  }
+});
+
+// -- Webhooks --
+function sendTestWebhook() {
+  const btn = document.getElementById('test-webhook-btn');
+  const result = document.getElementById('test-webhook-result');
+  const url = document.getElementById('webhook-url').value.trim();
+  if (!url) {
+    result.className = 'mt-2 rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+    result.textContent = {{ t.get('webhook_url_required', 'Please enter a webhook URL first') | tojson }};
+    result.classList.remove('hidden');
+    return;
+  }
+  btn.disabled = true;
+  result.className = 'mt-2 rounded p-2 text-sm bg-[#F3F4F6] dark:bg-[#334155] text-[#6B7280]';
+  result.innerHTML = '<span class="inline-block animate-spin mr-2">&#9696;</span> Sending test...';
+  result.classList.remove('hidden');
+
+  fetch('/api/test-webhook', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({ webhook_url: url }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      result.className = 'mt-2 rounded p-2 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+      result.textContent = data.message || {{ t.webhook_test_success | tojson }};
+    } else {
+      result.className = 'mt-2 rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      result.textContent = data.error || {{ t.webhook_test_failed | tojson }};
+    }
+  })
+  .catch(err => {
+    result.className = 'mt-2 rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+    result.textContent = 'Request failed: ' + err.message;
+  })
+  .finally(() => { btn.disabled = false; });
+}
+
+// -- Field Validation --
+function validateField(inputId, rules) {
+  const el = document.getElementById(inputId);
+  if (!el) return true;
+  const value = el.type === 'checkbox' ? el.checked : el.value.trim();
+  let valid = true;
+  let message = '';
+
+  if (rules.required && !value) {
+    valid = false;
+    message = {{ t.field_required | tojson }};
+  } else if (rules.min !== undefined && Number(value) < rules.min) {
+    valid = false;
+    message = {{ t.value_out_of_range | tojson }} + ' (min: ' + rules.min + ')';
+  } else if (rules.max !== undefined && Number(value) > rules.max) {
+    valid = false;
+    message = {{ t.value_out_of_range | tojson }} + ' (max: ' + rules.max + ')';
+  } else if (rules.url && value && !/^https?:\/\/.+/.test(value)) {
+    valid = false;
+    message = {{ t.invalid_url | tojson }};
+  }
+
+  if (!valid) {
+    el.classList.add('border-[#DC2626]', 'dark:border-[#EF4444]');
+    el.title = message;
+  } else {
+    el.classList.remove('border-[#DC2626]', 'dark:border-[#EF4444]');
+    el.title = '';
+  }
+  return valid;
+}
+
+function validateAllFields() {
+  let allValid = true;
+  if (!validateField('poll-interval', { required: true, min: 1, max: 60 })) allValid = false;
+  if (!validateField('retention-days', { required: true, min: 1, max: 365 })) allValid = false;
+  if (!validateField('auth-timeout', { required: true, min: 5, max: 1440 })) allValid = false;
+  if (!validateField('email-smtp-port', { min: 1, max: 65535 })) allValid = false;
+  if (document.getElementById('webhook-url')) {
+    if (!validateField('webhook-url', { url: true })) allValid = false;
+  }
+  return allValid;
+}
+
+// Add blur validation to key fields
+document.addEventListener('DOMContentLoaded', function() {
+  const validationRules = {
+    'poll-interval': { required: true, min: 1, max: 60 },
+    'retention-days': { required: true, min: 1, max: 365 },
+    'auth-timeout': { required: true, min: 5, max: 1440 },
+    'email-smtp-port': { min: 1, max: 65535 },
+  };
+  Object.entries(validationRules).forEach(([id, rules]) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('blur', () => validateField(id, rules));
+  });
+});
+
+// -- Display Preferences --
+function loadPreferences() {
+  try {
+    const prefs = JSON.parse(localStorage.getItem('prism-dashboard-prefs') || '{}');
+    if (prefs.timeRange) document.getElementById('pref-time-range').value = prefs.timeRange;
+    if (prefs.refreshInterval !== undefined) document.getElementById('pref-refresh-interval').value = prefs.refreshInterval;
+    if (prefs.showCritical !== undefined) document.getElementById('pref-show-critical').checked = prefs.showCritical;
+    if (prefs.showStatus !== undefined) document.getElementById('pref-show-status').checked = prefs.showStatus;
+    if (prefs.showServers !== undefined) document.getElementById('pref-show-servers').checked = prefs.showServers;
+    if (prefs.showActivity !== undefined) document.getElementById('pref-show-activity').checked = prefs.showActivity;
+  } catch(e) {}
+}
+
+function savePreferences() {
+  const prefs = {
+    timeRange: document.getElementById('pref-time-range').value,
+    refreshInterval: document.getElementById('pref-refresh-interval').value,
+    showCritical: document.getElementById('pref-show-critical').checked,
+    showStatus: document.getElementById('pref-show-status').checked,
+    showServers: document.getElementById('pref-show-servers').checked,
+    showActivity: document.getElementById('pref-show-activity').checked,
+  };
+  localStorage.setItem('prism-dashboard-prefs', JSON.stringify(prefs));
+  const msg = document.getElementById('pref-saved-msg');
+  msg.classList.remove('hidden');
+  setTimeout(() => msg.classList.add('hidden'), 2000);
+}
+
+document.addEventListener('DOMContentLoaded', loadPreferences);
+
+// -- Settings Diff & Confirmation --
+let _pendingSecuritySaveData = null;
+
+function buildChangeList() {
+  const changes = [];
+  const labels = {
+    httpsEnabled: 'HTTPS Enabled', httpsCert: 'Certificate File', httpsKey: 'Key File',
+    authEnabled: 'Authentication Enabled', authType: 'Auth Type',
+    ldapUrl: 'LDAP URL', ldapBaseDn: 'LDAP Base DN', ldapBindUser: 'LDAP Bind User', authTimeout: 'Session Timeout',
+    emailEnabled: 'Email Enabled', emailSmtpServer: 'SMTP Server', emailSmtpPort: 'SMTP Port',
+    emailUseTls: 'Use TLS', emailUsername: 'Email Username', emailFrom: 'From Address',
+    emailRecipients: 'Recipients', emailSendCritical: 'Email on Critical', emailSendWarning: 'Email on Warning',
+    emailDashboardUrl: 'Dashboard URL',
+    webhookEnabled: 'Webhook Enabled', webhookUrl: 'Webhook URL',
+    webhookSendCritical: 'Webhook on Critical', webhookSendWarning: 'Webhook on Warning',
+  };
+
+  for (const [key, label] of Object.entries(labels)) {
+    const initial = securityInitial[key];
+    let current;
+    switch(key) {
+      case 'httpsEnabled': current = document.getElementById('https-enabled').checked; break;
+      case 'httpsCert': current = document.getElementById('https-cert').value; break;
+      case 'httpsKey': current = document.getElementById('https-key').value; break;
+      case 'authEnabled': current = document.getElementById('auth-enabled').checked; break;
+      case 'authType': current = document.getElementById('auth-type').value; break;
+      case 'ldapUrl': current = document.getElementById('auth-ldap-url').value; break;
+      case 'ldapBaseDn': current = document.getElementById('auth-ldap-basedn').value; break;
+      case 'ldapBindUser': current = document.getElementById('auth-ldap-bind-user').value; break;
+      case 'authTimeout': current = document.getElementById('auth-timeout').value; break;
+      case 'emailEnabled': current = document.getElementById('email-enabled').checked; break;
+      case 'emailSmtpServer': current = document.getElementById('email-smtp-server').value; break;
+      case 'emailSmtpPort': current = document.getElementById('email-smtp-port').value; break;
+      case 'emailUseTls': current = document.getElementById('email-use-tls').checked; break;
+      case 'emailUsername': current = document.getElementById('email-username').value; break;
+      case 'emailFrom': current = document.getElementById('email-from').value; break;
+      case 'emailRecipients': current = document.getElementById('email-recipients').value; break;
+      case 'emailSendCritical': current = document.getElementById('email-send-critical').checked; break;
+      case 'emailSendWarning': current = document.getElementById('email-send-warning').checked; break;
+      case 'emailDashboardUrl': current = document.getElementById('email-dashboard-url').value; break;
+      case 'webhookEnabled': current = document.getElementById('webhook-enabled')?.checked; break;
+      case 'webhookUrl': current = document.getElementById('webhook-url')?.value; break;
+      case 'webhookSendCritical': current = document.getElementById('webhook-send-critical')?.checked; break;
+      case 'webhookSendWarning': current = document.getElementById('webhook-send-warning')?.checked; break;
+      default: continue;
+    }
+    if (initial !== undefined && current !== undefined && String(initial) !== String(current)) {
+      const oldVal = typeof initial === 'boolean' ? (initial ? 'Yes' : 'No') : (initial || '(empty)');
+      const newVal = typeof current === 'boolean' ? (current ? 'Yes' : 'No') : (current || '(empty)');
+      changes.push({ label, oldVal, newVal });
+    }
+  }
+  return changes;
+}
+
+function showDiffModal(changes) {
+  const list = document.getElementById('diff-list');
+  if (changes.length === 0) {
+    list.innerHTML = '<div class="text-sm text-[#6B7280] dark:text-[#CBD5E1] text-center py-4">' + {{ t.no_changes | tojson }} + '</div>';
+  } else {
+    list.innerHTML = changes.map(c => `<div class="flex items-start gap-3 p-2 rounded bg-[#F9FAFB] dark:bg-[#0F172A]/50 border border-[#E5E7EB] dark:border-[#334155]">
+      <div class="flex-1 min-w-0">
+        <div class="text-xs font-medium">${c.label}</div>
+        <div class="flex items-center gap-2 mt-1">
+          <span class="text-xs px-1.5 py-0.5 rounded bg-[#FEE2E2] dark:bg-[#7F1D1D]/30 text-[#DC2626] dark:text-[#FCA5A5] line-through truncate max-w-[180px]">${c.oldVal}</span>
+          <i data-lucide="arrow-right" class="w-3 h-3 text-[#6B7280] flex-shrink-0"></i>
+          <span class="text-xs px-1.5 py-0.5 rounded bg-[#D1FAE5] dark:bg-[#064E3B]/30 text-[#065F46] dark:text-[#6EE7B7] truncate max-w-[180px]">${c.newVal}</span>
+        </div>
+      </div>
+    </div>`).join('');
+  }
+  document.getElementById('diff-modal').classList.remove('hidden');
+  lucide.createIcons();
+}
+
+function closeDiffModal() {
+  document.getElementById('diff-modal').classList.add('hidden');
+  _pendingSecuritySaveData = null;
+}
+
+function confirmSecuritySave() {
+  closeDiffModal();
+  doSaveAllSettings(true);
+}
+
+async function undoLastChange() {
+  closeDiffModal();
+  try {
+    const r = await fetch('/api/config/backups');
+    const data = await r.json();
+    if (!data.ok || !data.backups || data.backups.length === 0) {
+      pAlert({{ t.no_backups | tojson }});
+      return;
+    }
+    const latest = data.backups[0];
+    if (await pConfirm({{ t.confirm_restore | tojson }})) {
+      const r2 = await fetch('/api/config/backups/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({ filename: latest.filename }),
+      });
+      const result = await r2.json();
+      if (result.ok) {
+        location.reload();
+      } else {
+        pAlert('Restore failed: ' + (result.error || ''));
+      }
+    }
+  } catch(e) {}
+}
+
+// -- Scheduled Reports toggle --
+document.addEventListener('DOMContentLoaded', () => {
+  lucide.createIcons();
+});
+
+// ═══════════════════════════════════════════════════════════════
+// LDAP Picker — Query AD for users / groups
+// Wired to POST /api/ldap/query (routes/api.py). Uses current form
+// values for URL / DN / bind credentials, falling back to saved
+// settings server-side so the user can query before first save.
+// ═══════════════════════════════════════════════════════════════
+let _ldapPickerKind = 'users';
+
+function openLdapPicker() {
+  document.getElementById('ldap-picker-modal').classList.remove('hidden');
+  document.getElementById('ldap-picker-search').value = '';
+  _renderLdapPickerEmpty();
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  setTimeout(() => document.getElementById('ldap-picker-search').focus(), 50);
+}
+
+function closeLdapPicker() {
+  document.getElementById('ldap-picker-modal').classList.add('hidden');
+}
+
+function setLdapPickerKind(kind) {
+  _ldapPickerKind = kind;
+  const usersBtn = document.getElementById('ldap-kind-users-btn');
+  const groupsBtn = document.getElementById('ldap-kind-groups-btn');
+  const active = 'bg-[#2563EB] dark:bg-[#3B82F6] text-white';
+  const inactive = 'text-[#6B7280] dark:text-[#CBD5E1]';
+  if (kind === 'users') {
+    usersBtn.className = 'px-3 py-1 text-xs font-medium rounded ' + active;
+    groupsBtn.className = 'px-3 py-1 text-xs font-medium rounded ' + inactive;
+  } else {
+    usersBtn.className = 'px-3 py-1 text-xs font-medium rounded ' + inactive;
+    groupsBtn.className = 'px-3 py-1 text-xs font-medium rounded ' + active;
+  }
+  // Re-run query if a search is already set
+  const search = document.getElementById('ldap-picker-search').value.trim();
+  if (search) runLdapPickerQuery();
+  else _renderLdapPickerEmpty();
+}
+
+function _renderLdapPickerEmpty() {
+  document.getElementById('ldap-picker-list').innerHTML =
+    '<div class="py-10 text-center">' +
+    '<i data-lucide="search" class="w-10 h-10 mx-auto mb-2 text-[#9CA3AF] opacity-50"></i>' +
+    '<p class="text-sm text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.get('ldap_picker_empty', 'Press Search to query AD') | tojson }} + '</p>' +
+    '</div>';
+  document.getElementById('ldap-picker-count').textContent = '';
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function _escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = (s == null ? '' : String(s));
+  return d.innerHTML;
+}
+
+function runLdapPickerQuery() {
+  const list = document.getElementById('ldap-picker-list');
+  const countEl = document.getElementById('ldap-picker-count');
+  const btn = document.getElementById('ldap-picker-search-btn');
+  const search = document.getElementById('ldap-picker-search').value.trim();
+
+  btn.disabled = true;
+  list.innerHTML =
+    '<div class="py-10 text-center">' +
+    '<i data-lucide="loader" class="w-8 h-8 mx-auto mb-2 text-[#9CA3AF] animate-spin"></i>' +
+    '<p class="text-sm text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.get('ldap_querying', 'Querying Active Directory...') | tojson }} + '</p>' +
+    '</div>';
+  countEl.textContent = '';
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+
+  // Pass current form values; server falls back to saved config for blanks/masks.
+  const body = {
+    kind: _ldapPickerKind,
+    search: search,
+    ldap_url: document.getElementById('auth-ldap-url').value.trim(),
+    base_dn: document.getElementById('auth-ldap-basedn').value.trim(),
+    bind_user: document.getElementById('auth-ldap-bind-user').value.trim(),
+    bind_password: document.getElementById('auth-ldap-bind-pass').value,
+  };
+
+  fetch('/api/ldap/query', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify(body),
+  })
+  .then(r => r.json())
+  .then(data => {
+    btn.disabled = false;
+    if (!data.ok) {
+      list.innerHTML =
+        '<div class="py-10 text-center">' +
+        '<i data-lucide="alert-triangle" class="w-10 h-10 mx-auto mb-2 text-[#DC2626]"></i>' +
+        '<p class="text-sm text-[#991B1B] dark:text-[#FCA5A5] font-medium">' + {{ t.get('ldap_query_failed', 'Query failed') | tojson }} + '</p>' +
+        '<p class="text-[10px] mt-1 text-[#9CA3AF] font-mono">' + _escapeHtml(data.error || '') + '</p>' +
+        '</div>';
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      return;
+    }
+    const results = data.results || [];
+    if (results.length === 0) {
+      list.innerHTML =
+        '<div class="py-10 text-center">' +
+        '<i data-lucide="inbox" class="w-10 h-10 mx-auto mb-2 text-[#9CA3AF] opacity-50"></i>' +
+        '<p class="text-sm text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.get('ldap_no_results', 'No results') | tojson }} + '</p>' +
+        '</div>';
+      countEl.textContent = '0';
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      return;
+    }
+    // Render rows — clicking a row appends the sAMAccountName (or CN for groups) to the textarea.
+    const icon = _ldapPickerKind === 'users' ? 'user' : 'users';
+    let html = '<div class="divide-y divide-[#E5E7EB] dark:divide-[#334155]">';
+    results.forEach(r => {
+      const label = _escapeHtml(r.name || r.sam || r.dn);
+      const sam = _escapeHtml(r.sam || '');
+      const upn = _escapeHtml(r.upn || '');
+      const desc = _escapeHtml(r.description || '');
+      const dn = _escapeHtml(r.dn || '');
+      const secondary = _ldapPickerKind === 'users'
+        ? (upn || sam) + (desc ? ' — ' + desc : '')
+        : sam + (desc ? ' — ' + desc : '');
+      html += '<div class="py-2 px-2 -mx-2 rounded hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] cursor-pointer flex items-start gap-2" '
+           + 'data-action="pickLdapResult" data-args="' + JSON.stringify([r.sam || r.name || '']).replace(/"/g, '&quot;') + '">'
+           + '<i data-lucide="' + icon + '" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6] flex-shrink-0 mt-0.5"></i>'
+           + '<div class="flex-1 min-w-0">'
+           + '<div class="text-sm font-medium truncate">' + label + '</div>'
+           + '<div class="text-[10px] text-[#6B7280] dark:text-[#CBD5E1] truncate">' + secondary + '</div>'
+           + '<div class="text-[10px] text-[#9CA3AF] dark:text-[#475569] font-mono truncate">' + dn + '</div>'
+           + '</div>'
+           + '<i data-lucide="plus" class="w-4 h-4 text-[#10B981] flex-shrink-0 mt-0.5"></i>'
+           + '</div>';
+    });
+    html += '</div>';
+    list.innerHTML = html;
+    countEl.textContent = results.length + (results.length >= 200 ? '+' : '');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  })
+  .catch(err => {
+    btn.disabled = false;
+    list.innerHTML =
+      '<div class="py-10 text-center">' +
+      '<i data-lucide="alert-triangle" class="w-10 h-10 mx-auto mb-2 text-[#DC2626]"></i>' +
+      '<p class="text-sm text-[#991B1B] dark:text-[#FCA5A5] font-medium">' + {{ t.get('ldap_query_failed', 'Query failed') | tojson }} + '</p>' +
+      '<p class="text-[10px] mt-1 text-[#9CA3AF] font-mono">' + _escapeHtml(err.message || '') + '</p>' +
+      '</div>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  });
+}
+
+function pickLdapResult(value) {
+  if (!value) return;
+  const ta = document.getElementById('auth-allowed-users');
+  const existing = ta.value.split('\n').map(l => l.trim()).filter(Boolean);
+  if (existing.includes(value)) {
+    // Already present — brief visual flash
+    ta.classList.add('ring-2', 'ring-[#F59E0B]');
+    setTimeout(() => ta.classList.remove('ring-2', 'ring-[#F59E0B]'), 800);
+    return;
+  }
+  existing.push(value);
+  ta.value = existing.join('\n');
+  // Trigger save bar
+  ta.dispatchEvent(new Event('input', { bubbles: true }));
+  // Visual confirm
+  ta.classList.add('ring-2', 'ring-[#10B981]');
+  setTimeout(() => ta.classList.remove('ring-2', 'ring-[#10B981]'), 600);
+}
+
+// Enter key in search field triggers query
+document.addEventListener('DOMContentLoaded', () => {
+  const searchInput = document.getElementById('ldap-picker-search');
+  if (searchInput) {
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); runLdapPickerQuery(); }
+    });
+  }
+});
+</script>
+
+{% endblock %}
