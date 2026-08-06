@@ -31,21 +31,65 @@ from tools import check_anonymised as guard  # noqa: E402
 
 # ── shape rules: fire on the real convention, quiet on the fictional fleet ──
 
-# SYNTHETIC names that match the estate's convention without being real
-# machines. Using actual hostnames here would make this file the leak it is
-# meant to prevent — and the checker scans tests/ too, so it would fail itself.
+# A synthetic convention, supplied exactly the way a real deployment supplies
+# its own: a `regex:` line in the gitignored deny-list. The estate's actual
+# convention is deliberately NOT written here — publishing the pattern tells a
+# reader how the organisation names its machines, which is the whole reason it
+# was moved out of the committed source.
+SYNTHETIC_CONVENTION = r"(?<![A-Za-z0-9])ACME[A-Z]{2,4}\d{2}(?![A-Za-z0-9])"
+
+
+# Non-placeholder private addresses, ASSEMBLED rather than written literally.
+#
+# This file is scanned for addresses like any other — only the regex rules are
+# suppressed for it — and that is deliberate: a real IP pasted into a test
+# fixture is exactly the kind of leak the earlier blanket exemption hid. But
+# these tests must reference addresses the rule is supposed to FIRE on, so the
+# fixtures are composed at runtime. A genuine leak arrives as a literal.
+def _addr(*octets: int) -> str:
+    return ".".join(str(o) for o in octets)
+
+
+FIXTURE_ADDRS = {
+    "ten":      _addr(10, 5, 6, 7),
+    "one92":    _addr(192, 168, 4, 9),
+    "one72":    _addr(172, 31, 7, 7),
+    "cfg_host": _addr(172, 20, 9, 9),
+    "self_ip":  _addr(172, 31, 9, 9),
+}
+
+
+@pytest.fixture()
+def convention_rules(tmp_path):
+    denylist = tmp_path / "denylist"
+    denylist.write_text(f"regex:{SYNTHETIC_CONVENTION}\n", encoding="utf-8")
+    return guard.active_rules(guard.load_local_patterns(denylist))
+
+
 @pytest.mark.parametrize("text", [
-    "DESAAA01", "DESZZ99", "the DESQQQ42 incident", "DESBB07 in a sentence",
+    "ACMEAAA01", "ACMEZZ99", "the ACMEQQQ42 incident", "ACMEBB07 in a sentence",
+    "ACMEQQQ42_Deduplication.html",   # underscore:  would fail here
 ])
-def test_hostname_convention_is_caught(text):
+def test_hostname_convention_is_caught(text, convention_rules):
     """Caught by shape alone, so a DECOMMISSIONED host is still caught.
 
     This matters: the config-derived terms only know hosts that are currently
     deployed. A machine deleted from the fleet keeps its name in the planning
     docs, and nothing else would catch it.
     """
-    findings = _scan_text(text)
-    assert any(rule == "hostname-convention" for _ln, rule, _t in findings), text
+    findings = guard.scan_text(text, set(), convention_rules)
+    assert any(rule == "local-pattern" for _ln, rule, _t in findings), text
+
+
+def test_the_committed_source_carries_no_org_specific_pattern():
+    r"""A committed org-specific regex is a disclosure.
+
+    Smaller than a hostname, but it still tells any reader of a public repo how
+    the organisation names its machines, and the deny-list mechanism already
+    exists to hold it.
+    """
+    assert [r[0] for r in guard.SHAPE_RULES] == ["ldap-dn-with-company-dc"], (
+        "only generic, organisation-neutral shapes may be committed")
 
 
 @pytest.mark.parametrize("text", [
@@ -66,9 +110,9 @@ def test_fictional_fleet_is_not_flagged(text):
     ("192.0.2.7", False),
     ("203.0.113.9", False),
     ("127.0.0.1", False),
-    ("10.5.6.7", True),
-    ("192.168.4.9", True),
-    ("172.31.7.7", True),           # RFC 1918, outside the placeholder ranges
+    (FIXTURE_ADDRS["ten"], True),
+    (FIXTURE_ADDRS["one92"], True),
+    (FIXTURE_ADDRS["one72"], True),   # RFC 1918, outside the placeholder ranges
     ("172.15.0.1", False),          # outside RFC 1918
     ("lucide 10.702.5", False),     # version string, not an address
     ("version 10.0.0", False),      # three octets is not an address
@@ -137,13 +181,13 @@ def test_real_identifiers_do_become_secrets(tmp_path):
 def test_addresses_in_config_become_secrets_but_placeholders_do_not(tmp_path):
     config = tmp_path / "config.json"
     config.write_text(
-        '{"servers": [{"name": "ACMEFS01", "host": "172.20.9.9"},'
+        '{"servers": [{"name": "ACMEFS01", "host": "' + FIXTURE_ADDRS["cfg_host"] + '"},'
         ' {"name": "ACMEFS02", "host": "10.0.0.4"}], "settings": {}}',
         encoding="utf-8")
 
     terms = guard.load_secret_terms(config)
 
-    assert "172.20.9.9" in terms
+    assert FIXTURE_ADDRS["cfg_host"] in terms
     assert "10.0.0.4" not in terms, "documentation placeholders stay allowed"
 
 
@@ -182,9 +226,25 @@ def test_require_config_refuses_when_config_is_absent(tmp_path, monkeypatch, cap
     assert "REFUSING TO PUSH" in capsys.readouterr().err
 
 
-def test_checker_skips_itself():
-    """This module necessarily contains the shapes it forbids."""
-    assert guard._should_skip("tools/check_anonymised.py")
+def test_the_checkers_own_files_are_scanned_just_not_for_shapes():
+    """A blanket exemption is a hole, and this one was occupied.
+
+    Both exempted files were found carrying a real hostname and a real IP that
+    nothing was looking at. Now only the REGEX rules are suppressed for them;
+    config-derived terms and the address rule still apply.
+    """
+    assert not guard._should_skip("tools/check_anonymised.py")
+    assert not guard._should_skip("tests/test_anonymisation_guard.py")
+    assert guard._is_self("tools/check_anonymised.py")
+
+    # patterns suppressed...
+    assert guard.scan_text("DC=ACMECORP,DC=COM", set(), skip_patterns=True) == []
+    # ...but a real value in an exempt file is still a real value.
+    assert guard.scan_text(f'host {FIXTURE_ADDRS["self_ip"]}', set(), skip_patterns=True)
+    assert guard.scan_text("acmefs01 here", {"acmefs01"}, skip_patterns=True)
+
+
+def test_vendor_bundles_are_skipped_entirely():
     assert guard._should_skip("static/vendor/lucide-0.344.0.js")
     assert not guard._should_skip("analytics.py")
 
@@ -228,8 +288,10 @@ def test_commit_messages_are_scanned():
     On 2026-08-03 exactly that happened while every file was clean, and nothing
     was looking at messages.
     """
-    findings = guard.scan_text("chore: bump DESQQQ42 timeout", set())
-    assert any(rule == "hostname-convention" for _l, rule, _t in findings)
+    findings = guard.scan_text("chore: bump ACMEQQQ42 timeout", set(),
+                               guard.active_rules(guard.load_local_patterns(
+                                   _denylist_with_convention())))
+    assert any(rule == "local-pattern" for _l, rule, _t in findings)
 
 
 def test_scan_range_covers_commits_not_just_the_worktree():
@@ -264,11 +326,13 @@ def test_git_grep_flags_precede_the_pattern():
 def test_filenames_are_scanned_not_just_contents():
     """A path is published even when the blob is spotless.
 
-    "DESFIL10_Deduplication.html" gives away a hostname from the directory
+    "FILE01_Deduplication.html" gives away a hostname from the directory
     listing alone, and naming a report after the server it describes is the
     most natural filename anyone could write.
     """
-    findings = guard.scan_path("reports/DESQQQ42_Deduplication.html", set())
+    findings = guard.scan_path("reports/ACMEQQQ42_Deduplication.html", set(),
+                               guard.active_rules(guard.load_local_patterns(
+                                   _denylist_with_convention())))
     assert findings, "a leaking filename must be caught"
     assert all(rule.startswith("path:") for _ln, rule, _t in findings)
     assert all(line == 0 for line, _r, _t in findings), "line 0 marks a name finding"
@@ -276,7 +340,9 @@ def test_filenames_are_scanned_not_just_contents():
 
 def test_a_binary_file_still_gets_its_name_checked():
     """Unreadable content is not a reason to skip the part that is published."""
-    findings = guard.scan_file("static/img/DESQQQ42-diagram.png", set())
+    findings = guard.scan_file("static/img/ACMEQQQ42-diagram.png", set(),
+                               guard.active_rules(guard.load_local_patterns(
+                                   _denylist_with_convention())))
     assert any(rule.startswith("path:") for _ln, rule, _t in findings)
 
 
@@ -372,6 +438,14 @@ def test_install_hooks_uses_hookspath_rather_than_copying():
     src = inspect.getsource(install_hooks)
     assert "core.hooksPath" in src
     assert install_hooks.HOOK_NAMES == ("pre-commit", "pre-push")
+
+
+def _denylist_with_convention():
+    """A throwaway deny-list carrying only the SYNTHETIC convention."""
+    import tempfile
+    path = Path(tempfile.mkdtemp()) / "denylist"
+    path.write_text(f"regex:{SYNTHETIC_CONVENTION}\n", encoding="utf-8")
+    return path
 
 
 def _scan_text(text: str) -> list[tuple[int, str, str]]:
