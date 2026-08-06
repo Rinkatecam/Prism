@@ -113,9 +113,22 @@ repository says they are. Verify with `python tools/install_hooks.py --check`.
 ## Two things only a repo admin can do
 
 **1. Add the `ANONYMISATION_DENYLIST` secret** — Settings → Secrets and
-variables → Actions. Paste the contents of your local
-`.anonymisation-denylist`. Without it CI runs shape rules alone and cannot
-recognise the AD domain or an account name; it emits a warning saying so.
+variables → Actions. Generate the value with:
+
+```bash
+python tools/check_anonymised.py --emit-denylist
+```
+
+That merges the config-derived terms with `.anonymisation-denylist` into the
+exact set this machine checks against — CI has no `config.json`, so the secret
+has to carry both. **It prints real values; never run it in CI or anywhere the
+output is captured.**
+
+Without the secret, CI runs shape rules alone and cannot recognise the AD
+domain or an account name; it emits a warning on every run saying so. The shape
+rules still catch anything matching the estate's hostname convention, so a
+newly-added server is covered even if the secret is stale — regenerate it when
+the domain or the accounts change, which is rare.
 
 **2. Enable branch protection on `master`** — Settings → Branches → require the
 `Anonymisation (no real hostnames)` status check to pass. Until this is on, a

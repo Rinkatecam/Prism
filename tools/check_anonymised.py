@@ -405,7 +405,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--redact", action="store_true",
                         help="mask matched values in the output (use in CI on "
                              "a public repo)")
+    parser.add_argument("--emit-denylist", action="store_true",
+                        help="print the resolved forbidden terms, for pasting "
+                             "into the ANONYMISATION_DENYLIST CI secret. "
+                             "PRINTS REAL VALUES — never run this in CI or "
+                             "anywhere the output is captured publicly.")
     args = parser.parse_args(argv)
+
+    if args.emit_denylist:
+        # CI has no config.json, so the secret has to carry the config-derived
+        # terms as well as the local ones — this merges both sources into the
+        # exact set the checker would use here.
+        terms = load_secret_terms()
+        if not terms:
+            print("no terms resolved — is config.json present?", file=sys.stderr)
+            return 2
+        print("\n".join(sorted(terms)))
+        return 0
 
     secret_terms = load_secret_terms()
     # Check the FILE, not the derived terms: a populated local deny-list would
