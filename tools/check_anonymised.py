@@ -47,19 +47,16 @@ CONFIG_PATH = REPO_ROOT / "config.json"
 LOCAL_TERMS_PATH = REPO_ROOT / ".anonymisation-denylist"
 
 # ── Shapes that are identifying on their own ─────────────────────────────
-# Safe to commit: they describe a FORM, not a value. Keep them anchored
-# tightly enough that fictional replacements do not trip them.
+# GENERIC ONLY. Safe to commit because they describe a form that is not
+# specific to any organisation.
+#
+# The estate's own hostname convention deliberately lives OUTSIDE this file, as
+# a `regex:` line in the gitignored deny-list. A committed pattern like
+# "<PREFIX>[A-Z]{2,4}\d{2}" tells any reader exactly how the organisation names
+# its machines — which is a smaller disclosure than a hostname, but it is still
+# a disclosure, and there is no reason to publish it when the deny-list
+# mechanism already exists to hold it.
 SHAPE_RULES: list[tuple[str, str, str]] = [
-    (
-        "hostname-convention",
-        # Explicit alphanumeric boundaries, NOT \b. Underscore is a word
-        # character, so \b does not break between "42" and "_" — which meant
-        # "DESQQQ42_Deduplication.html" went unmatched. A real host caught by
-        # the config-derived terms hid that for a while; a DECOMMISSIONED host,
-        # which only the shape rule can catch, would have gone straight through.
-        r"(?<![A-Za-z0-9])DES[A-Z]{2,4}\d{2}(?![A-Za-z0-9])",
-        "looks like a real host from the estate's naming convention",
-    ),
     (
         "ldap-dn-with-company-dc",
         # The exemption must be case-insensitive: DNs are conventionally
@@ -104,10 +101,24 @@ SKIP_SUFFIXES = (
 )
 
 # These two necessarily contain the shapes they forbid: the checker defines the
-# patterns, and its test suite must exercise them with strings that match. The
-# exemption is deliberately narrow — two named files, not a directory — and the
-# values inside them are synthetic. Everything else, tests/ included, is scanned.
+# patterns, and its test suite must exercise strings that match them.
+#
+# They are NOT skipped. Only the regex rules are suppressed for them; the
+# config-derived terms and the address rule still apply. The earlier blanket
+# exemption was a hole, and it was an occupied one — the two files the checker
+# refused to look at were the two carrying a real hostname and a real IP.
+# An exemption should be as narrow as the reason for it.
 SELF = ("tools/check_anonymised.py", "tests/test_anonymisation_guard.py")
+
+
+def _is_self(rel_path: str) -> bool:
+    """The checker and its tests must contain the shapes they define.
+
+    This suppresses the REGEX rules for them and nothing else. A blanket
+    skip is what let a real hostname sit in both files unnoticed — the two
+    files the checker refused to look at were the two carrying a leak.
+    """
+    return rel_path in SELF
 
 
 def _is_placeholder_address(value: str) -> bool:
@@ -206,14 +217,45 @@ def load_local_terms(path: Path | None = None) -> set[str]:
     terms = set()
     for line in path.read_text(encoding="utf-8").splitlines():
         term = line.split("#", 1)[0].strip()
-        if term:
+        if term and not term.lower().startswith("regex:"):
             terms.add(term.lower())
     return terms
 
 
+def load_local_patterns(path: Path | None = None) -> list[tuple[str, str, str]]:
+    """Regex rules from the gitignored deny-list, as `regex:<pattern>` lines.
+
+    This is where the estate's hostname convention lives. Committing
+    "<PREFIX>[A-Z]{2,4}\\d{2}" to a public repository would tell every reader
+    how the organisation names its machines — less than a hostname, but still
+    something, and the mechanism to keep it out already exists.
+
+    Consequence worth knowing: without the deny-list (CI with no secret) there
+    is no hostname rule at all, only the generic shapes. The warning CI emits
+    when the secret is missing is therefore load-bearing, not cosmetic.
+    """
+    path = path or LOCAL_TERMS_PATH
+    if not path.exists():
+        return []
+    rules = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        raw = line.split("#", 1)[0].strip()
+        if raw.lower().startswith("regex:"):
+            pattern = raw[len("regex:"):].strip()
+            if pattern:
+                rules.append(("local-pattern", pattern,
+                              "matches a locally-configured identifier shape"))
+    return rules
+
+
+def active_rules(extra: list[tuple[str, str, str]] | None = None) -> list:
+    """Generic committed shapes plus any locally-configured ones."""
+    return SHAPE_RULES + list(extra or [])
+
+
 # Private ranges. A real address only reaches the deny-list if it is still in
 # config.json, so a DECOMMISSIONED host's address would slip through — which is
-# exactly what happened: 172.28.50.28 belonged to a box deleted on 2026-08-05
+# exactly what happened: 198.51.100.28 belonged to a box deleted on 2026-08-05
 # and survived in two planning docs with nothing to catch it.
 # Each branch carries its own octet count. Sharing a single "\.\d{1,3}\.\d{1,3}"
 # tail across all three is wrong: the 10/8 branch consumes one octet where the
@@ -248,17 +290,25 @@ def tracked_files() -> list[str]:
 
 def _should_skip(rel_path: str) -> bool:
     lowered = rel_path.lower()
-    return (rel_path in SELF
-            or lowered.startswith(SKIP_PREFIXES)
+    return (lowered.startswith(SKIP_PREFIXES)
             or lowered.endswith(SKIP_SUFFIXES))
 
 
-def scan_text(text: str, secret_terms: set[str]) -> list[tuple[int, str, str]]:
-    """Return [(line_no, rule, offending_text)] for a blob of text."""
+def scan_text(text: str, secret_terms: set[str], rules=None,
+              skip_patterns: bool = False) -> list[tuple[int, str, str]]:
+    """Return [(line_no, rule, offending_text)] for a blob of text.
+
+    ``skip_patterns`` is for the checker's own source and test file, which must
+    contain the shapes they define. It suppresses ONLY the regex rules — the
+    config-derived terms and the address rule still apply, because a real
+    hostname in an exempt file is still a real hostname. A blanket exemption
+    hid exactly that for a while.
+    """
+    rules = active_rules() if rules is None else rules
     findings: list[tuple[int, str, str]] = []
     for line_no, line in enumerate(text.splitlines(), start=1):
         lowered = line.lower()
-        for rule, pattern, _why in SHAPE_RULES:
+        for rule, pattern, _why in ([] if skip_patterns else rules):
             for match in re.finditer(pattern, line):
                 findings.append((line_no, rule, match.group(0)))
         for addr in address_findings(line):
@@ -269,30 +319,33 @@ def scan_text(text: str, secret_terms: set[str]) -> list[tuple[int, str, str]]:
     return findings
 
 
-def scan_path(rel_path: str, secret_terms: set[str]) -> list[tuple[int, str, str]]:
+def scan_path(rel_path: str, secret_terms: set[str], rules=None,
+              skip_patterns: bool = False) -> list[tuple[int, str, str]]:
     """A PATH is published too, even when the file's contents are spotless.
 
-    `DESFIL10_Deduplication.html` gives away a hostname from the directory
+    `FILE01_Deduplication.html` gives away a hostname from the directory
     listing alone — and a report or export named after the server it describes
     is the most natural filename in the world to write. Line 0 marks a
     name-level finding.
     """
     return [(0, f"path:{rule}", text)
-            for _ln, rule, text in scan_text(rel_path, secret_terms)]
+            for _ln, rule, text in scan_text(rel_path, secret_terms, rules,
+                                             skip_patterns)]
 
 
-def scan_file(rel_path: str, secret_terms: set[str]) -> list[tuple[int, str, str]]:
+def scan_file(rel_path: str, secret_terms: set[str], rules=None,
+              skip_patterns: bool = False) -> list[tuple[int, str, str]]:
     """Return [(line_no, rule, offending_text)] for one working-tree file.
 
     Binary and unreadable files still have their NAME checked — that is the
     part of them that gets published either way.
     """
-    findings = scan_path(rel_path, secret_terms)
+    findings = scan_path(rel_path, secret_terms, rules, skip_patterns)
     try:
         text = (REPO_ROOT / rel_path).read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return findings   # binary or unreadable — nothing else quotable in it
-    return findings + scan_text(text, secret_terms)
+    return findings + scan_text(text, secret_terms, rules, skip_patterns)
 
 
 def _git(*args: str) -> str:
@@ -306,7 +359,7 @@ def commits_in_range(rev_range: str) -> list[str]:
 
 
 def scan_commit_messages(commits: list[str],
-                         secret_terms: set[str]) -> list[tuple[str, int, str, str]]:
+                         secret_terms: set[str], rules=None) -> list[tuple[str, int, str, str]]:
     """Commit MESSAGES are published too.
 
     On 2026-08-03 a real hostname reached GitHub inside a commit message while
@@ -316,13 +369,13 @@ def scan_commit_messages(commits: list[str],
     violations = []
     for commit in commits:
         message = _git("log", "-1", "--format=%B%n%an%n%ae", commit)
-        for line_no, rule, text in scan_text(message, secret_terms):
+        for line_no, rule, text in scan_text(message, secret_terms, rules):
             violations.append((f"commit {commit[:9]} (message)", line_no, rule, text))
     return violations
 
 
 def scan_commit_trees(commits: list[str],
-                      secret_terms: set[str]) -> list[tuple[str, int, str, str]]:
+                      secret_terms: set[str], rules=None) -> list[tuple[str, int, str, str]]:
     """Scan the tree of every commit being pushed, not just the final one.
 
     The tip being clean says nothing about the commits underneath it. Three
@@ -336,7 +389,8 @@ def scan_commit_trees(commits: list[str],
     address).
     """
     violations = []
-    patterns = [p for _rule, p, _why in SHAPE_RULES]
+    rules = active_rules() if rules is None else rules
+    patterns = [p for _rule, p, _why in rules]
     patterns.append(_PRIVATE_ADDRESS.pattern)
     patterns.extend(re.escape(t) for t in sorted(secret_terms))
 
@@ -346,7 +400,8 @@ def scan_commit_trees(commits: list[str],
         try:
             for rel_path in _git("ls-tree", "-r", "--name-only", commit).splitlines():
                 if rel_path and not _should_skip(rel_path):
-                    for _ln, rule, text in scan_path(rel_path, secret_terms):
+                    for _ln, rule, text in scan_path(rel_path, secret_terms, rules,
+                                                     _is_self(rel_path)):
                         violations.append((f"{rel_path} @ {commit[:9]}", 0, rule, text))
         except subprocess.CalledProcessError:
             pass
@@ -373,7 +428,8 @@ def scan_commit_trees(commits: list[str],
                 blob = _git("show", f"{commit}:{rel_path}")
             except subprocess.CalledProcessError:
                 continue
-            for line_no, rule, text in scan_text(blob, secret_terms):
+            for line_no, rule, text in scan_text(blob, secret_terms, rules,
+                                                 _is_self(rel_path)):
                 violations.append((f"{rel_path} @ {commit[:9]}", line_no, rule, text))
     return violations
 
@@ -420,7 +476,11 @@ def main(argv: list[str] | None = None) -> int:
         if not terms:
             print("no terms resolved — is config.json present?", file=sys.stderr)
             return 2
-        print("\n".join(sorted(terms)))
+        # The `regex:` lines matter as much as the literals: the estate's
+        # hostname convention is no longer committed, so a secret without them
+        # leaves CI with no hostname rule at all.
+        patterns = [f"regex:{p}" for _r, p, _w in load_local_patterns()]
+        print("\n".join(sorted(terms) + patterns))
         return 0
 
     secret_terms = load_secret_terms()
@@ -433,6 +493,8 @@ def main(argv: list[str] | None = None) -> int:
               file=sys.stderr)
         return 2
 
+    rules = active_rules(load_local_patterns())
+
     violations: list[tuple[str, int, str, str]] = []
     scanned = 0
 
@@ -441,7 +503,8 @@ def main(argv: list[str] | None = None) -> int:
         if _should_skip(rel_path):
             continue
         scanned += 1
-        for line_no, rule, text in scan_file(rel_path, secret_terms):
+        for line_no, rule, text in scan_file(rel_path, secret_terms, rules,
+                                             _is_self(rel_path)):
             violations.append((rel_path, line_no, rule, text))
 
     commits: list[str] = []
@@ -451,8 +514,8 @@ def main(argv: list[str] | None = None) -> int:
         except subprocess.CalledProcessError:
             print(f"could not resolve range {args.rev_range!r}", file=sys.stderr)
             return 2
-        violations += scan_commit_messages(commits, secret_terms)
-        violations += scan_commit_trees(commits, secret_terms)
+        violations += scan_commit_messages(commits, secret_terms, rules)
+        violations += scan_commit_trees(commits, secret_terms, rules)
 
     if not violations:
         scope = "shape rules only" if not secret_terms else "full"

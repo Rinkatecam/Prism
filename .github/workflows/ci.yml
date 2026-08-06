@@ -46,8 +46,11 @@ jobs:
       - name: Scan the working tree
         run: python tools/check_anonymised.py --redact
 
+      # HEAD, not the root commit: `git rev-list <root>` walks the ANCESTORS of
+      # the root, which is only the root itself. That scanned 1 commit of 4 and
+      # reported success.
       - name: Scan every commit and commit message
-        run: python tools/check_anonymised.py --redact --range "$(git rev-list --max-parents=0 HEAD | tail -1)"
+        run: python tools/check_anonymised.py --redact --range HEAD
 
       - name: Confirm the hooks are wired up
         run: |

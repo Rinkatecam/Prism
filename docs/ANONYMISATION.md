@@ -58,9 +58,25 @@ sources at check time:
    For identifiers the config cannot supply: personal accounts, colleagues'
    names, internal codenames.
 
-Only *shapes* are committed — the estate's hostname convention, an LDAP DN
-naming a non-example domain, private addresses outside the documentation
-ranges.
+Only **generic** shapes are committed — an LDAP DN naming a non-example domain,
+and private addresses outside the documentation ranges. Neither says anything
+about a particular organisation.
+
+**The estate's own hostname convention is not committed either.** It lives in
+the deny-list as a `regex:` line. A committed pattern such as
+`<PREFIX>[A-Z]{2,4}\d{2}` is a smaller disclosure than a hostname, but it still
+tells any reader of a public repo how the organisation names its machines, and
+the mechanism to hold it already existed. The consequence is worth stating: with
+no deny-list, there is no hostname rule at all — so the warning CI emits when
+the secret is missing is load-bearing, not cosmetic.
+
+The checker's own source and its test file are **not skipped**. Only the regex
+rules are suppressed for them, because they have to contain the shapes they
+define; config-derived terms and the address rule still apply. The earlier
+blanket exemption was a hole, and an occupied one — the two files the checker
+refused to look at turned out to be carrying a real hostname and a real IP.
+Where a test genuinely needs an address the rule should fire on, it assembles
+it at runtime rather than writing a literal.
 
 That split has a useful consequence: CI has no `config.json`, so it runs the
 shape rules alone and stays green, while a developer's machine runs the full
@@ -110,7 +126,16 @@ That sets `core.hooksPath` to the tracked `.githooks/` directory rather than
 copying files into `.git/hooks`, so the hooks are always whatever the
 repository says they are. Verify with `python tools/install_hooks.py --check`.
 
-## Two things only a repo admin can do
+## Repo-admin configuration (done — recorded here so it can be re-created)
+
+Both of the following are configured on `Rinkatecam/Prism`. If the repo is ever
+recreated, they have to be set up again — the whole gate is only as strong as
+layer 4.
+
+Note that the **ruleset** is also named `ANONYMISATION_DENYLIST`, which is the
+same name as the **Actions secret**. They are two unrelated things that happen
+to share a name; do not assume configuring one configures the other.
+
 
 **1. Add the `ANONYMISATION_DENYLIST` secret** — Settings → Secrets and
 variables → Actions. Generate the value with:
