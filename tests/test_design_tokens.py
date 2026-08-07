@@ -130,6 +130,48 @@ def test_dark_hover_pairs_with_light_hover():
         '<b class="hover:text-muted">'
 
 
+# ── the families the first twelve tokens had no name for ─────────────────
+
+def test_the_input_surface_resolves_past_three_colliding_darks():
+    """`bg-white dark:bg-[#0F172A]` is 157 form inputs — the single largest
+    surviving pattern, and unconvertible with twelve tokens: no token was
+    #FFFFFF light and #0F172A dark.
+
+    #0F172A is now the dark half of THREE tokens (page, raised, field), so a
+    hex->token lookup cannot answer this on its own; the light half has to
+    pick. A dict keyed on the dark hex would silently return whichever was
+    declared last, which is how a token test passed on a collision before.
+    """
+    before = '<input class="bg-white dark:bg-[#0F172A] border border-line">'
+    assert dt.convert(before) == '<input class="bg-field border border-line">'
+
+
+def test_a_status_tint_pair_collapses():
+    """Badges are a tinted surface with a strong label on it — a different
+    role from the status colour itself, and 60 elements spell it by hand."""
+    before = '<span class="bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]">'
+    assert dt.convert(before) == '<span class="bg-critical-tint text-critical-strong">'
+
+
+def test_a_hyphenated_token_is_not_matched_as_its_own_prefix():
+    """`critical-strong` starts with `critical`. If the alternation is not
+    ordered longest-first, the converter and the verifier both read
+    `text-critical-strong` as `text-critical` followed by stray text, and the
+    verifier then reports a difference that is not there."""
+    assert dt.convert('<b class="text-critical-strong">') == \
+        '<b class="text-critical-strong">'
+    import tools.verify_token_equivalence as v
+    found = {m.group("token") for m in v._TOK.finditer("text-critical-strong bg-warning-tint")}
+    assert found == {"critical-strong", "warning-tint"}, found
+
+
+def test_page_and_raised_still_resolve_by_their_light_half():
+    """The two tokens that already collided on #0F172A must keep resolving
+    from the light side, not from declaration order."""
+    assert dt.convert('<div class="bg-[#F9FAFB] dark:bg-[#0F172A]">') == '<div class="bg-page">'
+    assert dt.convert('<div class="bg-[#F3F4F6] dark:bg-[#0F172A]">') == '<div class="bg-raised">'
+
+
 # ── the alpha modifier is part of the pair, not decoration ───────────────
 #
 # 43 paired utilities in the templates carry a DIFFERENT opacity on each half.
@@ -238,6 +280,30 @@ def test_css_uses_channel_triplets_not_hex():
     assert ":root {" in css and ".dark {" in css
 
 
+def test_hyphenated_token_keys_are_quoted_in_the_tailwind_map():
+    """`critical-tint: '…'` is a JavaScript syntax error.
+
+    The config is an inline <script> in base.html. A syntax error there does
+    not degrade gracefully — `tailwind.config` never gets assigned, every
+    semantic colour silently falls back to nothing, and the whole application
+    loses its styling. Quote the keys.
+    """
+    js = dt.render_tailwind_colors()
+    for name in dt.TOKENS:
+        if "-" in name:
+            assert f"'{name}':" in js, f"{name} must be quoted"
+
+
+def test_the_tailwind_map_parses_as_a_javascript_object_literal():
+    """Asserting on substrings would not have caught an unquoted key. Parse
+    it. JSON is strict enough to reject exactly what JS rejects here."""
+    import json
+    body = dt.render_tailwind_colors()
+    quoted = re.sub(r"^(\s*)'([^']+)':", r'\1"\2":', body, flags=re.M)
+    quoted = quoted.replace("'rgb(", '"rgb(').replace(")'", ')"')
+    json.loads("{" + quoted + "}")
+
+
 def test_tailwind_colour_map_composes_alpha():
     js = dt.render_tailwind_colors()
     assert "rgb(var(--c-critical) / <alpha-value>)" in js
@@ -250,7 +316,35 @@ def test_css_and_tailwind_cover_exactly_the_same_tokens():
     css, js = dt.render_css(), dt.render_tailwind_colors()
     for name in dt.TOKENS:
         assert f"--c-{name}:" in css
-        assert f"{name}: 'rgb(var(--c-{name})" in js
+        assert f"'{name}': 'rgb(var(--c-{name})" in js
+
+
+def test_app_css_matches_the_python_table():
+    """app.css says "generated from tools/design_tokens.py" and "tests assert
+    these match the Python table". Until this test existed, neither the CSS
+    nor the Tailwind map was checked against anything — the header described
+    a guarantee that was not being enforced, which is the same shape as the
+    three unused colour abstractions this whole exercise replaced.
+
+    Drift here is invisible: a token defined in Python and missing from the
+    CSS renders as nothing at all.
+    """
+    css = (PROJECT_ROOT / "static" / "css" / "app.css").read_text(encoding="utf-8")
+    for name, (light, dark) in dt.TOKENS.items():
+        assert f"--c-{name}: {dt._channels(light)};" in css, \
+            f"--c-{name} missing or stale in the :root block"
+        assert f"--c-{name}: {dt._channels(dark)};" in css, \
+            f"--c-{name} missing or stale in the .dark block"
+
+
+def test_base_html_tailwind_map_matches_the_python_table():
+    """Same guarantee for the other half. A token present in the CSS but
+    absent from `theme.extend.colors` produces a class Tailwind never emits,
+    so the element simply has no colour."""
+    base = (PROJECT_ROOT / "templates" / "base.html").read_text(encoding="utf-8")
+    for name in dt.TOKENS:
+        assert f"'{name}': 'rgb(var(--c-{name}) / <alpha-value>)'" in base, \
+            f"{name} missing from tailwind.config in base.html"
 
 
 def test_every_token_has_distinct_light_and_dark():

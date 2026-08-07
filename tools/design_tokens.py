@@ -49,20 +49,39 @@ TOKENS: dict[str, tuple[str, str]] = {
     "page":     ("#F9FAFB", "#0F172A"),   # app background
     "card":     ("#FFFFFF", "#1E293B"),   # panel / card surface
     "raised":   ("#F3F4F6", "#0F172A"),   # hover + inset surface
+    "field":    ("#FFFFFF", "#0F172A"),   # input / select / textarea surface
     "line":     ("#E5E7EB", "#334155"),   # borders and dividers
     "ink":      ("#111827", "#F1F5F9"),   # primary text
     "muted":    ("#6B7280", "#CBD5E1"),   # secondary text
     "faint":    ("#9CA3AF", "#475569"),   # tertiary text, placeholders
     "brand":    ("#8B5CF6", "#A78BFA"),   # violet end of the brand gradient
+    "accent":   ("#14B8A6", "#2DD4BF"),   # turquoise end of the same gradient
     "info":     ("#2563EB", "#3B82F6"),
     "healthy":  ("#10B981", "#34D399"),
     "warning":  ("#F59E0B", "#FBBF24"),
     "critical": ("#DC2626", "#EF4444"),
+    # A badge is a tinted SURFACE with a strong label on it. That is a
+    # different role from the status colour, and 60 elements spelled it by
+    # hand: a pale wash in light mode, a deep one in dark, with the text
+    # inverting between them. Measured pairs, not invented.
+    "critical-tint":   ("#FEE2E2", "#7F1D1D"),
+    "critical-strong": ("#991B1B", "#FCA5A5"),
+    "warning-tint":    ("#FEF3C7", "#78350F"),
+    "warning-strong":  ("#92400E", "#FCD34D"),
+    "healthy-tint":    ("#D1FAE5", "#064E3B"),
+    "healthy-strong":  ("#065F46", "#6EE7B7"),
+    "info-tint":       ("#E0E7FF", "#312E81"),
+    "info-strong":     ("#1D4ED8", "#60A5FA"),
 }
 
-# Light or dark values that were paired inconsistently and collapse onto a
-# canonical token. Recorded here rather than silently folded in, because each
-# one is a small deliberate change to what that element renders as.
+# Values that were paired inconsistently and collapse onto a canonical token.
+# Recorded here rather than folded in silently, because each is a small
+# deliberate change to what that element renders as.
+#
+# `_LIGHT` and `_DARK` are separate tables: the same hex can be a light value
+# for one token and a dark value for another (#F1F5F9 is ink's dark half and
+# a light near-neighbour of raised), so a single alias map would be wrong in
+# one of the two directions.
 ALIASES: dict[str, str] = {
     "#94A3B8": "muted",   # 58 uses as the dark half of muted
     "#9CA3AF": "muted",   # 39 uses as the dark half of muted (light: faint)
@@ -71,11 +90,53 @@ ALIASES: dict[str, str] = {
     "#D1D5DB": "line",
 }
 
+# Light-side neighbours, folded onto the nearest token. Contrast on the light
+# card measured before -> after, because "nearest in RGB" is not the same
+# question as "still readable":
+LIGHT_ALIASES: dict[str, str] = {
+    "#1F2937": "ink",     # 24x body text.  14.68:1 -> 17.74:1
+    "#374151": "ink",     # 16x body text.  10.31:1 -> 17.74:1, the largest
+                          #     single fold: a secondary text level that the
+                          #     ink/muted/faint scale already covers.
+    "#4B5563": "muted",   #  4x text.        7.56:1 ->  4.83:1
+    "#D1D5DB": "line",    # 26x border/fill.  1.47:1 ->  1.24:1
+    "#F1F5F9": "raised",  #  5x surface.    RGB distance 3.7 — imperceptible
+    "#94A3B8": "faint",   #  8x text.        2.56:1 ->  2.54:1
+}
+# Dark-side neighbours of `ink`, both paired with a light half that folds onto
+# ink above, so the pair stays a pair.
+DARK_ALIASES: dict[str, str] = {
+    "#E2E8F0": "ink",     # 15x, pairs with #374151.  11.87:1 -> 13.35:1
+    "#F8FAFC": "ink",     # 10x, pairs with #1F2937.  13.98:1 -> 13.35:1
+}
+
 _ALIAS_UPPER: dict[str, str] = {h.upper(): t for h, t in ALIASES.items()}
-_LIGHT: dict[str, str] = {light.upper(): name for name, (light, _d) in TOKENS.items()}
-_DARK: dict[str, str] = {dark.upper(): name for name, (_l, dark) in TOKENS.items()}
-for _hex, _token in ALIASES.items():
-    _DARK.setdefault(_hex.upper(), _token)
+for _hex, _token in {**DARK_ALIASES}.items():
+    _ALIAS_UPPER.setdefault(_hex.upper(), _token)
+
+
+def _by_hex(index: int) -> dict[str, list[str]]:
+    """hex -> EVERY token holding it in that slot, in declaration order.
+
+    A plain dict here is a trap the repository has already fallen into: `page`
+    and `raised` both hold #0F172A, `card` and `field` both hold #FFFFFF, and
+    a last-wins mapping resolves to whichever happened to be declared later.
+    A token test once passed for exactly that reason. Callers that can
+    disambiguate — the light half of a pair, a built-in stand-in — do so
+    explicitly against this list.
+    """
+    out: dict[str, list[str]] = {}
+    for name, pair in TOKENS.items():
+        out.setdefault(pair[index].upper(), []).append(name)
+    return out
+
+
+_LIGHT_ALL = _by_hex(0)
+_DARK_ALL = _by_hex(1)
+for _hex, _token in LIGHT_ALIASES.items():
+    _LIGHT_ALL.setdefault(_hex.upper(), []).append(_token)
+for _hex, _token in {**ALIASES, **DARK_ALIASES}.items():
+    _DARK_ALL.setdefault(_hex.upper(), []).append(_token)
 
 # A Tailwind arbitrary-colour utility: `text-[#hex]`, `dark:bg-[#hex]/50`,
 # `border-l-[#hex]`. The side group is an explicit alternation rather than a
@@ -98,6 +159,18 @@ _UTIL = re.compile(
     r"-\[(?P<hex>#[0-9A-Fa-f]{6})\]"
     r"(?P<alpha>/\d{1,3})?"
 )
+
+
+def token_alternation() -> str:
+    """The token names as a regex alternation, LONGEST FIRST.
+
+    Python's `|` is first-match, not longest-match, so a bare
+    `"|".join(TOKENS)` lets `critical` win against `critical-strong` and the
+    pattern then reads `text-critical-strong` as `text-critical` with three
+    stray characters after it. Silent, and it makes the verifier report a
+    difference that does not exist.
+    """
+    return "|".join(sorted(TOKENS, key=len, reverse=True))
 
 
 def _split_variants(chain: str) -> tuple[bool, str]:
@@ -125,9 +198,33 @@ _BUILTIN_UTIL = re.compile(
     r"(?<!dark:)\b(?P<util>text|bg|border|ring)-(?P<name>white|black)\b")
 
 
-def token_for(hex_value: str, is_dark: bool) -> str | None:
-    """Which token owns this literal, in this theme? None if unmapped."""
-    return (_DARK if is_dark else _LIGHT).get(hex_value.upper())
+def tokens_for(hex_value: str, is_dark: bool) -> list[str]:
+    """Every token holding this literal in this theme. Empty if unmapped."""
+    return (_DARK_ALL if is_dark else _LIGHT_ALL).get(hex_value.upper(), [])
+
+
+def token_for(hex_value: str, is_dark: bool, other_half: str | None = None
+              ) -> str | None:
+    """Which token owns this literal? None if unmapped or still ambiguous.
+
+    `other_half` is the colour the SAME utility sets in the opposite theme,
+    when there is one. It is the only thing that can separate tokens sharing a
+    value — #0F172A is the dark half of page, raised AND field, and #FFFFFF is
+    the light half of both card and field. Guessing here is how 157 form
+    inputs would have become cards.
+    """
+    candidates = tokens_for(hex_value, is_dark)
+    if len(candidates) == 1:
+        return candidates[0]
+    if not candidates:
+        return None
+    if other_half is not None:
+        slot = 0 if is_dark else 1
+        exact = [t for t in candidates
+                 if TOKENS[t][slot].upper() == other_half.upper()]
+        if len(exact) == 1:
+            return exact[0]
+    return None
 
 
 def convert(text: str, paired_only: bool = False) -> str:
@@ -167,10 +264,13 @@ def convert(text: str, paired_only: bool = False) -> str:
         # `paired_only`, and keyed by the full variant chain so `hover:` and
         # the base utility are never mistaken for each other.
         has_dark: set[str] = set()
+        dark_hex: dict[str, str] = {}
         for m in _UTIL.finditer(body):
             is_dark, chain = _split_variants(m.group("variants"))
             if is_dark:
-                has_dark.add(chain + m.group("util") + (m.group("side") or ""))
+                k = chain + m.group("util") + (m.group("side") or "")
+                has_dark.add(k)
+                dark_hex[k] = m.group("hex")
 
         # Pass 1 — light arbitrary values become tokens. The KEY includes the
         # variant chain, so `hover:bg` and `bg` never pair with each other.
@@ -180,11 +280,12 @@ def convert(text: str, paired_only: bool = False) -> str:
             is_dark, chain = _split_variants(m.group("variants"))
             if is_dark:
                 continue
-            token = token_for(m.group("hex"), is_dark=False)
-            if token is None:
-                continue
             utility = m.group("util") + (m.group("side") or "")
             key = chain + utility
+            token = token_for(m.group("hex"), is_dark=False,
+                              other_half=dark_hex.get(key))
+            if token is None:
+                continue
             if paired_only and key not in has_dark:
                 continue
             alpha = m.group("alpha") or ""
@@ -237,10 +338,14 @@ def convert(text: str, paired_only: bool = False) -> str:
                             (*m.span(), f"dark:{chain}{utility}-{chosen}{alpha}"))
                 continue
 
-            token = token_for(hex_value, is_dark=True)
+            stand_in = builtins.get(m.group("util")) if not chain else None
+            # The stand-in's colour is the light half, so it disambiguates:
+            # #0F172A belongs to page, raised AND field, and only `field` is
+            # also #FFFFFF in light mode.
+            token = token_for(hex_value, is_dark=True,
+                              other_half=stand_in[2] if stand_in else None)
             if token is None:
                 continue
-            stand_in = builtins.get(m.group("util")) if not chain else None
             if stand_in and stand_in[2].upper() == TOKENS[token][0].upper():
                 edits.append((stand_in[0], stand_in[1], f"{utility}-{token}"))
                 edits.append((*m.span(),
@@ -271,6 +376,12 @@ def render_css() -> str:
 
 
 def render_tailwind_colors() -> str:
-    """The `theme.extend.colors` entries for templates/base.html."""
+    """The `theme.extend.colors` entries for templates/base.html.
+
+    Every key is quoted, not just the hyphenated ones. `critical-tint:` is a
+    JavaScript syntax error, and the config is an inline <script> — a syntax
+    error there means `tailwind.config` is never assigned at all and the
+    application loses its entire theme, not one colour.
+    """
     return ",\n".join(
-        f"            {n}: 'rgb(var(--c-{n}) / <alpha-value>)'" for n in TOKENS)
+        f"            '{n}': 'rgb(var(--c-{n}) / <alpha-value>)'" for n in TOKENS)

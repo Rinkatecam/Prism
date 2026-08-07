@@ -17,30 +17,50 @@
   --c-page: 249 250 251;
   --c-card: 255 255 255;
   --c-raised: 243 244 246;
+  --c-field: 255 255 255;
   --c-line: 229 231 235;
   --c-ink: 17 24 39;
   --c-muted: 107 114 128;
   --c-faint: 156 163 175;
   --c-brand: 139 92 246;
+  --c-accent: 20 184 166;
   --c-info: 37 99 235;
   --c-healthy: 16 185 129;
   --c-warning: 245 158 11;
   --c-critical: 220 38 38;
+  --c-critical-tint: 254 226 226;
+  --c-critical-strong: 153 27 27;
+  --c-warning-tint: 254 243 199;
+  --c-warning-strong: 146 64 14;
+  --c-healthy-tint: 209 250 229;
+  --c-healthy-strong: 6 95 70;
+  --c-info-tint: 224 231 255;
+  --c-info-strong: 29 78 216;
 }
 
 .dark {
   --c-page: 15 23 42;
   --c-card: 30 41 59;
   --c-raised: 15 23 42;
+  --c-field: 15 23 42;
   --c-line: 51 65 85;
   --c-ink: 241 245 249;
   --c-muted: 203 213 225;
   --c-faint: 71 85 105;
   --c-brand: 167 139 250;
+  --c-accent: 45 212 191;
   --c-info: 59 130 246;
   --c-healthy: 52 211 153;
   --c-warning: 251 191 36;
   --c-critical: 239 68 68;
+  --c-critical-tint: 127 29 29;
+  --c-critical-strong: 252 165 165;
+  --c-warning-tint: 120 53 15;
+  --c-warning-strong: 252 211 77;
+  --c-healthy-tint: 6 78 59;
+  --c-healthy-strong: 110 231 183;
+  --c-info-tint: 49 46 129;
+  --c-info-strong: 96 165 250;
 }
 
 /* Status colors as CSS custom properties */

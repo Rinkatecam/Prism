@@ -52,7 +52,7 @@ _TOK = re.compile(
     r"(?P<variants>(?:" + dt._VARIANT + r")*)"
     r"(?P<util>text|bg|border|ring|from|to|via|divide|placeholder|fill|stroke|accent|outline)"
     r"(?P<side>-(?:t|r|b|l|x|y|top|right|bottom|left))?"
-    r"-(?P<token>" + "|".join(dt.TOKENS) + r")\b"
+    r"-(?P<token>" + dt.token_alternation() + r")\b"
     r"(?P<alpha>/\d{1,3})?")
 _BUILTIN = re.compile(
     r"(?P<variants>(?:" + dt._VARIANT + r")*)"
@@ -61,9 +61,15 @@ _BUILTIN = re.compile(
 
 _BUILTIN_HEX = {"white": "#FFFFFF", "black": "#000000"}
 
-# Aliased darks: these deliberately collapse onto a canonical value. Each is a
-# small, intended dark-mode change, recorded rather than hidden.
-_INTENDED = {a.upper(): dt.TOKENS[t][1].upper() for a, t in dt.ALIASES.items()}
+# Aliased values: these deliberately collapse onto a canonical one. Each is a
+# small, intended change, recorded rather than hidden. Light and dark are
+# separate tables because the same hex can be a light neighbour of one token
+# and the dark half of another — #F1F5F9 is ink's dark value and folds onto
+# raised in light mode.
+_INTENDED = {a.upper(): dt.TOKENS[t][1].upper()
+             for a, t in {**dt.ALIASES, **dt.DARK_ALIASES}.items()}
+_INTENDED_LIGHT = {a.upper(): dt.TOKENS[t][0].upper()
+                   for a, t in dt.LIGHT_ALIASES.items()}
 
 
 def effective(body: str) -> set[tuple[str, str, str]]:
@@ -175,19 +181,19 @@ def main() -> int:
             lost, gained = eb - ea, ea - eb
 
             for k, slot_name, hexv in sorted(lost):
-                if slot_name == "light":
-                    unexpected.append(f"{rel}  {k} LIGHT lost {hexv}")
-                    continue
                 # An alias collapse changes the hex and MUST leave the opacity
                 # alone; compare the two halves separately so a coincidental
                 # alias cannot license an alpha change.
                 base, _, alpha = hexv.partition("/")
-                replacement = {h for kk, s, h in gained if kk == k and s == "dark"}
-                canonical = _INTENDED.get(base)
+                table = _INTENDED_LIGHT if slot_name == "light" else _INTENDED
+                replacement = {h for kk, s, h in gained
+                               if kk == k and s == slot_name}
+                canonical = table.get(base)
                 if canonical and f"{canonical}/{alpha}".rstrip("/") in replacement:
-                    intended[f"alias  {base} -> {canonical}"] += 1
+                    intended[f"alias {slot_name[0]}  {base} -> {canonical}"] += 1
                 else:
-                    unexpected.append(f"{rel}  {k} DARK lost {hexv}")
+                    unexpected.append(
+                        f"{rel}  {k} {slot_name.upper()} lost {hexv}")
 
             for k, slot_name, hexv in sorted(gained):
                 if slot_name != "dark":
