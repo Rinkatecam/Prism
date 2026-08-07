@@ -387,7 +387,7 @@
               </select>
               <div id="srv-custom-input" class="hidden relative">
                 <input type="text" id="srv-custom-type" placeholder="{{ t.get('custom_type_name', 'e.g. proxy_server') }}"
-                       class="w-full pl-3 pr-16 py-1.5 text-sm rounded border border-healthy dark:border-[#10B981] bg-field focus:outline-none focus:ring-2 focus:ring-healthy">
+                       class="w-full pl-3 pr-16 py-1.5 text-sm rounded border border-healthy dark:border-[#10B981] bg-field focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-healthy">
                 <div class="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5">
                   <button type="button" data-action="confirmCustomType" title="{{ t.get('save', 'Save') }}"
                     class="p-1 rounded hover:bg-healthy/20 text-healthy">
@@ -454,7 +454,7 @@
             <button type="button"
                     aria-label="Toggle password visibility"
                     data-action="_srvTogglePass"
-                    class="absolute inset-y-0 right-0 px-2 flex items-center text-muted hover:text-info focus:outline-none focus:ring-2 focus:ring-info rounded-r"
+                    class="absolute inset-y-0 right-0 px-2 flex items-center text-muted hover:text-info focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info rounded-r"
                     aria-pressed="false">
               <i data-lucide="eye" class="w-4 h-4" aria-hidden="true"></i>
             </button>
@@ -1944,7 +1944,7 @@ function showDepBrowsePopup(items, inputId, type, btnEl) {
     'min-width:240px;max-height:300px;overflow:hidden;display:flex;flex-direction:column;';
 
   const searchHtml = '<input type="text" placeholder="Search..." data-input="_srvFilterDepBrowse"' +
-    ' class="w-full px-3 py-1.5 text-xs border-b border-[#334155] bg-transparent text-[#CBD5E1] outline-none">';
+    ' class="w-full px-3 py-1.5 text-xs border-b border-line bg-transparent text-muted outline-none focus-visible:ring-2 focus-visible:ring-brand">';
 
   const listHtml = items.sort(function(a, b) {
     const aRun = (a.status||'').toLowerCase() === 'running' ? 0 : 1;

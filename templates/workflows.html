@@ -454,7 +454,7 @@
     <button data-action="closeEditor" class="p-1 rounded hover:bg-raised dark:hover:bg-line">
       <i data-lucide="x" class="w-5 h-5"></i>
     </button>
-    <input type="text" id="editor-name" placeholder="Workflow name..." class="text-sm font-semibold bg-transparent border-0 border-b border-transparent hover:border-line focus:border-brand outline-none px-1 py-0.5 w-48">
+    <input type="text" id="editor-name" placeholder="Workflow name..." class="text-sm font-semibold bg-transparent border-0 border-b border-transparent hover:border-line focus-visible:border-brand outline-none px-1 py-0.5 w-48">
     <select id="editor-category" class="text-xs px-2 py-1 rounded border border-line bg-field">
       <option value="">No category</option>
     </select>
@@ -3352,7 +3352,7 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
     <div class="px-4 pt-3 pb-2">
       <input type="text" id="wf-browse-search" data-input="renderBrowseList" placeholder="Search..."
-             class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field focus:ring-2 focus:ring-brand focus:border-transparent outline-none">
+             class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-brand focus-visible:border-transparent outline-none">
     </div>
     <div id="wf-browse-list" class="px-4 py-2 overflow-y-auto flex-1" style="max-height: 400px;">
     </div>

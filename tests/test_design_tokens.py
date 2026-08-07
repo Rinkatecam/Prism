@@ -492,7 +492,7 @@ LITERAL_BASELINE: dict[str, int] = {
     "dashboard.html": 16,
     "rbac.html": 14,
     "reports.html": 12,
-    "servers.html": 11,
+    "servers.html": 9,
     "settings.html": 10,
     "partials/active_actions.html": 7,
     "monitoring.html": 6,

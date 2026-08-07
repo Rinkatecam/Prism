@@ -186,11 +186,11 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
           <label class="text-[10px] font-semibold uppercase text-muted">{{ t.name | default('Name') }}</label>
-          <input type="text" id="rb-name" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-field focus:ring-2 focus:ring-info focus:border-transparent outline-none" placeholder="{{ t.get('runbook_name_placeholder', 'My Custom Runbook') }}">
+          <input type="text" id="rb-name" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-info focus-visible:border-transparent outline-none" placeholder="{{ t.get('runbook_name_placeholder', 'My Custom Runbook') }}">
         </div>
         <div>
           <label class="text-[10px] font-semibold uppercase text-muted">{{ t.get('category', 'Category') }}</label>
-          <select id="rb-category" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-field focus:ring-2 focus:ring-info focus:border-transparent outline-none">
+          <select id="rb-category" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-info focus-visible:border-transparent outline-none">
             <option value="general">{{ t.get('cat_general', 'General') }}</option>
             <option value="maintenance">{{ t.get('cat_maintenance', 'Maintenance') }}</option>
             <option value="diagnostic">{{ t.get('cat_diagnostic', 'Diagnostic') }}</option>
@@ -202,11 +202,11 @@
       </div>
       <div class="mb-3">
         <label class="text-[10px] font-semibold uppercase text-muted">{{ t.get('description', 'Description') }}</label>
-        <input type="text" id="rb-description" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-field focus:ring-2 focus:ring-info focus:border-transparent outline-none" placeholder="{{ t.get('runbook_desc_placeholder', 'What does this runbook do?') }}">
+        <input type="text" id="rb-description" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-info focus-visible:border-transparent outline-none" placeholder="{{ t.get('runbook_desc_placeholder', 'What does this runbook do?') }}">
       </div>
       <div class="mb-3">
         <label class="text-[10px] font-semibold uppercase text-muted">{{ t.get('steps_json', 'Steps (JSON)') }}</label>
-        <textarea id="rb-steps" rows="5" class="w-full px-3 py-1.5 text-xs font-mono rounded border border-line bg-field focus:ring-2 focus:ring-info focus:border-transparent outline-none" placeholder='[{"type": "powershell", "script": "Get-Date", "timeout": 15}]'></textarea>
+        <textarea id="rb-steps" rows="5" class="w-full px-3 py-1.5 text-xs font-mono rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-info focus-visible:border-transparent outline-none" placeholder='[{"type": "powershell", "script": "Get-Date", "timeout": 15}]'></textarea>
       </div>
       <div class="flex gap-2">
         {# Save = green (matches servers.html / monitoring.html save buttons) #}
@@ -501,7 +501,7 @@
           </div>
           <input type="text" id="data-action-confirm-input" autocomplete="off" spellcheck="false"
                  placeholder="{{ t.get('type_phrase_placeholder', 'Type the phrase exactly') }}"
-                 class="mt-2 w-full px-3 py-2 text-sm rounded border border-line bg-field focus:ring-2 focus:ring-critical focus:border-transparent outline-none font-mono"
+                 class="mt-2 w-full px-3 py-2 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-critical focus-visible:border-transparent outline-none font-mono"
                  data-input="checkDataActionConfirm">
         </div>
         <div id="data-action-result" class="hidden rounded-lg p-2.5 text-sm"></div>
@@ -537,10 +537,10 @@
       <div class="px-4 pt-3 pb-2 flex-shrink-0 space-y-2">
         <input type="text" id="picker-search" data-input="filterPickerItems"
                placeholder="{{ t.get('search_filter', 'Search / filter...') }}"
-               class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field focus:ring-2 focus:ring-brand focus:border-transparent outline-none">
+               class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-brand focus-visible:border-transparent outline-none">
         <label id="picker-running-only-wrap" class="hidden items-center gap-2 cursor-pointer">
           <input type="checkbox" id="picker-running-only" checked data-change="filterPickerItems"
-                 class="rounded border-line dark:border-faint text-healthy focus:ring-healthy">
+                 class="rounded border-line dark:border-faint text-healthy focus-visible:ring-healthy">
           <span class="text-xs text-muted">{{ t.get('running_only', 'Running only') }}</span>
           <span id="picker-counts" class="text-[10px] text-faint"></span>
         </label>
@@ -592,7 +592,7 @@
         <div id="rb-run-desc" class="text-xs text-muted"></div>
         <div>
           <label class="block text-[10px] font-semibold uppercase mb-1 text-muted">{{ t.get('target_server', 'Target Server') }}</label>
-          <select id="rb-run-server" class="w-full px-3 py-2 text-sm rounded border border-line bg-field focus:ring-2 focus:ring-healthy focus:border-transparent outline-none">
+          <select id="rb-run-server" class="w-full px-3 py-2 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-healthy focus-visible:border-transparent outline-none">
             {% for s in servers %}
             <option value="{{ s.name }}">{{ s.name }} ({{ s.host }})</option>
             {% endfor %}
@@ -705,7 +705,7 @@ function addServerRestartRow(data) {
     <div class="flex flex-wrap items-center gap-2 p-2.5">
       <div class="flex items-center gap-1 bg-info/10 rounded px-1.5 py-0.5">
         <span class="text-[10px] font-bold text-info">#</span>
-        <input type="number" class="sr-order w-8 px-0 py-0 text-xs font-bold text-info bg-transparent border-0 text-center outline-none" value="${d.order || (idx + 1)}" min="1" max="99">
+        <input type="number" class="sr-order w-8 px-0 py-0 text-xs font-bold text-info bg-transparent border-0 text-center outline-none focus-visible:ring-2 focus-visible:ring-brand" value="${d.order || (idx + 1)}" min="1" max="99">
       </div>
       <select class="sr-server px-2 py-1 text-xs font-medium rounded border border-line bg-field">
         <option value="">-- Server --</option>
@@ -1032,7 +1032,7 @@ function renderPickerItems(items) {
 
     return `
       <label class="flex items-center gap-2 px-3 py-1.5 rounded hover:bg-page dark:hover:bg-page/60 cursor-pointer">
-        <input type="checkbox" class="picker-check rounded border-line dark:border-faint text-brand focus:ring-brand" value="${safeName}" ${checked}>
+        <input type="checkbox" class="picker-check rounded border-line dark:border-faint text-brand focus-visible:ring-brand" value="${safeName}" ${checked}>
         <span class="text-xs font-medium min-w-[120px]">${safeName}</span>
         <span class="flex items-center gap-1.5 ml-auto">${detail}</span>
       </label>`;
