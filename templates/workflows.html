@@ -639,7 +639,7 @@
     </button>
 
     <!-- Guide panel -->
-    <div id="workflow-guide" class="absolute bottom-14 w-80 max-h-[60vh] bg-[#2D2D2D] rounded-xl border border-[#404040] shadow-2xl hidden overflow-hidden flex flex-col" style="z-index: 31; left: 208px;">
+    <div id="workflow-guide" class="absolute bottom-14 w-80 max-h-[60vh] bg-[#2D2D2D] rounded-md border border-[#404040] shadow-2xl hidden overflow-hidden flex flex-col" style="z-index: 31; left: 208px;">
       <div class="flex items-center justify-between px-4 py-3 border-b border-[#404040]">
         <h3 class="text-sm font-bold text-white flex items-center gap-2">
           <i data-lucide="book-open" class="w-4 h-4 text-brand"></i>
@@ -769,7 +769,7 @@
      ═══════════════════════════════════════════════════════════════ -->
 <div id="template-modal" class="fixed inset-0 z-[65] hidden" style="display:none;">
   <div class="absolute inset-0 bg-black/50" data-action="closeTemplateGallery"></div>
-  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-xl shadow-xl w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
+  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md shadow-xl w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
     <div class="p-4 border-b border-line flex items-center justify-between">
       <h3 class="font-semibold">{{ t.get('workflow_templates', 'Workflow Templates') }}</h3>
       <button data-action="closeTemplateGallery" class="p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
@@ -784,7 +784,7 @@
      ═══════════════════════════════════════════════════════════════ -->
 <div id="add-category-modal" class="fixed inset-0 z-[65] hidden" style="display:none;">
   <div class="absolute inset-0 bg-black/50" data-action="closeAddCategory"></div>
-  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-xl shadow-xl w-80 p-5">
+  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md shadow-xl w-80 p-5">
     <h3 class="font-semibold mb-4">{{ t.get('add_category', 'Add Category') }}</h3>
     <div class="space-y-3">
       <div>
@@ -3343,7 +3343,7 @@ document.addEventListener('DOMContentLoaded', () => {
 <!-- Service/Process Browse Modal -->
 <div id="wf-browse-modal" class="fixed inset-0 z-[70] hidden">
   <div class="absolute inset-0 bg-black/50" data-action="closeBrowseModal"></div>
-  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-xl shadow-xl w-[420px] max-h-[70vh] overflow-hidden flex flex-col">
+  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md shadow-xl w-[420px] max-h-[70vh] overflow-hidden flex flex-col">
     <div class="p-4 border-b border-line flex items-center justify-between">
       <h3 class="font-semibold text-sm" id="wf-browse-title">Choose Service</h3>
       <button data-action="closeBrowseModal" class="p-1 rounded hover:bg-raised dark:hover:bg-[#334155]">

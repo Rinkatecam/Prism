@@ -42,6 +42,19 @@
             healthy: 'rgb(var(--c-healthy) / <alpha-value>)',
             warning: 'rgb(var(--c-warning) / <alpha-value>)',
             critical: 'rgb(var(--c-critical) / <alpha-value>)'
+          },
+          // Three radii, at TODAY's values. Five were in use with no rule:
+          // rounded (525), rounded-lg (209), rounded-full (139), and 11
+          // one-off uses of xl/md/sm. Overriding sm and md makes the two
+          // survivors land exactly on `rounded` (4px) and `rounded-lg` (8px),
+          // so the scale is sm / md / full and nothing else.
+          //
+          // Softening the corners is a Phase 2 decision, not this one. Landing
+          // the tokens at current values keeps Phase 1a inert; changing the
+          // look later costs one line here.
+          borderRadius: {
+            sm: '0.25rem',   // 4px — inputs, badges, bars, chips
+            md: '0.5rem'     // 8px — cards, panels, modals
           }
         }
       }
@@ -480,7 +493,7 @@
 
   <!-- Global Modal System -->
   <div id="prism-modal-overlay" class="fixed inset-0 z-[9998] hidden bg-black/50 backdrop-blur-sm" data-action="modal-backdrop"></div>
-  <div id="prism-modal" class="fixed z-[9999] hidden top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-xl shadow-2xl border border-line w-[380px] overflow-hidden">
+  <div id="prism-modal" class="fixed z-[9999] hidden top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md shadow-2xl border border-line w-[380px] overflow-hidden">
     <div class="px-5 pt-5 pb-3">
       <div class="flex items-center gap-3 mb-3">
         <div id="prism-modal-icon" class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"></div>
