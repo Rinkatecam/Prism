@@ -166,7 +166,7 @@
         <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted"></i>
         <input type="text" id="server-search" placeholder="{{ t.search_servers }}"
           data-input="applyFilters"
-          class="pl-9 pr-4 py-1.5 text-sm rounded border border-line bg-card text-ink placeholder-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info w-48 sm:w-64">
+          class="pl-9 pr-4 py-1.5 text-sm rounded border border-line bg-card text-ink placeholder-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand w-48 sm:w-64">
       </div>
     </div>
     <div id="server-grid-container" hx-get="/partials/server-grid" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML">

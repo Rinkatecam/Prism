@@ -235,7 +235,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="https-enabled" class="sr-only peer security-input"
                    {% if settings.https.enabled %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="grid grid-cols-2 gap-3">
@@ -277,7 +277,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="auth-enabled" class="sr-only peer security-input"
                    {% if settings.auth.enabled %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <!-- Auth lockout warning -->
@@ -459,7 +459,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="email-enabled" class="sr-only peer security-input"
                    {% if settings.email.enabled %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="grid grid-cols-2 gap-3">
@@ -481,7 +481,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="email-use-tls" class="sr-only peer security-input"
                    {% if settings.email.use_tls %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="grid grid-cols-2 gap-3">
@@ -513,7 +513,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="email-send-critical" class="sr-only peer security-input"
                    {% if settings.email.send_on_critical %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="flex items-center justify-between">
@@ -523,7 +523,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="email-send-warning" class="sr-only peer security-input"
                    {% if settings.email.send_on_warning %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div>
@@ -556,7 +556,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="webhook-enabled" class="sr-only peer security-input"
                    {% if settings.get('webhooks', {}).get('enabled') %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div>
@@ -570,7 +570,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="webhook-send-critical" class="sr-only peer security-input"
                    {% if settings.get('webhooks', {}).get('send_on_critical', True) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="flex items-center justify-between">
@@ -578,7 +578,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="webhook-send-warning" class="sr-only peer security-input"
                    {% if settings.get('webhooks', {}).get('send_on_warning', False) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div>
@@ -805,7 +805,7 @@
           </div>
           <input type="text" id="ldap-picker-search"
                  placeholder="{{ t.get('search_filter', 'Search / filter...') }}"
-                 class="flex-1 px-3 py-1.5 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-info focus-visible:border-transparent outline-none">
+                 class="flex-1 px-3 py-1.5 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-brand focus-visible:border-transparent outline-none">
           <button type="button" data-action="runLdapPickerQuery" id="ldap-picker-search-btn"
                   class="px-3 py-1.5 text-sm font-medium rounded bg-info text-white hover:opacity-90 flex items-center gap-1">
             <i data-lucide="search" class="w-4 h-4"></i>
@@ -854,12 +854,12 @@
         <div>
           <label class="block text-xs font-medium mb-1">{{ t.new_password }}</label>
           <input type="password" id="reset-pw-new" placeholder="••••••••" minlength="8"
-                 class="w-full px-3 py-2 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-info focus-visible:border-transparent outline-none">
+                 class="w-full px-3 py-2 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-brand focus-visible:border-transparent outline-none">
         </div>
         <div>
           <label class="block text-xs font-medium mb-1">{{ t.confirm_new_password }}</label>
           <input type="password" id="reset-pw-confirm" placeholder="••••••••" minlength="8"
-                 class="w-full px-3 py-2 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-info focus-visible:border-transparent outline-none">
+                 class="w-full px-3 py-2 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-brand focus-visible:border-transparent outline-none">
         </div>
       </div>
       <div class="flex justify-end gap-2 p-4 border-t border-line">

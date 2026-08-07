@@ -70,6 +70,47 @@ def test_no_template_still_uses_a_bare_focus_variant():
         "(run tools/migrate_focus_visible.py):\n  " + "\n  ".join(offenders[:20]))
 
 
+def test_every_focus_ring_is_the_brand_colour():
+    """A focus ring answers "where am I", not "what does this do".
+
+    Five colours were in use — info, brand, healthy, critical, and info at
+    20% — so the answer changed per control for no reason a user could act
+    on. One ring, everywhere, including on destructive controls: danger is
+    the button's job to convey, not the focus indicator's.
+    """
+    wrong = []
+    for path in sorted(TEMPLATES.rglob("*.html")):
+        text = path.read_text(encoding="utf-8")
+        for start, end in dt.class_scopes(text):
+            for m in re.finditer(
+                    r"(?:focus-visible|focus|peer-focus|group-focus):ring-"
+                    r"(?!brand\b)([a-z][a-z-]*)", text[start:end]):
+                if m.group(1) in ("0", "1", "2", "4", "8", "inset", "offset"):
+                    continue
+                line = text.count("\n", 0, start) + 1
+                wrong.append(f"{path.relative_to(PROJECT_ROOT).as_posix()}:{line} "
+                             f"ring-{m.group(1)}")
+    assert not wrong, "focus rings must be ring-brand:\n  " + "\n  ".join(wrong)
+
+
+def test_the_select_chevron_matches_the_brand_token():
+    """The arrow is an inline SVG data URI, and `currentColor` does not
+    resolve inside one — so the hex is written out, once per theme. Nothing
+    else in the sheet would notice it going stale when the palette moves."""
+    css = (PROJECT_ROOT / "static" / "css" / "app.css").read_text(encoding="utf-8")
+    light, dark = dt.TOKENS["brand"]
+    assert f"stroke='%23{light.lstrip('#')}'" in css, \
+        f"the light chevron is not {light}"
+    assert f"stroke='%23{dark.lstrip('#')}'" in css, \
+        f"the dark chevron is not {dark}"
+
+
+def test_the_caret_and_selection_carry_the_brand():
+    css = (PROJECT_ROOT / "static" / "css" / "app.css").read_text(encoding="utf-8")
+    assert "caret-color: rgb(var(--c-brand));" in css
+    assert re.search(r"::selection \{[^}]*rgb\(var\(--c-brand\)", css, re.S)
+
+
 def test_every_focusable_control_that_kills_its_outline_supplies_a_ring():
     """`outline-none` with nothing in its place is an invisible focus state.
 

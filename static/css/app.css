@@ -318,12 +318,72 @@
    itself, all of which the per-widget patches missed.
 
    `accent-color` tints the 48 checkboxes. It does NOT reach the number
-   spinner: measured, the arrows stay grey with `accent-color` set, and the
-   only way to recolour them is `appearance: none` plus a background image,
-   which costs click-to-increment. A number field signals focus through its
-   ring instead. */
+   spinner: measured, the arrows stay grey with `accent-color` set. See the
+   note on the spinner below. */
 :root { color-scheme: light; accent-color: rgb(var(--c-brand)); }
 .dark { color-scheme: dark; }
+
+/* ── Every affordance the brand can own, owns the brand ──────────────────
+   Focus, caret, selection and the select chevron were four different
+   colours — or the browser's. They all answer the same question, "the
+   interface is responding to you", and answering it in violet everywhere is
+   what makes the app feel like one thing. */
+
+/* The text cursor. Free, and it is the first thing that moves when you
+   click into a field. */
+input, textarea, select, [contenteditable] {
+  caret-color: rgb(var(--c-brand));
+}
+
+/* Selected text. The browser default is a blue nobody chose. Kept light
+   enough that the text on top stays readable — a solid brand fill on
+   #020617 ink is 4.1:1, below AA, so this is a wash rather than a fill. */
+::selection {
+  background: rgb(var(--c-brand) / 0.28);
+  color: rgb(var(--c-ink));
+}
+
+/* The select chevron. Unlike the number spinner, `appearance: none` on a
+   <select> costs nothing — the popup opens on a click anywhere in the
+   control, not on the arrow — so the arrow is ours to draw. Inlined as a
+   data URI because a strict CSP blocks nothing here but an external request
+   for a 300-byte triangle is silly.
+   `currentColor` is not available inside a data URI, so the stroke is the
+   brand hex for each theme, and a test asserts both match the token. */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' stroke='%235B21B6' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px 8px;
+}
+/* The chevron needs room, and `padding-right` here loses to Tailwind's
+   `px-2` — same specificity, and the runtime build injects its stylesheet
+   after this one. `select[class]` is (0,1,1) against a utility's (0,1,0), so
+   it wins without `!important`. Measured: every select in the app carries a
+   `px-*` utility, so the plain rule above applied to none of them and a long
+   option label would have run under the arrow. */
+select[class] { padding-right: 1.9rem; }
+select[multiple][class], select[size]:not([size="1"])[class] {
+  padding-right: 0.5rem;
+}
+.dark select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' stroke='%23C4B5FD' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+/* A multiple/size select is a list, not a dropdown — no chevron to draw. */
+select[multiple], select[size]:not([size="1"]) {
+  background-image: none;
+  padding-right: 10px;
+}
+
+/* THE NUMBER SPINNER, and why it is not in this list.
+   `accent-color` leaves the arrows grey — measured. A `filter` chain tints
+   the whole spin-button BOX rather than the arrows in it, which on screen
+   is an opaque rectangle beside the value. `appearance: none` plus a drawn
+   background does recolour them, and the widget is the increment behaviour,
+   so that trades a feature for a colour. A number field signals focus
+   through its ring like every other field. */
 
 /* ── Sidebar ── */
 .sidebar-link {
