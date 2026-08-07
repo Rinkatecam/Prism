@@ -253,16 +253,22 @@
 * { scrollbar-width: thin; scrollbar-color: rgb(var(--c-brand) / 0.45) transparent; }
 .dark * { scrollbar-color: rgb(var(--c-brand) / 0.40) transparent; }
 
-/* Number input spinner arrows — dark mode fix */
-.dark input[type="number"]::-webkit-inner-spin-button,
-.dark input[type="number"]::-webkit-outer-spin-button {
-  filter: invert(1);
-}
+/* Native widgets follow the theme, and their highlight is the brand violet.
 
-/* Select dropdown arrow — dark mode fix */
-.dark select {
-  color-scheme: dark;
-}
+   `color-scheme` is declared once at the root instead of patched per widget.
+   It was previously set only on `select`, with number spinners separately
+   faked via `filter: invert(1)` — which inverts the whole spin-button box,
+   not the arrows in it. Declaring the scheme makes the browser draw dark
+   spinners, dropdown popups, autofill chrome and text-selection handles
+   itself, all of which the per-widget patches missed.
+
+   `accent-color` tints the 48 checkboxes. It does NOT reach the number
+   spinner: measured, the arrows stay grey with `accent-color` set, and the
+   only way to recolour them is `appearance: none` plus a background image,
+   which costs click-to-increment. A number field signals focus through its
+   ring instead. */
+:root { color-scheme: light; accent-color: rgb(var(--c-brand)); }
+.dark { color-scheme: dark; }
 
 /* ── Sidebar ── */
 .sidebar-link {
