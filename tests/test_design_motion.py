@@ -192,6 +192,61 @@ def test_no_template_uses_a_motion_utility_off_the_scale():
         + "\n  ".join(offenders))
 
 
+_RAW_TRANSITION = re.compile(r"transition[^;`\"'{}]*")
+_RAW_DURATION = re.compile(r"(?<![\w.-])(\d*\.?\d+)(ms|s)(?![\w.-])")
+
+
+def test_no_raw_css_transition_in_a_template_is_off_the_scale():
+    """Blind spot found by adversarial review, after the scale had already
+    "landed" twice.
+
+    `test_no_transition_uses_a_duration_off_the_scale` reads app.css.
+    `test_no_template_uses_a_motion_utility_off_the_scale` reads templates,
+    but only for Tailwind UTILITIES. Neither looked at raw CSS inside a
+    template — `<style>` blocks and inline `style=""` attributes — and 16
+    transitions lived in that gap across 5 templates, including four
+    `transition:background 300ms` on server_detail.
+
+    Two tests both reporting green over a third of the app's motion is this
+    repository's whole failure mode: the scope of a check has to be the
+    scope of the thing it checks.
+    """
+    offenders = []
+    for name, text in _templates_without_comments():
+        for decl in _RAW_TRANSITION.finditer(text):
+            for value, unit in _RAW_DURATION.findall(decl.group(0)):
+                literal = f"{value}{unit}"
+                if literal in ALLOWED_DURATIONS:
+                    continue
+                line = text.count("\n", 0, decl.start()) + 1
+                offenders.append(f"{name}:{line} {literal} in `{decl.group(0)[:60]}`")
+    assert not offenders, (
+        "raw CSS in a template must use var(--dur-fast|base|slow):\n  "
+        + "\n  ".join(offenders))
+
+
+def test_the_javascript_modules_are_scanned_too():
+    """The other half of the same blind spot. Class strings applied to the
+    DOM from `static/js/` are indistinguishable from markup at runtime, and
+    the guardrail globbed `templates/**` only.
+
+    Vendored libraries are excluded — they are not ours to hold to the
+    scale, and scanning them produces noise that gets the test disabled.
+    """
+    offenders = []
+    for path in sorted((PROJECT_ROOT / "static" / "js").glob("*.js")):
+        text = re.sub(r"//[^\n]*", lambda m: " " * len(m.group(0)),
+                      path.read_text(encoding="utf-8"))
+        text = re.sub(r"/\*.*?\*/", lambda m: re.sub(r"\S", " ", m.group(0)),
+                      text, flags=re.S)
+        for m in _OFF_SCALE.finditer(text):
+            line = text.count("\n", 0, m.start()) + 1
+            offenders.append(f"static/js/{path.name}:{line} {m.group(1)}")
+    assert not offenders, (
+        "use duration-fast|base|slow and ease-standard|out:\n  "
+        + "\n  ".join(offenders))
+
+
 def test_the_comment_blanking_does_not_hide_real_offenders():
     """The blanking above is a liability: overreach and the guardrail stops
     guarding. Prove it still sees a live offender on the same line as a

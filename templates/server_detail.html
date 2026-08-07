@@ -1838,8 +1838,21 @@
     toast.className = `fixed top-16 right-4 z-50 ${color} text-white text-sm px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 transition-opacity duration-slow`;
     toast.innerHTML = `<i data-lucide="${isError ? 'x-circle' : 'check-circle'}" class="w-4 h-4"></i>${escapeHtml(message)}`;
     document.body.appendChild(toast);
+  // Read the fade length from the token rather than restating it. These
+  // used to be a matching pair of 300s; the transition moved onto
+  // --dur-slow and the timeout did not, so the node was removed 20ms
+  // before it finished fading. Invisible at 320ms, and exactly the
+  // breakage the central scale was supposed to make impossible.
+  const DUR_SLOW_FALLBACK_MS = 320;
+  function _durSlowMs() {
+    const raw = getComputedStyle(document.documentElement)
+      .getPropertyValue('--dur-slow').trim();
+    const n = parseFloat(raw);
+    if (!raw || isNaN(n)) return DUR_SLOW_FALLBACK_MS;
+    return raw.endsWith('ms') ? n : n * 1000;
+  }
     lucide.createIcons({ nodes: [toast] });
-    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), _durSlowMs()); }, 4000);
   }
 
   let _pendingPowerAction = null;
@@ -1989,7 +2002,7 @@
     overlay.id = 'restart-overlay';
     overlay.style.cssText = 'position:fixed;top:3.5rem;left:14rem;right:0;bottom:0;z-index:50;' +
       'display:flex;align-items:center;justify-content:center;' +
-      'background:rgba(15,23,42,0.92);backdrop-filter:blur(6px);transition:opacity 300ms;';
+      'background:rgba(15,23,42,0.92);backdrop-filter:blur(6px);transition:opacity var(--dur-slow);';
     overlay.innerHTML = `
       <div style="text-align:center;max-width:380px;">
         <div id="restart-overlay-icon" style="margin:0 auto 16px;">
@@ -2004,10 +2017,10 @@
           {{ t.get('restart_overlay_waiting', 'Waiting for') }} ${SERVER_NAME} {{ t.get('restart_overlay_to_respond', 'to respond') }}…
         </p>
         <div id="restart-overlay-dots" style="display:flex;justify-content:center;gap:8px;margin-bottom:16px;">
-          <span class="restart-dot" style="width:12px;height:12px;border-radius:50%;background:#334155;transition:background 300ms;"></span>
-          <span class="restart-dot" style="width:12px;height:12px;border-radius:50%;background:#334155;transition:background 300ms;"></span>
-          <span class="restart-dot" style="width:12px;height:12px;border-radius:50%;background:#334155;transition:background 300ms;"></span>
-          <span class="restart-dot" style="width:12px;height:12px;border-radius:50%;background:#334155;transition:background 300ms;"></span>
+          <span class="restart-dot" style="width:12px;height:12px;border-radius:50%;background:#334155;transition:background var(--dur-slow);"></span>
+          <span class="restart-dot" style="width:12px;height:12px;border-radius:50%;background:#334155;transition:background var(--dur-slow);"></span>
+          <span class="restart-dot" style="width:12px;height:12px;border-radius:50%;background:#334155;transition:background var(--dur-slow);"></span>
+          <span class="restart-dot" style="width:12px;height:12px;border-radius:50%;background:#334155;transition:background var(--dur-slow);"></span>
         </div>
         <p id="restart-overlay-attempt" style="font-size:11px;color:#64748B;">
           {{ t.get('restart_overlay_check', 'Check') }} 0 / 30
