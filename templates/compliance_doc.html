@@ -5,7 +5,7 @@
 <div class="p-6 max-w-7xl mx-auto">
 
   <!-- Breadcrumb -->
-  <nav class="text-xs text-[#6B7280] dark:text-[#9CA3AF] mb-3 flex items-center gap-1">
+  <nav class="text-xs text-muted mb-3 flex items-center gap-1">
     <a href="/compliance" class="hover:underline">{{ t.get('compliance', 'Compliance') }}</a>
     <i data-lucide="chevron-right" class="w-3 h-3"></i>
     <span class="font-medium">{{ doc.id }}</span>
@@ -18,8 +18,8 @@
 
     <!-- LEFT: table of contents -->
     <aside class="hidden lg:block">
-      <div id="toc-card" class="sticky top-4 bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4">
-        <div class="text-xs font-semibold uppercase tracking-wide text-[#6B7280] dark:text-[#9CA3AF] mb-2">
+      <div id="toc-card" class="sticky top-4 bg-card rounded-lg border border-line p-4">
+        <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2">
           {{ t.get('on_this_page', 'On this page') }}
         </div>
         <nav id="toc" class="text-xs space-y-1">
@@ -29,19 +29,19 @@
     </aside>
 
     <!-- CENTER: rendered CSV-doc content -->
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-6 lg:p-8">
+    <div class="bg-card rounded-lg border border-line p-6 lg:p-8">
       <article id="doc-body" class="doc-prose">
-        <div class="text-sm text-[#6B7280] dark:text-[#9CA3AF]">{{ t.get('loading', 'Loading…') }}</div>
+        <div class="text-sm text-muted">{{ t.get('loading', 'Loading…') }}</div>
       </article>
     </div>
 
     <!-- RIGHT: metadata + view-raw link -->
     <aside class="space-y-4">
-      <div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4 sticky top-4">
-        <div class="text-xs font-semibold uppercase tracking-wide text-[#6B7280] dark:text-[#9CA3AF] mb-2">
+      <div class="bg-card rounded-lg border border-line p-4 sticky top-4">
+        <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2">
           {{ t.get('document_metadata', 'Document') }}
         </div>
-        <dl class="text-xs text-[#6B7280] dark:text-[#9CA3AF] space-y-1">
+        <dl class="text-xs text-muted space-y-1">
           <div class="flex justify-between gap-3"><dt>ID:</dt><dd class="text-right font-mono">{{ doc.id }}</dd></div>
           <div class="flex justify-between gap-3"><dt>Category:</dt><dd class="text-right">{{ doc.category }}</dd></div>
           <div class="flex justify-between gap-3"><dt>Path:</dt><dd class="text-right text-[10px] truncate" title="{{ doc.doc_path }}">{{ doc.doc_path }}</dd></div>
@@ -49,10 +49,10 @@
 
         <p class="text-xs text-[#374151] dark:text-[#D1D5DB] mt-3">{{ doc.short_desc }}</p>
 
-        <hr class="my-4 border-[#E5E7EB] dark:border-[#334155]">
+        <hr class="my-4 border-line">
 
         <a href="/api/csv-doc/{{ doc.id }}/raw" target="_blank"
-           class="text-xs text-[#6B7280] dark:text-[#9CA3AF] hover:underline inline-flex items-center gap-1">
+           class="text-xs text-muted hover:underline inline-flex items-center gap-1">
           <i data-lucide="file-code-2" class="w-3 h-3"></i>
           {{ t.get('view_raw_markdown', 'View raw markdown') }}
         </a>
