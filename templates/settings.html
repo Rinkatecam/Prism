@@ -3,7 +3,7 @@
 
 <div class="flex items-center justify-between mb-6">
   <h1 class="text-2xl font-bold flex items-center gap-2">
-    <i data-lucide="settings" class="w-6 h-6 text-info"></i>
+    <i data-lucide="settings" class="w-6 h-6 text-brand"></i>
     {{ t.settings }}
   </h1>
 </div>
@@ -111,7 +111,7 @@
 <section class="mb-8">
   <div class="flex items-center gap-3 mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="cpu" class="w-5 h-5 text-info"></i>
+      <i data-lucide="cpu" class="w-5 h-5 text-accent"></i>
       {{ t.get('collector_engine_section', 'Collector') }}
     </h2>
   </div>
@@ -134,7 +134,7 @@
         <div class="text-xs text-muted">{{ t.poll_interval_desc }}</div>
       </div>
       <div class="flex items-center gap-2">
-        <button type="button" data-action="syncNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-info hover:bg-info-strong text-white transition-colors whitespace-nowrap">
+        <button type="button" data-action="syncNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors whitespace-nowrap">
           {{ t.sync_now | default('Sync Now') }}
         </button>
         <input type="number" id="poll-interval" value="{{ ((settings.poll_interval_seconds or 60) / 60) | round(0) | int }}" min="1" max="60" step="1" required
@@ -156,7 +156,7 @@
         <div class="text-xs text-muted">{{ t.get('log_collection_interval_desc', 'How often to pull Windows event logs + failed login events from each server. Higher = less load on the targets.') }}</div>
       </div>
       <div class="flex items-center gap-2">
-        <button type="button" data-action="syncLogsNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-info hover:bg-info-strong text-white transition-colors whitespace-nowrap">
+        <button type="button" data-action="syncLogsNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors whitespace-nowrap">
           {{ t.sync_now | default('Sync Now') }}
         </button>
         <input type="number" id="log-collection-interval" value="{{ settings.log_collection_interval_minutes or 5 }}" min="1" max="60" required
@@ -177,7 +177,7 @@
         <div class="text-xs text-muted">{{ t.get('update_check_interval_desc', 'How often to check each server for pending Windows Updates.') }}</div>
       </div>
       <div class="flex items-center gap-2">
-        <button type="button" data-action="syncUpdatesNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-info hover:bg-info-strong text-white transition-colors whitespace-nowrap">
+        <button type="button" data-action="syncUpdatesNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors whitespace-nowrap">
           {{ t.sync_now | default('Sync Now') }}
         </button>
         <input type="number" id="update-check-interval" value="{{ settings.get('update_check_interval_minutes', 30) }}" min="10" max="120" required
@@ -214,7 +214,7 @@
 <section class="mb-8">
   <div class="flex items-center gap-3 mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="shield-check" class="w-5 h-5 text-info"></i>
+      <i data-lucide="shield-check" class="w-5 h-5 text-accent"></i>
       {{ t.security }}
     </h2>
     <span class="text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong">{{ t.get('requires_restart', 'Requires restart') }}</span>
@@ -224,7 +224,7 @@
     <!-- TLS / HTTPS -->
     <div>
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="shield" class="w-4 h-4 text-info"></i>
+        <i data-lucide="shield" class="w-4 h-4 text-accent"></i>
         {{ t.communication }}
       </div>
       <div class="space-y-3 pl-1">
@@ -235,7 +235,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="https-enabled" class="sr-only peer security-input"
                    {% if settings.https.enabled %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="grid grid-cols-2 gap-3">
@@ -266,7 +266,7 @@
     <!-- Authentication -->
     <div>
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="lock" class="w-4 h-4 text-info"></i>
+        <i data-lucide="lock" class="w-4 h-4 text-accent"></i>
         {{ t.authentication }}
       </div>
       <div class="space-y-3 pl-1">
@@ -277,7 +277,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="auth-enabled" class="sr-only peer security-input"
                    {% if settings.auth.enabled %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <!-- Auth lockout warning -->
@@ -314,7 +314,7 @@
           <div class="mt-2 flex items-center justify-between">
             <div class="flex items-center gap-2">
               <div class="w-7 h-7 rounded-full bg-info/10 flex items-center justify-center">
-                <i data-lucide="user" class="w-3.5 h-3.5 text-info"></i>
+                <i data-lucide="user" class="w-3.5 h-3.5 text-accent"></i>
               </div>
               <div>
                 <div class="text-xs font-medium">{{ ba.username }}</div>
@@ -438,7 +438,7 @@
 <section class="mb-8">
   <div class="flex items-center gap-3 mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="bell" class="w-5 h-5 text-info"></i>
+      <i data-lucide="bell" class="w-5 h-5 text-accent"></i>
       {{ t.get('notifications', 'Notifications') }}
     </h2>
     <span class="text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong">{{ t.get('requires_restart', 'Requires restart') }}</span>
@@ -448,7 +448,7 @@
     <!-- Email Alerts -->
     <div>
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="mail" class="w-4 h-4 text-info"></i>
+        <i data-lucide="mail" class="w-4 h-4 text-accent"></i>
         {{ t.email_alerts }}
       </div>
       <div class="space-y-3 pl-1">
@@ -459,7 +459,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="email-enabled" class="sr-only peer security-input"
                    {% if settings.email.enabled %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="grid grid-cols-2 gap-3">
@@ -481,7 +481,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="email-use-tls" class="sr-only peer security-input"
                    {% if settings.email.use_tls %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="grid grid-cols-2 gap-3">
@@ -513,7 +513,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="email-send-critical" class="sr-only peer security-input"
                    {% if settings.email.send_on_critical %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="flex items-center justify-between">
@@ -523,7 +523,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="email-send-warning" class="sr-only peer security-input"
                    {% if settings.email.send_on_warning %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div>
@@ -547,7 +547,7 @@
     <!-- Microsoft Teams Webhooks -->
     <div>
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="webhook" class="w-4 h-4 text-info"></i>
+        <i data-lucide="webhook" class="w-4 h-4 text-accent"></i>
         {{ t.teams_webhook }}
       </div>
       <div class="space-y-3 pl-1">
@@ -556,7 +556,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="webhook-enabled" class="sr-only peer security-input"
                    {% if settings.get('webhooks', {}).get('enabled') %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div>
@@ -570,7 +570,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="webhook-send-critical" class="sr-only peer security-input"
                    {% if settings.get('webhooks', {}).get('send_on_critical', True) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="flex items-center justify-between">
@@ -578,7 +578,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="webhook-send-warning" class="sr-only peer security-input"
                    {% if settings.get('webhooks', {}).get('send_on_warning', False) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div>
@@ -597,7 +597,7 @@
     <!-- Scheduled Reports -->
     <div>
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="calendar-clock" class="w-4 h-4 text-info"></i>
+        <i data-lucide="calendar-clock" class="w-4 h-4 text-accent"></i>
         {{ t.scheduled_reports }}
       </div>
       <div class="space-y-4 pl-1">
@@ -607,7 +607,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="sched-enabled" class="sr-only peer security-input"
                    {% if settings.get('scheduled_reports', {}).get('enabled') %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-info transition-colors"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-brand transition-colors"></div>
             <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
           </label>
         </div>
@@ -655,7 +655,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="sched-email-report" class="sr-only peer security-input"
                    {% if settings.get('scheduled_reports', {}).get('email_report', True) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-info transition-colors"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-brand transition-colors"></div>
             <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
           </label>
         </div>
@@ -664,7 +664,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="sched-include-pdf" class="sr-only peer security-input"
                    {% if settings.get('scheduled_reports', {}).get('include_pdf', True) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-info transition-colors"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-brand transition-colors"></div>
             <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
           </label>
         </div>
@@ -678,7 +678,7 @@
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="sliders" class="w-5 h-5 text-info"></i>
+    <i data-lucide="sliders" class="w-5 h-5 text-accent"></i>
     {{ t.display_preferences }}
   </h2>
   <div class="bg-card rounded-lg p-5 border border-line space-y-4">
@@ -754,7 +754,7 @@
         <button data-action="cancelAllChanges" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">
           {{ t.cancel }}
         </button>
-        <button data-action="saveAllSettings" class="px-4 py-1.5 text-sm font-medium rounded bg-info text-white hover:opacity-90 flex items-center gap-1.5">
+        <button data-action="saveAllSettings" class="px-4 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1.5">
           <i data-lucide="save" class="w-4 h-4"></i>
           {{ t.save }}
         </button>
@@ -780,7 +780,7 @@
     <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-2xl max-h-[80vh] flex flex-col relative">
       <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
         <h3 class="text-base font-semibold flex items-center gap-2">
-          <i data-lucide="search" class="w-5 h-5 text-info"></i>
+          <i data-lucide="search" class="w-5 h-5 text-accent"></i>
           {{ t.get('ldap_picker_title', 'Query Active Directory') }}
         </h3>
         <button data-action="closeLdapPicker" class="p-1 text-muted hover:text-ink dark:hover:text-white">
@@ -793,7 +793,7 @@
         <div class="flex items-center gap-2">
           <div class="inline-flex rounded border border-line p-0.5 bg-page">
             <button type="button" data-action="setLdapPickerKind" data-args='["users"]' id="ldap-kind-users-btn"
-                    class="px-3 py-1 text-xs font-medium rounded bg-info text-white">
+                    class="px-3 py-1 text-xs font-medium rounded bg-accent text-white dark:text-page">
               <i data-lucide="user" class="inline w-3 h-3 mr-1"></i>
               {{ t.get('users', 'Users') }}
             </button>
@@ -807,7 +807,7 @@
                  placeholder="{{ t.get('search_filter', 'Search / filter...') }}"
                  class="flex-1 px-3 py-1.5 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-brand focus-visible:border-transparent outline-none">
           <button type="button" data-action="runLdapPickerQuery" id="ldap-picker-search-btn"
-                  class="px-3 py-1.5 text-sm font-medium rounded bg-info text-white hover:opacity-90 flex items-center gap-1">
+                  class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
             <i data-lucide="search" class="w-4 h-4"></i>
             {{ t.get('search', 'Search') }}
           </button>
@@ -864,7 +864,7 @@
       </div>
       <div class="flex justify-end gap-2 p-4 border-t border-line">
         <button data-action="closeResetPasswordModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
-        <button data-action="submitResetPassword" class="px-4 py-1.5 text-sm font-medium rounded bg-info text-white hover:opacity-90 flex items-center gap-1.5">
+        <button data-action="submitResetPassword" class="px-4 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1.5">
           <i data-lucide="check" class="w-4 h-4"></i>
           {{ t.reset_password }}
         </button>
@@ -898,7 +898,7 @@
         </button>
         <div class="flex gap-2">
           <button data-action="closeDiffModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
-          <button data-action="confirmSecuritySave" class="px-4 py-1.5 text-sm font-medium rounded bg-info text-white hover:opacity-90 flex items-center gap-1.5">
+          <button data-action="confirmSecuritySave" class="px-4 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1.5">
             <i data-lucide="check" class="w-4 h-4"></i>
             {{ t.confirm_save }}
           </button>
@@ -1812,7 +1812,7 @@ function setLdapPickerKind(kind) {
   _ldapPickerKind = kind;
   const usersBtn = document.getElementById('ldap-kind-users-btn');
   const groupsBtn = document.getElementById('ldap-kind-groups-btn');
-  const active = 'bg-info text-white';
+  const active = 'bg-accent text-white dark:text-page';
   const inactive = 'text-muted';
   if (kind === 'users') {
     usersBtn.className = 'px-3 py-1 text-xs font-medium rounded ' + active;

@@ -40,6 +40,7 @@
   --c-healthy-strong: 4 97 63;
   --c-info-tint: 219 234 254;
   --c-info-strong: 26 58 160;
+  --c-accent-strong: 11 93 87;
 
   --dur-fast: 120ms;
   --dur-base: 200ms;
@@ -75,6 +76,7 @@
   --c-healthy-strong: 110 231 183;
   --c-info-tint: 20 34 77;
   --c-info-strong: 147 197 253;
+  --c-accent-strong: 94 234 212;
 
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
   --shadow-md: 0 4px 14px -2px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.04);
@@ -377,13 +379,84 @@ select[multiple], select[size]:not([size="1"]) {
   padding-right: 10px;
 }
 
-/* THE NUMBER SPINNER, and why it is not in this list.
-   `accent-color` leaves the arrows grey — measured. A `filter` chain tints
-   the whole spin-button BOX rather than the arrows in it, which on screen
-   is an opaque rectangle beside the value. `appearance: none` plus a drawn
-   background does recolour them, and the widget is the increment behaviour,
-   so that trades a feature for a colour. A number field signals focus
-   through its ring like every other field. */
+/* The time/date picker button. Chromium draws it as a grey glyph and
+   `::-webkit-calendar-picker-indicator` DOES accept a background, unlike the
+   number spinner — clicking it opens the picker rather than performing the
+   widget's own logic, so replacing the image costs nothing. 7 time fields. */
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator,
+input[type="week"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235B21B6' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E");
+  background-size: 14px 14px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.dark input[type="time"]::-webkit-calendar-picker-indicator,
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.dark input[type="month"]::-webkit-calendar-picker-indicator,
+.dark input[type="week"]::-webkit-calendar-picker-indicator {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23C4B5FD' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E");
+}
+
+/* ── Number field: a real stepper, in violet ──────────────────────────────
+   The native spinner cannot be recoloured. `accent-color` does not reach it,
+   a `filter` tints the whole spin-button box rather than the arrows in it,
+   and `appearance: none` plus a drawn background takes click-to-increment
+   with it — the widget IS the behaviour.
+
+   So the widget goes and the behaviour is rebuilt: two buttons calling
+   stepUp()/stepDown(), which also fixes what the native one never did —
+   they respect min/max/step, fire `input` and `change` so existing listeners
+   see the edit, and are reachable by keyboard.
+
+   Wired in static/js/stepper.js. This block styles what that injects. */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+input[type="number"] { -moz-appearance: textfield; }
+
+.stepper { position: relative; display: inline-flex; }
+/* Applied by stepper.js when the input it wrapped was `w-full`. */
+.stepper--block { display: flex; width: 100%; }
+.stepper--block > input { width: 100%; }
+/* Beats the `px-*` utility every one of these carries, same reason as the
+   select chevron: equal specificity, and Tailwind's sheet is injected last. */
+.stepper > input[class] { padding-right: 1.35rem; }
+.stepper-btns {
+  position: absolute;
+  right: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.stepper-btn {
+  display: block;
+  width: 13px;
+  height: 9px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgb(var(--c-brand));
+  cursor: pointer;
+  line-height: 0;
+  border-radius: 2px;
+  opacity: 0.55;
+  transition: opacity var(--dur-fast) var(--ease-standard);
+}
+.stepper:hover .stepper-btn,
+.stepper-btn:focus-visible { opacity: 1; }
+.stepper-btn:hover { opacity: 1; }
+.stepper-btn svg { width: 9px; height: 6px; display: block; margin: auto; }
 
 /* ── Sidebar ── */
 .sidebar-link {

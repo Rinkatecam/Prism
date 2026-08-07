@@ -119,7 +119,7 @@
 <!-- Current Metrics (JS-rendered for auto-refresh) -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">
-    <i data-lucide="gauge" class="w-5 h-5 text-info"></i>
+    <i data-lucide="gauge" class="w-5 h-5 text-accent"></i>
     {{ t.current_metrics }}
   </h2>
   <div id="metrics-container">
@@ -134,7 +134,7 @@
 <!-- Anomalies & Forecasts -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">
-    <i data-lucide="search" class="w-5 h-5 text-info"></i>
+    <i data-lucide="search" class="w-5 h-5 text-accent"></i>
     {{ t.anomalies }} &amp; {{ t.forecasts }}
   </h2>
 
@@ -376,7 +376,7 @@
 <!-- 24h Trend Chart -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">
-    <i data-lucide="trending-up" class="w-5 h-5 text-info"></i>
+    <i data-lucide="trending-up" class="w-5 h-5 text-accent"></i>
     {{ t.trends_24h }}
   </h2>
   <div class="bg-card rounded-lg p-5 border border-line">
@@ -398,7 +398,7 @@
 <!-- Recent Events (JS-rendered for auto-refresh) -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">
-    <i data-lucide="list" class="w-5 h-5 text-info"></i>
+    <i data-lucide="list" class="w-5 h-5 text-accent"></i>
     {{ t.recent_events }}
   </h2>
   <div id="events-filter-bar" class="flex flex-wrap items-center gap-2 mb-3">
@@ -472,7 +472,7 @@
 <!-- Dependencies (F8) -->
 <section class="mt-8">
   <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">
-    <i data-lucide="network" class="w-5 h-5 text-info"></i>
+    <i data-lucide="network" class="w-5 h-5 text-accent"></i>
     {{ t.dependencies }}
   </h2>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -503,7 +503,7 @@
 <section class="mt-8">
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="git-compare" class="w-5 h-5 text-brand"></i>
+      <i data-lucide="git-compare" class="w-5 h-5 text-accent"></i>
       {{ t.get('config_changes', 'Config Changes') }}
     </h2>
     <button data-action="takeConfigSnapshot"
@@ -522,7 +522,7 @@
 <section class="mt-8">
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="scroll-text" class="w-5 h-5 text-info"></i>
+      <i data-lucide="scroll-text" class="w-5 h-5 text-accent"></i>
       {{ t.windows_logs }}
     </h2>
     <button data-action="exportLogsCSV"
@@ -568,7 +568,7 @@
 <section class="mt-8">
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="shield" class="w-5 h-5 text-info"></i>
+      <i data-lucide="shield" class="w-5 h-5 text-accent"></i>
       {{ t.get('firewall_logs', 'Firewall Logs') }}
     </h2>
     <button data-action="exportFirewallLogsCSV"
@@ -740,7 +740,7 @@
     }
     for (let p = startPage; p <= endPage; p++) {
       if (p === currentPage) {
-        html += `<button class="px-2.5 py-1 text-xs rounded bg-info text-white font-medium">${p}</button>`;
+        html += `<button class="px-2.5 py-1 text-xs rounded bg-accent text-white dark:text-page font-medium">${p}</button>`;
       } else {
         html += `<button data-action="${onPageChange}" data-args="[${p}]" class="px-2.5 py-1 text-xs rounded border border-line text-muted hover:bg-page">${p}</button>`;
       }
@@ -3258,7 +3258,7 @@
 
     let html = '<div class="bg-card rounded-lg p-4 border border-line">';
     html += '<h3 class="text-sm font-medium mb-3 flex items-center gap-1.5">';
-    html += '<i data-lucide="brain" class="w-4 h-4 text-brand"></i>';
+    html += '<i data-lucide="brain" class="w-4 h-4 text-accent"></i>';
     html += '{{ t.get("security_analysis", "Security Analysis") }}';
     const crit = findings.filter(f => f.severity === 'critical').length;
     const warn = findings.filter(f => f.severity === 'warning').length;
@@ -3451,7 +3451,7 @@
   <div class="bg-card rounded-lg border border-brand/30 dark:border-[#8B5CF6]/30 overflow-hidden">
     <div class="flex items-center justify-between px-4 py-3 bg-brand/5 dark:bg-[#8B5CF6]/10 border-b border-line">
       <div class="flex items-center gap-2">
-        <i data-lucide="terminal" class="w-4 h-4 text-brand"></i>
+        <i data-lucide="terminal" class="w-4 h-4 text-accent"></i>
         <span class="text-sm font-semibold" id="runbook-output-title">{{ t.runbook_output | default('Runbook Output') }}</span>
         <span id="runbook-exec-status" class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium"></span>
       </div>
@@ -3470,7 +3470,7 @@
     <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-md relative">
       <div class="flex items-center justify-between p-4 border-b border-line">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <i data-lucide="zap" class="w-5 h-5 text-brand"></i>
+          <i data-lucide="zap" class="w-5 h-5 text-accent"></i>
           <span>{{ t.confirm_execution | default('Confirm Execution') }}</span>
         </h3>
         <button data-action="closeRunbookModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
@@ -3556,7 +3556,7 @@ function loadRunbooks() {
         rbs.forEach(rb => {
           const badge = rb.is_builtin ? '<span class="ml-auto text-[9px] px-1 py-0.5 rounded bg-brand/10 text-brand">' + RUNBOOK_T.builtin_runbook + '</span>' : '';
           html += '<button data-action="openRunbookConfirm" data-args="[' + rb.id + ']" class="w-full text-left px-3 py-1.5 text-xs hover:bg-raised dark:hover:bg-line flex items-center gap-2 transition-colors">';
-          html += '<i data-lucide="play-circle" class="w-3.5 h-3.5 text-brand flex-shrink-0"></i>';
+          html += '<i data-lucide="play-circle" class="w-3.5 h-3.5 text-accent flex-shrink-0"></i>';
           html += '<span class="flex-1 truncate">' + rb.name + '</span>';
           html += badge;
           html += '</button>';

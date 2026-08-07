@@ -17,7 +17,7 @@
 
 <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
   <h1 class="text-2xl font-bold flex items-center gap-2">
-    <i data-lucide="shield-check" class="w-6 h-6 text-info"></i>
+    <i data-lucide="shield-check" class="w-6 h-6 text-brand"></i>
     {{ t.get('rbac_admin_title', 'Access Control') }}
   </h1>
   <button id="rbac-refresh"
@@ -67,7 +67,7 @@
       <option value="admin" selected>admin</option>
     </select>
     <button id="rbac-grant-btn"
-            class="px-3 py-1.5 text-sm font-medium rounded bg-info text-white hover:opacity-90 disabled:opacity-50"
+            class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 disabled:opacity-50"
             aria-label="Grant access">
       <i data-lucide="check" class="w-3.5 h-3.5 inline"></i>
       {{ t.get('grant', 'Grant') }}

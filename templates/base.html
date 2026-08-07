@@ -51,7 +51,8 @@
             'healthy-tint': 'rgb(var(--c-healthy-tint) / <alpha-value>)',
             'healthy-strong': 'rgb(var(--c-healthy-strong) / <alpha-value>)',
             'info-tint': 'rgb(var(--c-info-tint) / <alpha-value>)',
-            'info-strong': 'rgb(var(--c-info-strong) / <alpha-value>)'
+            'info-strong': 'rgb(var(--c-info-strong) / <alpha-value>)',
+            'accent-strong': 'rgb(var(--c-accent-strong) / <alpha-value>)'
           },
           // TWO radii and a pill. Five were in use with no rule behind which
           // went where: rounded (527), rounded-lg (211), rounded-full (140),
@@ -562,7 +563,7 @@
         document.getElementById('prism-modal-message').innerHTML = message;
         document.getElementById('prism-modal-input').classList.add('hidden');
         document.getElementById('prism-modal-buttons').innerHTML = `
-          <button data-action="modal-ok" class="px-4 py-1.5 text-sm font-medium rounded-lg bg-info text-white hover:opacity-90">OK</button>`;
+          <button data-action="modal-ok" class="px-4 py-1.5 text-sm font-medium rounded-lg bg-accent text-white dark:text-page hover:opacity-90">OK</button>`;
         overlay.classList.remove('hidden');
         modal.classList.remove('hidden');
         if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -901,5 +902,10 @@
 
   <!-- Collector pulse monitor (ECG-style topbar widget) -->
   <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/pulse-monitor.js') }}"></script>
+
+  <!-- Violet stepper buttons for number fields. The native spin button
+       cannot be recoloured, so it is hidden in app.css and rebuilt here —
+       see the module docstring for what that also fixes. -->
+  <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/stepper.js') }}"></script>
 </body>
 </html>

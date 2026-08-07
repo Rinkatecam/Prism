@@ -56,7 +56,7 @@
           <option value="720">{{ t.hours_720 }}</option>
         </select>
       </div>
-      <button id="btn-compare" data-action="loadComparison" disabled class="text-xs font-medium px-4 py-1.5 rounded bg-info hover:bg-info-strong text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-info">
+      <button id="btn-compare" data-action="loadComparison" disabled class="text-xs font-medium px-4 py-1.5 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-accent">
         {{ t.compare }} <span id="btn-compare-count"></span>
       </button>
       <button id="btn-compare-events" data-action="loadEventComparison" disabled class="text-xs font-medium px-4 py-1.5 rounded bg-brand hover:bg-[#7C3AED] text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-brand">
@@ -164,7 +164,7 @@
       <!-- Business-hours annotations -->
       <div id="compare-annotations" class="hidden">
         <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
-          <i data-lucide="clock" class="w-4 h-4 text-brand"></i>
+          <i data-lucide="clock" class="w-4 h-4 text-accent"></i>
           {{ t.business_hours_avg }} / {{ t.off_hours_avg }}
         </h3>
         <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
@@ -1174,7 +1174,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const catContainer = document.getElementById('compare-category-buttons');
     const btnBase = 'text-xs font-medium px-4 py-1.5 rounded transition-colors cursor-pointer select-none';
     const btnOff = 'bg-muted hover:bg-muted text-white';
-    const btnOn = 'bg-info hover:bg-info-strong text-white';
+    const btnOn = 'bg-accent hover:bg-accent-strong text-white dark:text-page';
 
     function setCategoryCheckboxes(type) {
       // Cap-aware. Checking every box for '__all__' against a smaller API limit

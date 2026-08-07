@@ -5,7 +5,7 @@
 <div class="bg-card rounded-lg border border-line p-4">
   <div class="flex items-center justify-between mb-3">
     <h2 class="text-sm font-semibold flex items-center gap-2">
-      <i data-lucide="download-cloud" class="w-4 h-4 text-info"></i>
+      <i data-lucide="download-cloud" class="w-4 h-4 text-accent"></i>
       {{ t.get('windows_updates', 'Windows Updates') }}
       <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-info/10 text-info dark:bg-info/20 dark:text-info-strong">
         {{ items | length }}
@@ -25,7 +25,7 @@
     {% if it.sev == 'installing' %}
     <a href="/server/{{ it.server_name }}"
        class="flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors hover:bg-page border-info/40 bg-info/5">
-      <i data-lucide="loader" class="w-5 h-5 flex-shrink-0 text-info animate-spin"></i>
+      <i data-lucide="loader" class="w-5 h-5 flex-shrink-0 text-accent animate-spin"></i>
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-2 flex-wrap">
           <span class="text-xs font-semibold">{{ it.server_name }}</span>

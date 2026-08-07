@@ -72,6 +72,10 @@ TOKENS: dict[str, tuple[str, str]] = {
     "healthy-strong":  ("#04613F", "#6EE7B7"),
     "info-tint":       ("#DBEAFE", "#14224D"),
     "info-strong":     ("#1A3AA0", "#93C5FD"),
+    # The hover step for a filled turquoise button. `info` had one and
+    # `accent` did not, which is the whole reason the primary buttons were
+    # blue: there was no turquoise to move to.
+    "accent-strong":   ("#0B5D57", "#5EEAD4"),
 }
 
 # Values that were paired inconsistently and collapse onto a canonical token.

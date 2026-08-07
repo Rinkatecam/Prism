@@ -3,7 +3,7 @@
 
 <div class="flex items-center justify-between mb-6">
   <h1 class="text-2xl font-bold flex items-center gap-2">
-    <i data-lucide="server" class="w-6 h-6 text-info"></i>
+    <i data-lucide="server" class="w-6 h-6 text-brand"></i>
     {{ t.servers }}
   </h1>
 </div>
@@ -40,7 +40,7 @@
       </button>
       <input type="file" id="csv-import-input" accept=".csv" class="hidden" data-change="_srvImportCsv">
       <button data-action="showAddForm"
-              class="px-3 py-1.5 text-sm font-medium rounded bg-info text-white hover:opacity-90 flex items-center gap-1">
+              class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
         <i data-lucide="plus" class="w-4 h-4"></i>
         {{ t.add_server }}
       </button>
@@ -129,7 +129,7 @@
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="tags" class="w-5 h-5 text-info"></i>
+    <i data-lucide="tags" class="w-5 h-5 text-accent"></i>
     {{ t.get('tag_management', 'Tag Management') }}
   </h2>
   <div class="bg-card rounded-lg p-5 border border-line space-y-4">
@@ -137,7 +137,7 @@
     <div class="flex items-center gap-3">
       <input type="text" id="new-tag-name" placeholder="Tag name..." class="px-3 py-1.5 text-sm rounded border border-line bg-field">
       <input type="color" id="new-tag-color" value="#6B7280" class="w-8 h-8 rounded border border-line bg-field cursor-pointer p-0.5">
-      <button data-action="createTag" class="px-3 py-1.5 text-sm font-medium rounded bg-info text-white hover:opacity-90 flex items-center gap-1">
+      <button data-action="createTag" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
         <i data-lucide="plus" class="w-4 h-4"></i>
         {{ t.get('add_tag', 'Add Tag') }}
       </button>
@@ -158,10 +158,10 @@
 <section class="mb-8">
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="activity" class="w-5 h-5 text-info"></i>
+      <i data-lucide="activity" class="w-5 h-5 text-accent"></i>
       {{ t.get('health_checks', 'Health Checks') }}
     </h2>
-    <button data-action="toggleHcForm" class="px-3 py-1.5 text-sm font-medium rounded bg-info text-white hover:opacity-90 flex items-center gap-1">
+    <button data-action="toggleHcForm" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
       <i data-lucide="plus" class="w-4 h-4"></i>
       {{ t.get('add_health_check', 'Add Health Check') }}
     </button>
@@ -240,10 +240,10 @@
 <section class="mb-8">
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="network" class="w-5 h-5 text-info"></i>
+      <i data-lucide="network" class="w-5 h-5 text-accent"></i>
       {{ t.dependencies }}
     </h2>
-    <button data-action="toggleDepForm" class="px-3 py-1.5 text-sm font-medium rounded bg-info text-white hover:opacity-90 flex items-center gap-1">
+    <button data-action="toggleDepForm" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
       <i data-lucide="plus" class="w-4 h-4"></i>
       {{ t.add_dependency }}
     </button>
@@ -507,7 +507,7 @@
         </button>
         <div class="flex gap-2">
           <button data-action="closeModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
-          <button data-action="saveServer" class="px-4 py-1.5 text-sm rounded bg-info text-white hover:opacity-90">{{ t.save }}</button>
+          <button data-action="saveServer" class="px-4 py-1.5 text-sm rounded bg-accent text-white dark:text-page hover:opacity-90">{{ t.save }}</button>
         </div>
       </div>
     </div>
@@ -521,7 +521,7 @@
     <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-2xl max-h-[90vh] flex flex-col relative">
       <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <i data-lucide="book-open" class="w-5 h-5 text-info"></i>
+          <i data-lucide="book-open" class="w-5 h-5 text-accent"></i>
           {{ t.server_setup_guide }}
         </h3>
         <button data-action="closeGuide" class="p-1 text-muted hover:text-ink dark:hover:text-white">
@@ -532,7 +532,7 @@
 
         <!-- Step 1 -->
         <div class="flex gap-3">
-          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-info text-white flex items-center justify-center text-xs font-bold">1</div>
+          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-accent text-white dark:text-page flex items-center justify-center text-xs font-bold">1</div>
           <div>
             <div class="font-semibold mb-1">{{ t.step_enable_winrm }}</div>
             <p class="text-muted mb-2">RDP into the server and open an <strong>{{ t.step_elevated_ps }}</strong> (Run as Administrator):</p>
@@ -543,7 +543,7 @@
 
         <!-- Step 2 -->
         <div class="flex gap-3">
-          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-info text-white flex items-center justify-center text-xs font-bold">2</div>
+          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-accent text-white dark:text-page flex items-center justify-center text-xs font-bold">2</div>
           <div>
             <div class="font-semibold mb-1">{{ t.step_verify_winrm }}</div>
             <p class="text-muted mb-2">Still on the target server, check the listener configuration:</p>
@@ -554,7 +554,7 @@
 
         <!-- Step 3 -->
         <div class="flex gap-3">
-          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-info text-white flex items-center justify-center text-xs font-bold">3</div>
+          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-accent text-white dark:text-page flex items-center justify-center text-xs font-bold">3</div>
           <div>
             <div class="font-semibold mb-1">{{ t.step_check_auth }}</div>
             <p class="text-muted mb-2">On the target server, verify Negotiate or Kerberos is enabled:</p>
@@ -565,7 +565,7 @@
 
         <!-- Step 4 -->
         <div class="flex gap-3">
-          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-info text-white flex items-center justify-center text-xs font-bold">4</div>
+          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-accent text-white dark:text-page flex items-center justify-center text-xs font-bold">4</div>
           <div>
             <div class="font-semibold mb-1">{{ t.step_test_connectivity }}</div>
             <p class="text-muted mb-2">On the Prism host, open PowerShell and test the connection:</p>
@@ -576,7 +576,7 @@
 
         <!-- Step 5 -->
         <div class="flex gap-3">
-          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-info text-white flex items-center justify-center text-xs font-bold">5</div>
+          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-accent text-white dark:text-page flex items-center justify-center text-xs font-bold">5</div>
           <div>
             <div class="font-semibold mb-1">{{ t.step_add_server }}</div>
             <p class="text-muted mb-2">Click <strong>"Add Server"</strong> and fill in the fields:</p>
@@ -618,7 +618,7 @@ Invoke-Command -ComputerName SERVER.DOMAIN.COM -Credential $cred -ScriptBlock { 
 
       </div>
       <div class="flex justify-end p-4 border-t border-line flex-shrink-0">
-        <button data-action="closeGuide" class="px-4 py-1.5 text-sm rounded bg-info text-white hover:opacity-90">OK</button>
+        <button data-action="closeGuide" class="px-4 py-1.5 text-sm rounded bg-accent text-white dark:text-page hover:opacity-90">OK</button>
       </div>
     </div>
   </div>

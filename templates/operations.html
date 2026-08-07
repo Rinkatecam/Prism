@@ -3,7 +3,7 @@
 
 <div class="flex items-center justify-between mb-6">
   <h1 class="text-2xl font-bold flex items-center gap-2">
-    <i data-lucide="wrench" class="w-6 h-6 text-info"></i>
+    <i data-lucide="wrench" class="w-6 h-6 text-brand"></i>
     Operations
   </h1>
 </div>
@@ -16,7 +16,7 @@
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="timer-reset" class="w-5 h-5 text-info"></i>
+    <i data-lucide="timer-reset" class="w-5 h-5 text-accent"></i>
     {{ t.scheduled_restarts }}
   </h2>
   <div class="bg-card rounded-lg p-5 border border-line space-y-5">
@@ -24,14 +24,14 @@
     <!-- Prism Service Restart -->
     <div>
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="refresh-cw" class="w-4 h-4 text-info"></i>
+        <i data-lucide="refresh-cw" class="w-4 h-4 text-accent"></i>
         {{ t.flask_restart_schedule }}
       </div>
       <div class="text-[10px] text-muted mb-3">{{ t.flask_restart_desc }}</div>
       <div class="flex flex-wrap items-center gap-3">
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" id="flask-restart-enabled" class="sr-only peer">
-          <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+          <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
         </label>
         <select id="flask-restart-schedule" class="px-2 py-1 text-sm rounded border border-line bg-field">
           <option value="daily">{{ t.schedule_daily }}</option>
@@ -65,7 +65,7 @@
     <!-- Server Restart Schedule -->
     <div>
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="server" class="w-4 h-4 text-info"></i>
+        <i data-lucide="server" class="w-4 h-4 text-accent"></i>
         {{ t.server_restart_schedule }}
       </div>
       <div class="text-[10px] text-muted mb-3">{{ t.server_restart_desc }}</div>
@@ -74,7 +74,7 @@
       <div class="flex flex-wrap items-center gap-2 mb-3 p-2.5 rounded-lg border border-line bg-page dark:bg-page/50">
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" id="server-restart-enabled" class="sr-only peer">
-          <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+          <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
         </label>
         <select id="server-restart-schedule" class="px-2 py-1 text-sm rounded border border-line bg-field">
           <option value="daily">{{ t.schedule_daily }}</option>
@@ -119,7 +119,7 @@
       </div>
 
       {# Primary action button: blue filled (matches servers.html pattern) #}
-      <button data-action="addServerRestartRow" class="px-3 py-1.5 text-sm font-medium rounded bg-info text-white hover:opacity-90 flex items-center gap-1">
+      <button data-action="addServerRestartRow" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
         <i data-lucide="plus" class="w-4 h-4"></i>
         {{ t.add_server_restart }}
       </button>
@@ -130,7 +130,7 @@
     <!-- Save button for this section -->
     <div class="flex items-center gap-3">
       <button data-action="saveRestartSchedules" id="save-restart-btn"
-              class="px-4 py-1.5 text-sm font-medium rounded bg-info text-white hover:opacity-90 flex items-center gap-1.5">
+              class="px-4 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1.5">
         <i data-lucide="save" class="w-4 h-4"></i>
         {{ t.save_restart_schedule }}
       </button>
@@ -146,11 +146,11 @@
   {# Section header: title left, primary action right (matches servers.html / monitoring.html pattern) #}
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="book-open" class="w-5 h-5 text-info"></i>
+      <i data-lucide="book-open" class="w-5 h-5 text-accent"></i>
       {{ t.runbooks | default('Runbooks') }}
     </h2>
     <button data-action="showCreateRunbookForm"
-            class="px-3 py-1.5 text-sm font-medium rounded bg-info text-white hover:opacity-90 flex items-center gap-1">
+            class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
       <i data-lucide="plus" class="w-4 h-4"></i>
       {{ t.create_runbook | default('Create Runbook') }}
     </button>
@@ -218,7 +218,7 @@
     <!-- Execution History -->
     <div class="border-t border-line pt-4">
       <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">
-        <i data-lucide="history" class="w-4 h-4 text-info"></i>
+        <i data-lucide="history" class="w-4 h-4 text-accent"></i>
         {{ t.execution_history | default('Execution History') }}
       </h3>
       <div class="overflow-x-auto">
@@ -250,7 +250,7 @@
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="wrench" class="w-5 h-5 text-info"></i>
+    <i data-lucide="wrench" class="w-5 h-5 text-accent"></i>
     {{ t.get('system_tools', 'System & Tools') }}
   </h2>
   <div class="bg-card rounded-lg p-5 border border-line space-y-5">
@@ -258,7 +258,7 @@
     <!-- Config Backup & Restore -->
     <div>
       <div class="text-sm font-medium mb-3 flex items-center gap-1.5">
-        <i data-lucide="archive" class="w-4 h-4 text-info"></i>
+        <i data-lucide="archive" class="w-4 h-4 text-accent"></i>
         {{ t.config_backups }}
       </div>
       <div class="space-y-4">
@@ -311,7 +311,7 @@
     <!-- System Health & Diagnostics -->
     <div>
       <div class="text-sm font-medium mb-3 flex items-center gap-1.5">
-        <i data-lucide="heart-pulse" class="w-4 h-4 text-info"></i>
+        <i data-lucide="heart-pulse" class="w-4 h-4 text-accent"></i>
         {{ t.system_health }}
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
@@ -368,7 +368,7 @@
     <!-- Audit Trail -->
     <div>
       <div class="text-sm font-medium mb-3 flex items-center gap-1.5">
-        <i data-lucide="scroll-text" class="w-4 h-4 text-info"></i>
+        <i data-lucide="scroll-text" class="w-4 h-4 text-accent"></i>
         {{ t.audit_trail }}
       </div>
       <div class="space-y-4">
@@ -527,7 +527,7 @@
     <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-lg max-h-[80vh] flex flex-col relative">
       <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
         <h3 id="picker-title" class="text-lg font-semibold flex items-center gap-2">
-          <i data-lucide="list" class="w-5 h-5 text-brand"></i>
+          <i data-lucide="list" class="w-5 h-5 text-accent"></i>
           <span>{{ t.get('choose_services', 'Choose Services') }}</span>
         </h3>
         <button data-action="closePickerModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
