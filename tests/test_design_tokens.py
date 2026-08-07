@@ -249,18 +249,38 @@ def test_a_template_literal_holding_markup_is_handled_by_its_inner_attribute():
 
 # ── the families the first twelve tokens had no name for ─────────────────
 
-def test_the_input_surface_resolves_past_three_colliding_darks():
-    """`bg-white dark:bg-[#0F172A]` is 157 form inputs — the single largest
-    surviving pattern, and unconvertible with twelve tokens: no token was
-    #FFFFFF light and #0F172A dark.
+def test_the_input_surface_resolves_past_a_colliding_light_value():
+    """Form inputs — 157 of them, the single largest pattern the twelve-token
+    set could not express, because no token was `card` in light mode and
+    recessed in dark.
 
-    #0F172A is now the dark half of THREE tokens (page, raised, field), so a
-    hex->token lookup cannot answer this on its own; the light half has to
-    pick. A dict keyed on the dark hex would silently return whichever was
-    declared last, which is how a token test passed on a collision before.
+    `card` and `field` are BOTH #FFFFFF in light mode, so a hex->token lookup
+    cannot answer this alone; the dark half has to pick. A dict keyed on the
+    hex would return whichever was declared last, which is exactly how a
+    token test passed on a collision once before.
     """
-    before = '<input class="bg-white dark:bg-[#0F172A] border border-line">'
+    light, dark = dt.TOKENS["field"]
+    before = f'<input class="bg-[{light}] dark:bg-[{dark}] border border-line">'
     assert dt.convert(before) == '<input class="bg-field border border-line">'
+    assert dt.tokens_for(light, is_dark=False) == ["card", "field"], \
+        "the collision this resolves must actually exist"
+
+
+def test_a_literal_from_the_previous_palette_still_resolves():
+    """The pre-flip values are kept as folds rather than deleted. A hex
+    copied from older markup lands on the right token instead of quietly
+    rendering the old palette beside the new one."""
+    assert dt.convert('<p class="text-[#6B7280] dark:text-[#CBD5E1]">') == \
+        '<p class="text-muted">'
+    assert dt.convert('<div class="border-[#E5E7EB]">') == '<div class="border-line">'
+
+
+def test_the_one_legacy_value_that_cannot_be_folded_is_not_guessed():
+    """#0F172A was the dark half of page, raised AND field before the flip,
+    and those three are now three different colours. Folding it would mean
+    picking one, and the wrong pick is invisible until someone looks."""
+    src = '<div class="p-4 dark:bg-[#0F172A]">'
+    assert dt.convert(src) == src
 
 
 def test_a_status_tint_pair_collapses():
@@ -282,11 +302,13 @@ def test_a_hyphenated_token_is_not_matched_as_its_own_prefix():
     assert found == {"critical-strong", "warning-tint"}, found
 
 
-def test_page_and_raised_still_resolve_by_their_light_half():
-    """The two tokens that already collided on #0F172A must keep resolving
-    from the light side, not from declaration order."""
-    assert dt.convert('<div class="bg-[#F9FAFB] dark:bg-[#0F172A]">') == '<div class="bg-page">'
-    assert dt.convert('<div class="bg-[#F3F4F6] dark:bg-[#0F172A]">') == '<div class="bg-raised">'
+def test_surfaces_resolve_to_the_token_whose_BOTH_halves_match():
+    """page, card, raised and field are four surfaces that overlap in one
+    theme or the other. Each pair must land on the token matching both."""
+    for name in ("page", "card", "raised", "field"):
+        light, dark = dt.TOKENS[name]
+        assert dt.convert(f'<div class="bg-[{light}] dark:bg-[{dark}]">') == \
+            f'<div class="bg-{name}">', name
 
 
 # ── the alpha modifier is part of the pair, not decoration ───────────────
@@ -305,9 +327,10 @@ def test_a_differing_dark_alpha_is_kept_not_absorbed():
 
 
 def test_a_dark_only_alpha_survives_a_solid_light_half():
-    """The commonest shape of it — 30 of the 43 are `bg-[#F9FAFB]` against
-    `dark:bg-[#0F172A]/50`, a solid light surface and a translucent dark one."""
-    before = '<div class="bg-[#F9FAFB] dark:bg-[#0F172A]/50">'
+    """The commonest shape of it — 30 of the 43 were a solid light surface
+    against a translucent dark one."""
+    light, dark = dt.TOKENS["page"]
+    before = f'<div class="bg-[{light}] dark:bg-[{dark}]/50">'
     assert dt.convert(before) == '<div class="bg-page dark:bg-page/50">'
 
 
@@ -392,9 +415,13 @@ def test_css_uses_channel_triplets_not_hex():
     """A bare hex inside var() breaks Tailwind's opacity modifier, and 329
     sites depend on it. The format is a requirement, not a preference."""
     css = dt.render_css()
-    assert "--c-critical: 220 38 38;" in css
     assert "#" not in css, "no hex may survive into the custom properties"
     assert ":root {" in css and ".dark {" in css
+    # Derived, not transcribed — a hardcoded triplet here just breaks every
+    # time the palette moves and teaches nothing.
+    for name, (light, dark) in dt.TOKENS.items():
+        assert f"--c-{name}: {dt._channels(light)};" in css
+        assert f"--c-{name}: {dt._channels(dark)};" in css
 
 
 def test_hyphenated_token_keys_are_quoted_in_the_tailwind_map():
@@ -548,6 +575,74 @@ def test_base_html_tailwind_map_matches_the_python_table():
     for name in dt.TOKENS:
         assert f"'{name}': 'rgb(var(--c-{name}) / <alpha-value>)'" in base, \
             f"{name} missing from tailwind.config in base.html"
+
+
+# ── contrast is a build failure, not a matter of taste ───────────────────
+
+def _relative_luminance(hex_value: str) -> float:
+    def channel(c: float) -> float:
+        c /= 255
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+    h = hex_value.lstrip("#")
+    r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+
+
+def contrast(a: str, b: str) -> float:
+    la, lb = _relative_luminance(a), _relative_luminance(b)
+    return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+
+
+def test_the_contrast_helper_agrees_with_known_values():
+    """A contrast test built on a broken formula passes everything. Black on
+    white is exactly 21:1 and any colour on itself is exactly 1:1."""
+    assert round(contrast("#000000", "#FFFFFF"), 2) == 21.0
+    assert round(contrast("#777777", "#777777"), 2) == 1.0
+    assert 4.5 <= contrast("#767676", "#FFFFFF") <= 4.6   # the AA boundary grey
+
+
+TEXT_TOKENS = ("ink", "muted", "faint", "brand", "accent", "info",
+               "healthy", "warning", "critical")
+
+
+def test_every_text_token_clears_wcag_aa_on_its_card():
+    """A palette that fails contrast is a defect, not a style choice.
+
+    Of the three catalog themes inspected while choosing this one, two had a
+    dark `destructive` at 1.33:1 and an `accent-foreground` at 1.15:1 —
+    invisible, and shipped. The palette Prism replaced failed six of eight,
+    with `faint` at 1.93:1 in dark mode.
+    """
+    for index, theme in ((0, "light"), (1, "dark")):
+        card = dt.TOKENS["card"][index]
+        for name in TEXT_TOKENS:
+            ratio = contrast(dt.TOKENS[name][index], card)
+            assert ratio >= 4.5, (
+                f"{name} on card is {ratio:.2f}:1 in {theme} mode")
+
+
+def test_every_status_label_clears_aa_on_its_own_tint():
+    """A badge's label sits on the tint, not on the card. Checking it against
+    the card would pass a combination nothing ever renders."""
+    for index, theme in ((0, "light"), (1, "dark")):
+        for status in ("critical", "warning", "healthy", "info"):
+            tint = dt.TOKENS[f"{status}-tint"][index]
+            strong = dt.TOKENS[f"{status}-strong"][index]
+            ratio = contrast(strong, tint)
+            assert ratio >= 4.5, (
+                f"{status}-strong on {status}-tint is {ratio:.2f}:1 in {theme}")
+
+
+def test_the_surfaces_stay_distinguishable_from_each_other():
+    """page, card and raised have to read as different planes. `field` is
+    deliberately identical to `card` in light mode — a white input on a white
+    card, separated by its border, which is what it has always been."""
+    for index, theme in ((0, "light"), (1, "dark")):
+        for a, b in (("page", "card"), ("card", "raised")):
+            ratio = contrast(dt.TOKENS[a][index], dt.TOKENS[b][index])
+            assert ratio >= 1.05, (
+                f"{a} and {b} are {ratio:.3f}:1 apart in {theme} — "
+                "indistinguishable")
 
 
 def test_every_token_has_distinct_light_and_dark():

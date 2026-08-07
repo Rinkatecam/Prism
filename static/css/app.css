@@ -14,53 +14,53 @@
    Python table, and templates/base.html maps utility names onto them.
    ═══════════════════════════════════════════════════════════════════════ */
 :root {
-  --c-page: 249 250 251;
+  --c-page: 241 245 249;
   --c-card: 255 255 255;
-  --c-raised: 243 244 246;
+  --c-raised: 232 237 243;
   --c-field: 255 255 255;
-  --c-line: 229 231 235;
-  --c-ink: 17 24 39;
-  --c-muted: 107 114 128;
-  --c-faint: 156 163 175;
-  --c-brand: 139 92 246;
-  --c-accent: 20 184 166;
-  --c-info: 37 99 235;
-  --c-healthy: 16 185 129;
-  --c-warning: 245 158 11;
-  --c-critical: 220 38 38;
+  --c-line: 203 213 225;
+  --c-ink: 2 6 23;
+  --c-muted: 71 85 105;
+  --c-faint: 100 116 139;
+  --c-brand: 91 33 182;
+  --c-accent: 15 118 110;
+  --c-info: 30 64 175;
+  --c-healthy: 4 108 78;
+  --c-warning: 161 92 7;
+  --c-critical: 166 27 27;
   --c-critical-tint: 254 226 226;
-  --c-critical-strong: 153 27 27;
+  --c-critical-strong: 145 26 26;
   --c-warning-tint: 254 243 199;
-  --c-warning-strong: 146 64 14;
+  --c-warning-strong: 138 78 6;
   --c-healthy-tint: 209 250 229;
-  --c-healthy-strong: 6 95 70;
-  --c-info-tint: 224 231 255;
-  --c-info-strong: 29 78 216;
+  --c-healthy-strong: 4 97 63;
+  --c-info-tint: 219 234 254;
+  --c-info-strong: 26 58 160;
 }
 
 .dark {
-  --c-page: 15 23 42;
-  --c-card: 30 41 59;
-  --c-raised: 15 23 42;
-  --c-field: 15 23 42;
-  --c-line: 51 65 85;
+  --c-page: 5 7 13;
+  --c-card: 15 22 35;
+  --c-raised: 21 30 46;
+  --c-field: 8 14 26;
+  --c-line: 34 49 74;
   --c-ink: 241 245 249;
-  --c-muted: 203 213 225;
-  --c-faint: 71 85 105;
-  --c-brand: 167 139 250;
+  --c-muted: 163 178 199;
+  --c-faint: 126 141 163;
+  --c-brand: 196 181 253;
   --c-accent: 45 212 191;
-  --c-info: 59 130 246;
-  --c-healthy: 52 211 153;
-  --c-warning: 251 191 36;
-  --c-critical: 239 68 68;
-  --c-critical-tint: 127 29 29;
+  --c-info: 147 197 253;
+  --c-healthy: 110 231 183;
+  --c-warning: 252 211 77;
+  --c-critical: 252 165 165;
+  --c-critical-tint: 63 18 20;
   --c-critical-strong: 252 165 165;
-  --c-warning-tint: 120 53 15;
+  --c-warning-tint: 58 38 6;
   --c-warning-strong: 252 211 77;
-  --c-healthy-tint: 6 78 59;
+  --c-healthy-tint: 5 48 31;
   --c-healthy-strong: 110 231 183;
-  --c-info-tint: 49 46 129;
-  --c-info-strong: 96 165 250;
+  --c-info-tint: 20 34 77;
+  --c-info-strong: 147 197 253;
 }
 
 /* Status colors as CSS custom properties */

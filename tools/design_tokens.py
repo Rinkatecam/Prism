@@ -46,32 +46,32 @@ import re
 # these twelve pairs for the C-Ink palette in one small diff, so that if
 # something looks wrong afterwards the commit responsible is unambiguous.
 TOKENS: dict[str, tuple[str, str]] = {
-    "page":     ("#F9FAFB", "#0F172A"),   # app background
-    "card":     ("#FFFFFF", "#1E293B"),   # panel / card surface
-    "raised":   ("#F3F4F6", "#0F172A"),   # hover + inset surface
-    "field":    ("#FFFFFF", "#0F172A"),   # input / select / textarea surface
-    "line":     ("#E5E7EB", "#334155"),   # borders and dividers
-    "ink":      ("#111827", "#F1F5F9"),   # primary text
-    "muted":    ("#6B7280", "#CBD5E1"),   # secondary text
-    "faint":    ("#9CA3AF", "#475569"),   # tertiary text, placeholders
-    "brand":    ("#8B5CF6", "#A78BFA"),   # violet end of the brand gradient
-    "accent":   ("#14B8A6", "#2DD4BF"),   # turquoise end of the same gradient
-    "info":     ("#2563EB", "#3B82F6"),
-    "healthy":  ("#10B981", "#34D399"),
-    "warning":  ("#F59E0B", "#FBBF24"),
-    "critical": ("#DC2626", "#EF4444"),
+    "page":     ("#F1F5F9", "#05070D"),   # app background
+    "card":     ("#FFFFFF", "#0F1623"),   # panel / card surface
+    "raised":   ("#E8EDF3", "#151E2E"),   # hover + inset surface
+    "field":    ("#FFFFFF", "#080E1A"),   # input / select / textarea surface
+    "line":     ("#CBD5E1", "#22314A"),   # borders and dividers
+    "ink":      ("#020617", "#F1F5F9"),   # primary text
+    "muted":    ("#475569", "#A3B2C7"),   # secondary text
+    "faint":    ("#64748B", "#7E8DA3"),   # tertiary text, placeholders
+    "brand":    ("#5B21B6", "#C4B5FD"),   # violet end of the brand gradient
+    "accent":   ("#0F766E", "#2DD4BF"),   # turquoise end of the same gradient
+    "info":     ("#1E40AF", "#93C5FD"),
+    "healthy":  ("#046C4E", "#6EE7B7"),
+    "warning":  ("#A15C07", "#FCD34D"),
+    "critical": ("#A61B1B", "#FCA5A5"),
     # A badge is a tinted SURFACE with a strong label on it. That is a
     # different role from the status colour, and 60 elements spelled it by
     # hand: a pale wash in light mode, a deep one in dark, with the text
     # inverting between them. Measured pairs, not invented.
-    "critical-tint":   ("#FEE2E2", "#7F1D1D"),
-    "critical-strong": ("#991B1B", "#FCA5A5"),
-    "warning-tint":    ("#FEF3C7", "#78350F"),
-    "warning-strong":  ("#92400E", "#FCD34D"),
-    "healthy-tint":    ("#D1FAE5", "#064E3B"),
-    "healthy-strong":  ("#065F46", "#6EE7B7"),
-    "info-tint":       ("#E0E7FF", "#312E81"),
-    "info-strong":     ("#1D4ED8", "#60A5FA"),
+    "critical-tint":   ("#FEE2E2", "#3F1214"),
+    "critical-strong": ("#911A1A", "#FCA5A5"),
+    "warning-tint":    ("#FEF3C7", "#3A2606"),
+    "warning-strong":  ("#8A4E06", "#FCD34D"),
+    "healthy-tint":    ("#D1FAE5", "#05301F"),
+    "healthy-strong":  ("#04613F", "#6EE7B7"),
+    "info-tint":       ("#DBEAFE", "#14224D"),
+    "info-strong":     ("#1A3AA0", "#93C5FD"),
 }
 
 # Values that were paired inconsistently and collapse onto a canonical token.
@@ -110,8 +110,34 @@ DARK_ALIASES: dict[str, str] = {
     "#F8FAFC": "ink",     # 10x, pairs with #1F2937.  13.98:1 -> 13.35:1
 }
 
+# The palette BEFORE the C-Ink flip. Kept as folds, not deleted, so a literal
+# copied from older markup still resolves to the right token instead of
+# quietly rendering the previous palette next to the new one. The ratchet
+# stops the count growing; this stops a stray one being wrong.
+LEGACY_LIGHT: dict[str, str] = {
+    "#F9FAFB": "page",   "#F3F4F6": "raised", "#E5E7EB": "line",
+    "#111827": "ink",    "#6B7280": "muted",  "#9CA3AF": "faint",
+    "#8B5CF6": "brand",  "#14B8A6": "accent", "#2563EB": "info",
+    "#10B981": "healthy", "#F59E0B": "warning", "#DC2626": "critical",
+    "#FEE2E2": "critical-tint", "#991B1B": "critical-strong",
+    "#FEF3C7": "warning-tint",  "#92400E": "warning-strong",
+    "#D1FAE5": "healthy-tint",  "#065F46": "healthy-strong",
+    "#E0E7FF": "info-tint",     "#1D4ED8": "info-strong",
+}
+LEGACY_DARK: dict[str, str] = {
+    "#1E293B": "card",   "#334155": "line",   "#F1F5F9": "ink",
+    "#CBD5E1": "muted",  "#475569": "faint",  "#A78BFA": "brand",
+    "#3B82F6": "info",   "#34D399": "healthy", "#FBBF24": "warning",
+    "#EF4444": "critical",
+    "#7F1D1D": "critical-tint", "#78350F": "warning-tint",
+    "#064E3B": "healthy-tint",  "#312E81": "info-tint",
+    "#60A5FA": "info-strong",
+    # #0F172A is deliberately absent: it was the dark half of page, raised
+    # AND field, so it cannot be folded without guessing which.
+}
+
 _ALIAS_UPPER: dict[str, str] = {h.upper(): t for h, t in ALIASES.items()}
-for _hex, _token in {**DARK_ALIASES}.items():
+for _hex, _token in {**DARK_ALIASES, **LEGACY_DARK}.items():
     _ALIAS_UPPER.setdefault(_hex.upper(), _token)
 
 
@@ -133,10 +159,16 @@ def _by_hex(index: int) -> dict[str, list[str]]:
 
 _LIGHT_ALL = _by_hex(0)
 _DARK_ALL = _by_hex(1)
-for _hex, _token in LIGHT_ALIASES.items():
+for _hex, _token in {**LIGHT_ALIASES, **LEGACY_LIGHT}.items():
     _LIGHT_ALL.setdefault(_hex.upper(), []).append(_token)
-for _hex, _token in {**ALIASES, **DARK_ALIASES}.items():
+for _hex, _token in {**ALIASES, **DARK_ALIASES, **LEGACY_DARK}.items():
     _DARK_ALL.setdefault(_hex.upper(), []).append(_token)
+# A value can arrive from more than one table — #F1F5F9 is ink's dark half
+# today and was also the pre-flip one. Duplicates would read as ambiguity and
+# stop a perfectly determined literal from converting.
+for _table in (_LIGHT_ALL, _DARK_ALL):
+    for _hex, _names in _table.items():
+        _table[_hex] = list(dict.fromkeys(_names))
 
 # A Tailwind arbitrary-colour utility: `text-[#hex]`, `dark:bg-[#hex]/50`,
 # `border-l-[#hex]`. The side group is an explicit alternation rather than a
