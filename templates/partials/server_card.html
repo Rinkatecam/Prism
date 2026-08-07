@@ -45,7 +45,7 @@
    data-server-host="{{ host }}"
    data-status="{{ status }}"
    {% if istatus %}data-install-status="{{ istatus }}"{% endif %}
-   class="server-card block bg-card rounded-lg p-4 border border-line cursor-pointer {% if istatus %}border-l-4 {{ _install_border.get(istatus, '!border-l-[#6366F1]') }}{% elif status == 'critical' %}border-l-4 !border-l-[#DC2626] dark:!border-l-[#EF4444]{% elif status == 'warning' %}border-l-4 !border-l-[#F59E0B] dark:!border-l-[#FBBF24]{% elif status == 'offline' %}border-l-4 !border-l-[#9CA3AF] opacity-60{% endif %}">
+   class="server-card block bg-card rounded-lg p-4 border border-line cursor-pointer {% if istatus %}border-l-4 {{ _install_border.get(istatus, '!border-l-[#6366F1]') }}{% elif status == 'critical' %}border-l-4 !border-l-critical dark:!border-l-[#EF4444]{% elif status == 'warning' %}border-l-4 !border-l-warning dark:!border-l-[#FBBF24]{% elif status == 'offline' %}border-l-4 !border-l-faint opacity-60{% endif %}">
 
   <!-- Header: name + badge -->
   <div class="flex items-center justify-between mb-3">
@@ -155,7 +155,7 @@
     {% elif istatus in ('downloading', 'installing') %}
     <i data-lucide="loader" class="w-4 h-4 inline mb-1 animate-spin"></i><br>
     {% elif istatus == 'stabilising' %}
-    <i data-lucide="check-circle" class="w-4 h-4 inline mb-1 text-[#10B981]"></i><br>
+    <i data-lucide="check-circle" class="w-4 h-4 inline mb-1 text-healthy"></i><br>
     {% else %}
     <i data-lucide="clock" class="w-4 h-4 inline mb-1"></i><br>
     {% endif %}
@@ -227,7 +227,7 @@
   {% if server.timestamp %}
   <div class="flex items-center justify-end gap-2 mt-2">
     {% if server.is_stale %}
-    <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-[#F59E0B]/15 text-[#F59E0B] border border-[#F59E0B]/30"
+    <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30"
           title="Last collection {{ (server.staleness_seconds // 60) | int }}m ago — collector may have timed out for this server.">
       stale
     </span>

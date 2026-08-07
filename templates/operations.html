@@ -31,7 +31,7 @@
       <div class="flex flex-wrap items-center gap-3">
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" id="flask-restart-enabled" class="sr-only peer">
-          <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+          <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
         </label>
         <select id="flask-restart-schedule" class="px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
           <option value="daily">{{ t.schedule_daily }}</option>
@@ -74,7 +74,7 @@
       <div class="flex flex-wrap items-center gap-2 mb-3 p-2.5 rounded-lg border border-line bg-page dark:bg-page/50">
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" id="server-restart-enabled" class="sr-only peer">
-          <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+          <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
         </label>
         <select id="server-restart-schedule" class="px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
           <option value="daily">{{ t.schedule_daily }}</option>
@@ -113,9 +113,9 @@
       <div id="server-restart-list" class="space-y-3 mb-3"></div>
       {# Empty state: matches the centered icon + message + hint pattern from servers.html #}
       <div id="no-server-restarts" class="hidden py-8 text-center mb-3">
-        <i data-lucide="timer-off" class="w-10 h-10 mx-auto mb-2 text-[#9CA3AF] opacity-50"></i>
+        <i data-lucide="timer-off" class="w-10 h-10 mx-auto mb-2 text-faint opacity-50"></i>
         <p class="text-sm text-muted font-medium">{{ t.no_server_restarts }}</p>
-        <p class="text-[10px] mt-1 text-[#9CA3AF]">{{ t.get('no_server_restarts_hint', 'Click the button below to schedule a server for automatic restart') }}</p>
+        <p class="text-[10px] mt-1 text-faint">{{ t.get('no_server_restarts_hint', 'Click the button below to schedule a server for automatic restart') }}</p>
       </div>
 
       {# Primary action button: blue filled (matches servers.html pattern) #}
@@ -171,8 +171,8 @@
           </thead>
           <tbody id="runbook-table-body">
             <tr><td colspan="4" class="px-3 py-8 text-center">
-              <i data-lucide="loader" class="w-6 h-6 mx-auto mb-2 text-[#9CA3AF] animate-spin"></i>
-              <p class="text-xs text-[#9CA3AF]">{{ t.get('loading', 'Loading...') }}</p>
+              <i data-lucide="loader" class="w-6 h-6 mx-auto mb-2 text-faint animate-spin"></i>
+              <p class="text-xs text-faint">{{ t.get('loading', 'Loading...') }}</p>
             </td></tr>
           </tbody>
         </table>
@@ -186,11 +186,11 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
           <label class="text-[10px] font-semibold uppercase text-muted">{{ t.name | default('Name') }}</label>
-          <input type="text" id="rb-name" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#2563EB] focus:border-transparent outline-none" placeholder="{{ t.get('runbook_name_placeholder', 'My Custom Runbook') }}">
+          <input type="text" id="rb-name" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-info focus:border-transparent outline-none" placeholder="{{ t.get('runbook_name_placeholder', 'My Custom Runbook') }}">
         </div>
         <div>
           <label class="text-[10px] font-semibold uppercase text-muted">{{ t.get('category', 'Category') }}</label>
-          <select id="rb-category" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#2563EB] focus:border-transparent outline-none">
+          <select id="rb-category" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-info focus:border-transparent outline-none">
             <option value="general">{{ t.get('cat_general', 'General') }}</option>
             <option value="maintenance">{{ t.get('cat_maintenance', 'Maintenance') }}</option>
             <option value="diagnostic">{{ t.get('cat_diagnostic', 'Diagnostic') }}</option>
@@ -202,15 +202,15 @@
       </div>
       <div class="mb-3">
         <label class="text-[10px] font-semibold uppercase text-muted">{{ t.get('description', 'Description') }}</label>
-        <input type="text" id="rb-description" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#2563EB] focus:border-transparent outline-none" placeholder="{{ t.get('runbook_desc_placeholder', 'What does this runbook do?') }}">
+        <input type="text" id="rb-description" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-info focus:border-transparent outline-none" placeholder="{{ t.get('runbook_desc_placeholder', 'What does this runbook do?') }}">
       </div>
       <div class="mb-3">
         <label class="text-[10px] font-semibold uppercase text-muted">{{ t.get('steps_json', 'Steps (JSON)') }}</label>
-        <textarea id="rb-steps" rows="5" class="w-full px-3 py-1.5 text-xs font-mono rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#2563EB] focus:border-transparent outline-none" placeholder='[{"type": "powershell", "script": "Get-Date", "timeout": 15}]'></textarea>
+        <textarea id="rb-steps" rows="5" class="w-full px-3 py-1.5 text-xs font-mono rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-info focus:border-transparent outline-none" placeholder='[{"type": "powershell", "script": "Get-Date", "timeout": 15}]'></textarea>
       </div>
       <div class="flex gap-2">
         {# Save = green (matches servers.html / monitoring.html save buttons) #}
-        <button data-action="saveRunbook" class="px-4 py-1.5 text-xs font-medium rounded bg-[#10B981] text-white hover:opacity-90">{{ t.save | default('Save') }}</button>
+        <button data-action="saveRunbook" class="px-4 py-1.5 text-xs font-medium rounded bg-healthy text-white hover:opacity-90">{{ t.save | default('Save') }}</button>
         <button data-action="hideRunbookForm" class="px-4 py-1.5 text-xs font-medium rounded border border-line hover:bg-page">{{ t.cancel | default('Cancel') }}</button>
       </div>
     </div>
@@ -234,8 +234,8 @@
           </thead>
           <tbody id="runbook-exec-table-body">
             <tr><td colspan="5" class="px-3 py-8 text-center">
-              <i data-lucide="loader" class="w-6 h-6 mx-auto mb-2 text-[#9CA3AF] animate-spin"></i>
-              <p class="text-xs text-[#9CA3AF]">{{ t.get('loading', 'Loading...') }}</p>
+              <i data-lucide="loader" class="w-6 h-6 mx-auto mb-2 text-faint animate-spin"></i>
+              <p class="text-xs text-faint">{{ t.get('loading', 'Loading...') }}</p>
             </td></tr>
           </tbody>
         </table>
@@ -280,7 +280,7 @@
             </button>
             <input type="file" id="config-upload-input" accept=".json" class="hidden" data-change="uploadConfigEl">
             <button data-action="toggleBackupList"
-                    class="px-3 py-1.5 text-xs font-medium rounded border border-info text-info hover:bg-[#2563EB]/10 flex items-center gap-1">
+                    class="px-3 py-1.5 text-xs font-medium rounded border border-info text-info hover:bg-info/10 flex items-center gap-1">
               <i data-lucide="history" class="w-3.5 h-3.5"></i>
               {{ t.backup_list }}
             </button>
@@ -319,7 +319,7 @@
         <div class="bg-page dark:bg-page/50 rounded-lg p-3 border border-line">
           <div class="text-xs font-medium text-muted mb-1">{{ t.collector_status }}</div>
           <div id="health-collector" class="text-sm font-semibold">
-            <span class="inline-block w-2 h-2 rounded-full bg-[#6B7280] mr-1"></span>--
+            <span class="inline-block w-2 h-2 rounded-full bg-muted mr-1"></span>--
           </div>
         </div>
         <!-- Last Collection -->
@@ -355,7 +355,7 @@
       </div>
       <div class="flex items-center gap-3">
         <button data-action="vacuumDatabase" id="vacuum-btn"
-                class="px-3 py-1.5 text-xs font-medium rounded border border-warning text-warning hover:bg-[#F59E0B]/10 flex items-center gap-1.5">
+                class="px-3 py-1.5 text-xs font-medium rounded border border-warning text-warning hover:bg-warning/10 flex items-center gap-1.5">
           <i data-lucide="hard-drive" class="w-3.5 h-3.5"></i>
           {{ t.vacuum_db }}
         </button>
@@ -430,12 +430,12 @@
       <!-- Clean Data -->
       <div class="bg-page dark:bg-page/50 rounded-lg p-4 border border-line flex flex-col">
         <div class="flex items-center gap-2 mb-2">
-          <i data-lucide="eraser" class="w-4 h-4 text-[#F59E0B]"></i>
+          <i data-lucide="eraser" class="w-4 h-4 text-warning"></i>
           <span class="text-sm font-medium">{{ t.clean_data }}</span>
         </div>
         <p class="text-[10px] text-muted mb-3 flex-1">{{ t.clean_data_desc }}</p>
         <button data-action="showDataActionModal" data-args='["clean"]'
-                class="w-full px-3 py-1.5 text-xs font-medium rounded border border-warning text-warning hover:bg-[#F59E0B]/10 flex items-center justify-center gap-1">
+                class="w-full px-3 py-1.5 text-xs font-medium rounded border border-warning text-warning hover:bg-warning/10 flex items-center justify-center gap-1">
           <i data-lucide="eraser" class="w-3.5 h-3.5"></i>
           {{ t.clean_data }}
         </button>
@@ -444,12 +444,12 @@
       <!-- Delete All -->
       <div class="bg-page dark:bg-page/50 rounded-lg p-4 border border-line flex flex-col">
         <div class="flex items-center gap-2 mb-2">
-          <i data-lucide="trash-2" class="w-4 h-4 text-[#DC2626]"></i>
+          <i data-lucide="trash-2" class="w-4 h-4 text-critical"></i>
           <span class="text-sm font-medium">{{ t.delete_all }}</span>
         </div>
         <p class="text-[10px] text-muted mb-3 flex-1">{{ t.delete_all_desc }}</p>
         <button data-action="showDataActionModal" data-args='["delete"]'
-                class="w-full px-3 py-1.5 text-xs font-medium rounded border border-critical text-critical hover:bg-[#DC2626]/10 flex items-center justify-center gap-1">
+                class="w-full px-3 py-1.5 text-xs font-medium rounded border border-critical text-critical hover:bg-critical/10 flex items-center justify-center gap-1">
           <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
           {{ t.delete_all }}
         </button>
@@ -458,7 +458,7 @@
       <!-- Factory Reset -->
       <div class="bg-page dark:bg-page/50 rounded-lg p-4 border border-critical/20 flex flex-col">
         <div class="flex items-center gap-2 mb-2">
-          <i data-lucide="bomb" class="w-4 h-4 text-[#DC2626]"></i>
+          <i data-lucide="bomb" class="w-4 h-4 text-critical"></i>
           <span class="text-sm font-medium text-critical">{{ t.factory_reset }}</span>
         </div>
         <p class="text-[10px] text-muted mb-3 flex-1">{{ t.factory_reset_desc }}</p>
@@ -481,10 +481,10 @@
     <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-sm relative">
       <div class="flex items-center justify-between p-4 border-b border-line">
         <h3 class="text-base font-semibold flex items-center gap-2">
-          <i data-lucide="alert-triangle" class="w-5 h-5 text-[#DC2626]"></i>
+          <i data-lucide="alert-triangle" class="w-5 h-5 text-critical"></i>
           {{ t.confirm_action }}
         </h3>
-        <button data-action="closeDataActionModal" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeDataActionModal" class="p-1 text-muted hover:text-[#1F2937] dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -527,20 +527,20 @@
     <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-lg max-h-[80vh] flex flex-col relative">
       <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
         <h3 id="picker-title" class="text-lg font-semibold flex items-center gap-2">
-          <i data-lucide="list" class="w-5 h-5 text-[#8B5CF6]"></i>
+          <i data-lucide="list" class="w-5 h-5 text-brand"></i>
           <span>{{ t.get('choose_services', 'Choose Services') }}</span>
         </h3>
-        <button data-action="closePickerModal" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closePickerModal" class="p-1 text-muted hover:text-[#1F2937] dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
       <div class="px-4 pt-3 pb-2 flex-shrink-0 space-y-2">
         <input type="text" id="picker-search" data-input="filterPickerItems"
                placeholder="{{ t.get('search_filter', 'Search / filter...') }}"
-               class="w-full px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#8B5CF6] focus:border-transparent outline-none">
+               class="w-full px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-brand focus:border-transparent outline-none">
         <label id="picker-running-only-wrap" class="hidden items-center gap-2 cursor-pointer">
           <input type="checkbox" id="picker-running-only" checked data-change="filterPickerItems"
-                 class="rounded border-[#D1D5DB] dark:border-[#475569] text-[#10B981] focus:ring-[#10B981]">
+                 class="rounded border-[#D1D5DB] dark:border-[#475569] text-healthy focus:ring-healthy">
           <span class="text-xs text-muted">{{ t.get('running_only', 'Running only') }}</span>
           <span id="picker-counts" class="text-[10px] text-faint"></span>
         </label>
@@ -558,7 +558,7 @@
         </div>
         <div class="flex gap-2">
           <button data-action="closePickerModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
-          <button data-action="applyPickerSelection" class="px-4 py-1.5 text-sm rounded bg-[#8B5CF6] text-white hover:opacity-90 flex items-center gap-1.5">
+          <button data-action="applyPickerSelection" class="px-4 py-1.5 text-sm rounded bg-brand text-white hover:opacity-90 flex items-center gap-1.5">
             <i data-lucide="check" class="w-4 h-4"></i>
             {{ t.get('apply_selection', 'Apply') }}
           </button>
@@ -581,10 +581,10 @@
     <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-md relative">
       <div class="flex items-center justify-between p-4 border-b border-line">
         <h3 class="text-base font-semibold flex items-center gap-2">
-          <i data-lucide="play" class="w-5 h-5 text-[#10B981]"></i>
+          <i data-lucide="play" class="w-5 h-5 text-healthy"></i>
           <span id="rb-run-title">{{ t.get('run_runbook', 'Run Runbook') }}</span>
         </h3>
-        <button data-action="closeRunbookRunModal" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeRunbookRunModal" class="p-1 text-muted hover:text-[#1F2937] dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -592,7 +592,7 @@
         <div id="rb-run-desc" class="text-xs text-muted"></div>
         <div>
           <label class="block text-[10px] font-semibold uppercase mb-1 text-muted">{{ t.get('target_server', 'Target Server') }}</label>
-          <select id="rb-run-server" class="w-full px-3 py-2 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#10B981] focus:border-transparent outline-none">
+          <select id="rb-run-server" class="w-full px-3 py-2 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-healthy focus:border-transparent outline-none">
             {% for s in servers %}
             <option value="{{ s.name }}">{{ s.name }} ({{ s.host }})</option>
             {% endfor %}
@@ -602,20 +602,20 @@
           <input type="checkbox" id="rb-run-dry" checked>
           <div>
             <span class="text-xs font-medium">{{ t.get('dry_run', 'Dry Run') }}</span>
-            <div class="text-[10px] text-[#9CA3AF]">{{ t.get('dry_run_help', 'Validate steps without executing them on the server') }}</div>
+            <div class="text-[10px] text-faint">{{ t.get('dry_run_help', 'Validate steps without executing them on the server') }}</div>
           </div>
         </label>
         <div id="rb-run-output" class="hidden mt-2">
           <div class="flex items-center gap-2 mb-1">
             <span id="rb-run-status" class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium"></span>
-            <span id="rb-run-duration" class="text-[10px] text-[#9CA3AF]"></span>
+            <span id="rb-run-duration" class="text-[10px] text-faint"></span>
           </div>
           <pre id="rb-run-content" class="px-3 py-2 text-[10px] font-mono whitespace-pre-wrap max-h-48 overflow-y-auto bg-page rounded border border-line"></pre>
         </div>
       </div>
       <div class="flex justify-end gap-2 p-4 border-t border-line">
         <button data-action="closeRunbookRunModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
-        <button id="rb-run-confirm-btn" data-action="confirmRunbookRun" class="px-4 py-1.5 text-sm font-medium rounded bg-[#10B981] text-white hover:opacity-90 flex items-center gap-1.5">
+        <button id="rb-run-confirm-btn" data-action="confirmRunbookRun" class="px-4 py-1.5 text-sm font-medium rounded bg-healthy text-white hover:opacity-90 flex items-center gap-1.5">
           <i data-lucide="play" class="w-4 h-4"></i>
           <span>{{ t.get('execute', 'Execute') }}</span>
         </button>
@@ -712,17 +712,17 @@ function addServerRestartRow(data) {
         ${serverOpts}
       </select>
       <label class="flex items-center gap-1.5 px-2 py-1 rounded border border-warning/30 dark:border-[#F59E0B]/20 bg-warning/5 dark:bg-[#F59E0B]/5 cursor-pointer" title="` + {{ t.install_updates_desc | tojson }} + `">
-        <input type="checkbox" class="sr-install-updates w-3.5 h-3.5 rounded border-[#D1D5DB] dark:border-[#475569] accent-[#F59E0B]" ${d.install_updates ? 'checked' : ''}>
+        <input type="checkbox" class="sr-install-updates w-3.5 h-3.5 rounded border-[#D1D5DB] dark:border-[#475569] accent-warning" ${d.install_updates ? 'checked' : ''}>
         <i data-lucide="download" class="w-3 h-3 text-warning"></i>
         <span class="text-[10px] font-medium text-[#92400E] dark:text-[#FCD34D]">` + {{ t.install_updates | tojson }} + `</span>
       </label>
       <div class="flex items-center gap-1 ml-auto">
-        <button data-action="toggleConditionsEl" class="px-2 py-1 text-[10px] font-medium rounded border border-brand text-brand hover:bg-[#8B5CF6]/10 flex items-center gap-1" title="` + {{ t.restart_conditions | tojson }} + `">
+        <button data-action="toggleConditionsEl" class="px-2 py-1 text-[10px] font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1" title="` + {{ t.restart_conditions | tojson }} + `">
           <i data-lucide="filter" class="w-3 h-3"></i>
           <span class="sr-cond-count">${conditions.length || 0}</span>
         </button>
         <button data-action="removeRestartRowEl" title="` + {{ t.delete | default('Delete') | tojson }} + `"
-                class="inline-flex items-center justify-center w-7 h-7 rounded border border-[#DC2626] text-[#DC2626] hover:bg-[#DC2626]/10">
+                class="inline-flex items-center justify-center w-7 h-7 rounded border border-critical text-critical hover:bg-critical/10">
           <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
         </button>
       </div>
@@ -730,7 +730,7 @@ function addServerRestartRow(data) {
     <div class="sr-conditions hidden border-t border-line bg-card/50 dark:bg-card/50 p-2.5">
       <div class="flex items-center justify-between mb-2">
         <span class="text-[10px] font-semibold uppercase tracking-wider text-brand">` + {{ t.restart_conditions | tojson }} + `</span>
-        <button data-action="addConditionToRowEl" class="px-2 py-0.5 text-[10px] font-medium rounded border border-brand text-brand hover:bg-[#8B5CF6]/10 flex items-center gap-1">
+        <button data-action="addConditionToRowEl" class="px-2 py-0.5 text-[10px] font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1">
           <i data-lucide="plus" class="w-3 h-3"></i>
           ` + {{ t.add_condition | tojson }} + `
         </button>
@@ -789,7 +789,7 @@ function addConditionToRow(btn, data) {
       <input type="number" class="cond-timeout w-14 px-1 py-0.5 text-[11px] rounded border border-line bg-white dark:bg-[#0F172A] text-center" value="${d.timeout || 300}" min="30" max="3600">
       <span class="text-[10px] text-muted">s</span>
     </div>
-    <button data-action="removeConditionEl" class="p-0.5 text-critical hover:bg-[#DC2626]/10 rounded ml-auto" title="` + {{ t.remove_condition | tojson }} + `">
+    <button data-action="removeConditionEl" class="p-0.5 text-critical hover:bg-critical/10 rounded ml-auto" title="` + {{ t.remove_condition | tojson }} + `">
       <i data-lucide="x" class="w-3 h-3"></i>
     </button>`;
   condList.appendChild(condRow);
@@ -941,7 +941,7 @@ function openServicePicker(btn) {
   const _loadingText = {{ t.get('loading', 'Loading...') | tojson }};
   document.getElementById('picker-list').innerHTML = `
     <div class="text-center py-8">
-      <div class="animate-spin rounded-full h-6 w-6 border-2 border-[#8B5CF6] border-t-transparent mx-auto"></div>
+      <div class="animate-spin rounded-full h-6 w-6 border-2 border-brand border-t-transparent mx-auto"></div>
       <p class="text-xs text-muted mt-2">${_loadingText}</p>
     </div>`;
   document.getElementById('picker-select-all-btn').classList.add('hidden');
@@ -1032,7 +1032,7 @@ function renderPickerItems(items) {
 
     return `
       <label class="flex items-center gap-2 px-3 py-1.5 rounded hover:bg-page dark:hover:bg-page/60 cursor-pointer">
-        <input type="checkbox" class="picker-check rounded border-[#D1D5DB] dark:border-[#475569] text-[#8B5CF6] focus:ring-[#8B5CF6]" value="${safeName}" ${checked}>
+        <input type="checkbox" class="picker-check rounded border-[#D1D5DB] dark:border-[#475569] text-brand focus:ring-brand" value="${safeName}" ${checked}>
         <span class="text-xs font-medium min-w-[120px]">${safeName}</span>
         <span class="flex items-center gap-1.5 ml-auto">${detail}</span>
       </label>`;
@@ -1093,7 +1093,7 @@ function loadRunbooksSettings() {
     .then(data => {
       if (!data.ok) {
         document.getElementById('runbook-table-body').innerHTML =
-          '<tr><td colspan="4" class="px-3 py-8 text-center text-[#DC2626]">' +
+          '<tr><td colspan="4" class="px-3 py-8 text-center text-critical">' +
           {{ t.get('failed_to_load_runbooks', 'Failed to load runbooks') | tojson }} + '</td></tr>';
         return;
       }
@@ -1101,9 +1101,9 @@ function loadRunbooksSettings() {
       const tbody = document.getElementById('runbook-table-body');
       if (_opsRunbooks.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" class="px-3 py-10 text-center">' +
-          '<i data-lucide="book-open" class="w-10 h-10 mx-auto mb-2 text-[#9CA3AF] opacity-50"></i>' +
+          '<i data-lucide="book-open" class="w-10 h-10 mx-auto mb-2 text-faint opacity-50"></i>' +
           '<p class="text-sm text-muted font-medium">' + {{ t.get('no_runbooks', 'No runbooks yet') | tojson }} + '</p>' +
-          '<p class="text-[10px] mt-1 text-[#9CA3AF]">' + {{ t.get('no_runbooks_hint', 'Click Create Runbook to add your first one') | tojson }} + '</p>' +
+          '<p class="text-[10px] mt-1 text-faint">' + {{ t.get('no_runbooks_hint', 'Click Create Runbook to add your first one') | tojson }} + '</p>' +
           '</td></tr>';
         if (typeof lucide !== 'undefined') lucide.createIcons();
         return;
@@ -1111,25 +1111,25 @@ function loadRunbooksSettings() {
       let html = '';
       _opsRunbooks.forEach(rb => {
         const typeBadge = rb.is_builtin
-          ? '<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#8B5CF6]/10 text-[#8B5CF6]">' + RB_T.builtin + '</span>'
-          : '<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#10B981]/10 text-[#10B981]">' + RB_T.custom + '</span>';
+          ? '<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-brand/10 text-brand">' + RB_T.builtin + '</span>'
+          : '<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-healthy/10 text-healthy">' + RB_T.custom + '</span>';
         // Run button is always available; Edit/Delete only for custom (built-ins are read-only)
         const runBtn = '<button data-action="openRunbookRunModal" data-args="[' + rb.id + ']" ' +
           'title="' + {{ t.get('run_runbook', 'Run on a server') | tojson }} + '" ' +
-          'class="inline-flex items-center justify-center w-7 h-7 rounded border border-[#10B981] text-[#10B981] hover:bg-[#10B981]/10">' +
+          'class="inline-flex items-center justify-center w-7 h-7 rounded border border-healthy text-healthy hover:bg-healthy/10">' +
           '<i data-lucide="play" class="w-3.5 h-3.5"></i></button>';
         const editBtn = rb.is_builtin ? '' :
           '<button data-action="editRunbook" data-args="[' + rb.id + ']" title="' + {{ t.edit | default('Edit') | tojson }} + '" ' +
-          'class="inline-flex items-center justify-center w-7 h-7 rounded border border-line text-info hover:bg-[#2563EB]/10">' +
+          'class="inline-flex items-center justify-center w-7 h-7 rounded border border-line text-info hover:bg-info/10">' +
           '<i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>';
         const delBtn = rb.is_builtin ? '' :
           '<button data-action="deleteRunbook" data-args="[' + rb.id + ', ' + JSON.stringify(rb.name).replace(/"/g, '&quot;') + ']" ' +
           'title="' + {{ t.delete | default('Delete') | tojson }} + '" ' +
-          'class="inline-flex items-center justify-center w-7 h-7 rounded border border-[#DC2626] text-[#DC2626] hover:bg-[#DC2626]/10">' +
+          'class="inline-flex items-center justify-center w-7 h-7 rounded border border-critical text-critical hover:bg-critical/10">' +
           '<i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>';
         const actions = '<div class="inline-flex items-center gap-1">' + runBtn + editBtn + delBtn + '</div>';
         html += '<tr class="border-b border-line hover:bg-page dark:hover:bg-page/50">';
-        html += '<td class="px-3 py-2">' + _escHtml(rb.name) + (rb.description ? '<div class="text-[10px] text-[#9CA3AF]">' + _escHtml(rb.description) + '</div>' : '') + '</td>';
+        html += '<td class="px-3 py-2">' + _escHtml(rb.name) + (rb.description ? '<div class="text-[10px] text-faint">' + _escHtml(rb.description) + '</div>' : '') + '</td>';
         html += '<td class="px-3 py-2 text-muted">' + _escHtml(rb.category || 'general') + '</td>';
         html += '<td class="px-3 py-2">' + typeBadge + '</td>';
         html += '<td class="px-3 py-2 text-right">' + actions + '</td>';
@@ -1141,7 +1141,7 @@ function loadRunbooksSettings() {
     .catch(err => {
       // Don't swallow — surface the error to the user
       document.getElementById('runbook-table-body').innerHTML =
-        '<tr><td colspan="4" class="px-3 py-8 text-center text-[#DC2626]">' +
+        '<tr><td colspan="4" class="px-3 py-8 text-center text-critical">' +
         {{ t.get('failed_to_load_runbooks', 'Failed to load runbooks') | tojson }} + ': ' + (err.message || '') + '</td></tr>';
     });
 }
@@ -1152,16 +1152,16 @@ function loadRunbookExecHistory() {
     .then(data => {
       if (!data.ok) {
         document.getElementById('runbook-exec-table-body').innerHTML =
-          '<tr><td colspan="5" class="px-3 py-8 text-center text-[#DC2626]">' +
+          '<tr><td colspan="5" class="px-3 py-8 text-center text-critical">' +
           {{ t.get('failed_to_load_executions', 'Failed to load execution history') | tojson }} + '</td></tr>';
         return;
       }
       const tbody = document.getElementById('runbook-exec-table-body');
       if (data.executions.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-10 text-center">' +
-          '<i data-lucide="history" class="w-10 h-10 mx-auto mb-2 text-[#9CA3AF] opacity-50"></i>' +
+          '<i data-lucide="history" class="w-10 h-10 mx-auto mb-2 text-faint opacity-50"></i>' +
           '<p class="text-sm text-muted font-medium">' + {{ t.get('no_executions', 'No executions yet') | tojson }} + '</p>' +
-          '<p class="text-[10px] mt-1 text-[#9CA3AF]">' + {{ t.get('no_executions_hint', 'Click the play icon on any runbook to run it') | tojson }} + '</p>' +
+          '<p class="text-[10px] mt-1 text-faint">' + {{ t.get('no_executions_hint', 'Click the play icon on any runbook to run it') | tojson }} + '</p>' +
           '</td></tr>';
         if (typeof lucide !== 'undefined') lucide.createIcons();
         return;
@@ -1180,7 +1180,7 @@ function loadRunbookExecHistory() {
         const ts = (typeof formatTs === 'function') ? formatTs(ex.timestamp) : (ex.timestamp || '').substring(0, 16);
         const dur = ex.duration_ms ? (ex.duration_ms / 1000).toFixed(1) + 's' : '-';
         html += '<tr class="border-b border-line">';
-        html += '<td class="px-3 py-2">' + (ex.runbook_name || '#' + ex.runbook_id) + (ex.dry_run ? ' <span class="text-[10px] text-[#9CA3AF]">(dry run)</span>' : '') + '</td>';
+        html += '<td class="px-3 py-2">' + (ex.runbook_name || '#' + ex.runbook_id) + (ex.dry_run ? ' <span class="text-[10px] text-faint">(dry run)</span>' : '') + '</td>';
         html += '<td class="px-3 py-2 text-muted">' + ex.server_name + '</td>';
         html += '<td class="px-3 py-2"><span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ' + cls + '">' + label + '</span></td>';
         html += '<td class="px-3 py-2 text-muted whitespace-nowrap">' + ts + '</td>';
@@ -1191,7 +1191,7 @@ function loadRunbookExecHistory() {
     })
     .catch(err => {
       document.getElementById('runbook-exec-table-body').innerHTML =
-        '<tr><td colspan="5" class="px-3 py-8 text-center text-[#DC2626]">' +
+        '<tr><td colspan="5" class="px-3 py-8 text-center text-critical">' +
         {{ t.get('failed_to_load_executions', 'Failed to load execution history') | tojson }} + ': ' + (err.message || '') + '</td></tr>';
     });
 }
@@ -1291,7 +1291,7 @@ function loadSystemHealth() {
       if (lastCycle > 0) {
         const ago = Math.round((Date.now() / 1000 - lastCycle));
         const isRecent = ago < (data.collector?.poll_interval || 60) * 3;
-        collEl.innerHTML = '<span class="inline-block w-2 h-2 rounded-full ' + (isRecent ? 'bg-[#10B981]' : 'bg-[#F59E0B]') + ' mr-1"></span>' + (isRecent ? {{ t.collector_running | tojson }} : {{ t.collector_stopped | tojson }});
+        collEl.innerHTML = '<span class="inline-block w-2 h-2 rounded-full ' + (isRecent ? 'bg-healthy' : 'bg-warning') + ' mr-1"></span>' + (isRecent ? {{ t.collector_running | tojson }} : {{ t.collector_stopped | tojson }});
       }
 
       // Last collection timestamp — under v1 this is end-of-cycle; under
@@ -1321,9 +1321,9 @@ function loadSystemHealth() {
         if (bk.last_success_ts) {
           const stale = !!bk.stale;
           const age = bk.age_hours != null ? bk.age_hours + 'h ago' : '';
-          bkEl.innerHTML = '<span class="inline-block w-2 h-2 rounded-full ' + (stale ? 'bg-[#DC2626]' : 'bg-[#10B981]') + ' mr-1"></span>' + (stale ? 'Stale' : 'Current') + (age ? ' · ' + age : '');
+          bkEl.innerHTML = '<span class="inline-block w-2 h-2 rounded-full ' + (stale ? 'bg-critical' : 'bg-healthy') + ' mr-1"></span>' + (stale ? 'Stale' : 'Current') + (age ? ' · ' + age : '');
         } else {
-          bkEl.innerHTML = '<span class="inline-block w-2 h-2 rounded-full bg-[#F59E0B] mr-1"></span>No backup yet';
+          bkEl.innerHTML = '<span class="inline-block w-2 h-2 rounded-full bg-warning mr-1"></span>No backup yet';
         }
       }
 
@@ -1331,7 +1331,7 @@ function loadSystemHealth() {
       const auEl = document.getElementById('health-audit');
       if (auEl) {
         const blind = !!(data.audit && data.audit.audit_blind);
-        auEl.innerHTML = '<span class="inline-block w-2 h-2 rounded-full ' + (blind ? 'bg-[#DC2626]' : 'bg-[#10B981]') + ' mr-1"></span>' + (blind ? 'BLIND — writes failing' : 'OK');
+        auEl.innerHTML = '<span class="inline-block w-2 h-2 rounded-full ' + (blind ? 'bg-critical' : 'bg-healthy') + ' mr-1"></span>' + (blind ? 'BLIND — writes failing' : 'OK');
       }
 
       // Scheduler thread liveness (restart / workflow / collector heartbeats).
@@ -1343,9 +1343,9 @@ function loadSystemHealth() {
         if (!names.length) {
           thEl.textContent = '--';
         } else if (!stale.length) {
-          thEl.innerHTML = '<span class="inline-block w-2 h-2 rounded-full bg-[#10B981] mr-1"></span>All ' + names.length + ' ticking';
+          thEl.innerHTML = '<span class="inline-block w-2 h-2 rounded-full bg-healthy mr-1"></span>All ' + names.length + ' ticking';
         } else {
-          thEl.innerHTML = '<span class="inline-block w-2 h-2 rounded-full bg-[#DC2626] mr-1"></span>' + stale.length + ' stale: ' + stale.join(', ');
+          thEl.innerHTML = '<span class="inline-block w-2 h-2 rounded-full bg-critical mr-1"></span>' + stale.length + ' stale: ' + stale.join(', ');
         }
       }
     })

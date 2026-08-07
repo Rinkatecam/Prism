@@ -399,7 +399,7 @@
 <!-- Page header -->
 <div class="flex items-center justify-between mb-6">
   <h1 class="text-2xl font-bold flex items-center gap-2">
-    <i data-lucide="git-branch" class="w-6 h-6 text-[#8B5CF6]"></i>
+    <i data-lucide="git-branch" class="w-6 h-6 text-brand"></i>
     {{ t.get('workflows_page', 'Workflows') }}
   </h1>
   <div class="flex items-center gap-2">
@@ -407,7 +407,7 @@
       <i data-lucide="copy" class="w-4 h-4"></i>
       {{ t.get('from_template', 'From Template') }}
     </button>
-    <button data-action="openEditor" class="px-3 py-1.5 text-sm font-medium rounded bg-[#8B5CF6] text-white hover:opacity-90 flex items-center gap-1">
+    <button data-action="openEditor" class="px-3 py-1.5 text-sm font-medium rounded bg-brand text-white hover:opacity-90 flex items-center gap-1">
       <i data-lucide="plus" class="w-4 h-4"></i>
       {{ t.get('new_workflow', 'New Workflow') }}
     </button>
@@ -416,11 +416,11 @@
 
 <!-- Category tabs -->
 <div class="flex flex-wrap items-center gap-2 mb-6" id="category-tabs">
-  <button data-action="filterByCategory" data-args="[null]" data-cat="all" class="px-3 py-1 text-xs font-medium rounded-full border border-[#8B5CF6] text-[#8B5CF6] bg-[#8B5CF6]/10">
+  <button data-action="filterByCategory" data-args="[null]" data-cat="all" class="px-3 py-1 text-xs font-medium rounded-full border border-brand text-brand bg-brand/10">
     {{ t.get('all_categories', 'All') }}
   </button>
   <div id="category-buttons" class="flex flex-wrap gap-2"></div>
-  <button data-action="showAddCategory" class="px-2 py-1 text-xs rounded-full border border-dashed border-[#9CA3AF] text-[#9CA3AF] hover:border-[#8B5CF6] hover:text-[#8B5CF6]">
+  <button data-action="showAddCategory" class="px-2 py-1 text-xs rounded-full border border-dashed border-faint text-faint hover:border-brand hover:text-brand">
     <i data-lucide="plus" class="w-3 h-3"></i>
   </button>
 </div>
@@ -436,7 +436,7 @@
 <!-- Execution History -->
 <section>
   <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">
-    <i data-lucide="history" class="w-5 h-5 text-[#6B7280]"></i>
+    <i data-lucide="history" class="w-5 h-5 text-muted"></i>
     {{ t.get('execution_history', 'Execution History') }}
   </h2>
   <div id="execution-history" class="bg-card rounded-lg border border-line overflow-hidden">
@@ -454,7 +454,7 @@
     <button data-action="closeEditor" class="p-1 rounded hover:bg-raised dark:hover:bg-[#334155]">
       <i data-lucide="x" class="w-5 h-5"></i>
     </button>
-    <input type="text" id="editor-name" placeholder="Workflow name..." class="text-sm font-semibold bg-transparent border-0 border-b border-transparent hover:border-[#E5E7EB] focus:border-[#8B5CF6] outline-none px-1 py-0.5 w-48">
+    <input type="text" id="editor-name" placeholder="Workflow name..." class="text-sm font-semibold bg-transparent border-0 border-b border-transparent hover:border-line focus:border-brand outline-none px-1 py-0.5 w-48">
     <select id="editor-category" class="text-xs px-2 py-1 rounded border border-line bg-white dark:bg-[#0F172A]">
       <option value="">No category</option>
     </select>
@@ -466,10 +466,10 @@
          workflow-level dropdown was removed 2026-05-22 to eliminate
          duplicate UI for the same concept. -->
     <div class="ml-auto flex items-center gap-2">
-      <button data-action="testRunWorkflow" title="Preview the plan without touching any server (no WinRM actions, no notifications)" aria-label="Dry run — preview only, no servers touched" class="px-3 py-1 text-xs font-medium rounded border border-[#F59E0B] text-[#F59E0B] hover:bg-[#F59E0B]/10 flex items-center gap-1">
+      <button data-action="testRunWorkflow" title="Preview the plan without touching any server (no WinRM actions, no notifications)" aria-label="Dry run — preview only, no servers touched" class="px-3 py-1 text-xs font-medium rounded border border-warning text-warning hover:bg-warning/10 flex items-center gap-1">
         <i data-lucide="flask-conical" class="w-3.5 h-3.5"></i> Dry Run
       </button>
-      <button data-action="saveWorkflow" class="px-3 py-1 text-xs font-medium rounded bg-[#10B981] text-white hover:opacity-90 flex items-center gap-1">
+      <button data-action="saveWorkflow" class="px-3 py-1 text-xs font-medium rounded bg-healthy text-white hover:opacity-90 flex items-center gap-1">
         <i data-lucide="save" class="w-3.5 h-3.5"></i> Save
       </button>
     </div>
@@ -485,7 +485,7 @@
 
     <!-- Left: Block Palette (floating overlay) -->
     <div class="absolute top-0 left-0 bottom-0 w-48 border-r border-[#404040] bg-[#1E293B] overflow-y-auto p-3" style="z-index: 30;">
-      <div class="text-[10px] font-bold uppercase tracking-wider text-[#9CA3AF] mb-2">Blocks</div>
+      <div class="text-[10px] font-bold uppercase tracking-wider text-faint mb-2">Blocks</div>
 
       <!-- Triggers (teal) — start a workflow. 0 inputs, 1 output. The
            trigger block on the canvas overrides the workflow-level
@@ -507,7 +507,7 @@
 
       <!-- Checks (blue) — test conditions, 2 outputs: success/fail -->
       <div class="mb-3">
-        <div class="text-[10px] font-semibold text-[#2563EB] mb-1">{{ t.get('checks', 'Checks') }}</div>
+        <div class="text-[10px] font-semibold text-info mb-1">{{ t.get('checks', 'Checks') }}</div>
         <div class="space-y-1" id="palette-checks">
           <div class="drag-block" data-type="check_service" data-category="check" draggable="true" title="Check if a Windows service is running">
             <i data-lucide="search" class="w-3 h-3"></i> Check Service
@@ -529,7 +529,7 @@
 
       <!-- Actions (orange) — do something on a server -->
       <div class="mb-3">
-        <div class="text-[10px] font-semibold text-[#F59E0B] mb-1">{{ t.get('actions', 'Actions') }}</div>
+        <div class="text-[10px] font-semibold text-warning mb-1">{{ t.get('actions', 'Actions') }}</div>
         <div class="space-y-1" id="palette-actions">
           <div class="drag-block" data-type="restart_service" data-category="action" draggable="true" title="Restart a Windows service (stop + start)">
             <i data-lucide="refresh-cw" class="w-3 h-3"></i> Restart Service
@@ -557,7 +557,7 @@
 
       <!-- Flow Control (purple) — routing and logic -->
       <div class="mb-3">
-        <div class="text-[10px] font-semibold text-[#8B5CF6] mb-1">{{ t.get('flow_control', 'Flow Control') }}</div>
+        <div class="text-[10px] font-semibold text-brand mb-1">{{ t.get('flow_control', 'Flow Control') }}</div>
         <div class="space-y-1" id="palette-flow">
           <div class="drag-block" data-type="wait" data-category="flow" draggable="true" title="Pause for N seconds between steps">
             <i data-lucide="clock" class="w-3 h-3"></i> Wait
@@ -579,7 +579,7 @@
 
       <!-- Notifications (green) — inform and log -->
       <div>
-        <div class="text-[10px] font-semibold text-[#10B981] mb-1">{{ t.get('notifications', 'Notifications') }}</div>
+        <div class="text-[10px] font-semibold text-healthy mb-1">{{ t.get('notifications', 'Notifications') }}</div>
         <div class="space-y-1" id="palette-notifications">
           <div class="drag-block" data-type="send_email" data-category="notification" draggable="true" title="Send email notification via SMTP">
             <i data-lucide="mail" class="w-3 h-3"></i> Send Email
@@ -604,36 +604,36 @@
     <!-- Canvas controls (floating bottom-right) -->
     <div class="absolute bottom-3 flex items-center gap-1 bg-[#2D2D2D] rounded-lg border border-[#404040] shadow-lg px-1 py-1" style="z-index: 30; right: 16px;">
       <!-- Pan arrows -->
-      <button data-mousedown="startContinuousPan" data-args='["left"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-[#9CA3AF] hover:text-white rounded" title="Pan left (←)">
+      <button data-mousedown="startContinuousPan" data-args='["left"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" title="Pan left (←)">
         <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
       </button>
-      <button data-mousedown="startContinuousPan" data-args='["up"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-[#9CA3AF] hover:text-white rounded" title="Pan up (↑)">
+      <button data-mousedown="startContinuousPan" data-args='["up"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" title="Pan up (↑)">
         <i data-lucide="arrow-up" class="w-3.5 h-3.5"></i>
       </button>
-      <button data-mousedown="startContinuousPan" data-args='["down"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-[#9CA3AF] hover:text-white rounded" title="Pan down (↓)">
+      <button data-mousedown="startContinuousPan" data-args='["down"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" title="Pan down (↓)">
         <i data-lucide="arrow-down" class="w-3.5 h-3.5"></i>
       </button>
-      <button data-mousedown="startContinuousPan" data-args='["right"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-[#9CA3AF] hover:text-white rounded" title="Pan right (→)">
+      <button data-mousedown="startContinuousPan" data-args='["right"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" title="Pan right (→)">
         <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
       </button>
       <div class="w-px h-5 bg-[#404040] mx-0.5"></div>
       <!-- Zoom -->
-      <button data-action="_wfZoomOut" class="p-1.5 text-[#9CA3AF] hover:text-white rounded" title="Zoom out (-)">
+      <button data-action="_wfZoomOut" class="p-1.5 text-faint hover:text-white rounded" title="Zoom out (-)">
         <i data-lucide="minus" class="w-3.5 h-3.5"></i>
       </button>
-      <span class="px-1.5 py-0.5 text-[10px] text-[#9CA3AF] min-w-[36px] text-center" id="zoom-level">100%</span>
-      <button data-action="_wfZoomIn" class="p-1.5 text-[#9CA3AF] hover:text-white rounded" title="Zoom in (+)">
+      <span class="px-1.5 py-0.5 text-[10px] text-faint min-w-[36px] text-center" id="zoom-level">100%</span>
+      <button data-action="_wfZoomIn" class="p-1.5 text-faint hover:text-white rounded" title="Zoom in (+)">
         <i data-lucide="plus" class="w-3.5 h-3.5"></i>
       </button>
       <div class="w-px h-5 bg-[#404040] mx-0.5"></div>
       <!-- Home / reset view -->
-      <button data-action="resetCanvasView" class="p-1.5 text-[#9CA3AF] hover:text-white rounded" title="Reset view (Home)">
+      <button data-action="resetCanvasView" class="p-1.5 text-faint hover:text-white rounded" title="Reset view (Home)">
         <i data-lucide="home" class="w-3.5 h-3.5"></i>
       </button>
     </div>
 
     <!-- Guide button (floating bottom-left, to the right of palette) -->
-    <button data-action="toggleWorkflowGuide" class="absolute bottom-3 flex items-center gap-1.5 bg-[#2D2D2D] rounded-lg border border-[#404040] shadow-lg px-3 py-2 text-[#9CA3AF] hover:text-white transition-colors" style="z-index: 30; left: 208px;" title="How to use">
+    <button data-action="toggleWorkflowGuide" class="absolute bottom-3 flex items-center gap-1.5 bg-[#2D2D2D] rounded-lg border border-[#404040] shadow-lg px-3 py-2 text-faint hover:text-white transition-colors" style="z-index: 30; left: 208px;" title="How to use">
       <i data-lucide="book-open" class="w-4 h-4"></i>
       <span class="text-[10px] font-medium">Guide</span>
     </button>
@@ -642,16 +642,16 @@
     <div id="workflow-guide" class="absolute bottom-14 w-80 max-h-[60vh] bg-[#2D2D2D] rounded-xl border border-[#404040] shadow-2xl hidden overflow-hidden flex flex-col" style="z-index: 31; left: 208px;">
       <div class="flex items-center justify-between px-4 py-3 border-b border-[#404040]">
         <h3 class="text-sm font-bold text-white flex items-center gap-2">
-          <i data-lucide="book-open" class="w-4 h-4 text-[#8B5CF6]"></i>
+          <i data-lucide="book-open" class="w-4 h-4 text-brand"></i>
           Workflow Builder Guide
         </h3>
-        <button data-action="toggleWorkflowGuide" class="text-[#6B7280] hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+        <button data-action="toggleWorkflowGuide" class="text-muted hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
       </div>
       <div class="overflow-y-auto p-4 space-y-4 text-[11px] text-[#CBD5E1] leading-relaxed">
 
         <div>
           <h4 class="text-xs font-bold text-white mb-1.5 flex items-center gap-1.5">
-            <span class="w-5 h-5 rounded bg-[#8B5CF6] flex items-center justify-center text-[10px] font-bold text-white">1</span>
+            <span class="w-5 h-5 rounded bg-brand flex items-center justify-center text-[10px] font-bold text-white">1</span>
             Start with a Trigger
           </h4>
           <p>Every workflow begins with one <strong class="text-[#14B8A6]">Trigger</strong> block (the teal section in the palette). Drag one onto the canvas first:</p>
@@ -665,26 +665,26 @@
 
         <div>
           <h4 class="text-xs font-bold text-white mb-1.5 flex items-center gap-1.5">
-            <span class="w-5 h-5 rounded bg-[#8B5CF6] flex items-center justify-center text-[10px] font-bold text-white">2</span>
+            <span class="w-5 h-5 rounded bg-brand flex items-center justify-center text-[10px] font-bold text-white">2</span>
             Adding &amp; Connecting Blocks
           </h4>
-          <p>Drag blocks from the <strong class="text-[#8B5CF6]">left palette</strong>. Connect them by dragging from an <strong>output port</strong> (right side) to an <strong>input port</strong> (left side).</p>
+          <p>Drag blocks from the <strong class="text-brand">left palette</strong>. Connect them by dragging from an <strong>output port</strong> (right side) to an <strong>input port</strong> (left side).</p>
           <p class="mt-1">Check blocks have two outputs and the connection line is colored to match the path it leaves from: <strong class="text-[#4ADE80]">green = success / true</strong>, <strong class="text-[#EF4444]">red = failure / false</strong>. You can see at a glance which branch a wire belongs to.</p>
         </div>
 
         <div>
           <h4 class="text-xs font-bold text-white mb-1.5 flex items-center gap-1.5">
-            <span class="w-5 h-5 rounded bg-[#8B5CF6] flex items-center justify-center text-[10px] font-bold text-white">3</span>
+            <span class="w-5 h-5 rounded bg-brand flex items-center justify-center text-[10px] font-bold text-white">3</span>
             Configuring Blocks
           </h4>
           <p>Left-click a block to open the <strong class="text-white">Properties Panel</strong> on the right. Set server, service/process/port name, script, etc.</p>
-          <p class="mt-1"><strong class="text-[#8B5CF6]">Browse</strong> buttons next to service / process / port fields list what's actually running on the chosen server right now — no more typing names from memory.</p>
-          <p class="mt-1">In notification text fields (email body, webhook message, log message) the <strong class="text-[#8B5CF6]">{% raw %}{{x}}{% endraw %}</strong> picker inserts variables: <code class="bg-[#1A1A1A] px-1 rounded text-[#FBBF24]">{% raw %}{{step.&lt;id&gt;.output}}{% endraw %}</code>, <code class="bg-[#1A1A1A] px-1 rounded text-[#FBBF24]">{% raw %}{{step.&lt;id&gt;.success}}{% endraw %}</code>, <code class="bg-[#1A1A1A] px-1 rounded text-[#FBBF24]">{% raw %}{{step.&lt;id&gt;.error}}{% endraw %}</code>, and <code class="bg-[#1A1A1A] px-1 rounded text-[#FBBF24]">{% raw %}{{workflow.name}}{% endraw %}</code>. They resolve at execution time from upstream blocks.</p>
+          <p class="mt-1"><strong class="text-brand">Browse</strong> buttons next to service / process / port fields list what's actually running on the chosen server right now — no more typing names from memory.</p>
+          <p class="mt-1">In notification text fields (email body, webhook message, log message) the <strong class="text-brand">{% raw %}{{x}}{% endraw %}</strong> picker inserts variables: <code class="bg-[#1A1A1A] px-1 rounded text-[#FBBF24]">{% raw %}{{step.&lt;id&gt;.output}}{% endraw %}</code>, <code class="bg-[#1A1A1A] px-1 rounded text-[#FBBF24]">{% raw %}{{step.&lt;id&gt;.success}}{% endraw %}</code>, <code class="bg-[#1A1A1A] px-1 rounded text-[#FBBF24]">{% raw %}{{step.&lt;id&gt;.error}}{% endraw %}</code>, and <code class="bg-[#1A1A1A] px-1 rounded text-[#FBBF24]">{% raw %}{{workflow.name}}{% endraw %}</code>. They resolve at execution time from upstream blocks.</p>
         </div>
 
         <div>
           <h4 class="text-xs font-bold text-white mb-1.5 flex items-center gap-1.5">
-            <span class="w-5 h-5 rounded bg-[#8B5CF6] flex items-center justify-center text-[10px] font-bold text-white">4</span>
+            <span class="w-5 h-5 rounded bg-brand flex items-center justify-center text-[10px] font-bold text-white">4</span>
             Canvas Navigation &amp; Selection
           </h4>
           <p><strong>Pan:</strong> click + drag on empty canvas<br>
@@ -697,7 +697,7 @@
 
         <div>
           <h4 class="text-xs font-bold text-white mb-1.5 flex items-center gap-1.5">
-            <span class="w-5 h-5 rounded bg-[#8B5CF6] flex items-center justify-center text-[10px] font-bold text-white">5</span>
+            <span class="w-5 h-5 rounded bg-brand flex items-center justify-center text-[10px] font-bold text-white">5</span>
             Right-Click Context Menu
           </h4>
           <p><strong>Right-click on a block:</strong> Enable / Disable, Clone, or Delete — without opening the properties panel.</p>
@@ -708,40 +708,40 @@
 
         <div>
           <h4 class="text-xs font-bold text-white mb-1.5 flex items-center gap-1.5">
-            <span class="w-5 h-5 rounded bg-[#8B5CF6] flex items-center justify-center text-[10px] font-bold text-white">6</span>
+            <span class="w-5 h-5 rounded bg-brand flex items-center justify-center text-[10px] font-bold text-white">6</span>
             Block Types
           </h4>
           <div class="space-y-1.5 mt-1">
             <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-[#14B8A6]"></span><strong class="text-white">Triggers</strong> — Manual / Schedule / Event. Required as the first block. 0 inputs, 1 output.</div>
-            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-[#2563EB]"></span><strong class="text-white">Checks</strong> — Test something (service, process, port, URL, threshold). Two outputs: success (green) + fail (red).</div>
-            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-[#F59E0B]"></span><strong class="text-white">Actions</strong> — Do something (restart service, kill process, run script, reboot, etc.). Sandboxed PowerShell.</div>
-            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-[#8B5CF6]"></span><strong class="text-white">Flow Control</strong> — Wait, Retry, AND / OR gates for branching.</div>
-            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-[#10B981]"></span><strong class="text-white">Notifications</strong> — Email, webhook, log event. Use the variable picker to embed upstream data.</div>
+            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-info"></span><strong class="text-white">Checks</strong> — Test something (service, process, port, URL, threshold). Two outputs: success (green) + fail (red).</div>
+            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-warning"></span><strong class="text-white">Actions</strong> — Do something (restart service, kill process, run script, reboot, etc.). Sandboxed PowerShell.</div>
+            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-brand"></span><strong class="text-white">Flow Control</strong> — Wait, Retry, AND / OR gates for branching.</div>
+            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-healthy"></span><strong class="text-white">Notifications</strong> — Email, webhook, log event. Use the variable picker to embed upstream data.</div>
           </div>
         </div>
 
         <div>
           <h4 class="text-xs font-bold text-white mb-1.5 flex items-center gap-1.5">
-            <span class="w-5 h-5 rounded bg-[#8B5CF6] flex items-center justify-center text-[10px] font-bold text-white">7</span>
+            <span class="w-5 h-5 rounded bg-brand flex items-center justify-center text-[10px] font-bold text-white">7</span>
             Tags &amp; Categories
           </h4>
-          <p>Categories color-code workflows and filter the list. Click <strong class="text-[#8B5CF6]">+</strong> next to the category bar to add one; hover any custom category and click the <strong class="text-[#EF4444]">×</strong> to delete it. The built-in <em>All</em> category cannot be removed.</p>
+          <p>Categories color-code workflows and filter the list. Click <strong class="text-brand">+</strong> next to the category bar to add one; hover any custom category and click the <strong class="text-[#EF4444]">×</strong> to delete it. The built-in <em>All</em> category cannot be removed.</p>
         </div>
 
         <div>
           <h4 class="text-xs font-bold text-white mb-1.5 flex items-center gap-1.5">
-            <span class="w-5 h-5 rounded bg-[#8B5CF6] flex items-center justify-center text-[10px] font-bold text-white">8</span>
+            <span class="w-5 h-5 rounded bg-brand flex items-center justify-center text-[10px] font-bold text-white">8</span>
             Example: Service Recovery
           </h4>
           <p class="text-[10px] bg-[#1A1A1A] rounded p-2 font-mono leading-relaxed">
             <span class="text-[#14B8A6]">Event Trigger</span> (Spooler stopped) →<br>
-            <span class="text-[#F59E0B]">Restart Service</span> →
-            <span class="text-[#8B5CF6]">Wait 30s</span> →<br>
-            <span class="text-[#2563EB]">Check Service</span><br>
+            <span class="text-warning">Restart Service</span> →
+            <span class="text-brand">Wait 30s</span> →<br>
+            <span class="text-info">Check Service</span><br>
             &nbsp;&nbsp;<span class="text-[#4ADE80]">✓ success</span> →
-            <span class="text-[#10B981]">Send Email</span> "Recovered: {% raw %}{{step.4.output}}{% endraw %}"<br>
+            <span class="text-healthy">Send Email</span> "Recovered: {% raw %}{{step.4.output}}{% endraw %}"<br>
             &nbsp;&nbsp;<span class="text-[#EF4444]">✗ fail</span> →
-            <span class="text-[#10B981]">Send Webhook</span> "Still down"
+            <span class="text-healthy">Send Webhook</span> "Still down"
           </p>
         </div>
 
@@ -800,7 +800,7 @@
       </div>
       <div class="flex justify-end gap-2 pt-2">
         <button data-action="closeAddCategory" class="px-3 py-1.5 text-xs font-medium rounded border border-line">Cancel</button>
-        <button data-action="submitAddCategory" class="px-3 py-1.5 text-xs font-medium rounded bg-[#8B5CF6] text-white hover:opacity-90">Create</button>
+        <button data-action="submitAddCategory" class="px-3 py-1.5 text-xs font-medium rounded bg-brand text-white hover:opacity-90">Create</button>
       </div>
     </div>
   </div>
@@ -1059,7 +1059,7 @@ function renderCategoryButtons() {
     // Each element carries the data it needs via data-* attributes.
     return `<span data-cat="${c.id}" data-cat-id="${c.id}" data-cat-name="${escapeHtml(c.name)}" class="wf-cat-chip inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full border cursor-pointer" style="${style}" title="Click to filter; × to delete">
       <span class="wf-cat-label">${escapeHtml(c.name)}</span>
-      <button type="button" class="wf-cat-delete -mr-1 flex items-center opacity-60 hover:opacity-100 hover:text-[#DC2626]" title="Delete this category">
+      <button type="button" class="wf-cat-delete -mr-1 flex items-center opacity-60 hover:opacity-100 hover:text-critical" title="Delete this category">
         <i data-lucide="x" class="w-3 h-3 pointer-events-none"></i>
       </button>
     </span>`;
@@ -1138,7 +1138,7 @@ function renderWorkflowCard(wf) {
       <div class="p-4">
         <div class="flex items-start justify-between mb-2">
           <h3 class="text-sm font-semibold text-ink dark:text-[#F9FAFB] truncate">${wf.name}</h3>
-          ${wf.is_template ? '<span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-[#8B5CF6]/10 text-[#8B5CF6]">TEMPLATE</span>' : ''}
+          ${wf.is_template ? '<span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-brand/10 text-brand">TEMPLATE</span>' : ''}
         </div>
         ${wf.description ? `<p class="text-[11px] text-muted mb-3 line-clamp-2">${wf.description}</p>` : '<div class="mb-3"></div>'}
         <div class="flex flex-wrap gap-2 mb-3 text-[10px]">
@@ -1153,13 +1153,13 @@ function renderWorkflowCard(wf) {
           ${wf.category_name ? `<span class="px-1.5 py-0.5 rounded-full text-[9px] font-medium" style="background-color: ${catColor}15; color: ${catColor}; border: 1px solid ${catColor}30;">${wf.category_name}</span>` : ''}
         </div>
         <div class="flex items-center gap-2">
-          <button data-action="runWorkflow" data-args="[${wf.id}]" class="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-[#10B981] text-white hover:opacity-90 flex items-center justify-center gap-1">
+          <button data-action="runWorkflow" data-args="[${wf.id}]" class="flex-1 px-2 py-1 text-[11px] font-medium rounded bg-healthy text-white hover:opacity-90 flex items-center justify-center gap-1">
             <i data-lucide="play" class="w-3 h-3"></i> Run
           </button>
-          <button data-action="openEditor" data-args="[${wf.id}]" class="flex-1 px-2 py-1 text-[11px] font-medium rounded border border-[#2563EB] text-[#2563EB] hover:bg-[#2563EB]/10 flex items-center justify-center gap-1">
+          <button data-action="openEditor" data-args="[${wf.id}]" class="flex-1 px-2 py-1 text-[11px] font-medium rounded border border-info text-info hover:bg-info/10 flex items-center justify-center gap-1">
             <i data-lucide="edit-3" class="w-3 h-3"></i> Edit
           </button>
-          ${!wf.is_template ? `<button data-action="deleteWorkflow" data-args='[${wf.id}, ${JSON.stringify(wf.name || '').replace(/&/g, "&amp;").replace(/'/g, "&#39;")}]' class="px-2 py-1 text-[11px] rounded border border-[#DC2626] text-[#DC2626] hover:bg-[#DC2626]/10">
+          ${!wf.is_template ? `<button data-action="deleteWorkflow" data-args='[${wf.id}, ${JSON.stringify(wf.name || '').replace(/&/g, "&amp;").replace(/'/g, "&#39;")}]' class="px-2 py-1 text-[11px] rounded border border-critical text-critical hover:bg-critical/10">
             <i data-lucide="trash-2" class="w-3 h-3"></i>
           </button>` : ''}
         </div>
@@ -1184,7 +1184,7 @@ function renderExecutionHistory(executions) {
       <td class="px-4 py-2 text-xs font-medium">${ex.workflow_name || 'Workflow #' + ex.workflow_id}</td>
       <td class="px-4 py-2 text-xs"><span class="flex items-center gap-1 ${sc}"><i data-lucide="${si}" class="w-3.5 h-3.5${extra}"></i> ${ex.status}</span></td>
       <td class="px-4 py-2 text-xs text-muted">${ex.trigger_source === 'dry-run'
-        ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-[#8B5CF6]/15 text-[#8B5CF6]">Dry-run</span>'
+        ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-brand/15 text-brand">Dry-run</span>'
         : (ex.trigger_source || 'manual')}</td>
       <td class="px-4 py-2 text-xs text-muted">${formatTs(ex.started_at)}</td>
       <td class="px-4 py-2 text-xs text-muted">${ex.duration_seconds != null ? ex.duration_seconds + 's' : (ex.status === 'running' ? '...' : '-')}</td>
@@ -1515,22 +1515,22 @@ function openTemplateGallery() {
   const modal = document.getElementById('template-modal');
   modal.style.display = '';
   modal.classList.remove('hidden');
-  document.getElementById('template-list').innerHTML = '<div class="text-center text-sm text-[#6B7280] py-4">Loading templates...</div>';
+  document.getElementById('template-list').innerHTML = '<div class="text-center text-sm text-muted py-4">Loading templates...</div>';
   _api('GET', '/api/workflows/templates').then(r => {
     if (!r.ok) return;
     const templates = r.templates || [];
     if (!templates.length) {
-      document.getElementById('template-list').innerHTML = '<div class="text-center text-sm text-[#6B7280] py-4">No templates available.</div>';
+      document.getElementById('template-list').innerHTML = '<div class="text-center text-sm text-muted py-4">No templates available.</div>';
       return;
     }
     document.getElementById('template-list').innerHTML = templates.map(t => `
       <div class="border border-line rounded-lg p-4 hover:shadow-md transition-shadow">
         <div class="flex items-center justify-between mb-2">
           <h4 class="text-sm font-semibold">${t.name}</h4>
-          <span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-[#8B5CF6]/10 text-[#8B5CF6]">TEMPLATE</span>
+          <span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-brand/10 text-brand">TEMPLATE</span>
         </div>
         ${t.description ? `<p class="text-xs text-muted mb-3">${t.description}</p>` : ''}
-        <button data-action="cloneTemplate" data-args="[${t.id}]" class="px-3 py-1 text-xs font-medium rounded bg-[#8B5CF6] text-white hover:opacity-90 flex items-center gap-1">
+        <button data-action="cloneTemplate" data-args="[${t.id}]" class="px-3 py-1 text-xs font-medium rounded bg-brand text-white hover:opacity-90 flex items-center gap-1">
           <i data-lucide="copy" class="w-3 h-3"></i> Use Template
         </button>
       </div>
@@ -1569,11 +1569,11 @@ function showExecution(execId) {
   panel.style.display = 'flex';
   panel.style.flexDirection = 'column';
   panel.classList.remove('hidden');
-  document.getElementById('exec-slideout-content').innerHTML = '<div class="text-center text-sm text-[#6B7280] py-4">Loading...</div>';
+  document.getElementById('exec-slideout-content').innerHTML = '<div class="text-center text-sm text-muted py-4">Loading...</div>';
 
   _api('GET', `/api/workflows/executions/${execId}`).then(r => {
     if (!r.ok) {
-      document.getElementById('exec-slideout-content').innerHTML = `<div class="text-center text-sm text-[#DC2626] py-4">${r.error || 'Not found'}</div>`;
+      document.getElementById('exec-slideout-content').innerHTML = `<div class="text-center text-sm text-critical py-4">${r.error || 'Not found'}</div>`;
       return;
     }
     const ex = r.execution;
@@ -1601,7 +1601,7 @@ function showExecution(execId) {
       </div>`;
 
     if (ex.status === 'running') {
-      html += `<button data-action="cancelExecution" data-args="[${execId}]" class="mb-4 px-3 py-1 text-xs font-medium rounded border border-[#DC2626] text-[#DC2626] hover:bg-[#DC2626]/10">Cancel</button>`;
+      html += `<button data-action="cancelExecution" data-args="[${execId}]" class="mb-4 px-3 py-1 text-xs font-medium rounded border border-critical text-critical hover:bg-critical/10">Cancel</button>`;
     }
 
     // Steps
@@ -1621,7 +1621,7 @@ function showExecution(execId) {
             <span class="text-[10px] px-1 py-0.5 rounded" style="background:${ssc}20;color:${ssc}">${step.status}</span>
           </div>
           ${step.output ? `<pre class="text-[10px] bg-raised rounded p-1.5 mt-1 overflow-x-auto whitespace-pre-wrap">${typeof step.output === 'string' ? step.output : JSON.stringify(step.output, null, 2)}</pre>` : ''}
-          ${step.error ? `<div class="text-[10px] text-[#DC2626] mt-1">${step.error}</div>` : ''}
+          ${step.error ? `<div class="text-[10px] text-critical mt-1">${step.error}</div>` : ''}
         </div>`;
       });
       html += '</div>';
@@ -2492,7 +2492,7 @@ function showNodeProperties(nodeId) {
     // in. Inserts ``{% raw %}{{step.<id>.output}}{% endraw %}`` at the
     // cursor position of the associated input/textarea.
     const pickerBtn = f.supports_variables
-      ? `<button type="button" class="px-1.5 py-0.5 text-[10px] font-medium rounded border border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#8B5CF6]/10 flex items-center gap-1" data-action="_wfOpenVarPicker" data-node-id="${nodeId}" data-target-input="prop-${f.key}-${nodeId}" title="Insert output of a previous block">
+      ? `<button type="button" class="px-1.5 py-0.5 text-[10px] font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1" data-action="_wfOpenVarPicker" data-node-id="${nodeId}" data-target-input="prop-${f.key}-${nodeId}" title="Insert output of a previous block">
           <i data-lucide="braces" class="w-3 h-3"></i> Insert variable
         </button>`
       : '';
@@ -2522,7 +2522,7 @@ function showNodeProperties(nodeId) {
       html += `<div class="mb-2">${labelRow}
         <div class="flex gap-1">
           <input type="${inputType}" id="prop-${f.key}-${nodeId}" class="flex-1 text-xs px-2 py-1 rounded border border-line bg-white dark:bg-[#0F172A]" value="${escapeHtml(val)}" data-input="_wfNodeInput" data-node-id="${nodeId}" data-field-key="${f.key}">
-          <button data-action="browseFromServer" data-args='[${nodeId}, "${f.key}", "${browseType}"]' class="px-2 py-1 text-[10px] font-medium rounded border border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#8B5CF6]/10 flex items-center gap-1 whitespace-nowrap" title="${browseLabel}">
+          <button data-action="browseFromServer" data-args='[${nodeId}, "${f.key}", "${browseType}"]' class="px-2 py-1 text-[10px] font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1 whitespace-nowrap" title="${browseLabel}">
             <i data-lucide="list" class="w-3 h-3"></i> Browse
           </button>
         </div>
@@ -2536,7 +2536,7 @@ function showNodeProperties(nodeId) {
 
   // Delete node button
   html += `<div class="mt-4 pt-3 border-t border-line">
-    <button data-action="_wfDeleteNode" data-node-id="${nodeId}" class="w-full px-2 py-1 text-xs font-medium rounded border border-[#DC2626] text-[#DC2626] hover:bg-[#DC2626]/10 flex items-center justify-center gap-1">
+    <button data-action="_wfDeleteNode" data-node-id="${nodeId}" class="w-full px-2 py-1 text-xs font-medium rounded border border-critical text-critical hover:bg-critical/10 flex items-center justify-center gap-1">
       <i data-lucide="trash-2" class="w-3 h-3"></i> Delete Node
     </button>
   </div>`;
@@ -3202,14 +3202,14 @@ function browseFromServer(nodeId, fieldKey, browseType) {
   };
   document.getElementById('wf-browse-title').textContent = titles[browseType] || 'Choose';
   document.getElementById('wf-browse-search').value = '';
-  document.getElementById('wf-browse-list').innerHTML = '<div class="text-center py-8 text-xs text-[#9CA3AF]"><div class="animate-spin rounded-full h-5 w-5 border-2 border-[#8B5CF6] border-t-transparent mx-auto mb-2"></div>Loading from ' + serverName + '...</div>';
+  document.getElementById('wf-browse-list').innerHTML = '<div class="text-center py-8 text-xs text-faint"><div class="animate-spin rounded-full h-5 w-5 border-2 border-brand border-t-transparent mx-auto mb-2"></div>Loading from ' + serverName + '...</div>';
 
   const endpoint = `/api/servers/${encodeURIComponent(serverName)}/${browseType}`;
   fetch(endpoint, { headers: { 'X-CSRFToken': csrfToken } })
     .then(r => r.json())
     .then(data => {
       if (!data.ok) {
-        document.getElementById('wf-browse-list').innerHTML = '<div class="text-center py-6 text-xs text-[#DC2626]">' + (data.error || 'Error') + '</div>';
+        document.getElementById('wf-browse-list').innerHTML = '<div class="text-center py-6 text-xs text-critical">' + (data.error || 'Error') + '</div>';
         return;
       }
       // Endpoint returns ``{services|processes|ports: [...]}`` keyed by
@@ -3219,7 +3219,7 @@ function browseFromServer(nodeId, fieldKey, browseType) {
       renderBrowseList();
     })
     .catch(err => {
-      document.getElementById('wf-browse-list').innerHTML = '<div class="text-center py-6 text-xs text-[#DC2626]">Connection failed</div>';
+      document.getElementById('wf-browse-list').innerHTML = '<div class="text-center py-6 text-xs text-critical">Connection failed</div>';
     });
 }
 
@@ -3249,7 +3249,7 @@ function renderBrowseList() {
 
   const list = document.getElementById('wf-browse-list');
   if (filtered.length === 0) {
-    list.innerHTML = '<div class="text-center py-6 text-xs text-[#9CA3AF]">No items found</div>';
+    list.innerHTML = '<div class="text-center py-6 text-xs text-faint">No items found</div>';
     return;
   }
 
@@ -3268,18 +3268,18 @@ function renderBrowseList() {
       const pid = item.pid || '';
       detail = proc ? (proc + (pid ? ` (pid ${pid})` : '')) : (item.address || '');
       // Ports always have a coloured dot to indicate they're listening
-      leftDot = '<span class="w-1.5 h-1.5 rounded-full bg-[#10B981] flex-shrink-0" title="Listening"></span>';
+      leftDot = '<span class="w-1.5 h-1.5 rounded-full bg-healthy flex-shrink-0" title="Listening"></span>';
     } else {
       detail = display ? display : (mem ? mem + ' MB' : '');
       leftDot = isRunning
-        ? '<span class="w-1.5 h-1.5 rounded-full bg-[#10B981] flex-shrink-0"></span>'
-        : (status ? '<span class="w-1.5 h-1.5 rounded-full bg-[#6B7280] flex-shrink-0"></span>' : '');
+        ? '<span class="w-1.5 h-1.5 rounded-full bg-healthy flex-shrink-0"></span>'
+        : (status ? '<span class="w-1.5 h-1.5 rounded-full bg-muted flex-shrink-0"></span>' : '');
     }
 
-    return `<div data-action="selectBrowseItem" data-args='${JSON.stringify([name]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}' class="flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer hover:bg-page dark:hover:bg-page/60 ${isSelected ? 'bg-[#8B5CF6]/10 ring-1 ring-[#8B5CF6]' : ''}">
+    return `<div data-action="selectBrowseItem" data-args='${JSON.stringify([name]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}' class="flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer hover:bg-page dark:hover:bg-page/60 ${isSelected ? 'bg-brand/10 ring-1 ring-brand' : ''}">
       ${leftDot}
       <span class="text-xs font-medium flex-1 truncate">${name}</span>
-      <span class="text-[10px] text-[#9CA3AF] truncate max-w-[180px]">${detail}</span>
+      <span class="text-[10px] text-faint truncate max-w-[180px]">${detail}</span>
     </div>`;
   }).join('');
 }
@@ -3352,7 +3352,7 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
     <div class="px-4 pt-3 pb-2">
       <input type="text" id="wf-browse-search" data-input="renderBrowseList" placeholder="Search..."
-             class="w-full px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#8B5CF6] focus:border-transparent outline-none">
+             class="w-full px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-brand focus:border-transparent outline-none">
     </div>
     <div id="wf-browse-list" class="px-4 py-2 overflow-y-auto flex-1" style="max-height: 400px;">
     </div>

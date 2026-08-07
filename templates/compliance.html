@@ -8,7 +8,7 @@
   <div class="flex items-start justify-between">
     <div>
       <h1 class="text-2xl font-bold text-ink dark:text-[#F9FAFB] flex items-center gap-2">
-        <i data-lucide="clipboard-check" class="w-6 h-6 text-[#8B5CF6]"></i>
+        <i data-lucide="clipboard-check" class="w-6 h-6 text-brand"></i>
         {{ t.get('compliance_dashboard', 'Compliance Dashboard') }}
       </h1>
       <p class="text-sm text-muted mt-1">
@@ -31,7 +31,7 @@
       <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2">
         {{ t.get('overall_readiness', 'Overall readiness') }}
       </div>
-      <div id="readiness-status" class="text-2xl font-bold text-[#10B981]">
+      <div id="readiness-status" class="text-2xl font-bold text-healthy">
         <span class="opacity-50">{{ t.get('loading', 'Loading…') }}</span>
       </div>
       <div id="readiness-breakdown" class="mt-3 grid grid-cols-4 gap-2 text-xs">
@@ -54,12 +54,12 @@
 
     <!-- Findings tile -->
     <a id="findings-card" href="/compliance/doc/CSV-17"
-       class="block bg-card rounded-lg border border-line p-4 hover:border-[#8B5CF6] transition-colors">
+       class="block bg-card rounded-lg border border-line p-4 hover:border-brand transition-colors">
       <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2 flex items-center justify-between">
         <span>{{ t.get('findings_register', 'Findings register') }}</span>
         <i data-lucide="external-link" class="w-3 h-3"></i>
       </div>
-      <div id="findings-status" class="text-2xl font-bold text-[#10B981]">
+      <div id="findings-status" class="text-2xl font-bold text-healthy">
         <span class="opacity-50">{{ t.get('loading', 'Loading…') }}</span>
       </div>
       <div id="findings-breakdown" class="mt-3 grid grid-cols-3 gap-2 text-xs"></div>
@@ -147,7 +147,7 @@
       paintDocIndex(data.by_category || {});
     } catch (e) {
       document.getElementById('csv-doc-index').innerHTML =
-        '<div class="text-sm text-[#DC2626]">Failed to load docs</div>';
+        '<div class="text-sm text-critical">Failed to load docs</div>';
     }
   }
 
@@ -163,18 +163,18 @@
 
     const br = document.getElementById('readiness-breakdown');
     br.innerHTML = `
-      <div class="text-center"><div class="text-lg font-semibold text-[#10B981]">${rd.current}</div><div class="text-[#6B7280]">${T.status_current}</div></div>
-      <div class="text-center"><div class="text-lg font-semibold text-[#F59E0B]">${rd.due_soon}</div><div class="text-[#6B7280]">${T.status_due_soon}</div></div>
-      <div class="text-center"><div class="text-lg font-semibold text-[#DC2626]">${rd.overdue}</div><div class="text-[#6B7280]">${T.status_overdue}</div></div>
-      <div class="text-center"><div class="text-lg font-semibold text-[#6B7280]">${rd.n_a}</div><div class="text-[#6B7280]">${T.status_n_a}</div></div>`;
+      <div class="text-center"><div class="text-lg font-semibold text-healthy">${rd.current}</div><div class="text-muted">${T.status_current}</div></div>
+      <div class="text-center"><div class="text-lg font-semibold text-warning">${rd.due_soon}</div><div class="text-muted">${T.status_due_soon}</div></div>
+      <div class="text-center"><div class="text-lg font-semibold text-critical">${rd.overdue}</div><div class="text-muted">${T.status_overdue}</div></div>
+      <div class="text-center"><div class="text-lg font-semibold text-muted">${rd.n_a}</div><div class="text-muted">${T.status_n_a}</div></div>`;
 
     // Audit telemetry
     const a = data.audit || {};
     const blindEl = document.getElementById('audit-blind');
     if (a.audit_blind) {
-      blindEl.innerHTML = `<span class="text-[#DC2626] font-bold">⚠ AUDIT BLIND — ${a.insert_failures} insert / ${a.mirror_failures} mirror failures</span>`;
+      blindEl.innerHTML = `<span class="text-critical font-bold">⚠ AUDIT BLIND — ${a.insert_failures} insert / ${a.mirror_failures} mirror failures</span>`;
     } else {
-      blindEl.innerHTML = '<span class="text-[#10B981] font-medium">✓ Audit subsystem healthy (0 failures)</span>';
+      blindEl.innerHTML = '<span class="text-healthy font-medium">✓ Audit subsystem healthy (0 failures)</span>';
     }
     const chainEl = document.getElementById('audit-chain');
     if (a.last_chain_check) {
@@ -196,9 +196,9 @@
         : `Open: ${open} of ${f.total}`;
       fs.className = 'text-2xl font-bold ' + (open === 0 ? 'text-[#10B981]' : 'text-[#DC2626]');
       document.getElementById('findings-breakdown').innerHTML = `
-        <div class="text-center"><div class="text-lg font-semibold text-[#10B981]">${f.closed}</div><div class="text-[#6B7280]">Closed</div></div>
-        <div class="text-center"><div class="text-lg font-semibold text-[#F59E0B]">${f.risk_accepted}</div><div class="text-[#6B7280]">Accepted</div></div>
-        <div class="text-center"><div class="text-lg font-semibold text-[#DC2626]">${f.open}</div><div class="text-[#6B7280]">Open</div></div>`;
+        <div class="text-center"><div class="text-lg font-semibold text-healthy">${f.closed}</div><div class="text-muted">Closed</div></div>
+        <div class="text-center"><div class="text-lg font-semibold text-warning">${f.risk_accepted}</div><div class="text-muted">Accepted</div></div>
+        <div class="text-center"><div class="text-lg font-semibold text-critical">${f.open}</div><div class="text-muted">Open</div></div>`;
     } else {
       fs.textContent = '(see CSV-17)';
       fs.className = 'text-sm font-medium text-[#6B7280]';
@@ -211,7 +211,7 @@
       const card = document.createElement('div');
       card.className = 'bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-3 flex flex-col gap-2';
       const cadence = s.cadence_days ? `${s.cadence_days} d cadence` : T.cadence_none;
-      const overdueMsg = s.days_overdue > 0 ? `<span class="text-[#DC2626] text-xs">${s.days_overdue} ${T.days_overdue}</span>` : '';
+      const overdueMsg = s.days_overdue > 0 ? `<span class="text-critical text-xs">${s.days_overdue} ${T.days_overdue}</span>` : '';
       card.innerHTML = `
         <div class="flex items-start justify-between gap-2">
           <div class="font-semibold text-sm text-ink dark:text-[#F9FAFB]">${s.id} — ${s.title}</div>
@@ -225,7 +225,7 @@
           ${overdueMsg ? '· ' + overdueMsg : ''}
         </div>
         <div class="flex gap-2 mt-1">
-          <a href="/compliance/sop/${s.id}" class="text-xs px-2 py-1 rounded bg-[#8B5CF6] text-white hover:opacity-90 inline-flex items-center gap-1">
+          <a href="/compliance/sop/${s.id}" class="text-xs px-2 py-1 rounded bg-brand text-white hover:opacity-90 inline-flex items-center gap-1">
             <i data-lucide="external-link" class="w-3 h-3"></i> ${T.open}
           </a>
         </div>`;
@@ -264,7 +264,7 @@
                   </div>
                   <div class="text-xs text-muted truncate">${d.short_desc}</div>
                 </div>
-                <i data-lucide="chevron-right" class="w-4 h-4 text-[#9CA3AF] flex-shrink-0 mt-0.5"></i>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-faint flex-shrink-0 mt-0.5"></i>
               </a>
             </li>`).join('')}
         </ul>`;

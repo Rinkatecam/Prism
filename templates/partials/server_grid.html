@@ -16,7 +16,7 @@
 <div class="flex flex-wrap items-center gap-2 mb-4">
   <span class="text-xs font-medium text-muted">{{ t.get('filter_by_tag', 'Filter by tag') }}:</span>
   <button hx-get="/partials/server-grid" hx-target="#server-grid-container" hx-swap="innerHTML"
-          class="px-2 py-0.5 text-xs rounded-full border border-line dark:border-[#334155] hover:bg-page {{ 'bg-[#2563EB]/10 text-[#2563EB] border-info' if not active_tag else '' }}">
+          class="px-2 py-0.5 text-xs rounded-full border border-line dark:border-[#334155] hover:bg-page {{ 'bg-info/10 text-info border-info' if not active_tag else '' }}">
     {{ t.get('all_tags', 'All') }}
   </button>
   {% for tag in all_tags %}

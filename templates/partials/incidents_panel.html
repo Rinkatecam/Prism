@@ -27,7 +27,7 @@
         <span class="text-[10px] text-faint whitespace-nowrap">
           {{ fmt_ts(inc.created_at) }}
         </span>
-        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-[#9CA3AF]"></i>
+        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-faint"></i>
       </div>
     </div>
 
@@ -49,11 +49,11 @@
       <div class="flex items-center gap-2">
         <button type="button"
                 data-action="resolveIncident" data-args="[{{ inc.id }}]"
-                class="px-3 py-1 text-xs font-medium rounded bg-[#10B981] hover:bg-[#059669] text-white transition-colors">
+                class="px-3 py-1 text-xs font-medium rounded bg-healthy hover:bg-[#059669] text-white transition-colors">
           {{ t.get('resolve_incident', 'Resolve') }}
         </button>
         <input type="text" id="resolution-notes-{{ inc.id }}" placeholder="{{ t.get('resolution_notes', 'Resolution notes') }}..."
-               class="flex-1 px-2 py-1 text-xs rounded border border-line bg-white dark:bg-[#0F172A] text-[#1F2937] dark:text-[#F8FAFC] placeholder-[#9CA3AF]">
+               class="flex-1 px-2 py-1 text-xs rounded border border-line bg-white dark:bg-[#0F172A] text-[#1F2937] dark:text-[#F8FAFC] placeholder-faint">
       </div>
       {% else %}
       <div class="text-xs">
@@ -61,7 +61,7 @@
           {{ t.get('incident_resolved', 'Resolved') }}
         </span>
         {% if inc.resolved_by == 'auto' %}
-        <span class="ml-1 text-[#9CA3AF]">{{ t.get('auto_resolved', 'Auto-resolved') }}</span>
+        <span class="ml-1 text-faint">{{ t.get('auto_resolved', 'Auto-resolved') }}</span>
         {% endif %}
         {% if inc.resolution_notes %}
         <span class="ml-1 text-muted">- {{ inc.resolution_notes }}</span>

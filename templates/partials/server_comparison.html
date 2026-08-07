@@ -56,10 +56,10 @@
           <option value="720">{{ t.hours_720 }}</option>
         </select>
       </div>
-      <button id="btn-compare" data-action="loadComparison" disabled class="text-xs font-medium px-4 py-1.5 rounded bg-[#2563EB] hover:bg-[#1D4ED8] text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#2563EB]">
+      <button id="btn-compare" data-action="loadComparison" disabled class="text-xs font-medium px-4 py-1.5 rounded bg-info hover:bg-[#1D4ED8] text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-info">
         {{ t.compare }} <span id="btn-compare-count"></span>
       </button>
-      <button id="btn-compare-events" data-action="loadEventComparison" disabled class="text-xs font-medium px-4 py-1.5 rounded bg-[#8B5CF6] hover:bg-[#7C3AED] text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#8B5CF6]">
+      <button id="btn-compare-events" data-action="loadEventComparison" disabled class="text-xs font-medium px-4 py-1.5 rounded bg-brand hover:bg-[#7C3AED] text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-brand">
         {{ t.compare_events | default('Compare Windows Events') }} <span id="btn-compare-events-count"></span>
       </button>
       <!-- Presets -->
@@ -73,7 +73,7 @@
         <button data-action="savePreset" class="text-xs px-2 py-1.5 rounded border border-line hover:bg-page" title="{{ t.save_preset }}">
           <i data-lucide="save" class="w-3.5 h-3.5"></i>
         </button>
-        <button data-action="deletePreset" class="text-xs px-2 py-1.5 rounded border border-[#DC2626]/30 text-[#DC2626] hover:bg-[#FEE2E2] dark:hover:bg-[#7F1D1D]/30" title="{{ t.delete_preset }}">
+        <button data-action="deletePreset" class="text-xs px-2 py-1.5 rounded border border-critical/30 text-critical hover:bg-[#FEE2E2] dark:hover:bg-[#7F1D1D]/30" title="{{ t.delete_preset }}">
           <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
         </button>
       </div>
@@ -113,7 +113,7 @@
           <i data-lucide="git-commit" class="w-3.5 h-3.5 inline mr-1"></i>
           <span id="event-markers-label">{{ t.show_events_overlay }}</span>
         </button>
-        <button data-action="downloadComparisonPDF" class="text-xs px-3 py-1 rounded border border-[#DC2626]/30 text-[#DC2626] hover:bg-[#FEE2E2] dark:hover:bg-[#7F1D1D]/30 transition-colors">
+        <button data-action="downloadComparisonPDF" class="text-xs px-3 py-1 rounded border border-critical/30 text-critical hover:bg-[#FEE2E2] dark:hover:bg-[#7F1D1D]/30 transition-colors">
           <i data-lucide="file-text" class="w-3.5 h-3.5 inline mr-1"></i>
           {{ t.get('download_comparison_pdf', 'Download PDF') }}
         </button>
@@ -139,7 +139,7 @@
       <!-- Statistics table -->
       <div id="compare-stats" class="hidden">
         <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
-          <i data-lucide="bar-chart-2" class="w-4 h-4 text-[#6B7280]"></i>
+          <i data-lucide="bar-chart-2" class="w-4 h-4 text-muted"></i>
           {{ t.statistics }}
         </h3>
         <div class="border border-line rounded-lg overflow-x-auto">
@@ -164,7 +164,7 @@
       <!-- Business-hours annotations -->
       <div id="compare-annotations" class="hidden">
         <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
-          <i data-lucide="clock" class="w-4 h-4 text-[#8B5CF6]"></i>
+          <i data-lucide="clock" class="w-4 h-4 text-brand"></i>
           {{ t.business_hours_avg }} / {{ t.off_hours_avg }}
         </h3>
         <div class="border border-line rounded-lg overflow-x-auto">
@@ -223,7 +223,7 @@
       <!-- Common events (on all servers) -->
       <div>
         <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
-          <i data-lucide="check-check" class="w-4 h-4 text-[#10B981]"></i>
+          <i data-lucide="check-check" class="w-4 h-4 text-healthy"></i>
           {{ t.common_events | default('Common Events') }}
           <span id="common-events-count" class="text-xs font-normal text-muted"></span>
         </h3>
@@ -246,7 +246,7 @@
       <!-- Unique events (not on all servers) -->
       <div>
         <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
-          <i data-lucide="split" class="w-4 h-4 text-[#F59E0B]"></i>
+          <i data-lucide="split" class="w-4 h-4 text-warning"></i>
           {{ t.unique_events | default('Unique Events') }}
           <span id="unique-events-count" class="text-xs font-normal text-muted"></span>
         </h3>
@@ -402,7 +402,7 @@ function updateFilterChips() {
   chips.forEach(chip => {
     const el = document.createElement('span');
     el.className = 'filter-chip inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#3B82F6]/10 dark:text-[#3B82F6] border border-[#2563EB]/20 dark:border-[#3B82F6]/20';
-    el.innerHTML = `${chip.label} <button class="ml-0.5 hover:text-[#DC2626] transition-colors font-bold">&times;</button>`;
+    el.innerHTML = `${chip.label} <button class="ml-0.5 hover:text-critical transition-colors font-bold">&times;</button>`;
     el.querySelector('button').onclick = (e) => { e.stopPropagation(); chip.clear(); };
     container.appendChild(el);
   });
@@ -946,7 +946,7 @@ function renderSegmentedAnnotations(data) {
           devBadge = `<span class="badge badge-info">↓ {{ t.significantly_below }}</span>`;
         }
       } else {
-        devBadge = '<span class="text-[#6B7280]">—</span>';
+        devBadge = '<span class="text-muted">—</span>';
       }
 
       const row = document.createElement('tr');

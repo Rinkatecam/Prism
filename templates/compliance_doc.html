@@ -23,7 +23,7 @@
           {{ t.get('on_this_page', 'On this page') }}
         </div>
         <nav id="toc" class="text-xs space-y-1">
-          <div class="text-[#9CA3AF]">{{ t.get('loading', 'Loading…') }}</div>
+          <div class="text-faint">{{ t.get('loading', 'Loading…') }}</div>
         </nav>
       </div>
     </aside>
@@ -62,7 +62,7 @@
 
   <!-- Scroll-to-top floating button -->
   <button id="scroll-top" type="button"
-          class="hidden fixed bottom-6 right-6 w-10 h-10 rounded-full bg-[#8B5CF6] text-white shadow-lg hover:opacity-90 z-50"
+          class="hidden fixed bottom-6 right-6 w-10 h-10 rounded-full bg-brand text-white shadow-lg hover:opacity-90 z-50"
           aria-label="{{ t.get('scroll_to_top', 'Scroll to top') }}">
     <i data-lucide="arrow-up" class="w-4 h-4 mx-auto"></i>
   </button>
@@ -91,14 +91,14 @@
       wrapTablesForScroll('#doc-body');
     } catch (e) {
       document.getElementById('doc-body').innerHTML =
-        '<p class="text-[#DC2626]">Failed to load: ' + e + '</p>';
+        '<p class="text-critical">Failed to load: ' + e + '</p>';
     }
   }
 
   function paintToc(toc) {
     const navEl = document.getElementById('toc');
     if (!toc || toc.length === 0) {
-      navEl.innerHTML = '<div class="text-[#9CA3AF]">{{ t.get('no_sections', 'No sections') }}</div>';
+      navEl.innerHTML = '<div class="text-faint">{{ t.get('no_sections', 'No sections') }}</div>';
       return;
     }
     navEl.innerHTML = '';

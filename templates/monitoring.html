@@ -117,16 +117,16 @@
         </div>
 
         <!-- Baseline (smart) — visual indicator only; toggle is below -->
-        <div class="rounded-lg border-2 border-[#8B5CF6] p-3 bg-[#F5F3FF] dark:bg-[#1E1B4B]">
+        <div class="rounded-lg border-2 border-brand p-3 bg-[#F5F3FF] dark:bg-[#1E1B4B]">
           <div class="flex items-center gap-2">
-            <i data-lucide="brain" class="w-4 h-4 text-[#8B5CF6]"></i>
+            <i data-lucide="brain" class="w-4 h-4 text-brand"></i>
             <span class="text-sm font-medium">{{ t.get('baseline_smart', 'Baseline (Smart)') }}</span>
-            <span class="ml-auto text-[10px] font-semibold text-[#8B5CF6] uppercase">Priority 1</span>
+            <span class="ml-auto text-[10px] font-semibold text-brand uppercase">Priority 1</span>
           </div>
           <p class="text-xs text-muted mt-1">
             {{ t.get('baseline_card_help', 'Hour-of-week Z-score. The smartest detector — when on, it owns CPU/RAM/Disk warning alerts.') }}
           </p>
-          <p class="text-xs text-[#8B5CF6] mt-2 font-medium">
+          <p class="text-xs text-brand mt-2 font-medium">
             {{ t.get('baseline_configure_below', 'Configure below ↓') }}
           </p>
         </div>
@@ -145,7 +145,7 @@
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" id="baseline-enabled" class="sr-only peer general-input"
                  {% if settings.get('baseline_detection', {}).get('enabled', true) %}checked{% endif %}>
-          <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#8B5CF6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+          <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-brand rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
         </label>
         <div class="flex items-center gap-1">
           <label class="text-xs text-muted">{{ t.get('sigma_warning', 'Sigma Warning') }}</label>
@@ -187,7 +187,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="baseline-allow-downgrade" class="sr-only peer general-input"
                    {% if settings.get('baseline_detection', {}).get('allow_downgrade', true) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#8B5CF6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-brand rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
           <span class="text-xs text-muted">{{ t.get('allow_baseline_downgrade', 'Allow baseline to downgrade') }}</span>
         </div>
@@ -231,14 +231,14 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="baseline-deviation-requires-authority" class="sr-only peer general-input"
                    {% if settings.get('baseline_detection', {}).get('deviation_requires_authority', true) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#8B5CF6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-brand rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
           <span class="text-xs text-muted">{{ t.get('deviation_requires_authority', 'Require mature baseline to alarm') }}</span>
         </div>
       </div>
       <p class="text-[10px] text-faint mb-3">{{ t.get('deviation_gates_help', 'Controls when "differs from its own baseline" raises a warning. Rising-only ignores a metric dropping below its normal (an emptier disk is not a fault). The percentage requires the value to actually approach its warning threshold, so a statistical blip well inside safe limits stays quiet.') }}</p>
       <div class="flex items-center">
-        <button data-action="recalculateBaselines" class="px-3 py-1.5 text-xs font-medium rounded border border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#8B5CF6]/10 flex items-center gap-1">
+        <button data-action="recalculateBaselines" class="px-3 py-1.5 text-xs font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1">
           <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
           {{ t.get('recalculate_baselines', 'Recalculate Now') }}
         </button>
@@ -251,7 +251,7 @@
     <!-- Security Alerts Settings -->
     <div>
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="shield-alert" class="w-4 h-4 text-[#DC2626]"></i>
+        <i data-lucide="shield-alert" class="w-4 h-4 text-critical"></i>
         {{ t.get('security_alerts', 'Security Alerts') }}
       </div>
       <div class="flex flex-wrap items-center gap-3">
@@ -259,7 +259,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="security-failed-login-tracking" class="sr-only peer general-input"
                    {% if settings.get('security_alerts', {}).get('failed_login_tracking', true) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#DC2626] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-critical rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
           <span class="text-xs text-muted">{{ t.get('failed_login_tracking', 'Failed Login Tracking') }}</span>
         </div>
@@ -273,7 +273,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="security-lockout-alert" class="sr-only peer general-input"
                    {% if settings.get('security_alerts', {}).get('lockout_alert', true) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#DC2626] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-critical rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
           <span class="text-xs text-muted">{{ t.get('lockout_alert', 'Lockout Alert') }}</span>
         </div>
@@ -340,7 +340,7 @@
     <div class="flex items-center gap-3 mb-3">
       <label class="relative inline-flex items-center cursor-pointer">
         <input type="checkbox" id="tls-monitoring-enabled" class="sr-only peer security-input">
-        <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+        <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
       </label>
       <div class="flex items-center gap-2">
         <span class="text-xs text-muted">{{ t.get('warning_label', 'Warning:') }}</span>
@@ -452,7 +452,7 @@
     <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-lg max-h-[90vh] flex flex-col relative">
       <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
         <h3 id="maint-modal-title" class="text-lg font-semibold">{{ t.add_maintenance }}</h3>
-        <button data-action="closeMaintModal" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeMaintModal" class="p-1 text-muted hover:text-[#1F2937] dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -478,7 +478,7 @@
           <label class="block text-xs font-medium mb-1">{{ t.maint_days }}</label>
           <div class="flex flex-wrap gap-1.5">
             {% for day, label in [(0, 'Mon'), (1, 'Tue'), (2, 'Wed'), (3, 'Thu'), (4, 'Fri'), (5, 'Sat'), (6, 'Sun')] %}
-            <label class="flex items-center gap-1 text-xs cursor-pointer px-2 py-1 rounded border border-line dark:border-[#334155] has-[:checked]:bg-[#2563EB] has-[:checked]:text-white has-[:checked]:border-info">
+            <label class="flex items-center gap-1 text-xs cursor-pointer px-2 py-1 rounded border border-line dark:border-[#334155] has-[:checked]:bg-info has-[:checked]:text-white has-[:checked]:border-info">
               <input type="checkbox" value="{{ day }}" class="maint-day-cb sr-only">
               {{ label }}
             </label>
@@ -498,10 +498,10 @@
           </div>
         </div>
         <div>
-          <label class="flex items-center gap-2 cursor-pointer mb-3 p-2 rounded border border-[#F59E0B] bg-[#FFFBEB] dark:bg-[#451A03]">
+          <label class="flex items-center gap-2 cursor-pointer mb-3 p-2 rounded border border-warning bg-[#FFFBEB] dark:bg-[#451A03]">
             <input type="checkbox" id="maint-suppress-alerts" class="general-input">
             <div>
-              <span class="text-xs font-semibold text-[#F59E0B]">{{ t.get('suppress_all_alerts', 'Suppress ALL alerts during this window') }}</span>
+              <span class="text-xs font-semibold text-warning">{{ t.get('suppress_all_alerts', 'Suppress ALL alerts during this window') }}</span>
               <div class="text-[10px] text-muted">{{ t.get('suppress_all_alerts_help', 'When enabled, no events, emails or webhooks fire — useful for patching nights. When off, only thresholds are loosened.') }}</div>
             </div>
           </label>
@@ -747,7 +747,7 @@ function loadAlertFatigueDigest() {
         tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-center">' +
           '<i data-lucide="volume-2" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>' +
           '<p class="text-sm text-faint">No alert noise scores yet</p>' +
-          '<p class="text-[10px] mt-1 opacity-60 text-[#9CA3AF]">Scores accumulate as alerts fire over time</p>' +
+          '<p class="text-[10px] mt-1 opacity-60 text-faint">Scores accumulate as alerts fire over time</p>' +
           '</td></tr>';
         if (typeof lucide !== 'undefined') lucide.createIcons();
         return;
@@ -768,7 +768,7 @@ function loadAlertFatigueDigest() {
     })
     .catch(() => {
       document.getElementById('noise-digest-body').innerHTML =
-        '<tr><td colspan="6" class="py-4 text-center text-[#DC2626]">Failed to load</td></tr>';
+        '<tr><td colspan="6" class="py-4 text-center text-critical">Failed to load</td></tr>';
     });
 }
 
@@ -790,7 +790,7 @@ async function resetAlertScores() {
           '<tr><td colspan="6" class="py-8 text-center">' +
           '<i data-lucide="volume-2" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>' +
           '<p class="text-sm text-faint">No alert noise scores yet</p>' +
-          '<p class="text-[10px] mt-1 opacity-60 text-[#9CA3AF]">Scores accumulate as alerts fire over time</p>' +
+          '<p class="text-[10px] mt-1 opacity-60 text-faint">Scores accumulate as alerts fire over time</p>' +
           '</td></tr>';
         if (typeof lucide !== 'undefined') lucide.createIcons();
       } else {
@@ -852,10 +852,10 @@ function renderMaintWindows() {
         </div>
         <div class="text-[10px] text-muted mt-0.5 font-mono truncate">${_escHtml(days)} → ${_escHtml(servers || 'No servers')}</div>
       </div>
-      <button data-action="editMaintWindow" data-args="[${i}]" class="p-1.5 text-[#6B7280] hover:text-[#2563EB] rounded hover:bg-[#2563EB]/10" title="Edit">
+      <button data-action="editMaintWindow" data-args="[${i}]" class="p-1.5 text-muted hover:text-info rounded hover:bg-info/10" title="Edit">
         <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
       </button>
-      <button data-action="deleteMaintWindow" data-args="[${i}]" class="p-1.5 text-[#6B7280] hover:text-[#DC2626] rounded hover:bg-[#DC2626]/10" title="Delete">
+      <button data-action="deleteMaintWindow" data-args="[${i}]" class="p-1.5 text-muted hover:text-critical rounded hover:bg-critical/10" title="Delete">
         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
       </button>
     </div>`;
@@ -1016,10 +1016,10 @@ function addTlsCertRow(data) {
     </select>
     <input type="text" class="tls-host px-2 py-1 text-xs rounded border border-line bg-white dark:bg-[#0F172A] font-mono flex-1" placeholder="hostname or IP" value="${_escHtml((data && data.host) || '')}">
     <input type="number" class="tls-port w-16 px-2 py-1 text-xs rounded border border-line bg-white dark:bg-[#0F172A] text-right" placeholder="443" min="1" max="65535" value="${(data && data.port) || 443}">
-    <button data-action="testTlsCertRow" class="p-1.5 text-[#6B7280] hover:text-[#10B981] rounded hover:bg-[#10B981]/10" title="Test">
+    <button data-action="testTlsCertRow" class="p-1.5 text-muted hover:text-healthy rounded hover:bg-healthy/10" title="Test">
       <i data-lucide="zap" class="w-3.5 h-3.5"></i>
     </button>
-    <button data-action="removeTlsCertRow" class="p-1.5 text-[#6B7280] hover:text-[#DC2626] rounded hover:bg-[#DC2626]/10" title="Delete">
+    <button data-action="removeTlsCertRow" class="p-1.5 text-muted hover:text-critical rounded hover:bg-critical/10" title="Delete">
       <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
     </button>
     <div class="tls-test-result text-xs ml-1 hidden"></div>
@@ -1061,12 +1061,12 @@ function testTlsCert(row) {
         const color = days <= 7 ? '#DC2626' : days <= 30 ? '#F59E0B' : '#10B981';
         resultEl.innerHTML = `<span style="color:${color}">${days}d remaining</span>`;
       } else {
-        resultEl.innerHTML = `<span class="text-[#DC2626]">${_escHtml(result.error || 'Check failed')}</span>`;
+        resultEl.innerHTML = `<span class="text-critical">${_escHtml(result.error || 'Check failed')}</span>`;
       }
       resultEl.classList.remove('hidden');
     })
     .catch(err => {
-      resultEl.innerHTML = `<span class="text-[#DC2626]">${_escHtml(err.message)}</span>`;
+      resultEl.innerHTML = `<span class="text-critical">${_escHtml(err.message)}</span>`;
       resultEl.classList.remove('hidden');
     });
 }

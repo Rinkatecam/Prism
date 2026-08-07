@@ -23,7 +23,7 @@
       {{ t.get('no_servers_yet', "You haven't added any servers yet. Add your first server to start monitoring CPU, RAM, disk, and Windows updates across your fleet.") }}
     </p>
     <a href="/servers"
-       class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-white transition-colors">
+       class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-info hover:bg-[#1D4ED8] text-white transition-colors">
       <i data-lucide="plus" class="w-4 h-4"></i>
       {{ t.get('add_first_server', 'Add Your First Server') }}
     </a>
@@ -118,9 +118,9 @@
 <!-- Incidents (only shown when there are open incidents) -->
 <section class="mb-6 hidden" id="incidents-section">
   <h2 class="text-sm font-semibold mb-2 flex items-center gap-1.5">
-    <i data-lucide="alert-triangle" class="w-4 h-4 text-[#F59E0B]"></i>
+    <i data-lucide="alert-triangle" class="w-4 h-4 text-warning"></i>
     {{ t.get('incidents', 'Incidents') }}
-    <span id="incident-count-badge" class="hidden px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-[#DC2626] text-white"></span>
+    <span id="incident-count-badge" class="hidden px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-critical text-white"></span>
   </h2>
   <div hx-get="/partials/incidents-panel" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML"
        data-toggle-empty="incidents-section"
@@ -141,7 +141,7 @@
         </h2>
         <div id="status-filter" class="flex items-center gap-1 flex-wrap">
           <button type="button" data-action="setStatusFilter" data-args='["all"]' data-filter="all"
-            class="status-filter-btn active px-2.5 py-1 text-xs font-medium rounded-full transition-colors bg-[#2563EB] text-white">
+            class="status-filter-btn active px-2.5 py-1 text-xs font-medium rounded-full transition-colors bg-info text-white">
             All
           </button>
           <button type="button" data-action="setStatusFilter" data-args='["critical"]' data-filter="critical"

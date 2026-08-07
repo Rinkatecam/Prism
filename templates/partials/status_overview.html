@@ -12,10 +12,10 @@
   <!-- Healthy -->
   <div class="bg-card rounded-lg p-5 border border-line">
     <div class="flex items-center gap-2 mb-1">
-      <i data-lucide="check-circle" class="w-4 h-4 text-[#10B981]"></i>
+      <i data-lucide="check-circle" class="w-4 h-4 text-healthy"></i>
       <span class="text-xs font-semibold uppercase tracking-wider text-muted">{{ t.healthy }}</span>
     </div>
-    <div class="metric-value text-[#10B981]">{{ summary.healthy }}</div>
+    <div class="metric-value text-healthy">{{ summary.healthy }}</div>
   </div>
 
   <!-- Warning -->
@@ -41,7 +41,7 @@
 {% if summary.total > 0 %}
 <div class="mt-3 flex rounded-full overflow-hidden h-2 bg-line">
   {% if summary.healthy > 0 %}
-  <div class="bg-[#10B981]" style="width: {{ (summary.healthy / summary.total * 100) | round(1) }}%"></div>
+  <div class="bg-healthy" style="width: {{ (summary.healthy / summary.total * 100) | round(1) }}%"></div>
   {% endif %}
   {% if summary.warning > 0 %}
   <div class="bg-warning" style="width: {{ (summary.warning / summary.total * 100) | round(1) }}%"></div>
@@ -50,7 +50,7 @@
   <div class="bg-critical" style="width: {{ (summary.critical / summary.total * 100) | round(1) }}%"></div>
   {% endif %}
   {% if summary.offline > 0 %}
-  <div class="bg-[#9CA3AF]" style="width: {{ (summary.offline / summary.total * 100) | round(1) }}%"></div>
+  <div class="bg-faint" style="width: {{ (summary.offline / summary.total * 100) | round(1) }}%"></div>
   {% endif %}
 </div>
 {% endif %}

@@ -1,7 +1,7 @@
 <!-- Critical Issues Section -->
 {% if issues | length == 0 %}
-<div id="healthy-banner" class="bg-[#D1FAE5] dark:bg-[#064E3B] rounded-lg p-4 border border-[#10B981]/20 flex items-center gap-3 transition-opacity duration-500">
-  <i data-lucide="check-circle" class="w-5 h-5 text-[#10B981] flex-shrink-0"></i>
+<div id="healthy-banner" class="bg-[#D1FAE5] dark:bg-[#064E3B] rounded-lg p-4 border border-healthy/20 flex items-center gap-3 transition-opacity duration-500">
+  <i data-lucide="check-circle" class="w-5 h-5 text-healthy flex-shrink-0"></i>
   <span class="text-sm font-medium text-[#065F46] dark:text-[#6EE7B7]">{{ t.all_healthy }}</span>
 </div>
 {# The auto-dismiss timer lives in base.html (_prismFadeHealthy, armed on
@@ -52,7 +52,7 @@
           <div class="{{ dd_class }}">Disk D: {{ issue.disk_d_percent | round(1) }}%</div>
         {% endif %}
         {% if issue.status == 'offline' %}
-          <div class="text-[#9CA3AF] italic">{{ t.server_unreachable }}</div>
+          <div class="text-faint italic">{{ t.server_unreachable }}</div>
         {% endif %}
       </div>
 
