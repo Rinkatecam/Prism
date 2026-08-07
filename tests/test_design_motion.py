@@ -140,6 +140,69 @@ def test_elevation_shadows_come_from_the_scale():
 
 # ── reduced motion ───────────────────────────────────────────────────────
 
+def _templates_without_comments() -> list[tuple[str, str]]:
+    """(name, text) for every template, with comments blanked.
+
+    Blanked rather than removed so reported line numbers stay true. The
+    scale is discussed in comments in several files; matching those would
+    make the guardrail cry wolf, and a guardrail that cries wolf is turned
+    off.
+    """
+    out = []
+    for path in sorted((PROJECT_ROOT / "templates").rglob("*.html")):
+        text = path.read_text(encoding="utf-8")
+        for pattern in (r"\{#.*?#\}", r"<!--.*?-->", r"/\*.*?\*/"):
+            text = re.sub(pattern, lambda m: re.sub(r"\S", " ", m.group(0)),
+                          text, flags=re.S)
+        text = re.sub(r"//[^\n]*", lambda m: " " * len(m.group(0)), text)
+        out.append((path.relative_to(PROJECT_ROOT).as_posix(), text))
+    return out
+
+
+# Tailwind's own duration/easing utilities. `duration-base` and friends are
+# ours and resolve through the custom properties; these resolve to numbers
+# Tailwind picked.
+_OFF_SCALE = re.compile(
+    r"\b(duration-\d+|ease-in-out|ease-in|ease-linear)\b")
+
+
+def test_no_template_uses_a_motion_utility_off_the_scale():
+    """The scale has to bind BOTH layers or it binds neither.
+
+    `tools/design_tokens.py` renders the durations into `tailwind.config`
+    as `duration-fast|base|slow`, so a template CAN read the same values
+    the stylesheet does. Nothing stopped it writing `duration-300` instead
+    — and 14 utilities did, across 6 templates, silently running on
+    Tailwind's numbers while app.css ran on the tokens.
+
+    This scans raw text rather than parsed class attributes on purpose. One
+    of the 14 was in a template literal whose colour is interpolated
+    (`${color}`), so the class-scope detector did not recognise it as a
+    class list at all — a guardrail that only looks where the converter
+    looks inherits the converter's blind spots.
+    """
+    offenders = []
+    for name, text in _templates_without_comments():
+        for m in _OFF_SCALE.finditer(text):
+            line = text.count("\n", 0, m.start()) + 1
+            offenders.append(f"{name}:{line} {m.group(1)}")
+    assert not offenders, (
+        "use duration-fast|base|slow and ease-standard|out, which resolve "
+        "through the same custom properties as app.css:\n  "
+        + "\n  ".join(offenders))
+
+
+def test_the_comment_blanking_does_not_hide_real_offenders():
+    """The blanking above is a liability: overreach and the guardrail stops
+    guarding. Prove it still sees a live offender on the same line as a
+    comment."""
+    import re as _re
+    sample = 'x = "p-2 duration-300"  // duration-500 mentioned in prose\n'
+    blanked = _re.sub(r"//[^\n]*", lambda m: " " * len(m.group(0)), sample)
+    found = {m.group(1) for m in _OFF_SCALE.finditer(blanked)}
+    assert found == {"duration-300"}, found
+
+
 def test_reduced_motion_is_honoured_globally_not_rule_by_rule():
     """It was three blocks covering five rules. Every other transition kept
     running for someone who had asked it not to, and each new one opted out
