@@ -1404,10 +1404,10 @@ function loadBackups() {
           <td class="px-3 py-2 text-xs font-mono text-muted">${ts}</td>
           <td class="px-3 py-2 text-xs text-muted">${size}</td>
           <td class="px-3 py-2 text-right whitespace-nowrap">
-            <a href="/api/config/backups/download/${b.filename}" download class="p-1 text-muted hover:text-info" title="${{ t.download_backup | tojson }}">
+            <a href="/api/config/backups/download/${b.filename}" download class="p-1 text-accent hover:text-accent-strong" title="${{ t.download_backup | tojson }}">
               <i data-lucide="download" class="w-3.5 h-3.5 inline"></i>
             </a>
-            <button data-action="restoreBackup" data-args='["${b.filename}"]' class="p-1 text-muted hover:text-warning ml-1" title="${{ t.restore | tojson }}">
+            <button data-action="restoreBackup" data-args='["${b.filename}"]' class="p-1 text-accent hover:text-accent-strong ml-1" title="${{ t.restore | tojson }}">
               <i data-lucide="undo-2" class="w-3.5 h-3.5 inline"></i>
             </button>
           </td>

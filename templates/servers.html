@@ -86,13 +86,13 @@
             <td class="px-4 py-2 text-muted text-xs hidden sm:table-cell">{{ s.type | replace('_', ' ') | title }}</td>
             <td class="px-4 py-2 text-muted text-xs hidden md:table-cell">{{ s.port }}</td>
             <td class="px-4 py-2 text-right whitespace-nowrap">
-              <button data-action="testConnection" data-args="[{{ loop.index0 }}]" class="p-1 text-muted hover:text-healthy" title="{{ t.test_connection }}" aria-label="{{ t.test_connection }}" id="test-btn-{{ loop.index0 }}">
+              <button data-action="testConnection" data-args="[{{ loop.index0 }}]" class="p-1 text-accent hover:text-accent-strong" title="{{ t.test_connection }}" aria-label="{{ t.test_connection }}" id="test-btn-{{ loop.index0 }}">
                 <i data-lucide="plug" class="w-4 h-4"></i>
               </button>
-              <button data-action="editServer" data-args="[{{ loop.index0 }}]" class="p-1 text-muted hover:text-info ml-1" title="{{ t.edit }}" aria-label="{{ t.edit }}">
+              <button data-action="editServer" data-args="[{{ loop.index0 }}]" class="p-1 text-accent hover:text-accent-strong ml-1" title="{{ t.edit }}" aria-label="{{ t.edit }}">
                 <i data-lucide="pencil" class="w-4 h-4"></i>
               </button>
-              <button data-action="deleteServer" data-args="[{{ loop.index0 }}]" class="p-1 text-muted hover:text-critical ml-1" title="{{ t.delete }}" aria-label="{{ t.delete }}">
+              <button data-action="deleteServer" data-args="[{{ loop.index0 }}]" class="p-1 text-critical hover:bg-critical/15 rounded ml-1" title="{{ t.delete }}" aria-label="{{ t.delete }}">
                 <i data-lucide="trash-2" class="w-4 h-4"></i>
               </button>
             </td>
@@ -1599,11 +1599,11 @@ function loadTags() {
           </div>
           <div class="flex items-center gap-1">
             <button data-action="editTag" data-args='${JSON.stringify([tag.id, tag.name, tag.color || '#6B7280']).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}'
-                    class="p-1 text-muted hover:text-info" title="Edit">
+                    class="p-1 text-accent hover:text-accent-strong" title="Edit">
               <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
             </button>
             <button data-action="deleteTag" data-args="[${tag.id}]"
-                    class="p-1 text-muted hover:text-critical" title="Delete">
+                    class="p-1 text-critical hover:bg-critical/15 rounded" title="Delete">
               <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
             </button>
           </div>
@@ -2192,8 +2192,8 @@ function loadDepsTable() {
         html += '<td class="px-3 py-2 text-muted">' + targetInfo + '</td>';
         html += '<td class="px-3 py-2 text-muted">' + (d.description || '-') + '</td>';
         html += '<td class="px-3 py-2 text-right whitespace-nowrap">';
-        html += '<button data-action="editDependency" data-args="[' + d.id + ']" class="text-muted hover:text-info p-1" title="Edit"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>';
-        html += '<button data-action="removeDependency" data-args="[' + d.id + ']" class="text-muted hover:text-critical p-1 ml-1" title="' + {{ t.remove_dependency | tojson }} + '"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>';
+        html += '<button data-action="editDependency" data-args="[' + d.id + ']" class="text-accent hover:text-accent-strong p-1" title="Edit"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>';
+        html += '<button data-action="removeDependency" data-args="[' + d.id + ']" class="text-critical hover:bg-critical/15 rounded p-1 ml-1" title="' + {{ t.remove_dependency | tojson }} + '"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>';
         html += '</td>';
         html += '</tr>';
       });
@@ -2361,16 +2361,68 @@ function loadServerTags() {
   {% endfor %}
 }
 
+// A tag's colour is chosen by the admin in the tag manager, so it cannot be
+// replaced with a neutral — that discards the only thing distinguishing one
+// tag from another at a glance. But an arbitrary user colour has no
+// readability guarantee: the DEFAULT #6B7280 measured 3.26:1 on the dark
+// row, under AA, which is what "the tags are too soft" meant.
+//
+// So the hue is kept and the LIGHTNESS is moved until the label is legible.
+// Nudged in 6% steps toward white in dark mode and toward black in light,
+// against the tint actually composited over the row — not against the raw
+// colour, which is not what the eye compares it to. Capped at 24 steps so a
+// pathological input terminates.
+function _tagReadableInk(hex, tintAlpha) {
+  const m = /^#?([\da-f]{6})$/i.exec(hex || '');
+  const base = m ? m[1] : '6B7280';
+  const rgb = [0, 2, 4].map(i => parseInt(base.slice(i, i + 2), 16));
+  const dark = document.documentElement.classList.contains('dark');
+  const surf = dark ? [15, 22, 35] : [255, 255, 255];        // --c-card
+  // The chip background is the tag colour laid over the card at tintAlpha.
+  const bg = rgb.map((c, i) => c * tintAlpha + surf[i] * (1 - tintAlpha));
+
+  const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const lum = c => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+  const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+
+  // Solved against the HOVER tint, which is the denser of the two, so the
+  // label clears AA in both states. The specific failure being avoided:
+  // a hover highlight that swallows the text, which hides the one thing the
+  // tag exists to say.
+  const hoverAlpha = Math.min(1, tintAlpha + 0.18);
+  const bgHover = rgb.map((c, i) => c * hoverAlpha + surf[i] * (1 - hoverAlpha));
+
+  let ink = rgb.slice();
+  const target = dark ? 255 : 0;
+  for (let i = 0; i < 24 && (ratio(ink, bg) < 4.5 || ratio(ink, bgHover) < 4.5); i++) {
+    ink = ink.map(c => Math.round(c + (target - c) * 0.06));
+  }
+  const hx = c => c.map(v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('');
+  return {
+    ink: '#' + hx(ink),
+    bg: 'rgba(' + rgb.join(',') + ',' + tintAlpha + ')',
+    bgHover: 'rgba(' + rgb.join(',') + ',' + hoverAlpha + ')',
+    border: 'rgba(' + rgb.join(',') + ',0.55)',
+    restRatio: Math.round(ratio(ink, bg) * 100) / 100,
+    hoverRatio: Math.round(ratio(ink, bgHover) * 100) / 100,
+  };
+}
+
 function renderServerTagPills(serverName, idx) {
   const container = document.querySelector('.server-tags-' + idx);
   if (!container) return;
   const tags = _serverTagMap[serverName] || [];
-  container.innerHTML = tags.map(t =>
-    `<span class="px-1.5 py-0 text-[9px] font-medium rounded-full cursor-pointer hover:opacity-70"
-           style="color:${t.color};background:${t.color}15;border:1px solid ${t.color}30;"
+  container.innerHTML = tags.map(t => {
+    const c = _tagReadableInk(t.color, 0.22);
+    // The hover tint is carried on a custom property and referenced by a
+    // static Tailwind class, because a `:hover` rule cannot be expressed in
+    // an inline style and app.css is not this change's to edit.
+    return `<span class="server-tag-pill px-1.5 py-0 text-[9px] font-medium rounded-full cursor-pointer border
+                  bg-[var(--tag-bg)] hover:bg-[var(--tag-bg-h)] transition-colors duration-fast ease-standard"
+           style="--tag-bg:${c.bg};--tag-bg-h:${c.bgHover};color:${c.ink};border-color:${c.border};"
            data-action="_srvRemoveTag" data-args='${JSON.stringify([serverName, t.id, idx]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}'
-           title="Click to remove">${t.name} ×</span>`
-  ).join('');
+           title="Click to remove">${t.name} ×</span>`;
+  }).join('');
 }
 
 // ── data-action bridges (CSP: no inline on* handlers) ──
