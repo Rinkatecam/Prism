@@ -89,10 +89,12 @@ def test_the_sentinels_wrap_the_generated_block():
 _TIMED = re.compile(r"(?<![-\w])(?:transition|animation):[^;}]*")
 _DURATION = re.compile(r"(?<![\w.-])(\d*\.?\d+)(m?s)(?![\w.-])")
 
-# The two attention pulses. They are not UI transitions — a dot breathing at
-# 1.2s is a signal with its own tempo, and folding it onto a 320ms UI
-# duration would turn it into a flicker.
-ALLOWED_DURATIONS = {"1.2s", "1.8s", "2.25s"}
+# Continuous loops, not UI transitions. A dot breathing at 1.2s and a
+# skeleton sweeping at 1.4s are signals with their own tempo; folding either
+# onto a 320ms UI duration turns it into a flicker. The scale governs how
+# long it takes to GET somewhere, which is a different question from how
+# fast something idles.
+ALLOWED_DURATIONS = {"1.2s", "1.4s", "1.8s", "2.25s"}
 
 
 def test_no_transition_uses_a_duration_off_the_scale():

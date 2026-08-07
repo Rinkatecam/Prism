@@ -133,22 +133,47 @@
      instead of the native browser title= tooltip. Page-local scripts can
      call window.__prismBindTooltips() after injecting new tip elements. #}
   <style>
+    /* An overlay panel with a turquoise edge. Turquoise, not violet: the
+       tooltip is the interface OFFERING something, which is the same role
+       as a button or a card icon — violet is reserved for where you are.
+
+       It follows the theme through the tokens now; it used to be four
+       hardcoded slate values, so on the light theme it was a dark panel
+       that belonged to a different application. */
     #ps-tooltip {
       position: fixed; z-index: 9999; pointer-events: none;
       max-width: 360px; padding: 10px 12px;
-      background: #1E293B; border: 1px solid #334155; border-radius: 10px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      background: rgb(var(--c-card));
+      border: 1px solid rgb(var(--c-accent) / 0.55);
+      border-radius: 0.75rem;
+      box-shadow: var(--shadow-lg);
       opacity: 0; transform: translateY(4px);
-      transition: opacity 0.15s, transform 0.15s;
-      font-size: 11px; color: #CBD5E1;
+      transition: opacity var(--dur-fast) var(--ease-out),
+                  transform var(--dur-fast) var(--ease-out);
+      font-size: 11px; color: rgb(var(--c-muted));
     }
     #ps-tooltip.visible { opacity: 1; transform: translateY(0); }
-    #ps-tooltip .tip-title { font-weight: 700; font-size: 12px; color: #F9FAFB; margin-bottom: 4px; }
-    #ps-tooltip .tip-desc { line-height: 1.5; color: #94A3B8; white-space: pre-wrap; }
+    #ps-tooltip .tip-title { font-weight: 700; font-size: 12px; color: rgb(var(--c-ink)); margin-bottom: 4px; }
+    #ps-tooltip .tip-desc { line-height: 1.5; color: rgb(var(--c-muted)); white-space: pre-wrap; }
+
+    /* The trigger answers back. Anything carrying a tip gets a turquoise
+       edge on hover, so "there is more to read here" is discoverable
+       without hovering everything to find out. */
+    [data-tip-title] {
+      border-radius: 0.35rem;
+      box-shadow: 0 0 0 0 rgb(var(--c-accent) / 0);
+      transition: box-shadow var(--dur-fast) var(--ease-standard);
+    }
+    [data-tip-title]:hover,
+    [data-tip-title]:focus-visible {
+      box-shadow: 0 0 0 2px rgb(var(--c-accent) / 0.45);
+    }
 
     /* Values that change during morph (numbers, bar widths, colors) get a
        smooth CSS transition instead of snapping. */
-    .metric-value, .metric-bar-fill, .badge { transition: all 250ms ease-out; }
+    .metric-value, .metric-bar-fill, .badge {
+      transition: all var(--dur-base) var(--ease-out);
+    }
   </style>
 </head>
 <body class="bg-page text-ink min-h-screen transition-colors duration-200"

@@ -691,7 +691,7 @@ function renderFleetReport(data) {
           <button id="fleet-toggle-${id}" data-action="toggleFleetRow" data-args='${esc(JSON.stringify([s[F.name]]))}'
                   aria-expanded="${open}" aria-controls="fleet-detail-${id}"
                   aria-label="{{ t.get('toggle_details', 'Toggle details for') }} ${esc(s[F.name])}"
-                  class="p-0.5 rounded text-muted hover:text-info">
+                  class="p-0.5 rounded text-muted hover:text-brand">
             <i data-lucide="chevron-${open ? 'down' : 'right'}" class="w-4 h-4"></i>
           </button>
         </td>

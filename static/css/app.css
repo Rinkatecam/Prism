@@ -458,6 +458,181 @@ input[type="number"] { -moz-appearance: textfield; }
 .stepper-btn:hover { opacity: 1; }
 .stepper-btn svg { width: 9px; height: 6px; display: block; margin: auto; }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   INTERACTION MODEL — what hover means, what focus means, and what
+   "you cannot click this" looks like.
+
+   Three states, three different jobs, deliberately not the same treatment:
+
+     HOVER   "this responds to a click". Shape and depth only, NO colour —
+             a colour change on hover competes with the status colours,
+             which are the thing on this screen you actually have to read.
+     FOCUS   "you are here, and typing goes into this". Brand violet, and
+             the only one of the three that uses colour.
+     DISABLED "this exists but not now, and here is why". Faded, but never
+             below readable, with the reason attached.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Hover: feedback without colour ─────────────────────────────────────
+   A field says "clickable" by lifting its border a shade and warming its
+   surface a fraction. Both are within the neutral ramp, so nothing on the
+   page has to compete with it. */
+input:not([disabled]):not([readonly]),
+textarea:not([disabled]):not([readonly]),
+select:not([disabled]) {
+  transition: border-color var(--dur-fast) var(--ease-standard),
+              background-color var(--dur-fast) var(--ease-standard),
+              box-shadow var(--dur-base) var(--ease-standard);
+}
+input:not([disabled]):not([readonly]):hover,
+textarea:not([disabled]):not([readonly]):hover,
+select:not([disabled]):hover {
+  border-color: rgb(var(--c-muted) / 0.6);
+}
+
+/* ── Focus: the only place colour is spent ──────────────────────────────
+   Applied on :focus-visible so a mouse click on a BUTTON does not ring it,
+   while clicking into a text field still does — the browser treats a click
+   into an editable field as focus-visible, because typing follows.
+
+   The ring fades rather than snaps, in both directions: `box-shadow` is on
+   the base transition above, so leaving the field eases it out over
+   --dur-base instead of cutting. Requested as "fade slowly out".
+
+   NOT REMOVED WHILE THE FIELD STILL HAS FOCUS. A ring that disappears when
+   the pointer wanders off would leave a keyboard user with no idea where
+   they are, which is WCAG 2.4.7. The fade is on losing focus. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[contenteditable]:focus-visible {
+  outline: none;
+  border-color: rgb(var(--c-brand));
+  box-shadow: 0 0 0 3px rgb(var(--c-brand) / 0.25);
+}
+
+/* ── Clickable cards lift; the rest hold still ──────────────────────────
+   The distinction has to be visible BEFORE the click, or every card is an
+   invitation and most of them are a disappointment. Opt-in: a card lifts
+   only when it is marked clickable, so a plain panel stays a plain panel. */
+.card-clickable,
+a.server-card,
+button.server-card {
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-standard),
+              box-shadow var(--dur-fast) var(--ease-standard),
+              border-color var(--dur-fast) var(--ease-standard);
+}
+.card-clickable:hover,
+a.server-card:hover,
+button.server-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: rgb(var(--c-brand) / 0.35);
+}
+.card-clickable:active,
+a.server-card:active,
+button.server-card:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Disabled: faded, still readable, and it says why ───────────────────
+   `opacity: 0.5` is the reflex and it is wrong — it drags a 7.6:1 label to
+   about 3.4:1, under AA, so the one state where the user most needs to read
+   the label is the state where they cannot. 0.72 keeps `muted` on `card`
+   above 4.5:1 while still reading as unavailable.
+
+   `cursor: not-allowed` says THAT it is unavailable. The reason is a
+   `data-tip-title`/`data-tip-desc` pair on the same element — see the
+   tooltip below. A disabled control with no reason is a dead end. */
+[disabled],
+[aria-disabled="true"],
+.is-disabled {
+  opacity: 0.72;
+}
+/* Element-qualified, because Tailwind's preflight ships
+   `:disabled { cursor: default }` and its sheet is injected after this one.
+   Equal specificity means later wins, so a bare `[disabled]` rule set the
+   opacity and silently lost the cursor — the control looked unavailable and
+   still reported itself as ordinary to the pointer. (0,1,1) beats (0,1,0). */
+input[disabled], button[disabled], select[disabled], textarea[disabled],
+fieldset[disabled], optgroup[disabled], option[disabled],
+[aria-disabled="true"], .is-disabled {
+  cursor: not-allowed;
+}
+[disabled]:hover,
+[aria-disabled="true"]:hover,
+.is-disabled:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: rgb(var(--c-line));
+}
+/* A disabled control must not also claim to be focusable-and-ready. */
+[disabled]:focus-visible,
+[aria-disabled="true"]:focus-visible {
+  box-shadow: 0 0 0 3px rgb(var(--c-faint) / 0.25);
+  border-color: rgb(var(--c-faint));
+}
+
+/* ── Skeletons — a ghost of the thing, not a spinner ────────────────────
+   A spinner says "wait" and nothing else: the layout is still unknown, so
+   the page jumps when data lands. A skeleton is already the right size, so
+   the arrival is a fill rather than a reflow, and the shape tells you what
+   is coming.
+
+   The sweep is a background-position animation on a gradient, which the
+   compositor can run on its own; animating `opacity` on hundreds of these
+   would not. Honoured by the global reduced-motion rule above — it becomes
+   a flat block, which still holds the space. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm, 0.5rem);
+  background: rgb(var(--c-raised));
+  /* Nothing inside is real yet. */
+  color: transparent;
+  user-select: none;
+  pointer-events: none;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--c-line) / 0.55) 45%,
+    rgb(var(--c-line) / 0.55) 55%,
+    transparent 100%);
+  background-size: 220% 100%;
+  animation: skeleton-sweep 1.4s var(--ease-standard) infinite;
+}
+.dark .skeleton::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--c-muted) / 0.14) 45%,
+    rgb(var(--c-muted) / 0.14) 55%,
+    transparent 100%);
+  background-size: 220% 100%;
+}
+@keyframes skeleton-sweep {
+  from { background-position: 120% 0; }
+  to   { background-position: -120% 0; }
+}
+/* Text-shaped ghosts. `--lines` sets how many. */
+.skeleton-text { height: 0.75em; margin: 0.35em 0; }
+.skeleton-text:last-child { width: 60%; }
+
+/* Real content replacing a skeleton fades in rather than appearing, so the
+   swap reads as the same object resolving instead of two different frames. */
+.data-settled { animation: data-in var(--dur-slow) var(--ease-out); }
+@keyframes data-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: none; }
+}
+
 /* ── Sidebar ── */
 .sidebar-link {
   display: flex;
