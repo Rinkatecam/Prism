@@ -3597,7 +3597,7 @@ function executeRunbook(rbId, dryRun) {
 
   title.textContent = (rb ? rb.name : RUNBOOK_T.runbook_output) + (dryRun ? ' (' + RUNBOOK_T.dry_run + ')' : '');
   status.textContent = RUNBOOK_T.execution_running;
-  status.className = 'inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#2563EB]/10 text-[#2563EB]';
+  status.className = 'inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-info/10 text-info';
   content.textContent = 'Starting...';
   panel.classList.remove('hidden');
   if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -3613,7 +3613,7 @@ function executeRunbook(rbId, dryRun) {
   .then(data => {
     if (!data.ok) {
       status.textContent = RUNBOOK_T.execution_failed;
-      status.className = 'inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#DC2626]/10 text-[#DC2626]';
+      status.className = 'inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-critical/10 text-critical';
       content.textContent = data.error || 'Unknown error';
       return;
     }
@@ -3621,7 +3621,7 @@ function executeRunbook(rbId, dryRun) {
   })
   .catch(e => {
     status.textContent = RUNBOOK_T.execution_failed;
-    status.className = 'inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#DC2626]/10 text-[#DC2626]';
+    status.className = 'inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-critical/10 text-critical';
     content.textContent = 'Error: ' + e.message;
   });
 }
@@ -3639,19 +3639,19 @@ function pollExecution(execId) {
 
         if (ex.status === 'running') {
           status.textContent = RUNBOOK_T.execution_running;
-          status.className = 'inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#2563EB]/10 text-[#2563EB]';
+          status.className = 'inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-info/10 text-info';
           content.textContent = ex.output || 'Executing...';
         } else if (ex.status === 'completed') {
           clearInterval(_pollTimer);
           _pollTimer = null;
           status.textContent = RUNBOOK_T.execution_completed + (ex.duration_ms ? ' (' + (ex.duration_ms / 1000).toFixed(1) + 's)' : '');
-          status.className = 'inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#10B981]/10 text-[#10B981]';
+          status.className = 'inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-healthy/10 text-healthy';
           content.textContent = ex.output || 'Completed with no output';
         } else if (ex.status === 'failed') {
           clearInterval(_pollTimer);
           _pollTimer = null;
           status.textContent = RUNBOOK_T.execution_failed;
-          status.className = 'inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#DC2626]/10 text-[#DC2626]';
+          status.className = 'inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-critical/10 text-critical';
           content.textContent = ex.output || 'Execution failed';
         }
       })

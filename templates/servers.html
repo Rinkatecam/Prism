@@ -1308,12 +1308,12 @@ function importServersCSV(input) {
         let text = data.imported + ' ' + {{ t.import_success | tojson }};
         if (data.skipped > 0) text += ', ' + data.skipped + ' ' + {{ t.import_skipped | tojson }};
         if (data.errors && data.errors.length > 0) text += '. Errors: ' + data.errors.join('; ');
-        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-healthy-tint text-healthy-strong';
         msg.textContent = text;
         msg.classList.remove('hidden');
         if (data.imported > 0) setTimeout(() => location.reload(), 1500);
       } else {
-        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
         msg.textContent = 'Error: ' + (data.error || 'Import failed');
         msg.classList.remove('hidden');
       }
@@ -1350,12 +1350,12 @@ function discoverServers() {
   .then(data => {
     if (!data.ok) {
       status.textContent = 'Error: ' + (data.error || 'Discovery failed');
-      status.className = 'text-sm text-[#DC2626] dark:text-[#EF4444] mb-3';
+      status.className = 'text-sm text-critical mb-3';
       return;
     }
     discoveredServers = data.servers || [];
     status.textContent = data.total + ' computers found, ' + data.new + ' new';
-    status.className = 'text-sm text-[#10B981] dark:text-[#34D399] mb-3';
+    status.className = 'text-sm text-healthy mb-3';
 
     if (discoveredServers.length === 0) {
       list.innerHTML = '<div class="text-sm text-muted py-4 text-center">' + {{ t.no_servers_found | tojson }} + '</div>';
@@ -1382,7 +1382,7 @@ function discoverServers() {
   })
   .catch(err => {
     status.textContent = 'Error: ' + err.message;
-    status.className = 'text-sm text-[#DC2626] dark:text-[#EF4444] mb-3';
+    status.className = 'text-sm text-critical mb-3';
   });
 }
 

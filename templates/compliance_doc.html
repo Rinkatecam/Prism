@@ -109,7 +109,7 @@
       // Level class drives indent + size in the shared stylesheet.
       // The findings register has 30+ entries — H4 is the level we
       // want navigable here (each finding card is an H4).
-      a.className = 'block py-0.5 truncate text-[#374151] dark:text-[#D1D5DB] toc-l' + item.level;
+      a.className = 'block py-0.5 truncate text-ink dark:text-[#D1D5DB] toc-l' + item.level;
       a.title = item.text;
       a.dataset.targetId = item.id;
       navEl.appendChild(a);

@@ -185,6 +185,16 @@ _CLASS_ATTR = re.compile(r'class="([^"]*)"')
 # JavaScript — `el.className = '…'`, ternary branches building a class string
 # — and the browser applies those exactly like the ones in the HTML. Leaving
 # them behind would mean 629 elements sitting out any palette change.
+#
+# Scanned ONLY inside <script> blocks. Run over the whole file, quote pairing
+# desynchronises the moment it meets an HTML attribute or an apostrophe in
+# prose, and every string after that point is mispaired — which is why a
+# first attempt found 286 of the 629 and silently missed the rest.
+_SCRIPT_BLOCK = re.compile(
+    r"<script\b[^>]*>(.*?)</script\s*>"      # JavaScript
+    r"|\{%(.*?)%\}"                          # {% set cls = '…' if x else '…' %}
+    r"|\{\{(.*?)\}\}",                       # {{ '…' if x else '…' }}
+    re.S | re.I)
 _JS_STRING = re.compile(r"(['\"`])((?:\\.|(?!\1).)*?)\1", re.S)
 _CLASS_WORD = re.compile(r"^[A-Za-z0-9_:/\[\]#.%!()${}=+,\\-]+$")
 _BARE_WORD = re.compile(r"^[a-z]+$")
@@ -245,14 +255,17 @@ def class_scopes(text: str) -> list[tuple[int, int]]:
     failure this whole toolchain keeps rediscovering.
     """
     spans = [m.span(1) for m in _CLASS_ATTR.finditer(text)]
-    for m in _JS_STRING.finditer(text):
-        a, b = m.span(2)
-        # A JS string holding `<div class="…">` is not itself a class list;
-        # the attribute inside it is, and it is already in `spans`.
-        if any(a < y and x < b for x, y in spans):
-            continue
-        if _COLOUR_UTILITY.search(m.group(2)) and _is_class_list(m.group(2)):
-            spans.append((a, b))
+    for block in _SCRIPT_BLOCK.finditer(text):
+        group = next(i for i in (1, 2, 3) if block.group(i) is not None)
+        base = block.start(group)
+        for m in _JS_STRING.finditer(block.group(group)):
+            a, b = base + m.start(2), base + m.end(2)
+            # A JS string holding `<div class="…">` is not itself a class
+            # list; the attribute inside it is, and is already in `spans`.
+            if any(a < y and x < b for x, y in spans):
+                continue
+            if _COLOUR_UTILITY.search(m.group(2)) and _is_class_list(m.group(2)):
+                spans.append((a, b))
     return sorted(spans)
 
 # Tailwind BUILT-IN colour classes that appear as the light half of a pair

@@ -138,16 +138,39 @@ def test_dark_hover_pairs_with_light_hover():
 # behind would mean those elements sitting out the palette change.
 
 def test_a_classname_assignment_is_converted():
-    src = "el.className = 'text-[#6B7280] dark:text-[#CBD5E1] font-medium';"
-    assert dt.convert(src) == "el.className = 'text-muted font-medium';"
+    src = "<script>el.className = 'text-[#6B7280] dark:text-[#CBD5E1] font-medium';</script>"
+    assert dt.convert(src) == "<script>el.className = 'text-muted font-medium';</script>"
 
 
 def test_each_branch_of_a_ternary_is_its_own_class_list():
     """`ok ? 'text-[#10B981]' : 'text-[#DC2626]'` — two strings, only one of
     which is ever applied. They cannot pair with each other."""
-    src = "fs.className = 'text-2xl ' + (open === 0 ? 'text-[#10B981]' : 'text-[#DC2626]');"
+    src = ("<script>fs.className = 'text-2xl ' + "
+           "(open === 0 ? 'text-[#10B981]' : 'text-[#DC2626]');</script>")
     out = dt.convert(src)
     assert "'text-healthy'" in out and "'text-critical'" in out
+
+
+def test_javascript_is_only_read_inside_a_script_block():
+    """Quote pairing is done with a regex, and it desynchronises the moment
+    it meets an HTML attribute or an apostrophe in prose — after which every
+    string is mispaired. Confining the scan to <script> removes the HTML from
+    the input entirely. A first attempt scanned whole files and found 286 of
+    629, silently missing the rest.
+
+    Nothing is lost by the restriction: CSP forbids inline handlers here
+    (tests/test_csp.py), so script blocks are the only place JS runs.
+    """
+    loose = "el.className = 'text-[#6B7280] dark:text-[#CBD5E1]';"
+    assert dt.convert(loose) == loose
+
+
+def test_a_jinja_expression_building_a_class_string_is_converted():
+    """`{% set cls = ('text-[#F59E0B]' if hot else 'text-[#6B7280]') %}` is a
+    class list too, and it is not inside a script block."""
+    src = "{% set c = ('text-[#F59E0B] font-semibold' if hot else 'text-[#6B7280]') %}"
+    assert dt.convert(src) == \
+        "{% set c = ('text-warning font-semibold' if hot else 'text-muted') %}"
 
 
 def test_prose_containing_a_utility_is_left_alone():

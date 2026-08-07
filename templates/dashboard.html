@@ -204,22 +204,22 @@ function setStatusFilter(status) {
   document.querySelectorAll('.status-filter-btn').forEach(btn => {
     const filter = btn.getAttribute('data-filter');
     if (filter === status) {
-      btn.classList.add('active', 'bg-[#2563EB]', 'text-white');
-      btn.classList.remove('border', 'hover:bg-[#DC2626]', 'hover:bg-[#F59E0B]', 'hover:bg-[#10B981]', 'hover:bg-[#9CA3AF]',
-        'hover:bg-[#EF4444]', 'hover:bg-[#FBBF24]', 'hover:bg-[#34D399]', 'hover:bg-[#6B7280]',
-        'text-[#DC2626]', 'text-[#F59E0B]', 'text-[#10B981]', 'text-[#9CA3AF]',
+      btn.classList.add('active', 'bg-info', 'text-white');
+      btn.classList.remove('border', 'hover:bg-critical', 'hover:bg-warning', 'hover:bg-healthy', 'hover:bg-faint',
+        'hover:bg-[#EF4444]', 'hover:bg-[#FBBF24]', 'hover:bg-[#34D399]', 'hover:bg-muted',
+        'text-critical', 'text-warning', 'text-healthy', 'text-faint',
         'dark:text-[#EF4444]', 'dark:text-[#FBBF24]', 'dark:text-[#34D399]', 'dark:text-[#6B7280]',
-        'border-[#DC2626]', 'border-[#F59E0B]', 'border-[#10B981]', 'border-[#9CA3AF]',
+        'border-critical', 'border-warning', 'border-healthy', 'border-faint',
         'dark:border-[#EF4444]', 'dark:border-[#FBBF24]', 'dark:border-[#34D399]', 'dark:border-[#6B7280]');
     } else {
-      btn.classList.remove('active', 'bg-[#2563EB]', 'text-white');
+      btn.classList.remove('active', 'bg-info', 'text-white');
       // Restore original border/text classes based on filter type
       const styles = {
-        all: ['border', 'border-[#E5E7EB]', 'text-[#6B7280]', 'dark:border-[#334155]', 'dark:text-[#CBD5E1]'],
-        critical: ['border', 'border-[#DC2626]', 'text-[#DC2626]', 'dark:border-[#EF4444]', 'dark:text-[#EF4444]', 'hover:bg-[#DC2626]', 'hover:text-white', 'dark:hover:bg-[#EF4444]'],
-        warning: ['border', 'border-[#F59E0B]', 'text-[#F59E0B]', 'dark:border-[#FBBF24]', 'dark:text-[#FBBF24]', 'hover:bg-[#F59E0B]', 'hover:text-white', 'dark:hover:bg-[#FBBF24]'],
-        healthy: ['border', 'border-[#10B981]', 'text-[#10B981]', 'dark:border-[#34D399]', 'dark:text-[#34D399]', 'hover:bg-[#10B981]', 'hover:text-white', 'dark:hover:bg-[#34D399]'],
-        offline: ['border', 'border-[#9CA3AF]', 'text-[#9CA3AF]', 'dark:border-[#6B7280]', 'dark:text-[#6B7280]', 'hover:bg-[#9CA3AF]', 'hover:text-white', 'dark:hover:bg-[#6B7280]']
+        all: ['border', 'border-line', 'text-muted', 'dark:border-[#334155]', 'dark:text-[#CBD5E1]'],
+        critical: ['border', 'border-critical', 'text-critical', 'dark:border-[#EF4444]', 'dark:text-[#EF4444]', 'hover:bg-critical', 'hover:text-white', 'dark:hover:bg-[#EF4444]'],
+        warning: ['border', 'border-warning', 'text-warning', 'dark:border-[#FBBF24]', 'dark:text-[#FBBF24]', 'hover:bg-warning', 'hover:text-white', 'dark:hover:bg-[#FBBF24]'],
+        healthy: ['border', 'border-healthy', 'text-healthy', 'dark:border-[#34D399]', 'dark:text-[#34D399]', 'hover:bg-healthy', 'hover:text-white', 'dark:hover:bg-[#34D399]'],
+        offline: ['border', 'border-faint', 'text-faint', 'dark:border-[#6B7280]', 'dark:text-[#6B7280]', 'hover:bg-faint', 'hover:text-white', 'dark:hover:bg-[#6B7280]']
       };
       (styles[filter] || styles.all).forEach(c => btn.classList.add(c));
     }
@@ -343,8 +343,8 @@ function loadRestartStatus() {
       const icon = document.getElementById('restart-banner-icon');
       inner.className = 'rounded-lg border p-4 flex items-start gap-3 relative ' +
         (allOk
-          ? 'bg-[#ECFDF5] dark:bg-[#064E3B]/30 border-[#10B981] dark:border-[#34D399]/50 text-[#065F46] dark:text-[#A7F3D0]'
-          : 'bg-[#FEF3C7] dark:bg-[#78350F]/30 border-[#F59E0B] dark:border-[#FBBF24]/50 text-[#92400E] dark:text-[#FDE68A]');
+          ? 'bg-[#ECFDF5] dark:bg-[#064E3B]/30 border-healthy dark:border-healthy/50 text-healthy-strong dark:text-[#A7F3D0]'
+          : 'bg-warning-tint dark:bg-warning-tint/30 border-warning dark:border-warning/50 text-warning-strong dark:text-[#FDE68A]');
 
       // Title and summary
       document.getElementById('restart-banner-title').textContent =
@@ -360,7 +360,7 @@ function loadRestartStatus() {
       tbody.innerHTML = '';
       results.forEach(r => {
         const tr = document.createElement('tr');
-        tr.className = 'border-t border-[#E5E7EB] dark:border-[#334155]';
+        tr.className = 'border-t border-line';
         const isOk = r.status === 'success' || r.status === 'ok';
         tr.innerHTML =
           '<td class="px-3 py-2 font-medium text-ink">' + escapeHtml(r.server || r.name || 'Unknown') + '</td>' +

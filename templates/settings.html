@@ -1186,7 +1186,7 @@ function cancelAllChanges() {
 function saveAllSettings() {
   if (!validateAllFields()) {
     const msg = document.getElementById('save-message');
-    msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+    msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
     msg.textContent = {{ t.validation_summary | tojson }};
     msg.classList.remove('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1943,8 +1943,8 @@ function pickLdapResult(value) {
   const existing = ta.value.split('\n').map(l => l.trim()).filter(Boolean);
   if (existing.includes(value)) {
     // Already present — brief visual flash
-    ta.classList.add('ring-2', 'ring-[#F59E0B]');
-    setTimeout(() => ta.classList.remove('ring-2', 'ring-[#F59E0B]'), 800);
+    ta.classList.add('ring-2', 'ring-warning');
+    setTimeout(() => ta.classList.remove('ring-2', 'ring-warning'), 800);
     return;
   }
   existing.push(value);
@@ -1952,8 +1952,8 @@ function pickLdapResult(value) {
   // Trigger save bar
   ta.dispatchEvent(new Event('input', { bubbles: true }));
   // Visual confirm
-  ta.classList.add('ring-2', 'ring-[#10B981]');
-  setTimeout(() => ta.classList.remove('ring-2', 'ring-[#10B981]'), 600);
+  ta.classList.add('ring-2', 'ring-healthy');
+  setTimeout(() => ta.classList.remove('ring-2', 'ring-healthy'), 600);
 }
 
 // Enter key in search field triggers query

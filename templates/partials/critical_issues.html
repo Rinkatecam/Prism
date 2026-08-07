@@ -36,19 +36,19 @@
       <!-- Show the worst metrics -->
       <div class="space-y-1 text-xs">
         {% if issue.cpu_percent is not none and issue.cpu_percent >= 0 %}
-          {% set cpu_class = 'text-[#DC2626] dark:text-[#EF4444] font-semibold' if issue.cpu_percent >= _cpu_c else ('text-[#F59E0B] dark:text-[#FBBF24] font-semibold' if issue.cpu_percent >= _cpu_w else 'text-[#6B7280] dark:text-[#CBD5E1]') %}
+          {% set cpu_class = 'text-critical font-semibold' if issue.cpu_percent >= _cpu_c else ('text-warning font-semibold' if issue.cpu_percent >= _cpu_w else 'text-muted') %}
           <div class="{{ cpu_class }}">CPU: {{ issue.cpu_percent | round(1) }}%</div>
         {% endif %}
         {% if issue.ram_percent is not none and issue.ram_percent >= 0 %}
-          {% set ram_class = 'text-[#DC2626] dark:text-[#EF4444] font-semibold' if issue.ram_percent >= _ram_c else ('text-[#F59E0B] dark:text-[#FBBF24] font-semibold' if issue.ram_percent >= _ram_w else 'text-[#6B7280] dark:text-[#CBD5E1]') %}
+          {% set ram_class = 'text-critical font-semibold' if issue.ram_percent >= _ram_c else ('text-warning font-semibold' if issue.ram_percent >= _ram_w else 'text-muted') %}
           <div class="{{ ram_class }}">RAM: {{ issue.ram_percent | round(1) }}%</div>
         {% endif %}
         {% if issue.disk_c_percent is not none and issue.disk_c_percent >= 0 %}
-          {% set dc_class = 'text-[#DC2626] dark:text-[#EF4444] font-semibold' if issue.disk_c_percent >= _dsk_c else ('text-[#F59E0B] dark:text-[#FBBF24] font-semibold' if issue.disk_c_percent >= _dsk_w else 'text-[#6B7280] dark:text-[#CBD5E1]') %}
+          {% set dc_class = 'text-critical font-semibold' if issue.disk_c_percent >= _dsk_c else ('text-warning font-semibold' if issue.disk_c_percent >= _dsk_w else 'text-muted') %}
           <div class="{{ dc_class }}">Disk C: {{ issue.disk_c_percent | round(1) }}%</div>
         {% endif %}
         {% if issue.disk_d_percent is not none and issue.disk_d_percent >= 0 %}
-          {% set dd_class = 'text-[#DC2626] dark:text-[#EF4444] font-semibold' if issue.disk_d_percent >= _dsk_c else ('text-[#F59E0B] dark:text-[#FBBF24] font-semibold' if issue.disk_d_percent >= _dsk_w else 'text-[#6B7280] dark:text-[#CBD5E1]') %}
+          {% set dd_class = 'text-critical font-semibold' if issue.disk_d_percent >= _dsk_c else ('text-warning font-semibold' if issue.disk_d_percent >= _dsk_w else 'text-muted') %}
           <div class="{{ dd_class }}">Disk D: {{ issue.disk_d_percent | round(1) }}%</div>
         {% endif %}
         {% if issue.status == 'offline' %}
