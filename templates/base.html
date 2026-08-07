@@ -176,14 +176,14 @@
     }
   </style>
 </head>
-<body class="bg-page text-ink min-h-screen transition-colors duration-200"
+<body class="bg-page text-ink min-h-screen transition-colors duration-base"
       hx-ext="morph">
 
   <!-- Global custom tooltip (one per page) -->
   <div id="ps-tooltip"></div>
 
   <!-- Sidebar (collapsible nav area below the top bar) -->
-  <aside id="sidebar" class="fixed top-14 left-0 z-50 flex flex-col bg-card border-r border-line transition-all duration-200 w-56 sidebar-expanded overflow-hidden" style="bottom:0">
+  <aside id="sidebar" class="fixed top-14 left-0 z-50 flex flex-col bg-card border-r border-line transition-all duration-base w-56 sidebar-expanded overflow-hidden" style="bottom:0">
 
     <!-- Navigation -->
     <nav class="flex-1 py-3 px-2 space-y-1 overflow-y-auto overflow-x-hidden">
@@ -261,7 +261,7 @@
   <!-- Unified top bar: brand on the left, live controls on the right. One
        full-width strip, so the logo shares the same bar as the pulse widget
        and the theme toggle; the sidebar nav starts below it. -->
-  <header id="topbar" class="fixed top-0 left-0 right-0 z-[51] h-14 bg-card border-b border-line flex items-center gap-3 px-3 transition-colors duration-200">
+  <header id="topbar" class="fixed top-0 left-0 right-0 z-[51] h-14 bg-card border-b border-line flex items-center gap-3 px-3 transition-colors duration-base">
     <!-- Mobile-only menu toggle (opens the off-canvas nav). Desktop uses the
          collapse control in the sidebar footer, next to the username. -->
     <button data-action="toggle-sidebar" class="md:hidden p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted flex-shrink-0" title="Toggle sidebar" aria-label="Toggle sidebar">
@@ -308,7 +308,7 @@
   <div id="sidebar-backdrop" data-action="close-mobile-sidebar" aria-hidden="true"></div>
 
   <!-- Main content -->
-  <main id="main-content" class="transition-all duration-200 pt-14 min-h-screen" style="margin-left:14rem">
+  <main id="main-content" class="transition-all duration-base pt-14 min-h-screen" style="margin-left:14rem">
     {% block breadcrumb %}{% endblock %}
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     {% block content %}{% endblock %}
@@ -932,5 +932,11 @@
        cannot be recoloured, so it is hidden in app.css and rebuilt here —
        see the module docstring for what that also fixes. -->
   <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/stepper.js') }}"></script>
+
+  <!-- Sortable table columns. Opt-in per <th data-sort="…"> in each
+       template's <thead> — see the module docstring for the content types,
+       the sessionStorage persistence contract, and why a MutationObserver
+       is needed alongside the htmx hooks. -->
+  <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/table-sort.js') }}"></script>
 </body>
 </html>

@@ -122,14 +122,14 @@
       <!-- Current metrics comparison table -->
       <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
         <table class="w-full text-xs">
-          <thead>
+          <thead data-sort-table="compare-live">
             <tr class="bg-page">
-              <th class="px-3 py-2 text-left font-medium">{{ t.server }}</th>
-              <th class="px-3 py-2 text-center font-medium">{{ t.status }}</th>
-              <th class="px-3 py-2 text-center font-medium">{{ t.cpu }}</th>
-              <th class="px-3 py-2 text-center font-medium">{{ t.ram }}</th>
-              <th class="px-3 py-2 text-center font-medium">{{ t.disk_c }}</th>
-              <th class="px-3 py-2 text-center font-medium">{{ t.disk_d }}</th>
+              <th class="px-3 py-2 text-left font-medium" data-sort="text">{{ t.server }}</th>
+              <th class="px-3 py-2 text-center font-medium" data-sort="status">{{ t.status }}</th>
+              <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.cpu }}</th>
+              <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.ram }}</th>
+              <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.disk_c }}</th>
+              <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.disk_d }}</th>
             </tr>
           </thead>
           <tbody id="compare-table-body"></tbody>
@@ -144,16 +144,16 @@
         </h3>
         <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
           <table class="w-full text-xs">
-            <thead>
+            <thead data-sort-table="compare-stats">
               <tr class="bg-page">
-                <th class="px-3 py-2 text-left font-medium">{{ t.server }}</th>
-                <th class="px-3 py-2 text-left font-medium">{{ t.get('metric', 'Metric') }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.minimum }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.maximum }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.mean }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.median }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.p95 }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.trend_slope }}</th>
+                <th class="px-3 py-2 text-left font-medium" data-sort="text">{{ t.server }}</th>
+                <th class="px-3 py-2 text-left font-medium" data-sort="text">{{ t.get('metric', 'Metric') }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.minimum }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.maximum }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.mean }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.median }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.p95 }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.trend_slope }}</th>
               </tr>
             </thead>
             <tbody id="stats-table-body"></tbody>
@@ -169,13 +169,13 @@
         </h3>
         <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
           <table class="w-full text-xs">
-            <thead>
+            <thead data-sort-table="compare-hourly">
               <tr class="bg-page">
-                <th class="px-3 py-2 text-left font-medium">{{ t.server }}</th>
-                <th class="px-3 py-2 text-left font-medium">{{ t.get('metric', 'Metric') }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.business_hours_avg }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.off_hours_avg }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.fleet_deviation }}</th>
+                <th class="px-3 py-2 text-left font-medium" data-sort="text">{{ t.server }}</th>
+                <th class="px-3 py-2 text-left font-medium" data-sort="text">{{ t.get('metric', 'Metric') }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.business_hours_avg }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.off_hours_avg }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="status">{{ t.fleet_deviation }}</th>
               </tr>
             </thead>
             <tbody id="annotations-table-body"></tbody>
@@ -229,12 +229,12 @@
         </h3>
         <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
           <table class="w-full text-xs">
-            <thead>
+            <thead data-sort-table="compare-events-common">
               <tr class="bg-page">
-                <th class="px-3 py-2 text-left font-medium">{{ t.event_id }}</th>
-                <th class="px-3 py-2 text-left font-medium">{{ t.source }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.level }}</th>
-                <th class="px-3 py-2 text-left font-medium">{{ t.message }}</th>
+                <th class="px-3 py-2 text-left font-medium" data-sort="number">{{ t.event_id }}</th>
+                <th class="px-3 py-2 text-left font-medium" data-sort="text">{{ t.source }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="status">{{ t.level }}</th>
+                <th class="px-3 py-2 text-left font-medium" data-sort="text">{{ t.message }}</th>
                 <th class="px-3 py-2 text-center font-medium">{{ t.counts_per_server }}</th>
               </tr>
             </thead>
@@ -252,12 +252,12 @@
         </h3>
         <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
           <table class="w-full text-xs">
-            <thead>
+            <thead data-sort-table="compare-events-unique">
               <tr class="bg-page">
-                <th class="px-3 py-2 text-left font-medium">{{ t.event_id }}</th>
-                <th class="px-3 py-2 text-left font-medium">{{ t.source }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.level }}</th>
-                <th class="px-3 py-2 text-left font-medium">{{ t.message }}</th>
+                <th class="px-3 py-2 text-left font-medium" data-sort="number">{{ t.event_id }}</th>
+                <th class="px-3 py-2 text-left font-medium" data-sort="text">{{ t.source }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="status">{{ t.level }}</th>
+                <th class="px-3 py-2 text-left font-medium" data-sort="text">{{ t.message }}</th>
                 <th class="px-3 py-2 text-center font-medium">{{ t.present_on }}</th>
                 <th class="px-3 py-2 text-center font-medium">{{ t.missing_on }}</th>
               </tr>
@@ -845,12 +845,12 @@ function addEventRow(tbody, evt, cols, colSpan) {
         <div>
           <span class="text-[10px] font-semibold uppercase text-muted">Per-Server Breakdown</span>
           <table class="w-full text-xs mt-1">
-            <thead>
+            <thead data-sort-table="compare-event-servers">
               <tr class="text-[10px] text-muted">
-                <th class="px-3 py-1 text-left font-medium">Server</th>
-                <th class="px-3 py-1 text-center font-medium">Count</th>
-                <th class="px-3 py-1 text-center font-medium">Level</th>
-                <th class="px-3 py-1 text-left font-medium">Latest</th>
+                <th class="px-3 py-1 text-left font-medium" data-sort="text">Server</th>
+                <th class="px-3 py-1 text-center font-medium" data-sort="number">Count</th>
+                <th class="px-3 py-1 text-center font-medium" data-sort="status">Level</th>
+                <th class="px-3 py-1 text-left font-medium" data-sort="timestamp">Latest</th>
               </tr>
             </thead>
             <tbody>${serverRows}</tbody>

@@ -181,10 +181,10 @@
       }).join('');
       div.innerHTML = `
         <table class="w-full text-xs">
-          <thead><tr class="text-[10px] uppercase text-faint">
-            <th class="text-left py-1 pr-3">User</th>
-            <th class="text-left py-1 pr-3">Server</th>
-            <th class="text-left py-1 pr-3">Perm</th>
+          <thead data-sort-table="rbac-acl"><tr class="text-[10px] uppercase text-faint">
+            <th class="text-left py-1 pr-3" data-sort="text">User</th>
+            <th class="text-left py-1 pr-3" data-sort="text">Server</th>
+            <th class="text-left py-1 pr-3" data-sort="status">Perm</th>
             <th class="text-left py-1 pr-3">Granted</th>
             <th></th>
           </tr></thead>

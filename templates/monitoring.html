@@ -378,14 +378,14 @@
     <!-- Noise digest table (loaded via JS) -->
     <div id="noise-digest-table" class="overflow-x-auto">
       <table class="w-full text-xs">
-        <thead>
+        <thead data-sort-table="monitoring-noise-digest">
           <tr class="text-left text-muted border-b border-line">
-            <th class="pb-2 pr-3 font-medium">{{ t.servers if t.servers is defined else 'Server' }}</th>
-            <th class="pb-2 pr-3 font-medium">{{ t.type if t.type is defined else 'Metric' }}</th>
-            <th class="pb-2 pr-3 font-medium">{{ t.noise_score if t.noise_score is defined else 'Score' }}</th>
-            <th class="pb-2 pr-3 font-medium">{{ t.fire_count if t.fire_count is defined else 'Fires' }}</th>
-            <th class="pb-2 pr-3 font-medium">{{ t.ack_count if t.ack_count is defined else 'Acked' }}</th>
-            <th class="pb-2 font-medium">{{ t.suggested_adjustment if t.suggested_adjustment is defined else 'Suggestion' }}</th>
+            <th class="pb-2 pr-3 font-medium" data-sort="text">{{ t.servers if t.servers is defined else 'Server' }}</th>
+            <th class="pb-2 pr-3 font-medium" data-sort="text">{{ t.type if t.type is defined else 'Metric' }}</th>
+            <th class="pb-2 pr-3 font-medium" data-sort="number">{{ t.noise_score if t.noise_score is defined else 'Score' }}</th>
+            <th class="pb-2 pr-3 font-medium" data-sort="number">{{ t.fire_count if t.fire_count is defined else 'Fires' }}</th>
+            <th class="pb-2 pr-3 font-medium" data-sort="number">{{ t.ack_count if t.ack_count is defined else 'Acked' }}</th>
+            <th class="pb-2 font-medium" data-sort="text">{{ t.suggested_adjustment if t.suggested_adjustment is defined else 'Suggestion' }}</th>
           </tr>
         </thead>
         <tbody id="noise-digest-body">
@@ -433,7 +433,7 @@
 <!-- ═══════════════════════════════════════════════════════════════
      Sticky Bottom Save Bar
      ═══════════════════════════════════════════════════════════════ -->
-<div id="save-bar" class="fixed bottom-0 inset-x-0 z-50 hidden translate-y-full transition-transform duration-300">
+<div id="save-bar" class="fixed bottom-0 inset-x-0 z-50 hidden translate-y-full transition-transform duration-slow">
   <div class="max-w-4xl mx-auto px-4 py-3">
     <div class="bg-card border border-line rounded-lg shadow-lg flex items-center justify-between px-4 py-2">
       <span class="text-sm text-muted">{{ t.get('unsaved_changes', 'You have unsaved changes') }}</span>

@@ -161,11 +161,11 @@
     <div>
       <div class="overflow-x-auto">
         <table class="w-full text-xs">
-          <thead>
+          <thead data-sort-table="ops-runbooks">
             <tr class="border-b border-line">
-              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted">{{ t.name | default('Name') }}</th>
-              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted">{{ t.get('category', 'Category') }}</th>
-              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted">{{ t.type | default('Type') }}</th>
+              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="text">{{ t.name | default('Name') }}</th>
+              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="text">{{ t.get('category', 'Category') }}</th>
+              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="status">{{ t.type | default('Type') }}</th>
               <th class="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-muted">{{ t.actions | default('Actions') }}</th>
             </tr>
           </thead>
@@ -292,10 +292,10 @@
         <div id="backup-list-container" class="hidden">
           <div class="border border-line rounded-lg overflow-hidden">
             <table class="w-full text-sm">
-              <thead>
+              <thead data-sort-table="ops-config-backups">
                 <tr class="bg-page dark:bg-page/50 border-b border-line">
-                  <th class="px-3 py-2 text-left text-xs font-semibold text-muted">{{ t.audit_timestamp }}</th>
-                  <th class="px-3 py-2 text-left text-xs font-semibold text-muted">{{ t.db_size }}</th>
+                  <th class="px-3 py-2 text-left text-xs font-semibold text-muted" data-sort="timestamp">{{ t.audit_timestamp }}</th>
+                  <th class="px-3 py-2 text-left text-xs font-semibold text-muted" data-sort="bytes">{{ t.db_size }}</th>
                   <th class="px-3 py-2 text-right text-xs font-semibold text-muted">{{ t.actions }}</th>
                 </tr>
               </thead>

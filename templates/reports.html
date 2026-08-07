@@ -176,15 +176,15 @@
       <div id="fleet-empty" class="hidden text-center py-8"></div>
       <div id="fleet-table-wrap" class="overflow-x-auto">
         <table class="w-full text-sm border-collapse">
-          <thead>
+          <thead data-sort-table="reports-fleet">
             <tr class="text-[10px] uppercase tracking-wide text-muted border-b border-line">
               <th class="w-6"></th>
-              <th class="text-left font-semibold py-2 pr-3">{{ t.get('server', 'Server') }}</th>
-              <th class="text-left font-semibold py-2 pr-3">{{ t.get('health', 'Health') }}</th>
-              <th class="text-right font-semibold py-2 pr-3">{{ t.get('degraded', 'Degraded') }}</th>
+              <th class="text-left font-semibold py-2 pr-3" data-sort="text">{{ t.get('server', 'Server') }}</th>
+              <th class="text-left font-semibold py-2 pr-3" data-sort="number">{{ t.get('health', 'Health') }}</th>
+              <th class="text-right font-semibold py-2 pr-3" data-sort="number">{{ t.get('degraded', 'Degraded') }}</th>
               <th class="text-left font-semibold py-2 pr-3">{{ t.get('main_driver', 'Main driver') }}</th>
               <th class="text-left font-semibold py-2 pr-3">{{ t.capacity_planning }}</th>
-              <th class="text-right font-semibold py-2 pr-3">{{ t.get('availability', 'Availability') }}</th>
+              <th class="text-right font-semibold py-2 pr-3" data-sort="number">{{ t.get('availability', 'Availability') }}</th>
               <th class="text-left font-semibold py-2 w-24">{{ t.get('trend', 'Trend') }}</th>
             </tr>
           </thead>
