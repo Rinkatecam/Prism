@@ -852,9 +852,9 @@
   }
 
   function metricColor(value, warn, crit) {
-    if (value >= crit) return { text: 'text-[#DC2626] dark:text-[#EF4444]', bar: 'bg-[#DC2626] dark:bg-[#EF4444]' };
-    if (value >= warn) return { text: 'text-[#F59E0B] dark:text-[#FBBF24]', bar: 'bg-[#F59E0B] dark:bg-[#FBBF24]' };
-    return { text: 'text-[#10B981]', bar: 'bg-[#10B981]' };
+    if (value >= crit) return { text: 'text-critical', bar: 'bg-critical' };
+    if (value >= warn) return { text: 'text-warning', bar: 'bg-warning' };
+    return { text: 'text-healthy', bar: 'bg-healthy' };
   }
 
   // Hardware data cached from fetchHardware, used by renderMetrics
@@ -982,9 +982,9 @@
     }
     elevated.forEach(v => {
       const row = document.createElement('div');
-      row.className = 'flex items-center gap-1.5 text-[11px] text-[#6B7280] dark:text-[#CBD5E1]';
+      row.className = 'flex items-center gap-1.5 text-[11px] text-muted';
       const dot = document.createElement('span');
-      dot.className = 'inline-block w-1.5 h-1.5 rounded-full bg-[#8B5CF6] dark:bg-[#A78BFA] flex-shrink-0';
+      dot.className = 'inline-block w-1.5 h-1.5 rounded-full bg-brand flex-shrink-0';
       dot.setAttribute('aria-hidden', 'true');
       const text = document.createElement('span');
       text.textContent = (v.reason && String(v.reason)) || T.elevated_normal_title;
@@ -1110,11 +1110,11 @@
     // Choose banner color based on severity
     let borderColor, bgColor, iconColor;
     if (pendingReboot || critical > 0) {
-      borderColor = 'border-[#DC2626]'; bgColor = 'bg-[#FEF2F2] dark:bg-[#7F1D1D]/30'; iconColor = 'text-[#DC2626]';
+      borderColor = 'border-critical'; bgColor = 'bg-[#FEF2F2] dark:bg-[#7F1D1D]/30'; iconColor = 'text-critical';
     } else if (important > 0) {
-      borderColor = 'border-[#F59E0B]'; bgColor = 'bg-[#FFFBEB] dark:bg-[#78350F]/30'; iconColor = 'text-[#F59E0B]';
+      borderColor = 'border-warning'; bgColor = 'bg-[#FFFBEB] dark:bg-[#78350F]/30'; iconColor = 'text-warning';
     } else {
-      borderColor = 'border-[#2563EB]'; bgColor = 'bg-[#EFF6FF] dark:bg-[#1E3A5F]/30'; iconColor = 'text-[#2563EB]';
+      borderColor = 'border-info'; bgColor = 'bg-[#EFF6FF] dark:bg-[#1E3A5F]/30'; iconColor = 'text-info';
     }
 
     let html = `<div class="rounded-lg border ${borderColor} ${bgColor} p-4 cursor-pointer" data-action="toggleUpdateDetails">`;
@@ -1725,8 +1725,8 @@
 
     pageGroups.forEach((g, localIdx) => {
       const idx = start + localIdx;
-      const borderCls = g.level === 'Error' ? 'border-l-[3px] border-l-[#DC2626]' :
-                        g.level === 'Warning' ? 'border-l-[3px] border-l-[#F59E0B]' : '';
+      const borderCls = g.level === 'Error' ? 'border-l-[3px] border-l-critical' :
+                        g.level === 'Warning' ? 'border-l-[3px] border-l-warning' : '';
 
       html += `<tr class="border-b border-line hover:bg-page dark:hover:bg-page/50 cursor-pointer select-none ${borderCls}" data-action="toggleFirewallLogGroup" data-args="[${idx}]">`;
       html += `<td class="px-3 py-2 text-center"><i data-lucide="chevron-right" class="w-3.5 h-3.5 text-faint transition-transform duration-200" id="fwlog-chevron-${idx}"></i></td>`;
@@ -2440,23 +2440,23 @@
     const status = (data.status || 'unknown').toLowerCase();
     let color, icon, title;
     if (status === 'completed') {
-      color = 'border-[#10B981] bg-[#ECFDF5] dark:bg-[#064E3B]/30'; icon = 'check-circle'; title = '{{ t.get("update_done", "Updates installed successfully") }}';
+      color = 'border-healthy bg-[#ECFDF5] dark:bg-[#064E3B]/30'; icon = 'check-circle'; title = '{{ t.get("update_done", "Updates installed successfully") }}';
     } else if (status === 'restart_required') {
-      color = 'border-[#F59E0B] bg-[#FFFBEB] dark:bg-[#78350F]/30'; icon = 'rotate-ccw'; title = '{{ t.get("update_done_restart", "Updates installed — server needs a restart") }}';
+      color = 'border-warning bg-[#FFFBEB] dark:bg-[#78350F]/30'; icon = 'rotate-ccw'; title = '{{ t.get("update_done_restart", "Updates installed — server needs a restart") }}';
     } else if (status === 'failed') {
-      color = 'border-[#DC2626] bg-[#FEF2F2] dark:bg-[#7F1D1D]/30'; icon = 'x-circle'; title = '{{ t.get("update_failed", "Update installation failed") }}';
+      color = 'border-critical bg-[#FEF2F2] dark:bg-[#7F1D1D]/30'; icon = 'x-circle'; title = '{{ t.get("update_failed", "Update installation failed") }}';
     } else if (status === 'installing') {
-      color = 'border-[#2563EB] bg-[#EFF6FF] dark:bg-[#1E3A5F]/30'; icon = 'loader'; title = '{{ t.get("update_installing_title", "Installing updates") }}';
+      color = 'border-info bg-[#EFF6FF] dark:bg-[#1E3A5F]/30'; icon = 'loader'; title = '{{ t.get("update_installing_title", "Installing updates") }}';
     } else if (status === 'downloading') {
-      color = 'border-[#2563EB] bg-[#EFF6FF] dark:bg-[#1E3A5F]/30'; icon = 'download-cloud'; title = '{{ t.get("update_downloading_title", "Downloading updates") }}';
+      color = 'border-info bg-[#EFF6FF] dark:bg-[#1E3A5F]/30'; icon = 'download-cloud'; title = '{{ t.get("update_downloading_title", "Downloading updates") }}';
     } else if (status === 'searching') {
-      color = 'border-[#6B7280] bg-[#F9FAFB] dark:bg-[#1E293B]'; icon = 'search'; title = '{{ t.get("update_searching_title", "Searching for updates") }}';
+      color = 'border-muted bg-page dark:bg-[#1E293B]'; icon = 'search'; title = '{{ t.get("update_searching_title", "Searching for updates") }}';
     } else if (status === 'queued') {
-      color = 'border-[#6B7280] bg-[#F9FAFB] dark:bg-[#1E293B]'; icon = 'clock'; title = '{{ t.get("update_queued_title", "Queued — task registered on the server") }}';
+      color = 'border-muted bg-page dark:bg-[#1E293B]'; icon = 'clock'; title = '{{ t.get("update_queued_title", "Queued — task registered on the server") }}';
     } else if (status === 'cancelled') {
-      color = 'border-[#6B7280] bg-[#F9FAFB] dark:bg-[#1E293B]'; icon = 'x-octagon'; title = '{{ t.get("update_cancelled_title", "Install cancelled") }}';
+      color = 'border-muted bg-page dark:bg-[#1E293B]'; icon = 'x-octagon'; title = '{{ t.get("update_cancelled_title", "Install cancelled") }}';
     } else {
-      color = 'border-[#6B7280] bg-[#F9FAFB] dark:bg-[#1E293B]'; icon = 'info'; title = data.message || status;
+      color = 'border-muted bg-page dark:bg-[#1E293B]'; icon = 'info'; title = data.message || status;
     }
 
     const msg = (data.message || '').replace(/</g, '&lt;');
@@ -2583,7 +2583,7 @@
         // ── Windows Defender ──
         if (s.defender_enabled !== null && s.defender_enabled !== undefined) {
           const rt = s.defender_rt_protection ? 'ON' : 'OFF';
-          const rtColor = s.defender_rt_protection ? 'text-[#10B981]' : 'text-[#DC2626]';
+          const rtColor = s.defender_rt_protection ? 'text-healthy' : 'text-critical';
           items.push(tile(
             'Defender RT', rt, rtColor, 'shield',
             'Windows Defender — Real-Time Protection',
@@ -2592,7 +2592,7 @@
             'Current state on this server: ' + (s.defender_rt_protection ? 'ON ✓' : 'OFF ✗ — recommended to enable') + '. ' +
             'Engine version: ' + (s.defender_engine_version || 'unknown')
           ));
-          const ageColor = s.defender_sig_age_days > 7 ? 'text-[#F59E0B]' : 'text-[#10B981]';
+          const ageColor = s.defender_sig_age_days > 7 ? 'text-warning' : 'text-healthy';
           items.push(tile(
             'Signature Age', s.defender_sig_age_days + ' days', ageColor, 'calendar',
             'Defender Signature Age',
@@ -2605,7 +2605,7 @@
 
         // ── Firewall ──
         if (s.firewall_service_running !== null && s.firewall_service_running !== undefined) {
-          const fwColor = s.firewall_service_running ? 'text-[#10B981]' : 'text-[#DC2626]';
+          const fwColor = s.firewall_service_running ? 'text-healthy' : 'text-critical';
           items.push(tile(
             'Firewall Service', s.firewall_service_running ? 'Running' : 'Stopped', fwColor, 'shield-alert',
             'Windows Firewall Service (MpsSvc)',
@@ -2625,7 +2625,7 @@
           ].join(' ');
           const allOn = s.firewall_domain_enabled && s.firewall_private_enabled && s.firewall_public_enabled;
           items.push(tile(
-            'FW Profiles', profiles, allOn ? 'text-[#10B981]' : 'text-[#F59E0B]', 'flame',
+            'FW Profiles', profiles, allOn ? 'text-healthy' : 'text-warning', 'flame',
             'Firewall Profiles (Domain / Private / Public)',
             'Windows Firewall has three profiles, one for each network type the server is connected to. ' +
             'A disabled profile means traffic on networks of that type is unfiltered. ' +
@@ -2635,7 +2635,7 @@
 
         // ── BitLocker ──
         if (s.bitlocker_encrypted_pct !== null && s.bitlocker_encrypted_pct !== undefined && s.bitlocker_encrypted_pct >= 0) {
-          const blColor = s.bitlocker_encrypted_pct === 100 ? 'text-[#10B981]' : 'text-[#F59E0B]';
+          const blColor = s.bitlocker_encrypted_pct === 100 ? 'text-healthy' : 'text-warning';
           const blState = s.bitlocker_status || 'Unknown';
           items.push(tile(
             'BitLocker', s.bitlocker_encrypted_pct + '%', blColor, 'lock',
@@ -2659,7 +2659,7 @@
           }).join('\n');
           const overflow = ports.length > 30 ? '\n…and ' + (ports.length - 30) + ' more' : '';
           items.push(tile(
-            'Listening Ports', ports.length + ' open', 'text-[#2563EB]', 'plug',
+            'Listening Ports', ports.length + ' open', 'text-info', 'plug',
             'Listening TCP Ports (' + ports.length + ' total)',
             'Every TCP port that is currently in LISTEN state — meaning a service on this server will accept connections to it. ' +
             'Unexpected ports often indicate misconfigured services or unauthorized software.\n\n' +
@@ -2678,7 +2678,7 @@
           }).join('\n');
           const overflowU = users.length > 30 ? '\n…and ' + (users.length - 30) + ' more' : '';
           items.push(tile(
-            'Local Users', users.length + ' active', 'text-[#2563EB]', 'users',
+            'Local Users', users.length + ' active', 'text-info', 'users',
             'Active Local User Accounts (' + users.length + ' total)',
             'Local Windows accounts that exist on this server (Get-LocalUser) and are currently enabled. ' +
             'Domain accounts are NOT shown here — only local SAM database entries. ' +
@@ -2723,7 +2723,7 @@
     document.querySelectorAll('.hm-week-btn').forEach(btn => {
       const isActive = btn.getAttribute('data-week') === week;
       btn.className = 'hm-week-btn px-2 py-0.5 rounded font-medium ' +
-        (isActive ? 'bg-[#DC2626] text-white' : 'text-[#6B7280] dark:text-[#CBD5E1]');
+        (isActive ? 'bg-critical text-white' : 'text-muted');
     });
     // Update the small label next to the title
     const labelEl = document.getElementById('heatmap-range-label');
@@ -3247,9 +3247,9 @@
 
     // --- Render ---
     const sColors = {
-      critical: { bg: 'bg-[#DC2626]/5 border-[#DC2626]/30 dark:bg-[#DC2626]/10', icon: 'text-[#DC2626]', badge: 'bg-[#DC2626]/10 text-[#DC2626]' },
-      warning:  { bg: 'bg-[#F59E0B]/5 border-[#F59E0B]/30 dark:bg-[#F59E0B]/10', icon: 'text-[#F59E0B]', badge: 'bg-[#F59E0B]/10 text-[#F59E0B]' },
-      info:     { bg: 'bg-[#2563EB]/5 border-[#2563EB]/20 dark:bg-[#2563EB]/10', icon: 'text-[#2563EB]', badge: 'bg-[#2563EB]/10 text-[#2563EB]' },
+      critical: { bg: 'bg-critical/5 border-critical/30 dark:bg-[#DC2626]/10', icon: 'text-critical', badge: 'bg-critical/10 text-critical' },
+      warning:  { bg: 'bg-warning/5 border-warning/30 dark:bg-[#F59E0B]/10', icon: 'text-warning', badge: 'bg-warning/10 text-warning' },
+      info:     { bg: 'bg-info/5 border-info/20 dark:bg-[#2563EB]/10', icon: 'text-info', badge: 'bg-info/10 text-info' },
     };
 
     findings.sort((a, b) => ({critical:0,warning:1,info:2}[a.severity]||2) - ({critical:0,warning:1,info:2}[b.severity]||2));
@@ -3295,9 +3295,9 @@
     modified: {{ t.get('change_modified', 'Modified') | tojson }},
   };
   const CHANGE_TYPE_COLORS = {
-    added: 'bg-[#D1FAE5] text-[#065F46] dark:bg-[#064E3B] dark:text-[#6EE7B7]',
-    removed: 'bg-[#FEE2E2] text-[#991B1B] dark:bg-[#7F1D1D] dark:text-[#FCA5A5]',
-    modified: 'bg-[#FEF3C7] text-[#92400E] dark:bg-[#78350F] dark:text-[#FCD34D]',
+    added: 'bg-healthy-tint text-healthy-strong',
+    removed: 'bg-critical-tint text-critical-strong',
+    modified: 'bg-warning-tint text-warning-strong',
   };
 
   function loadConfigChanges() {
@@ -3325,7 +3325,7 @@
         html += '</tr></thead><tbody>';
         data.changes.forEach(c => {
           const ts = (typeof formatTs === 'function') ? formatTs(c.timestamp) : c.timestamp;
-          const badgeCls = CHANGE_TYPE_COLORS[c.change_type] || 'bg-[#F3F4F6] text-[#4B5563]';
+          const badgeCls = CHANGE_TYPE_COLORS[c.change_type] || 'bg-raised text-muted';
           const label = CHANGE_TYPE_LABELS[c.change_type] || c.change_type;
           html += '<tr class="border-b border-line">';
           html += '<td class="px-3 py-1.5 text-muted whitespace-nowrap">' + ts + '</td>';

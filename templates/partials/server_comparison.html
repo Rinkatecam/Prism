@@ -1173,8 +1173,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const catContainer = document.getElementById('compare-category-buttons');
     const btnBase = 'text-xs font-medium px-4 py-1.5 rounded transition-colors cursor-pointer select-none';
-    const btnOff = 'bg-[#6B7280] hover:bg-[#4B5563] text-white';
-    const btnOn = 'bg-[#2563EB] hover:bg-[#1D4ED8] text-white';
+    const btnOff = 'bg-muted hover:bg-muted text-white';
+    const btnOn = 'bg-info hover:bg-info-strong text-white';
 
     function setCategoryCheckboxes(type) {
       // Cap-aware. Checking every box for '__all__' against a smaller API limit
@@ -1214,7 +1214,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const container = document.getElementById('compare-server-checkboxes');
     names.forEach(n => {
       const label = document.createElement('label');
-      label.className = 'inline-flex items-center gap-1 px-2 py-1 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] cursor-pointer select-none';
+      label.className = 'inline-flex items-center gap-1 px-2 py-1 rounded border border-line hover:bg-page cursor-pointer select-none';
       label.innerHTML = `<input type="checkbox" value="${n}" class="compare-cb rounded"> ${n}`;
       container.appendChild(label);
     });

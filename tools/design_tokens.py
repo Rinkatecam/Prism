@@ -195,7 +195,50 @@ _SCRIPT_BLOCK = re.compile(
     r"|\{%(.*?)%\}"                          # {% set cls = '…' if x else '…' %}
     r"|\{\{(.*?)\}\}",                       # {{ '…' if x else '…' }}
     re.S | re.I)
-_JS_STRING = re.compile(r"(['\"`])((?:\\.|(?!\1).)*?)\1", re.S)
+
+
+def _string_spans(src: str) -> list[tuple[int, int]]:
+    """Spans of the string BODIES in a fragment of JavaScript.
+
+    A regex cannot do this. `// the user's setting` puts an apostrophe in a
+    comment, the pattern pairs it with the next quote somewhere further down,
+    and every string after that point is mispaired — which is why one file's
+    class strings were invisible while its neighbours converted fine. Strings
+    and comments have to be recognised in the same left-to-right pass,
+    because each can contain what looks like the start of the other.
+    """
+    spans: list[tuple[int, int]] = []
+    i, n = 0, len(src)
+    while i < n:
+        c = src[i]
+        if c in "'\"`":
+            j, closed = i + 1, False
+            while j < n:
+                if src[j] == "\\":
+                    j += 2
+                    continue
+                if src[j] == c:
+                    closed = True
+                    break
+                if c == "`" and src.startswith("${", j):
+                    depth, j = 1, j + 2
+                    while j < n and depth:
+                        depth += (src[j] == "{") - (src[j] == "}")
+                        j += 1
+                    continue
+                j += 1
+            if closed:
+                spans.append((i + 1, j))
+            i = j + 1
+        elif src.startswith("//", i):
+            j = src.find("\n", i)
+            i = n if j < 0 else j
+        elif src.startswith("/*", i):
+            j = src.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+        else:
+            i += 1
+    return spans
 _CLASS_WORD = re.compile(r"^[A-Za-z0-9_:/\[\]#.%!()${}=+,\\-]+$")
 _BARE_WORD = re.compile(r"^[a-z]+$")
 
@@ -257,14 +300,15 @@ def class_scopes(text: str) -> list[tuple[int, int]]:
     spans = [m.span(1) for m in _CLASS_ATTR.finditer(text)]
     for block in _SCRIPT_BLOCK.finditer(text):
         group = next(i for i in (1, 2, 3) if block.group(i) is not None)
-        base = block.start(group)
-        for m in _JS_STRING.finditer(block.group(group)):
-            a, b = base + m.start(2), base + m.end(2)
+        base, source = block.start(group), block.group(group)
+        for start, end in _string_spans(source):
+            a, b = base + start, base + end
+            body = source[start:end]
             # A JS string holding `<div class="…">` is not itself a class
             # list; the attribute inside it is, and is already in `spans`.
             if any(a < y and x < b for x, y in spans):
                 continue
-            if _COLOUR_UTILITY.search(m.group(2)) and _is_class_list(m.group(2)):
+            if _COLOUR_UTILITY.search(body) and _is_class_list(body):
                 spans.append((a, b))
     return sorted(spans)
 

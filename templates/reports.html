@@ -685,7 +685,7 @@ function renderFleetReport(data) {
       const health = s[F.health];
 
       const tr = document.createElement('tr');
-      tr.className = 'border-b border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] transition-colors';
+      tr.className = 'border-b border-line hover:bg-page transition-colors';
       tr.innerHTML = `
         <td class="py-2 align-middle">
           <button id="fleet-toggle-${id}" data-action="toggleFleetRow" data-args='${esc(JSON.stringify([s[F.name]]))}'
@@ -718,7 +718,7 @@ function renderFleetReport(data) {
 
       const detail = document.createElement('tr');
       detail.id = 'fleet-detail-' + id;
-      detail.className = 'border-b border-[#E5E7EB] dark:border-[#334155]' + (open ? '' : ' hidden');
+      detail.className = 'border-b border-line' + (open ? '' : ' hidden');
       detail.innerHTML = `<td colspan="8" class="p-0">${renderFleetDetail(s)}</td>`;
       tbody.appendChild(detail);
     }

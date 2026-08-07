@@ -1673,7 +1673,7 @@ function testNewHealthCheck() {
   if (!host) { pAlert('Host is required to test'); return; }
 
   resultEl.textContent = 'Testing...';
-  resultEl.className = 'text-xs text-[#6B7280]';
+  resultEl.className = 'text-xs text-muted';
 
   fetch('/api/health-checks/probe', {
     method: 'POST',
@@ -1686,17 +1686,17 @@ function testNewHealthCheck() {
       const r = data.result;
       if (r.status === 'up') {
         resultEl.textContent = '✓ Up (' + (r.response_time_ms || 0).toFixed(0) + 'ms)';
-        resultEl.className = 'text-xs text-[#10B981] font-medium';
+        resultEl.className = 'text-xs text-healthy font-medium';
       } else {
         resultEl.textContent = '✗ Down: ' + (r.error || 'unreachable');
-        resultEl.className = 'text-xs text-[#DC2626] font-medium';
+        resultEl.className = 'text-xs text-critical font-medium';
       }
     } else {
       resultEl.textContent = '✗ ' + (data.error || 'Probe failed');
-      resultEl.className = 'text-xs text-[#DC2626]';
+      resultEl.className = 'text-xs text-critical';
     }
   })
-  .catch(err => { resultEl.textContent = '✗ ' + err.message; resultEl.className = 'text-xs text-[#DC2626]'; });
+  .catch(err => { resultEl.textContent = '✗ ' + err.message; resultEl.className = 'text-xs text-critical'; });
 }
 
 function addHealthCheckRow(data) {
@@ -1707,7 +1707,7 @@ function addHealthCheckRow(data) {
   if (!data || !data.id) return; // Only render saved items
 
   const row = document.createElement('div');
-  row.className = 'flex items-center gap-3 px-3 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#334155] bg-[#F9FAFB] dark:bg-[#0F172A]/50 hc-row';
+  row.className = 'flex items-center gap-3 px-3 py-2 rounded-lg border border-line bg-page dark:bg-page/50 hc-row';
   row.dataset.hcId = data.id;
 
   const name = data.name || data.check_type.toUpperCase();
@@ -1830,7 +1830,7 @@ function testHealthCheck(row) {
 
   const resultEl = row.querySelector('.hc-result');
   resultEl.textContent = 'Probing...';
-  resultEl.className = 'hc-result text-xs ml-1 text-[#6B7280]';
+  resultEl.className = 'hc-result text-xs ml-1 text-muted';
 
   fetch('/api/health-checks/probe', {
     method: 'POST',

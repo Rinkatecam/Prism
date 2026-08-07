@@ -1068,9 +1068,9 @@ function renderCategoryButtons() {
   const allBtn = document.querySelector('[data-cat="all"]');
   if (allBtn) {
     if (_activeCategory === null) {
-      allBtn.className = 'px-3 py-1 text-xs font-medium rounded-full border border-[#8B5CF6] text-[#8B5CF6] bg-[#8B5CF6]/10';
+      allBtn.className = 'px-3 py-1 text-xs font-medium rounded-full border border-brand text-brand bg-brand/10';
     } else {
-      allBtn.className = 'px-3 py-1 text-xs font-medium rounded-full border border-[#E5E7EB] dark:border-[#334155] text-[#6B7280] dark:text-[#CBD5E1]';
+      allBtn.className = 'px-3 py-1 text-xs font-medium rounded-full border border-line text-muted';
     }
   }
   lucide.createIcons();
@@ -2458,7 +2458,7 @@ function showNodeProperties(nodeId) {
   // events on the Event Trigger block), and label_when(data) to swap
   // the label based on context (the ``target`` field reads "Service
   // name" / "Process name" / "Port number" depending on event_type).
-  const inputCls = 'w-full text-xs px-2 py-1 rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]';
+  const inputCls = 'w-full text-xs px-2 py-1 rounded border border-line bg-field';
 
   function _evalLabel(f) {
     if (typeof f.label_when === 'function') {

@@ -1367,16 +1367,16 @@ function vacuumDatabase() {
     if (data.ok) {
       const saved = data.saved_bytes > 0 ? ' (saved ' + (data.saved_bytes / 1024).toFixed(0) + ' KB)' : ' (already optimal)';
       result.textContent = {{ t.vacuum_success | tojson }} + ': ' + data.old_size_mb + ' MB \u2192 ' + data.new_size_mb + ' MB' + saved;
-      result.className = 'text-xs text-[#10B981] dark:text-[#34D399]';
+      result.className = 'text-xs text-healthy';
       loadSystemHealth();
     } else {
       result.textContent = data.error || 'VACUUM failed';
-      result.className = 'text-xs text-[#DC2626] dark:text-[#EF4444]';
+      result.className = 'text-xs text-critical';
     }
   })
   .catch(err => {
     result.textContent = 'Failed: ' + err.message;
-    result.className = 'text-xs text-[#DC2626] dark:text-[#EF4444]';
+    result.className = 'text-xs text-critical';
   })
   .finally(() => { btn.disabled = false; });
 }
@@ -1434,13 +1434,13 @@ async function restoreBackup(filename) {
   .then(data => {
     const msg = document.getElementById('save-message');
     if (data.ok) {
-      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-healthy-tint text-healthy-strong';
       msg.textContent = {{ t.backup_restored | tojson }};
       msg.classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       setTimeout(() => location.reload(), 1000);
     } else {
-      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
       msg.textContent = 'Error: ' + (data.error || 'Restore failed');
       msg.classList.remove('hidden');
     }
@@ -1452,7 +1452,7 @@ function uploadConfig(input) {
   const file = input.files[0];
   if (!file) return;
   const result = document.getElementById('upload-result');
-  result.className = 'rounded p-2 text-sm bg-[#F3F4F6] dark:bg-[#334155] text-[#6B7280]';
+  result.className = 'rounded p-2 text-sm bg-raised dark:bg-[#334155] text-muted';
   result.textContent = 'Uploading...';
   result.classList.remove('hidden');
 
@@ -1468,20 +1468,20 @@ function uploadConfig(input) {
       .then(r => r.json())
       .then(data => {
         if (data.ok) {
-          result.className = 'rounded p-2 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+          result.className = 'rounded p-2 text-sm bg-healthy-tint text-healthy-strong';
           result.textContent = data.message || {{ t.backup_restored | tojson }};
           setTimeout(() => location.reload(), 1000);
         } else {
-          result.className = 'rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+          result.className = 'rounded p-2 text-sm bg-critical-tint text-critical-strong';
           result.textContent = 'Error: ' + (data.error || 'Upload failed');
         }
       })
       .catch(err => {
-        result.className = 'rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+        result.className = 'rounded p-2 text-sm bg-critical-tint text-critical-strong';
         result.textContent = 'Upload failed: ' + err.message;
       });
     } catch (e) {
-      result.className = 'rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      result.className = 'rounded p-2 text-sm bg-critical-tint text-critical-strong';
       result.textContent = 'Invalid JSON file';
     }
   };
@@ -1712,7 +1712,7 @@ function executeDataAction() {
   .then(r => r.json())
   .then(data => {
     if (data.ok) {
-      result.className = 'rounded-lg p-2.5 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+      result.className = 'rounded-lg p-2.5 text-sm bg-healthy-tint text-healthy-strong';
       result.textContent = successMsgs[_dataActionType];
       result.classList.remove('hidden');
       if (_dataActionType === 'factory-reset') {
@@ -1721,14 +1721,14 @@ function executeDataAction() {
         setTimeout(() => { closeDataActionModal(); location.reload(); }, 1500);
       }
     } else {
-      result.className = 'rounded-lg p-2.5 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      result.className = 'rounded-lg p-2.5 text-sm bg-critical-tint text-critical-strong';
       result.textContent = data.error || 'Unknown error';
       result.classList.remove('hidden');
       btn.disabled = false;
     }
   })
   .catch(err => {
-    result.className = 'rounded-lg p-2.5 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+    result.className = 'rounded-lg p-2.5 text-sm bg-critical-tint text-critical-strong';
     result.textContent = 'Network error: ' + err.message;
     result.classList.remove('hidden');
     btn.disabled = false;

@@ -165,6 +165,32 @@ def test_javascript_is_only_read_inside_a_script_block():
     assert dt.convert(loose) == loose
 
 
+def test_an_apostrophe_in_a_comment_does_not_swallow_the_next_string():
+    """The bug that made one file's class strings invisible while its
+    neighbours converted cleanly.
+
+    A regex pairs the apostrophe in `don't` with the next quote further down
+    and mispairs every string after it. Strings and comments have to be
+    recognised in the same pass, because each can contain what looks like the
+    start of the other. This left 218 literals unconverted with no error.
+    """
+    src = ("<script>\n"
+           "// don't let this comment swallow the next string\n"
+           "el.className = 'text-[#6B7280] dark:text-[#CBD5E1]';\n"
+           "</script>")
+    assert "'text-muted'" in dt.convert(src)
+
+
+def test_a_url_inside_a_string_is_not_read_as_a_comment():
+    """The mirror image: `//` inside a string starts no comment."""
+    src = ("<script>\n"
+           "const u = 'https://example.test/x';\n"
+           "el.className = 'text-[#6B7280] dark:text-[#CBD5E1]';\n"
+           "</script>")
+    out = dt.convert(src)
+    assert "'text-muted'" in out and "https://example.test/x" in out
+
+
 def test_a_jinja_expression_building_a_class_string_is_converted():
     """`{% set cls = ('text-[#F59E0B]' if hot else 'text-[#6B7280]') %}` is a
     class list too, and it is not inside a script block."""
