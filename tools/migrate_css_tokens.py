@@ -91,12 +91,19 @@ from tools import design_tokens as dt  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CSS_PATH = REPO_ROOT / "static" / "css" / "app.css"
 
-# The generated token block, verbatim from the spec. Matched rather than
-# located by line number so that adding a token cannot silently move it out
-# from under the guard.
+# The generated block, delimited by sentinels that design_tokens.py writes.
+#
+# This used to be a regex matching the SHAPE of the colour block —
+# `--c-name: <digits and spaces>`. That guard silently stopped covering
+# anything the moment the generator emitted a value of a different shape, and
+# it now emits durations, easing curves and box-shadows. A shadow is full of
+# `rgb(...)`, so the converter would have walked straight into generated
+# output and rewritten it, and the next regeneration would have wiped that.
+#
+# Sentinels say what is protected instead of inferring it.
 GENERATED_BLOCK = re.compile(
-    r":root \{\n(?:  --c-[a-z-]+: [\d ]+;\n)+\}\n\n"
-    r"\.dark \{\n(?:  --c-[a-z-]+: [\d ]+;\n)+\}")
+    re.escape(dt.GENERATED_OPEN) + r".*?" + re.escape(dt.GENERATED_CLOSE),
+    re.S)
 
 
 # ── parsing ──────────────────────────────────────────────────────────────

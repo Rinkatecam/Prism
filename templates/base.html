@@ -70,6 +70,26 @@
             sm: '0.5rem',        // 8px
             md: '1rem',          // 16px — cards, panels, modals
             lg: '1rem'           // 16px
+          },
+          // Motion and elevation, pointed at the same custom properties
+          // app.css uses. Measured before this: SIX durations across the two
+          // layers and TWO easing systems, none of them chosen — a template's
+          // `duration-200` and a stylesheet's `0.2s` were independent numbers
+          // that happened to agree. Generated; regenerate with
+          //   d.render_tailwind_motion() / d.render_tailwind_shadows()
+          transitionDuration: {
+            'fast': 'var(--dur-fast)',
+            'base': 'var(--dur-base)',
+            'slow': 'var(--dur-slow)'
+          },
+          transitionTimingFunction: {
+            'standard': 'var(--ease-standard)',
+            'out': 'var(--ease-out)'
+          },
+          boxShadow: {
+            'sm': 'var(--shadow-sm)',
+            'md': 'var(--shadow-md)',
+            'lg': 'var(--shadow-lg)'
           }
         }
       }

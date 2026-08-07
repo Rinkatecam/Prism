@@ -428,7 +428,7 @@ def test_no_token_reference_in_app_css_round_trips_to_a_different_token():
 # Measured 2026-08-07 after conversion: 133 of 210 colour slots reference a
 # token, 77 remain literals. Grouped by reason:
 #
-#   51  no token holds that value in that theme — the indigo/purple/orange
+#   45  no token holds that value in that theme — the indigo/purple/orange
 #       lifecycle badges (queued, restart_required, rate_anomaly, correlated)
 #       have no token at all, plus pure black in five shadows and a handful
 #       of cross-theme strays.
@@ -446,7 +446,7 @@ def test_no_token_reference_in_app_css_round_trips_to_a_different_token():
 # An allowlist of thirty-odd colours would assert nothing. A ratchet does:
 # the number may fall, never rise.
 
-CSS_LITERAL_BASELINE = 77
+CSS_LITERAL_BASELINE = 71
 
 
 def _residue() -> list:

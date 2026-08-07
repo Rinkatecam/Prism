@@ -541,16 +541,84 @@ def convert(text: str, paired_only: bool = False) -> str:
 _COLOUR_UTILITY = _colour_utility()
 
 
+# ── motion ───────────────────────────────────────────────────────────────
+#
+# Measured before this existed: SIX durations (0.1, 0.15, 0.2, 0.3, 0.6s in
+# app.css; 150, 200, 300, 500ms from Tailwind classes) and TWO easing systems
+# — a bare `ease` on all 16 CSS transitions, Tailwind's own
+# cubic-bezier(.4,0,.2,1) on the 123 in the templates. Nothing chose any of
+# them; they are the numbers that happened to get typed.
+#
+# Three durations, keyed to how far a thing travels rather than to what it
+# is: a colour swap wants to feel instant, a panel arriving wants to be
+# followed by the eye.
+MOTION: dict[str, str] = {
+    "fast": "120ms",   # colour, opacity, border — state you barely register
+    "base": "200ms",   # surfaces, hovers, the sidebar
+    "slow": "320ms",   # entrances and exits, anything that changes layout
+}
+
+# `ease` — the CSS keyword all 16 declarations used — is
+# cubic-bezier(.25,.1,.25,1): it accelerates INTO the end of the movement, so
+# things arrive with a small bump. The two below decelerate instead, which is
+# what makes a panel look like it settled rather than hit something.
+EASING: dict[str, str] = {
+    "standard": "cubic-bezier(0.2, 0, 0, 1)",     # both ends anchored
+    "out":      "cubic-bezier(0.05, 0.7, 0.1, 1)",  # entrances
+}
+
+# ── elevation ────────────────────────────────────────────────────────────
+#
+# Twelve distinct box-shadow values were in use with no scale. Three levels,
+# by what the surface IS rather than by how big the blur is.
+#
+# Dark mode is not the same shadow at a higher opacity. A shadow works by
+# darkening what is behind it, and on a #05070D page there is nothing left to
+# darken — so the dark values lean on a lighter top edge (an inset hairline)
+# plus a deeper, wider spread to separate the plane at all.
+ELEVATION: dict[str, tuple[str, str]] = {
+    "sm": ("0 1px 2px 0 rgb(2 6 23 / 0.06)",
+           "0 1px 2px 0 rgb(0 0 0 / 0.5)"),
+    "md": ("0 4px 12px -2px rgb(2 6 23 / 0.10), 0 2px 4px -2px rgb(2 6 23 / 0.06)",
+           "0 4px 14px -2px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.04)"),
+    "lg": ("0 16px 40px -8px rgb(2 6 23 / 0.18), 0 4px 12px -4px rgb(2 6 23 / 0.08)",
+           "0 20px 48px -12px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(255 255 255 / 0.06)"),
+}
+
+# Everything generated into app.css sits between these, so the CSS converter
+# knows to leave it alone. The previous marker was a REGEX matching the shape
+# of the colour block — `--c-name: <digits>` — which silently stopped
+# protecting anything the moment a token held a duration or a shadow.
+GENERATED_OPEN = "/* >>> generated from tools/design_tokens.py — do not edit <<< */"
+GENERATED_CLOSE = "/* <<< end generated >>> */"
+
+
 def _channels(hex_value: str) -> str:
     h = hex_value.lstrip("#")
     return " ".join(str(int(h[i:i + 2], 16)) for i in (0, 2, 4))
 
 
 def render_css() -> str:
-    """The `:root` / `.dark` blocks for static/css/app.css."""
+    """Everything generated into static/css/app.css, between the sentinels.
+
+    Colours are channel TRIPLETS so Tailwind can compose them as
+    `rgb(var(--c-x) / <alpha-value>)`; durations, easings and shadows are
+    whole values, because nothing composes them.
+    """
     light = "\n".join(f"  --c-{n}: {_channels(l)};" for n, (l, _d) in TOKENS.items())
     dark = "\n".join(f"  --c-{n}: {_channels(d)};" for n, (_l, d) in TOKENS.items())
-    return ":root {\n" + light + "\n}\n\n.dark {\n" + dark + "\n}\n"
+    motion = "\n".join(f"  --dur-{n}: {v};" for n, v in MOTION.items())
+    easing = "\n".join(f"  --ease-{n}: {v};" for n, v in EASING.items())
+    lift = "\n".join(f"  --shadow-{n}: {light_v};"
+                     for n, (light_v, _d) in ELEVATION.items())
+    lift_dark = "\n".join(f"  --shadow-{n}: {dark_v};"
+                          for n, (_l, dark_v) in ELEVATION.items())
+    return (
+        GENERATED_OPEN + "\n"
+        ":root {\n" + light + "\n\n" + motion + "\n" + easing + "\n\n"
+        + lift + "\n}\n\n"
+        ".dark {\n" + dark + "\n\n" + lift_dark + "\n}\n"
+        + GENERATED_CLOSE + "\n")
 
 
 def render_tailwind_colors() -> str:
@@ -563,3 +631,24 @@ def render_tailwind_colors() -> str:
     """
     return ",\n".join(
         f"            '{n}': 'rgb(var(--c-{n}) / <alpha-value>)'" for n in TOKENS)
+
+
+def render_tailwind_motion() -> str:
+    """`transitionDuration` and `transitionTimingFunction` for base.html.
+
+    Both layers must read the SAME scale. Left alone, a template's
+    `duration-200` and a stylesheet's `var(--dur-base)` are two independent
+    numbers that agree today and drift the first time either moves.
+    """
+    dur = ",\n".join(f"            '{n}': 'var(--dur-{n})'" for n in MOTION)
+    ease = ",\n".join(f"            '{n}': 'var(--ease-{n})'" for n in EASING)
+    return ("          transitionDuration: {\n" + dur + "\n          },\n"
+            "          transitionTimingFunction: {\n" + ease + "\n          }")
+
+
+def render_tailwind_shadows() -> str:
+    """`boxShadow` for base.html, resolved per theme through the variables."""
+    return ("          boxShadow: {\n"
+            + ",\n".join(f"            '{n}': 'var(--shadow-{n})'"
+                         for n in ELEVATION)
+            + "\n          }")

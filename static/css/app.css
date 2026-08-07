@@ -1,18 +1,22 @@
 /* Prism - Custom Styles */
 
 /* ═══════════════════════════════════════════════════════════════════════
-   DESIGN TOKENS — generated from tools/design_tokens.py TOKENS.
+   DESIGN TOKENS — colour, motion and elevation. Generated from
+   tools/design_tokens.py (TOKENS / MOTION / EASING / ELEVATION).
    Regenerate with:
      python -c "import sys;sys.path.insert(0,'.');\
                 from tools import design_tokens as d;print(d.render_css())"
 
-   Stored as RGB CHANNELS, not hex, so Tailwind can compose them as
+   COLOURS are RGB CHANNELS, not hex, so Tailwind can compose them as
    rgb(var(--c-x) / <alpha-value>). A bare var() holding a hex silently
    breaks the opacity modifier, and 329 sites depend on it (bg-critical/10).
+   Durations, easings and shadows are whole values — nothing composes them.
 
-   Do not hand-edit: tests/test_design_tokens.py asserts these match the
-   Python table, and templates/base.html maps utility names onto them.
+   Do not hand-edit. tests/test_design_tokens.py and
+   tests/test_design_motion.py assert this block matches the Python tables,
+   and templates/base.html maps utility names onto every one of them.
    ═══════════════════════════════════════════════════════════════════════ */
+/* >>> generated from tools/design_tokens.py — do not edit <<< */
 :root {
   --c-page: 241 245 249;
   --c-card: 255 255 255;
@@ -36,6 +40,16 @@
   --c-healthy-strong: 4 97 63;
   --c-info-tint: 219 234 254;
   --c-info-strong: 26 58 160;
+
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0.05, 0.7, 0.1, 1);
+
+  --shadow-sm: 0 1px 2px 0 rgb(2 6 23 / 0.06);
+  --shadow-md: 0 4px 12px -2px rgb(2 6 23 / 0.10), 0 2px 4px -2px rgb(2 6 23 / 0.06);
+  --shadow-lg: 0 16px 40px -8px rgb(2 6 23 / 0.18), 0 4px 12px -4px rgb(2 6 23 / 0.08);
 }
 
 .dark {
@@ -61,6 +75,41 @@
   --c-healthy-strong: 110 231 183;
   --c-info-tint: 20 34 77;
   --c-info-strong: 147 197 253;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --shadow-md: 0 4px 14px -2px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.04);
+  --shadow-lg: 0 20px 48px -12px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+/* <<< end generated >>> */
+
+/* ── Reduced motion, once, for everything ─────────────────────────────────
+   There were three of these blocks, covering a canvas, a panel animation and
+   three hover transforms — five rules out of 123 transitions and 33
+   animations. Everything else kept moving for someone who had explicitly
+   asked it not to, and each new transition silently opted out again because
+   honouring the preference meant remembering to add a line.
+
+   Declared here rather than per-rule so the default is "honoured" and an
+   exemption has to be argued for. Two are. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* A spinner that stops is not reduced motion, it is a page that looks
+     broken: the only thing saying the request is still in flight has frozen
+     mid-rotation. WCAG 2.3.3 is about motion triggered by interaction; a
+     progress indicator is essential. Kept, slowed to a third of its speed. */
+  .animate-spin {
+    animation-duration: 2.25s !important;
+    animation-iteration-count: infinite !important;
+  }
+
+  /* Decorative, and carries no information the numbers do not. */
+  .pulse-canvas { display: none; }
 }
 
 /* Status colors as CSS custom properties */
@@ -177,15 +226,15 @@
 .metric-bar-fill {
   height: 100%;
   border-radius: 4px;
-  transition: width 0.6s ease;
+  transition: width var(--dur-slow) var(--ease-standard);
 }
 
 /* Server card hover */
 .server-card {
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  transition: box-shadow var(--dur-fast) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
 }
 .server-card:hover {
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-md);
   transform: translateY(-1px);
 }
 
@@ -221,8 +270,8 @@
 }
 
 /* Smooth HTMX transitions */
-.htmx-swapping { opacity: 0; transition: opacity 0.1s ease; }
-.htmx-settling { opacity: 1; transition: opacity 0.2s ease; }
+.htmx-swapping { opacity: 0; transition: opacity var(--dur-fast) var(--ease-standard); }
+.htmx-settling { opacity: 1; transition: opacity var(--dur-base) var(--ease-standard); }
 
 /* Scrollbar — the THUMB carries the brand violet, the track stays neutral.
    Colouring the whole gutter turns every scrollable panel into a violet
@@ -235,6 +284,12 @@
    disagree about where the corner is. */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
+/* No stepper arrows. They are two more grey marks competing with the thumb
+   for the same 10px, and the only moving part should be the one you can
+   actually grab. Chromium draws them at both ends of the PAGE scrollbar
+   once ::-webkit-scrollbar is styled at all; the in-card bars never had
+   them, which is why this is easy to miss. */
+::-webkit-scrollbar-button { display: none; }
 ::-webkit-scrollbar-thumb {
   background: rgb(var(--c-brand) / 0.35);
   border-radius: 999px;
@@ -283,7 +338,7 @@
   text-decoration: none;
   white-space: nowrap;
   overflow: hidden;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
 }
 .sidebar-link:hover {
   background: #F1F5F9;
@@ -436,7 +491,7 @@
   padding: 4px 8px;
   border-radius: 6px;
   user-select: none;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--dur-fast) var(--ease-standard);
 }
 .collector-pulse:hover {
   background-color: #F1F5F9;
@@ -452,7 +507,7 @@
   border-radius: 50%;
   background-color: rgb(var(--c-muted));
   flex-shrink: 0;
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  transition: background-color var(--dur-slow) var(--ease-standard), box-shadow var(--dur-slow) var(--ease-standard);
 }
 .pulse-dot--warming  { background-color: rgb(var(--c-brand)); box-shadow: 0 0 6px rgb(var(--c-brand) / 0.6); }
 .pulse-dot--healthy  { background-color: rgb(var(--c-healthy)); box-shadow: 0 0 6px rgb(var(--c-healthy) / 0.6); }
@@ -499,11 +554,6 @@
 /* Reduced-motion: hide the live canvas entirely. The dot + counter still
    convey state through colour + numbers. Per WCAG 2.3.3, users requesting
    reduced motion expect NO continuous animation. */
-@media (prefers-reduced-motion: reduce) {
-  .pulse-canvas { display: none; }
-  .pulse-dot--critical, .pulse-dot--dead { animation: none; }
-}
-
 /* ── Hover dropdown panel ───────────────────────────────────────────── */
 
 .pulse-panel {
@@ -516,12 +566,12 @@
   background: rgb(var(--c-card));
   border: 1px solid rgb(var(--c-line));
   border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-lg);
   padding: 12px 14px;
   z-index: 50;
   font-size: 12px;
   color: rgb(var(--c-ink));
-  animation: pulse-panel-in 0.15s ease-out;
+  animation: pulse-panel-in var(--dur-fast) var(--ease-out);
 }
 .dark .pulse-panel {
   background: rgb(var(--c-card));
@@ -533,10 +583,6 @@
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-@media (prefers-reduced-motion: reduce) {
-  .pulse-panel { animation: none; }
-}
-
 .pulse-panel-head {
   display: flex;
   justify-content: space-between;
@@ -721,7 +767,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
 @media (max-width: 767px) {
   #main-content { margin-left: 0 !important; }
   #sidebar { transform: translateX(-100%); }
-  #sidebar.sidebar-mobile-open { transform: translateX(0); box-shadow: 0 10px 40px rgba(0,0,0,0.45); }
+  #sidebar.sidebar-mobile-open { transform: translateX(0); box-shadow: var(--shadow-lg); }
   #sidebar-backdrop {
     position: fixed; inset: 3.5rem 0 0 0; z-index: 40;
     background: rgba(0,0,0,0.4);
@@ -787,10 +833,9 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
    selector would override it (un-sticking the bar). `position: fixed` is itself
    a positioned ancestor, so the ::after accent anchors to it correctly. */
 #topbar {
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--shadow-sm);
 }
 .dark #topbar {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.40);
   border-color: rgb(var(--c-line));
 }
 /* Violet→turquoise accent hairline under the bar: strong violet under the logo
@@ -822,7 +867,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   background-image: var(--brand-grad);
   color: #fff;
   border: none;
-  transition: filter 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  transition: filter var(--dur-fast) var(--ease-standard), transform var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard);
 }
 .btn-brand:hover {
   filter: brightness(1.05);
@@ -839,7 +884,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
    Inactive links nudge right on hover (HUD feel). Active links hold still —
    their accent bar already marks them. */
 .sidebar-link {
-  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  transition: background var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
 }
 .sidebar-link:not(.sidebar-link-active):hover {
   transform: translateX(2px);
@@ -851,12 +896,6 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
    thumb lost its inset pill shape at exactly the moment you touched it. */
 
 /* Honour reduced-motion for every transform/lift added in this round. */
-@media (prefers-reduced-motion: reduce) {
-  .sidebar-link:not(.sidebar-link-active):hover,
-  .btn-brand:hover,
-  .btn-brand:active { transform: none; }
-}
-
 /* ── "All systems healthy" banner, once dismissed ──────────────────────────
    The banner lives in a partial swapped with hx-swap="morph:innerHTML" on
    every prismRefresh (~5s under collector v2). Hiding it from JS after the
