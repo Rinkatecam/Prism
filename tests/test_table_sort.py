@@ -189,30 +189,47 @@ def test_bytes_regex_treats_bare_hyphen_as_no_match(js_source):
     assert rx.search("-") is None
 
 
-# ── content type: relative time ("49s ago", "2h ago") ───────────────────────
+# ── content type: relative-time — deliberately removed (audit defect #3) ───
+#
+# parseRelativeTime()/RELTIME_MULT used to live here, sorting AGE (bigger
+# number = older). Every other time-flavoured type (timestamp) sorts EPOCH
+# (bigger number = newer) — the identical ascending click would have run a
+# relative-time column backwards relative to every other time column, and
+# zero templates ever set data-sort="relative-time" to catch it. Deleted
+# rather than fixed-to-agree-with-timestamp (see the module docstring for
+# the reasoning); these are the regression guards for that decision — the
+# same "no new entrants" shape as the NOT_SORTABLE guard further down, so a
+# future contributor who needs a relative-time column is pointed at
+# parseTimestamp()'s convention instead of silently resurrecting the buggy
+# one from history/blame.
 
-def test_relative_time_orders_seconds_before_hours(js_source):
-    """The literal example pair from the brief: "49s ago" must sort before
-    "2h ago" — a lexical sort of the raw strings ("2h ago" < "49s ago")
-    gets this backwards."""
-    rx = _extract_regex(js_source, "function parseRelativeTime(text)")
-    mult = _extract_object_literal(js_source, "var RELTIME_MULT")
-
-    def to_seconds(text):
-        m = rx.search(text)
-        return float(m.group(1)) * mult[m.group(2).lower()]
-
-    assert to_seconds("49s ago") < to_seconds("2h ago")
-    # The brief's other named pitfall: "45s ago" (45s) is more recent than
-    # "2m ago" (120s), i.e. numerically smaller — but "2m ago" < "45s ago"
-    # as raw strings ('2' < '4'), which is backwards.
-    assert to_seconds("45s ago") < to_seconds("2m ago")
-    assert "2m ago" < "45s ago"  # the naive string compare — backwards
+def test_relative_time_parser_was_not_reintroduced(js_source):
+    # The module docstring explains the removal by name (for institutional
+    # memory — this repo's habit, see docs/OPS-LEARNINGS.md), so search only
+    # the executable code (after the closing `*/`), not the prose above it.
+    code = js_source[js_source.index("*/") + 2:]
+    assert "function parseRelativeTime" not in code
+    assert "parseRelativeTime(" not in code
+    assert "RELTIME_MULT" not in code
 
 
-def test_relative_time_multiplier_table_values(js_source):
-    mult = _extract_object_literal(js_source, "var RELTIME_MULT")
-    assert mult == {"s": 1, "m": 60, "h": 3600, "d": 86400}
+def test_relative_time_is_not_a_registered_sort_type(js_source):
+    fn_start = js_source.index("var TYPE_PARSERS")
+    fn_end = js_source.index("};", fn_start)
+    assert "relative-time" not in js_source[fn_start:fn_end]
+
+
+@pytest.mark.parametrize(
+    "template",
+    [
+        "dashboard.html", "monitoring.html", "operations.html",
+        "partials/server_comparison.html", "rbac.html", "reports.html",
+        "servers.html", "server_detail.html", "workflows.html",
+    ],
+)
+def test_no_template_uses_the_removed_relative_time_sort_type(template):
+    source = (PROJECT_ROOT / "templates" / template).read_text(encoding="utf-8")
+    assert 'data-sort="relative-time"' not in source
 
 
 # ── content type: timestamp (formatTs() round-trip) ─────────────────────────
@@ -379,8 +396,48 @@ def test_apply_sort_suppresses_the_mutation_observer_during_its_own_reorder(js_s
     assert apply_body.index("_sorting = true") < apply_body.index("d.u.place()")
 
     mo_start = js_source.index("var _mo = new MutationObserver")
-    mo_guard_region = js_source[mo_start:mo_start + 200]
-    assert "if (_sorting) return" in mo_guard_region
+    mo_end = js_source.index("\n  _mo.observe(", mo_start)
+    mo_body = js_source[mo_start:mo_end]
+    # DEFECT 1 widened the guard from `_sorting` alone to also cover header
+    # writes — same reasoning, same mechanics, see _headerMutating.
+    assert "if (_sorting || _headerMutating) return;" in mo_body
+
+
+def test_apply_sort_no_op_guard_wraps_the_reorder_in_try_finally(js_source):
+    """Audit ask (this branch): _sorting was set with no try/finally, so an
+    exception mid-reorder would leave it stuck true forever — silently
+    disabling every future restoreSortState() with no error anywhere. No
+    reproduction exists (every throwable step runs before the flag is
+    set), but the insurance is cheap: assert the reset sits inside a
+    `finally` attached to the `try` that wraps d.u.place(), not just
+    present somewhere in the function."""
+    fn_start = js_source.index("function applySort(table, colIndex, type, dir)")
+    fn_end = js_source.index("\n  }", fn_start)
+    body = js_source[fn_start:fn_end]
+    try_idx = body.index("try {")
+    place_idx = body.index("d.u.place()")
+    finally_idx = body.index("} finally {")
+    reset_idx = body.index("_sorting = false")
+    assert try_idx < place_idx < finally_idx < reset_idx, (
+        "expected try { ... d.u.place() ... } finally { ... _sorting = false ... } in that order"
+    )
+
+
+def test_apply_sort_skips_the_reorder_when_the_target_order_is_unchanged(js_source):
+    """DEFECT 2 (audit, this branch): applySort() used to call place() on
+    every unit unconditionally, and appendChild() on an already-last child
+    is still a real detach+re-insert. Measured live: 58 tbody moves every
+    15s on a 29-row fleet table, order unchanged 100% of the time (see the
+    task report for the before/after timings). Structural guard: the
+    no-op check must run BEFORE `_sorting = true`, otherwise the flag
+    would guard a reorder that never happens."""
+    fn_start = js_source.index("function applySort(table, colIndex, type, dir)")
+    fn_end = js_source.index("\n  }", fn_start)
+    body = js_source[fn_start:fn_end]
+    assert "d.i === pos" in body, "expected an identity-permutation check against the original index order"
+    guard_idx = body.index("if (alreadyInOrder) return;")
+    sorting_idx = body.index("_sorting = true")
+    assert guard_idx < sorting_idx
 
 
 def test_set_arrow_is_idempotent(js_source):
@@ -406,21 +463,128 @@ def test_set_arrow_is_idempotent(js_source):
     assert body.index("if (arrow.dataset.state === state) return;") < body.index("innerHTML")
 
 
-def test_mutation_observer_ignores_mutations_inside_thead(js_source):
-    """The other half of the same fix: even with setArrow() idempotent,
-    the observer should never have treated header-internal DOM changes
-    (bindHeader building the button/arrow, or any future change in that
-    area) as "this table's data changed" in the first place. Scoping to
-    mutations whose target is outside any <thead> is the general fix;
-    test_set_arrow_is_idempotent is the specific one for the exact mutation
-    that was observed causing it."""
+def test_set_arrow_and_bind_header_guard_with_header_mutating_flag(js_source):
+    """Both DOM-writing header functions must set _headerMutating around
+    their writes (mirroring _sorting for applySort — see the module
+    docstring's DEFECT 1 section), with the reset deferred through a
+    microtask exactly like _sorting's, not reset synchronously (which
+    would make the observer's callback — queued as its own microtask at
+    the moment of the mutation, strictly before a `.then()` queued after
+    it — see the flag as already false and defeat the guard)."""
+    for fn_name in ("function setArrow(th, state)", "function bindHeader(th)"):
+        fn_start = js_source.index(fn_name)
+        fn_end = js_source.index("\n  }", fn_start)
+        body = js_source[fn_start:fn_end]
+        assert "_headerMutating = true" in body, f"{fn_name} does not set _headerMutating"
+        assert "Promise.resolve().then(function () { _headerMutating = false; });" in body, (
+            f"{fn_name} does not defer the _headerMutating reset through a microtask"
+        )
+
+
+def test_set_aria_sort_is_idempotent_and_guarded(js_source):
+    """setAriaSort() centralises every aria-sort write (the click handler's
+    sibling reset, its own final th update, and restoreSortState()'s
+    sibling loop used to call th.setAttribute('aria-sort', …) directly in
+    all three places). setAttribute() queues a mutation record even when
+    the value already matches — skipping the no-op write is what keeps a
+    heal/restore pass that changed nothing from generating any mutation,
+    which matters now that the observer no longer ignores thead-internal
+    mutations by location (DEFECT 1) and instead relies on there being
+    nothing left to react to once a table is already correct."""
+    fn_start = js_source.index("function setAriaSort(th, value)")
+    fn_end = js_source.index("\n  }", fn_start)
+    body = js_source[fn_start:fn_end]
+    assert "if (th.getAttribute('aria-sort') === value) return;" in body
+    assert body.index("if (th.getAttribute('aria-sort') === value) return;") < body.index("setAttribute")
+    assert "_headerMutating = true" in body
+
+    # every direct th.setAttribute('aria-sort', …) call site must be gone —
+    # replaced by the guarded helper, everywhere in the file.
+    rest_of_file = js_source[fn_end:]
+    assert ".setAttribute('aria-sort'" not in rest_of_file
+
+
+def test_mutation_observer_no_longer_excludes_mutations_by_thead_location(js_source):
+    """DEFECT 1 (audit, this branch): the observer used to skip ANY
+    mutation whose target was inside a <thead>, on the theory that only
+    this file's own bindHeader()/setArrow() ever write there. That theory
+    broke the day something ELSE wrote there: idiomorph patching a
+    <thead data-sort-table="…"> in place (server_detail.html's
+    morphHTML()) strips this file's injected button/arrow/aria-sort as
+    childList/attribute mutations targeting a node already inside the
+    <thead> — exactly the shape the old exclusion discarded on sight,
+    silently, with no addedNodes anywhere to notice instead. Verified live
+    against the running app (see the task report): server-events bound 0
+    of 5 columns on a clean load while server-logs-windows, built the same
+    way one function over, bound all 5 — "whether idiomorph reuses or
+    replaces a container" is incidental, so the fix removes the
+    location-based exclusion rather than special-casing the one table it
+    was caught on. This is the regression guard for that removal."""
     mo_start = js_source.index("var _mo = new MutationObserver")
     mo_end = js_source.index("\n  _mo.observe(", mo_start)
     body = js_source[mo_start:mo_end]
-    assert "if (target.closest && target.closest('thead')) continue;" in body
-    # the thead check must happen before a table is ever added to
-    # tablesToRestore, not after
-    assert body.index("target.closest && target.closest('thead')") < body.index("tablesToRestore.push")
+    assert "target.closest('thead')" not in body
+    assert "target.closest && target.closest('thead')" not in body
+
+
+def test_mutation_observer_excludes_by_cause_not_location(js_source):
+    """The replacement for the old thead-location exclusion: a mutation
+    this file itself just caused (writing to a header) is recognised by
+    the _headerMutating flag being true, checked once at the top of the
+    callback — not by re-deriving "was this inside a thead" per mutation,
+    which is exactly the check that stopped being reliable."""
+    mo_start = js_source.index("var _mo = new MutationObserver")
+    mo_end = js_source.index("\n  _mo.observe(", mo_start)
+    body = js_source[mo_start:mo_end]
+    guard_idx = body.index("if (_sorting || _headerMutating) return;")
+    # the combined guard must be the first executable statement in the
+    # callback — before any mutation is inspected, not interleaved with it
+    queue_idx = body.index("queueTable(tablesToRestore, ownerTable)")
+    assert guard_idx < queue_idx
+
+
+def test_mutation_observer_reacts_to_the_mutations_target_not_just_added_nodes(js_source):
+    """The other half of DEFECT 1's fix: idiomorph's in-place patch can
+    change a header's attributes or a text node's data without adding or
+    removing anything — the old observer only ever inspected addedNodes,
+    which is exactly why an attribute-only or text-only patch on an
+    already-bound header went unnoticed. queueTable() is invoked from the
+    mutation's own `target` (via closest('table')), not only from
+    addedNodes, and the observer is configured to receive attribute and
+    characterData records in the first place."""
+    mo_start = js_source.index("var _mo = new MutationObserver")
+    mo_end = js_source.index("\n  _mo.observe(", mo_start)
+    body = js_source[mo_start:mo_end]
+    assert "target.closest('table')" in body
+    assert "queueTable(tablesToRestore, ownerTable)" in body
+
+    observe_start = js_source.index("_mo.observe(", mo_end)
+    observe_call = js_source[observe_start:js_source.index(");", observe_start)]
+    assert "attributes: true" in observe_call
+    assert "characterData: true" in observe_call
+    assert "childList: true" in observe_call
+    assert "subtree: true" in observe_call
+
+
+def test_bind_header_self_heals_instead_of_trusting_the_flag_alone(js_source):
+    """DEFECT 1's other necessary half: th.dataset.sortBound is a flag on
+    the <th> node itself, which survives exactly as long as the node
+    reference does — including through an idiomorph in-place patch that
+    guts the node's children without ever replacing the node. Trusting the
+    flag alone is what let a header look "already bound" while having no
+    button, no arrow and no aria-sort at all. bindHeader()'s guard must
+    also check the actual DOM (the button it built is still there), not
+    just read the flag back."""
+    fn_start = js_source.index("function bindHeader(th)")
+    fn_end = js_source.index("\n  }", fn_start)
+    body = js_source[fn_start:fn_end]
+    assert "isBound(th)" in body
+    isbound_start = js_source.index("function isBound(th)")
+    isbound_end = js_source.index("\n  }", isbound_start)
+    isbound_body = js_source[isbound_start:isbound_end]
+    assert "sortBound" in isbound_body
+    assert "querySelector" in isbound_body  # the actual-DOM check, not just the flag
+    assert "aria-sort" in isbound_body
 
 
 def test_compare_for_sort_pins_empties_last_regardless_of_direction(js_source):

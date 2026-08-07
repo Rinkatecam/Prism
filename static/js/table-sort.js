@@ -60,12 +60,23 @@
  *                `text` (see cellRawText below); kept as a separate dataset
  *                value purely so the template documents intent.
  *
- * relative-time ("49s ago", "2h ago") has a parser below too, exercised in
- * tests/test_table_sort.py against exactly those examples, but no column
- * in the current markup carries relative time on its own — the only place
- * it appears is fused into servers.html's Status cell above, and status
- * text (not staleness) is what "Status" should sort by. Shipped anyway so
- * a future standalone "Last Check" column has a correct type ready.
+ * relative-time ("49s ago", "2h ago") was REMOVED (audit defect #3 on this
+ * branch): zero templates ever set data-sort="relative-time" — it existed
+ * purely on spec for a hypothetical future "Last Check" column — and it
+ * sorted backwards relative to every other time-flavoured type on this
+ * page. parseRelativeTime() returned AGE (bigger number = older, "2h ago"
+ * > "49s ago"); parseTimestamp() returns EPOCH (bigger number = newer).
+ * The identical ascending-arrow click would therefore have put a
+ * relative-time column in the opposite chronological order from every
+ * timestamp column, and nothing would have said so — the only tests
+ * exercising it were synthetic examples, not a real column, which is
+ * exactly how an abstraction with no caller keeps its bugs (docs/OPS-
+ * LEARNINGS.md #1). Deleted rather than fixed-to-agree-with-timestamp: a
+ * *correct* parser nothing calls is still dead code, and dead code with a
+ * non-obvious contract (which direction is "bigger") is a trap for
+ * whoever wires up the next time column without re-deriving it from
+ * scratch. If a real relative-time column is ever added, give it
+ * parseTimestamp()'s epoch-forward convention directly, not this one.
  *
  * THE EXTRACTION RULE — cellRawText()
  * -------------------------------------
@@ -115,16 +126,70 @@
  * is discarded silently and the table is left in whatever order it
  * rendered in — never throw over a stale sessionStorage key.
  *
- * IDEMPOTENT AND RE-RUNNABLE, same requirement as stepper.js and for the
- * same reason: several of these tables are rebuilt from scratch by plain
- * fetch().then(html => el.innerHTML = …) with NO htmx involved at all —
- * rbac.html's ACL table, every server_detail.html table, servers.html's
+ * IDEMPOTENT, SELF-HEALING, AND RE-RUNNABLE, same requirement as
+ * stepper.js and for the same reason: several of these tables are rebuilt
+ * from scratch outside any htmx swap — rbac.html's ACL table, servers.html's
  * dependency browser, dashboard.html's restart-results table (polled every
- * 30s). There is no htmx event to hook for those, so a MutationObserver on
- * <body> is what notices the replacement and re-binds headers / re-applies
- * the stored sort. htmx pages get both: the observer AND the explicit
- * afterSettle hook, belt and suspenders — applying the same sort twice is
- * a no-op, so there is no double-apply hazard.
+ * 30s) via plain fetch().then(html => el.innerHTML = …), and EVERY
+ * server_detail.html table via its morphHTML() helper
+ * (Idiomorph.morph(container, tmp, {morphStyle: 'innerHTML'})). Neither
+ * path fires an htmx event, so a MutationObserver on <body> is what has to
+ * notice the change and re-bind headers / re-apply the stored sort.
+ *
+ * DEFECT 1 (audit, this branch) — why that used to fail silently for some
+ * tables and not others: a plain innerHTML replacement always ADDS fresh
+ * nodes, which is easy to catch by looking at addedNodes. A morph does
+ * not — idiomorph reconciles the incoming tree against whatever is already
+ * there, and when an existing <thead data-sort-table="…"> resembles the
+ * incoming one closely enough, idiomorph PATCHES it in place: this file's
+ * injected <button>/<span class="sort-arrow"> gets swapped back out for
+ * plain text, aria-sort gets cleared, and NONE of that is a node being
+ * added or removed anywhere except a target already sitting inside a
+ * <thead> that itself was never added or removed. The header looks bound
+ * one moment and isn't the next, with no addedNodes anywhere to notice.
+ * Whether idiomorph reuses or replaces a given container is an
+ * implementation detail of its own diffing heuristic — not something this
+ * file can special-case per table — so the fix below does not try to
+ * recognise "the one bad path"; it removes the assumption that let any
+ * unrecognised path go unnoticed.
+ *
+ * THE FIX is two independent changes, needed together:
+ *   1. bindHeader() no longer trusts its own `sortBound` flag as proof a
+ *      header is still wired. A dataset flag on a DOM node survives
+ *      exactly as long as the node reference does, which an in-place patch
+ *      does not disturb even while gutting the node's children/attributes.
+ *      It now also checks the button it built, and the aria-sort attribute
+ *      it set, are actually still there — cheap when nothing changed (a
+ *      couple of extra reads), self-correcting when something external
+ *      reset the header, regardless of why.
+ *   2. The observer no longer excludes mutations by LOCATION (anything
+ *      targeting inside a <thead>, on the theory that only this file's own
+ *      code ever writes there). It excludes them by CAUSE instead:
+ *      _headerMutating, set around every place this file writes to a
+ *      header (bindHeader/setArrow/setAriaSort — mirrors _sorting below),
+ *      is what the observer checks now. A <thead>-internal mutation this
+ *      file did not just cause — from any source, present or future — now
+ *      falls through to a re-bind of that table, the same as a fresh
+ *      subtree being added elsewhere. The observed mutation types were
+ *      widened from childList-only to also cover attributes and
+ *      characterData, since idiomorph's in-place patch can touch either
+ *      without any node ever being added or removed.
+ * Neither change alone is sufficient: (1) without (2) still needs
+ * something to call bindHeader() again after the external change happens;
+ * (2) without (1) would re-run bindHeader()/restoreSortState() against a
+ * flag that still (falsely) claims "already bound" and do nothing.
+ *
+ * An interval/idle poll ("is every thead[data-sort-table] th[data-sort]
+ * actually bound, right now") was weighed and set aside: a
+ * MutationObserver configured for {childList, attributes, characterData,
+ * subtree: true} on <body> already sees every DOM write body-wide, by
+ * construction — there is no way to change what the page renders without
+ * one of those three mutation types firing somewhere in the tree a poll
+ * would also have to walk. A poll can only ever lag behind that (if slow)
+ * or spend cycles finding nothing (if fast); it cannot see anything the
+ * observer's own filtering missed, because both read the same DOM through
+ * the same API. What (2) buys that a poll cannot is reacting to *this*
+ * filtering gap being closed, not papering over the next one with a timer.
  */
 (function () {
   'use strict';
@@ -159,14 +224,6 @@
     if (isNaN(n)) return NaN;
     var unit = (m[2] || 'B').toUpperCase();
     return n * (BYTE_MULT[unit] || 1);
-  }
-
-  var RELTIME_MULT = { s: 1, m: 60, h: 3600, d: 86400 };
-  function parseRelativeTime(text) {
-    var m = text.match(/(-?\d+(?:\.\d+)?)\s*(s|m|h|d)\b/i);
-    if (!m) return NaN;
-    var mult = RELTIME_MULT[m[2].toLowerCase()];
-    return parseFloat(m[1]) * mult;
   }
 
   // Reverses base.html's formatTs() using the same PRISM_TZ config it
@@ -220,7 +277,6 @@
     number: function (cell) { return parseNumber(cellRawText(cell)); },
     percent: function (cell) { return parseNumber(cellRawText(cell)); },
     bytes: function (cell) { return parseBytes(cellRawText(cell)); },
-    'relative-time': function (cell) { return parseRelativeTime(cellRawText(cell)); },
     timestamp: function (cell) { return parseTimestamp(cellRawText(cell)); }
   };
 
@@ -303,6 +359,9 @@
   // is queued strictly AFTER that — same-queue microtasks run in the order
   // they were queued, so the observer always sees _sorting still true for
   // mutations this function caused, and false again for anything after.
+  // _headerMutating (declared with the header-binding code further down)
+  // is the same flag shape for header-only writes — same guard, same
+  // deferred-reset reasoning, just guarding a different set of mutations.
   var _sorting = false;
 
   function applySort(table, colIndex, type, dir) {
@@ -317,9 +376,38 @@
       var c = compareForSort(x.val, y.val, dir);
       return c !== 0 ? c : (x.i - y.i);
     });
+
+    // DEFECT 2 (audit, this branch): the freshly-computed order can equal
+    // the order the table is already in — most commonly because this call
+    // was triggered by a mutation that changed cell CONTENT but not the
+    // sort KEY (servers.html rewrites 29 status cells every 15s while the
+    // table stays sorted by name/host/port, none of which that rewrite
+    // touches). appendChild() on a node that is already the table's last
+    // child is still a real detach+re-insert — a childList mutation, a
+    // forced reflow, rows visibly shifting under the pointer. Measured
+    // live before this check existed: 58 tbody moves every 15s across a
+    // 29-row fleet table, with the resulting order identical to the order
+    // before, every single time. Comparing the sorted position array
+    // against the original index order is O(n) and touches no DOM at all;
+    // skip the reorder entirely when it would be a no-op.
+    var alreadyInOrder = decorated.every(function (d, pos) { return d.i === pos; });
+    if (alreadyInOrder) return;
+
     _sorting = true;
-    decorated.forEach(function (d) { d.u.place(); });
-    Promise.resolve().then(function () { _sorting = false; });
+    try {
+      decorated.forEach(function (d) { d.u.place(); });
+    } finally {
+      // try/finally is insurance, not a reproduction of an observed bug —
+      // every throwable step here runs before _sorting is even set, so
+      // there is no known way to actually leave place() mid-loop with an
+      // exception. But if one ever did, the un-guarded version left
+      // _sorting stuck true forever (the reset line below it would simply
+      // never run), silently disabling every future restoreSortState()
+      // with no error anywhere. finally only guarantees the reset gets
+      // SCHEDULED even on a throw — it stays a deferred microtask, not an
+      // immediate reset, for exactly the ordering reason explained above.
+      Promise.resolve().then(function () { _sorting = false; });
+    }
   }
 
   // ── header UI: arrow affordance + aria-sort + keyboard ──────────────────
@@ -331,6 +419,16 @@
   var ARROW_BOTH = '<svg viewBox="0 0 9 11" aria-hidden="true" focusable="false"><path d="M4.5 0 8 4H1z" fill="currentColor"/><path d="M4.5 11 1 7h7z" fill="currentColor"/></svg>';
   var ARROW_UP = '<svg viewBox="0 0 9 6" aria-hidden="true" focusable="false"><path d="M4.5 0 9 6H0z" fill="currentColor"/></svg>';
   var ARROW_DOWN = '<svg viewBox="0 0 9 6" aria-hidden="true" focusable="false"><path d="M4.5 6 0 0h9z" fill="currentColor"/></svg>';
+
+  // Set around every DOM write this file makes to a <th> or its
+  // descendants — bindHeader() building the button/arrow, setArrow()
+  // swapping the icon, setAriaSort() below — mirroring _sorting above,
+  // for the same reason and with the same deferred-reset mechanics. The
+  // MutationObserver further down checks this (alongside _sorting) instead
+  // of trying to recognise "a thead-internal mutation" by location — see
+  // DEFECT 1 in the module docstring for why location stopped being a
+  // reliable signal.
+  var _headerMutating = false;
 
   // Visible before any click (ARROW_BOTH, text-faint) so the affordance is
   // there without interaction, then switches to a single brand-coloured
@@ -344,59 +442,109 @@
     // children with byte-identical new ones — a real DOM mutation the
     // MutationObserver further down could not tell apart from new data.
     if (arrow.dataset.state === state) return;
-    arrow.dataset.state = state;
-    if (state === 'asc') {
-      arrow.innerHTML = ARROW_UP;
-      arrow.className = 'sort-arrow ml-1 inline-flex shrink-0 w-[9px] text-brand';
-    } else if (state === 'desc') {
-      arrow.innerHTML = ARROW_DOWN;
-      arrow.className = 'sort-arrow ml-1 inline-flex shrink-0 w-[9px] text-brand';
-    } else {
-      arrow.innerHTML = ARROW_BOTH;
-      arrow.className = 'sort-arrow ml-1 inline-flex shrink-0 w-[9px] text-faint';
+    _headerMutating = true;
+    try {
+      arrow.dataset.state = state;
+      if (state === 'asc') {
+        arrow.innerHTML = ARROW_UP;
+        arrow.className = 'sort-arrow ml-1 inline-flex shrink-0 w-[9px] text-brand';
+      } else if (state === 'desc') {
+        arrow.innerHTML = ARROW_DOWN;
+        arrow.className = 'sort-arrow ml-1 inline-flex shrink-0 w-[9px] text-brand';
+      } else {
+        arrow.innerHTML = ARROW_BOTH;
+        arrow.className = 'sort-arrow ml-1 inline-flex shrink-0 w-[9px] text-faint';
+      }
+    } finally {
+      Promise.resolve().then(function () { _headerMutating = false; });
     }
   }
 
+  // Guarded the same way as setArrow() — see _headerMutating above. Also
+  // idempotent against the current value: restoreSortState()'s sibling
+  // loop calls this unconditionally for every sortable column on every
+  // invocation (most of them unchanged), and setAttribute() queues a
+  // mutation record even when the value being set equals the value
+  // already there — skipping the no-op write keeps a heal/restore pass
+  // that changed nothing from generating any mutation at all.
+  function setAriaSort(th, value) {
+    if (th.getAttribute('aria-sort') === value) return;
+    _headerMutating = true;
+    try {
+      th.setAttribute('aria-sort', value);
+    } finally {
+      Promise.resolve().then(function () { _headerMutating = false; });
+    }
+  }
+
+  // Marker class on the injected <button>, used (not just styled) by the
+  // re-entry guard below: th.dataset.sortBound is a flag on the <th> node
+  // itself, which survives exactly as long as that node reference does —
+  // and an idiomorph in-place patch (DEFECT 1) can gut a bound header's
+  // children/attributes without the node itself ever being replaced, so
+  // the flag alone can say "already bound" about a header that currently
+  // has no button, no arrow and no aria-sort at all. Checking the button
+  // is still actually there makes bindHeader() self-healing: cheap when
+  // nothing changed, correct when something external reset the header.
+  var SORT_TOGGLE_CLASS = 'sort-toggle';
+
+  function isBound(th) {
+    return th.dataset.sortBound === '1' &&
+      th.hasAttribute('aria-sort') &&
+      !!th.querySelector(':scope > button.' + SORT_TOGGLE_CLASS);
+  }
+
   function bindHeader(th) {
-    if (th.dataset.sortBound === '1') return;
-    th.dataset.sortBound = '1';
-    if (!th.hasAttribute('aria-sort')) th.setAttribute('aria-sort', 'none');
+    if (isBound(th)) return;
+    _headerMutating = true;
+    try {
+      th.dataset.sortBound = '1';
+      // setAriaSort()'s own idempotency check (compares against
+      // getAttribute(), which is null when the attribute is simply
+      // missing) covers "give it a default" and "leave an existing value
+      // alone" in one call — no separate hasAttribute() check needed.
+      setAriaSort(th, 'none');
 
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'inline-flex items-center gap-1 bg-transparent border-0 p-0 m-0 cursor-pointer ' +
-      'focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none rounded-sm';
-    // Move the existing header content (plain text, or Jinja-rendered text)
-    // into the button rather than re-typing it, so translations / Jinja
-    // output are preserved exactly.
-    while (th.firstChild) btn.appendChild(th.firstChild);
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = SORT_TOGGLE_CLASS + ' inline-flex items-center gap-1 bg-transparent border-0 p-0 m-0 cursor-pointer ' +
+        'focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none rounded-sm';
+      // Move the existing header content — plain text, Jinja-rendered
+      // text, or (on a re-bind after an external reset) whatever content
+      // is currently sitting in the <th> — into the button rather than
+      // re-typing it, so translations / Jinja output are preserved
+      // exactly no matter which pass populated them.
+      while (th.firstChild) btn.appendChild(th.firstChild);
 
-    var arrow = document.createElement('span');
-    arrow.className = 'sort-arrow ml-1 inline-flex shrink-0 w-[9px] text-faint';
-    arrow.innerHTML = ARROW_BOTH;
-    btn.appendChild(arrow);
-    th.appendChild(btn);
+      var arrow = document.createElement('span');
+      arrow.className = 'sort-arrow ml-1 inline-flex shrink-0 w-[9px] text-faint';
+      arrow.innerHTML = ARROW_BOTH;
+      btn.appendChild(arrow);
+      th.appendChild(btn);
 
-    btn.addEventListener('click', function () {
-      var table = th.closest('table');
-      if (!table) return;
-      var row = th.parentElement;
-      var colIndex = Array.prototype.indexOf.call(row.children, th);
-      var type = th.getAttribute('data-sort');
-      var dir = th.getAttribute('aria-sort') === 'ascending' ? 'desc' : 'asc';
+      btn.addEventListener('click', function () {
+        var table = th.closest('table');
+        if (!table) return;
+        var row = th.parentElement;
+        var colIndex = Array.prototype.indexOf.call(row.children, th);
+        var type = th.getAttribute('data-sort');
+        var dir = th.getAttribute('aria-sort') === 'ascending' ? 'desc' : 'asc';
 
-      Array.prototype.forEach.call(row.children, function (sib) {
-        if (sib !== th && sib.hasAttribute('data-sort')) {
-          sib.setAttribute('aria-sort', 'none');
-          setArrow(sib, 'none');
-        }
+        Array.prototype.forEach.call(row.children, function (sib) {
+          if (sib !== th && sib.hasAttribute('data-sort')) {
+            setAriaSort(sib, 'none');
+            setArrow(sib, 'none');
+          }
+        });
+
+        applySort(table, colIndex, type, dir);
+        setAriaSort(th, dir === 'asc' ? 'ascending' : 'descending');
+        setArrow(th, dir);
+        saveSortState(table, colIndex, dir);
       });
-
-      applySort(table, colIndex, type, dir);
-      th.setAttribute('aria-sort', dir === 'asc' ? 'ascending' : 'descending');
-      setArrow(th, dir);
-      saveSortState(table, colIndex, dir);
-    });
+    } finally {
+      Promise.resolve().then(function () { _headerMutating = false; });
+    }
   }
 
   // ── sessionStorage persistence ───────────────────────────────────────
@@ -441,14 +589,14 @@
       return; // stale key — fall back to natural (server-rendered) order
     }
 
-    bindHeader(th); // idempotent — ensures the arrow span exists to update
+    bindHeader(th); // idempotent and self-healing — see module docstring, DEFECT 1
     applySort(table, state.col, th.getAttribute('data-sort'), state.dir);
 
     Array.prototype.forEach.call(headerRow.children, function (sib) {
       if (!sib.hasAttribute('data-sort')) return;
       bindHeader(sib);
       var active = sib === th;
-      sib.setAttribute('aria-sort', active ? (state.dir === 'asc' ? 'ascending' : 'descending') : 'none');
+      setAriaSort(sib, active ? (state.dir === 'asc' ? 'ascending' : 'descending') : 'none');
       setArrow(sib, active ? state.dir : 'none');
     });
   }
@@ -490,49 +638,85 @@
     restoreAll(root);
   });
 
-  // Tables rebuilt by plain fetch().then(html => el.innerHTML = …) never
-  // fire an htmx event at all (rbac.html's ACL table, every
-  // server_detail.html table, servers.html's dependency browser,
-  // dashboard.html's 30s-polled restart-results table) — this is the only
-  // thing that notices those. Mutations are batched per synchronous task by
-  // the browser already; the affected-table Set below just avoids re-
-  // sorting the same table once per row when a caller appends rows one at
-  // a time in a loop (reports.html's fleet table does exactly that).
+  // Tables rebuilt outside any htmx swap — via plain fetch().then(html =>
+  // el.innerHTML = …) (rbac.html's ACL table, servers.html's dependency
+  // browser, dashboard.html's 30s-polled restart-results table) or via
+  // server_detail.html's morphHTML()/Idiomorph — never fire an htmx event
+  // at all, so this observer is the only thing that notices those. See
+  // the module docstring, "DEFECT 1", for why the filtering below reacts
+  // to CAUSE (_sorting / _headerMutating) rather than to WHERE a mutation
+  // landed, and why that replaced the previous thead-location exclusion.
+  function queueTable(list, table) {
+    if (table && table.tHead && table.tHead.hasAttribute('data-sort-table') && list.indexOf(table) === -1) {
+      list.push(table);
+    }
+  }
+
   var _mo = new MutationObserver(function (mutations) {
-    if (_sorting) return; // this batch is applySort()'s own row-reorder — see its docstring
+    // A mutation this file just caused — writing to a <tbody> (_sorting)
+    // or to a header (_headerMutating) — must not be read back as
+    // "something else changed this table". That feedback loop is what
+    // hung the tab solid before either flag existed (see both flags'
+    // declarations for the microtask-ordering argument that makes this
+    // check reliable across the async boundary).
+    if (_sorting || _headerMutating) return;
     var freshRoots = [];
     var tablesToRestore = [];
     for (var i = 0; i < mutations.length; i++) {
-      // A mutation whose target lives INSIDE a <thead> is header-decoration
-      // churn this file caused itself (bindHeader building the button/arrow,
-      // setArrow swapping the icon) — never new data. Found live: without
-      // this, restoreSortState()'s unconditional setArrow() calls (one per
-      // sortable column, every invocation) looked exactly like "this
-      // table's rows changed" to the loop below, which called
-      // restoreSortState() again, which called setArrow() again — a second
-      // self-feedback cycle _sorting alone doesn't cover, because it only
-      // guards applySort()'s tbody mutations, not thead ones. Reloading any
-      // page with a stored sort locked the tab solid before this check
-      // existed.
-      var target = mutations[i].target;
-      if (target.closest && target.closest('thead')) continue;
-      var added = mutations[i].addedNodes;
+      var m = mutations[i];
+      var target = m.target;
+
+      // Half of DEFECT 1's fix: a mutation whose TARGET already sits
+      // inside a sortable table — an attribute changing, a text node's
+      // data changing, a child being added or removed anywhere in the
+      // table, INCLUDING inside its <thead> — means that table's header
+      // or rows may need (re)binding / re-sorting. This no longer
+      // excludes anything by location: the _headerMutating check above
+      // already accounts for this file's own header writes, so a
+      // <thead>-internal mutation that reaches this point came from
+      // somewhere else (an idiomorph in-place patch today; anything else
+      // tomorrow) and is exactly the case that must not be discarded.
+      var ownerTable = target.nodeType === 1 ? target.closest('table')
+        : (target.parentElement && target.parentElement.closest('table'));
+      queueTable(tablesToRestore, ownerTable);
+
+      // The other half: a brand new sortable table (or its <thead>)
+      // appearing under a container that was not itself part of any table
+      // a moment ago — the first-ever render of a JS-built section into
+      // an empty <div>. The mutation's TARGET here is the container, not
+      // a table, so the check above doesn't see it; only the newly added
+      // node's own subtree does.
+      var added = m.addedNodes;
       for (var j = 0; j < added.length; j++) {
         var node = added[j];
         if (node.nodeType !== 1) continue;
-        if (node.querySelector && (node.matches('thead[data-sort-table]') || node.querySelector('thead[data-sort-table]'))) {
+        if (node.matches('thead[data-sort-table]') || (node.querySelector && node.querySelector('thead[data-sort-table]'))) {
           freshRoots.push(node);
         }
-        var owner = node.closest ? node.closest('table') : null;
-        if (owner && owner.tHead && owner.tHead.hasAttribute('data-sort-table')) {
-          if (tablesToRestore.indexOf(owner) === -1) tablesToRestore.push(owner);
-        }
+        queueTable(tablesToRestore, node.closest ? node.closest('table') : null);
       }
     }
     freshRoots.forEach(function (root) { scan(root); restoreAll(root); });
-    tablesToRestore.forEach(restoreSortState);
+    // scan() and restoreSortState() are both idempotent — bindHeader()
+    // self-heals (see isBound()) and applySort() is a no-op when the
+    // table is already in the target order (DEFECT 2) — so re-running
+    // them on a table that, on inspection, did not actually need it costs
+    // a handful of querySelectorAll/getAttribute calls and nothing else.
+    // That is what makes reacting to every mutation touching a sortable
+    // table (rather than trying to pre-filter to "the ones that matter")
+    // affordable.
+    tablesToRestore.forEach(function (table) {
+      scan(table);
+      restoreSortState(table);
+    });
   });
-  _mo.observe(document.body, { childList: true, subtree: true });
+  _mo.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
 
   window.__prismBindTableSort = scan;
+  // Belt-and-suspenders hook for any direct caller that wants to force a
+  // rebind + stored-sort reapply immediately after its own DOM update
+  // (e.g. right after a morphHTML() call) rather than waiting for the
+  // MutationObserver's microtask — scan() alone does not reapply a stored
+  // sort. Both are idempotent, so calling this speculatively costs little.
+  window.__prismHealTableSort = function (root) { scan(root); restoreAll(root); };
 })();
