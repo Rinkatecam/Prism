@@ -402,12 +402,13 @@ def test_downloading_and_installing_travel_instead_of_spinning():
 
 
 def test_searching_is_ready_to_sway_not_spin():
-    """`searching` has no icon element in partials/server_card.html today —
-    the `{% if %}` chain there only branches for downloading/installing/
-    rebooting/stabilising/restart_required — so this rule has no visible
-    carrier yet. Written and scoped correctly regardless, so the moment that
-    template grows an icon for this state, it sways rather than spins
-    without any further CSS change."""
+    """`searching` now has its carrier: the `{% if %}` chain in
+    partials/server_card.html grows a `search` magnifier for this state, so
+    the rule below animates something visible. It sways rather than spins on
+    purpose — a rotating glyph is the universal "busy" and would make
+    searching read as rebooting, the one other state with a turning icon.
+    The rule long predated the icon; nothing about it had to change when the
+    template caught up, which is what the assertions here pin down."""
     css = authored()
     assert re.search(
         r"\.badge-searching svg,\s*\n\.badge-searching i \{\s*\n"
