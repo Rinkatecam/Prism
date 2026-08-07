@@ -1620,7 +1620,7 @@ function showExecution(execId) {
             <span class="text-xs font-medium">${step.node_type || 'Step ' + (i+1)}</span>
             <span class="text-[10px] px-1 py-0.5 rounded" style="background:${ssc}20;color:${ssc}">${step.status}</span>
           </div>
-          ${step.output ? `<pre class="text-[10px] bg-raised rounded p-1.5 mt-1 overflow-x-auto whitespace-pre-wrap">${typeof step.output === 'string' ? step.output : JSON.stringify(step.output, null, 2)}</pre>` : ''}
+          ${step.output ? `<pre class="text-[10px] bg-raised rounded p-1.5 mt-1 whitespace-pre-wrap">${typeof step.output === 'string' ? step.output : JSON.stringify(step.output, null, 2)}</pre>` : ''}
           ${step.error ? `<div class="text-[10px] text-critical mt-1">${step.error}</div>` : ''}
         </div>`;
       });

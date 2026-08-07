@@ -52,11 +52,13 @@
           {{ t.quick_actions | default('Quick Actions') }}
           <i data-lucide="chevron-down" class="w-3 h-3"></i>
         </button>
-        <div id="runbook-dropdown" class="hidden absolute right-0 top-full mt-1 w-64 bg-card border border-line rounded-lg shadow-lg z-50 py-1 max-h-80 overflow-y-auto">
+        {# overflow-hidden on the rounded shell, the scroll on the list inside:
+           a scrollbar on the rounded element is not clipped to its radius. #}
+        <div id="runbook-dropdown" class="hidden absolute right-0 top-full mt-1 w-64 bg-card border border-line rounded-lg shadow-lg z-50 py-1 overflow-hidden">
           <div class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted border-b border-line">
             {{ t.quick_actions | default('Quick Actions') }}
           </div>
-          <div id="runbook-dropdown-list">
+          <div id="runbook-dropdown-list" class="max-h-80 overflow-y-auto">
             <div class="px-3 py-2 text-xs text-faint">Loading...</div>
           </div>
         </div>

@@ -465,13 +465,16 @@
         </div>
         <div>
           <label class="block text-xs font-medium mb-1">{{ t.maint_servers }}</label>
-          <div id="maint-server-checks" class="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto border border-line rounded p-2">
+          {# Rounded shell clips; the grid inside scrolls. See activity_feed. #}
+          <div class="border border-line rounded overflow-hidden">
+          <div id="maint-server-checks" class="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto p-2">
             {% for s in servers %}
             <label class="flex items-center gap-1.5 text-xs cursor-pointer">
               <input type="checkbox" value="{{ s.name }}" class="maint-server-cb rounded border-gray-300">
               {{ s.name }}
             </label>
             {% endfor %}
+          </div>
           </div>
         </div>
         <div>

@@ -5,7 +5,12 @@
   <p class="text-sm text-muted">{{ t.no_events }}</p>
 </div>
 {% else %}
-<div class="bg-card rounded-lg border border-line overflow-hidden max-h-[400px] overflow-y-auto">
+{# The scroller is the INNER div. A rounded element that scrolls has its
+   scrollbar painted straight across its own corners — Chromium does not clip
+   ::-webkit-scrollbar to border-radius — so the card reads as square on the
+   right-hand side. Rounding + clipping outside, scrolling inside. #}
+<div class="bg-card rounded-lg border border-line overflow-hidden">
+<div class="max-h-[400px] overflow-y-auto">
   {% for event in events %}
   <a href="/server/{{ event.server_name }}" class="flex items-start gap-3 px-4 py-3 cursor-pointer {% if not loop.last %}border-b border-line {% endif %} hover:bg-page dark:hover:bg-page/50 transition-colors">
     <!-- Timeline dot -->
@@ -65,5 +70,6 @@
     </div>
   </a>
   {% endfor %}
+</div>
 </div>
 {% endif %}

@@ -120,7 +120,7 @@
       </div>
 
       <!-- Current metrics comparison table -->
-      <div class="border border-line rounded-lg overflow-x-auto">
+      <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
         <table class="w-full text-xs">
           <thead>
             <tr class="bg-page">
@@ -134,7 +134,7 @@
           </thead>
           <tbody id="compare-table-body"></tbody>
         </table>
-      </div>
+      </div></div>
 
       <!-- Statistics table -->
       <div id="compare-stats" class="hidden">
@@ -142,7 +142,7 @@
           <i data-lucide="bar-chart-2" class="w-4 h-4 text-muted"></i>
           {{ t.statistics }}
         </h3>
-        <div class="border border-line rounded-lg overflow-x-auto">
+        <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
           <table class="w-full text-xs">
             <thead>
               <tr class="bg-page">
@@ -158,7 +158,7 @@
             </thead>
             <tbody id="stats-table-body"></tbody>
           </table>
-        </div>
+        </div></div>
       </div>
 
       <!-- Business-hours annotations -->
@@ -167,7 +167,7 @@
           <i data-lucide="clock" class="w-4 h-4 text-brand"></i>
           {{ t.business_hours_avg }} / {{ t.off_hours_avg }}
         </h3>
-        <div class="border border-line rounded-lg overflow-x-auto">
+        <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
           <table class="w-full text-xs">
             <thead>
               <tr class="bg-page">
@@ -180,7 +180,7 @@
             </thead>
             <tbody id="annotations-table-body"></tbody>
           </table>
-        </div>
+        </div></div>
       </div>
     </div>
 
@@ -227,7 +227,7 @@
           {{ t.common_events | default('Common Events') }}
           <span id="common-events-count" class="text-xs font-normal text-muted"></span>
         </h3>
-        <div class="border border-line rounded-lg overflow-x-auto">
+        <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
           <table class="w-full text-xs">
             <thead>
               <tr class="bg-page">
@@ -240,7 +240,7 @@
             </thead>
             <tbody id="common-events-body"></tbody>
           </table>
-        </div>
+        </div></div>
         <div id="common-pager" class="hidden flex items-center justify-center gap-3 mt-2"></div>
       </div>
       <!-- Unique events (not on all servers) -->
@@ -250,7 +250,7 @@
           {{ t.unique_events | default('Unique Events') }}
           <span id="unique-events-count" class="text-xs font-normal text-muted"></span>
         </h3>
-        <div class="border border-line rounded-lg overflow-x-auto">
+        <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
           <table class="w-full text-xs">
             <thead>
               <tr class="bg-page">
@@ -264,7 +264,7 @@
             </thead>
             <tbody id="unique-events-body"></tbody>
           </table>
-        </div>
+        </div></div>
         <div id="unique-pager" class="hidden flex items-center justify-center gap-3 mt-2"></div>
       </div>
     </div>

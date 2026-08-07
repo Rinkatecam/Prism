@@ -610,7 +610,8 @@
             <span id="rb-run-status" class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium"></span>
             <span id="rb-run-duration" class="text-[10px] text-faint"></span>
           </div>
-          <pre id="rb-run-content" class="px-3 py-2 text-[10px] font-mono whitespace-pre-wrap max-h-48 overflow-y-auto bg-page rounded border border-line"></pre>
+          {# Rounded shell clips; the <pre> inside scrolls. See activity_feed. #}
+          <div class="bg-page rounded border border-line overflow-hidden"><pre id="rb-run-content" class="px-3 py-2 text-[10px] font-mono whitespace-pre-wrap max-h-48 overflow-y-auto"></pre></div>
         </div>
       </div>
       <div class="flex justify-end gap-2 p-4 border-t border-line">
