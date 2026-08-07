@@ -10,15 +10,14 @@
 {% else %}
 <div>
   <h2 class="text-xl font-semibold flex items-center gap-2 mb-3">
-    <i data-lucide="alert-octagon" class="w-5 h-5 text-[#DC2626] dark:text-[#EF4444]"></i>
+    <i data-lucide="alert-octagon" class="w-5 h-5 text-critical"></i>
     {{ t.issues_detected }}
     <span class="badge badge-critical">{{ issues | length }}</span>
   </h2>
   <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
     {% for issue in issues %}
     <a href="/server/{{ issue.server_name }}"
-       class="block bg-white dark:bg-[#1E293B] rounded-lg p-4 border border-[#E5E7EB] dark:border-[#334155] hover:shadow-md transition-shadow
-              {% if issue.status == 'critical' %}border-status-critical{% elif issue.status == 'warning' %}border-status-warning{% else %}border-status-offline{% endif %}">
+       class="block bg-card rounded-lg p-4 border border-line hover:shadow-md transition-shadow {% if issue.status == 'critical' %}border-status-critical{% elif issue.status == 'warning' %}border-status-warning{% else %}border-status-offline{% endif %}">
       <div class="flex items-center justify-between mb-2">
         <span class="font-semibold text-sm">{{ issue.server_name }}</span>
         <span class="badge badge-{{ issue.status }}">{{ issue.status }}</span>
@@ -69,17 +68,14 @@
                       or (_vd | dictsort | selectattr('1.kind', 'equalto', 'deviation') | list)) | first %}
       {% if _pick %}
       {% set _pk = _pick[1].get('kind') %}
-      <div class="mt-2 pt-2 border-t border-[#E5E7EB] dark:border-[#334155] flex items-start gap-1.5 text-[11px] leading-snug
-                  {% if _pk == 'deviation' %}text-[#6B7280] dark:text-[#94A3B8]
-                  {% elif _pk == 'floor' or issue.status == 'critical' %}text-[#DC2626] dark:text-[#EF4444]
-                  {% else %}text-[#B45309] dark:text-[#FBBF24]{% endif %}">
+      <div class="mt-2 pt-2 border-t border-line flex items-start gap-1.5 text-[11px] leading-snug {% if _pk == 'deviation' %}text-muted dark:text-[#94A3B8] {% elif _pk == 'floor' or issue.status == 'critical' %}text-critical {% else %}text-[#B45309] dark:text-[#FBBF24]{% endif %}">
         <i data-lucide="{% if _pk == 'deviation' %}activity{% elif _pk == 'floor' %}alert-octagon{% else %}alert-triangle{% endif %}"
            class="w-3 h-3 flex-shrink-0 mt-0.5" aria-hidden="true"></i>
         <span class="line-clamp-2">{{ _pick[1].get('reason', '') }}</span>
       </div>
       {% endif %}
 
-      <div class="text-[10px] text-[#9CA3AF] dark:text-[#475569] mt-2">
+      <div class="text-[10px] text-faint mt-2">
         {{ t.click_details }}
       </div>
     </a>

@@ -14,9 +14,9 @@
 <!-- Tag filter bar -->
 {% if all_tags is defined and all_tags %}
 <div class="flex flex-wrap items-center gap-2 mb-4">
-  <span class="text-xs font-medium text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('filter_by_tag', 'Filter by tag') }}:</span>
+  <span class="text-xs font-medium text-muted">{{ t.get('filter_by_tag', 'Filter by tag') }}:</span>
   <button hx-get="/partials/server-grid" hx-target="#server-grid-container" hx-swap="innerHTML"
-          class="px-2 py-0.5 text-xs rounded-full border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] {{ 'bg-[#2563EB]/10 text-[#2563EB] border-[#2563EB]' if not active_tag else '' }}">
+          class="px-2 py-0.5 text-xs rounded-full border border-line dark:border-[#334155] hover:bg-page {{ 'bg-[#2563EB]/10 text-[#2563EB] border-info' if not active_tag else '' }}">
     {{ t.get('all_tags', 'All') }}
   </button>
   {% for tag in all_tags %}
@@ -30,14 +30,14 @@
 {% endif %}
 
 {% if grouped | length == 0 %}
-<div class="bg-white dark:bg-[#1E293B] rounded-lg p-8 border border-[#E5E7EB] dark:border-[#334155] text-center">
-  <i data-lucide="server-off" class="w-10 h-10 mx-auto mb-3 text-[#6B7280] dark:text-[#CBD5E1]"></i>
-  <p class="text-[#6B7280] dark:text-[#CBD5E1] text-sm">{{ t.no_servers_settings }}</p>
+<div class="bg-card rounded-lg p-8 border border-line text-center">
+  <i data-lucide="server-off" class="w-10 h-10 mx-auto mb-3 text-muted"></i>
+  <p class="text-muted text-sm">{{ t.no_servers_settings }}</p>
 </div>
 {% else %}
   {% for type_key, servers in grouped.items() %}
   <div class="mb-6 last:mb-0">
-    <h3 class="text-sm font-semibold text-[#6B7280] dark:text-[#CBD5E1] uppercase tracking-wider mb-3">
+    <h3 class="text-sm font-semibold text-muted uppercase tracking-wider mb-3">
       {{ type_labels.get(type_key, type_key | replace('_', ' ') | title) }}
       <span class="text-xs font-normal">({{ servers | length }})</span>
     </h3>

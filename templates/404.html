@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="flex flex-col items-center justify-center py-20">
-  <div class="text-6xl font-bold text-[#6B7280] dark:text-[#CBD5E1] mb-2">404</div>
-  <p class="text-lg text-[#6B7280] dark:text-[#CBD5E1] mb-6">{{ t.page_not_found }}</p>
-  <a href="/" class="px-4 py-2 rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 text-sm font-medium flex items-center gap-2">
+  <div class="text-6xl font-bold text-muted mb-2">404</div>
+  <p class="text-lg text-muted mb-6">{{ t.page_not_found }}</p>
+  <a href="/" class="px-4 py-2 rounded bg-info text-white hover:opacity-90 text-sm font-medium flex items-center gap-2">
     <i data-lucide="arrow-left" class="w-4 h-4"></i>
     {{ t.back_to_dashboard }}
   </a>

@@ -50,7 +50,7 @@
 
 <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
   <h1 class="text-2xl font-bold flex items-center gap-2">
-    <i data-lucide="network" class="w-6 h-6 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    <i data-lucide="network" class="w-6 h-6 text-info"></i>
     {{ t.infrastructure_map }}
   </h1>
   <div class="flex items-center gap-2 flex-wrap">
@@ -58,11 +58,11 @@
     <div class="relative">
       <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[#6B7280]"></i>
       <input type="text" id="topo-search" placeholder="{{ t.get('search_servers', 'Search servers') }}..."
-             class="pl-8 pr-3 py-1.5 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-[#1F2937] dark:text-[#F8FAFC] w-44">
+             class="pl-8 pr-3 py-1.5 text-xs rounded border border-line bg-white dark:bg-[#0F172A] text-[#1F2937] dark:text-[#F8FAFC] w-44">
     </div>
     <!-- Blast radius dropdown -->
     <select id="topo-highlight"
-            class="px-2 py-1.5 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-[#1F2937] dark:text-[#F8FAFC]">
+            class="px-2 py-1.5 text-xs rounded border border-line bg-white dark:bg-[#0F172A] text-[#1F2937] dark:text-[#F8FAFC]">
       <option value="">{{ t.get('highlight_blast_radius', 'Highlight blast radius') }}...</option>
       {% for s in servers %}
       <option value="{{ s.name }}">{{ s.name }}</option>
@@ -70,17 +70,17 @@
     </select>
     <!-- Fit + Reset + Refresh -->
     <button type="button" id="topo-fit"
-            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-line hover:bg-page">
       <i data-lucide="maximize" class="w-3.5 h-3.5"></i>
       {{ t.get('fit_to_screen', 'Fit') }}
     </button>
     <button type="button" id="topo-reset"
-            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-line hover:bg-page">
       <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
       {{ t.get('reset_view', 'Reset') }}
     </button>
     <button type="button" id="topo-refresh"
-            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-line hover:bg-page">
       <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
       {{ t.get('refresh', 'Refresh') }}
     </button>
@@ -89,14 +89,14 @@
 
 <!-- Filter chip row -->
 <div class="flex items-center gap-2 flex-wrap mb-3">
-  <span class="text-[10px] font-semibold uppercase text-[#9CA3AF] dark:text-[#64748B] mr-1">{{ t.get('status', 'Status') }}:</span>
+  <span class="text-[10px] font-semibold uppercase text-faint mr-1">{{ t.get('status', 'Status') }}:</span>
   <button type="button" class="topo-chip active" data-status-filter="all">{{ t.get('all', 'All') }}</button>
   <button type="button" class="topo-chip" data-status-filter="critical">{{ t.critical }}</button>
   <button type="button" class="topo-chip" data-status-filter="warning">{{ t.warning }}</button>
   <button type="button" class="topo-chip" data-status-filter="healthy">{{ t.healthy }}</button>
   <button type="button" class="topo-chip" data-status-filter="offline">{{ t.offline }}</button>
-  <span class="mx-2 text-[#E5E7EB] dark:text-[#334155]">|</span>
-  <span class="text-[10px] font-semibold uppercase text-[#9CA3AF] dark:text-[#64748B] mr-1">{{ t.get('type', 'Type') }}:</span>
+  <span class="mx-2 text-line">|</span>
+  <span class="text-[10px] font-semibold uppercase text-faint mr-1">{{ t.get('type', 'Type') }}:</span>
   <button type="button" class="topo-chip active" data-type-filter="all">{{ t.get('all', 'All') }}</button>
   <button type="button" class="topo-chip" data-type-filter="domain_controller">DC</button>
   <button type="button" class="topo-chip" data-type-filter="database_server">SQL</button>
@@ -110,7 +110,7 @@
 
 <!-- SVG canvas container -->
 <div id="topology-canvas-wrap"
-     class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] overflow-hidden mb-4">
+     class="bg-card rounded-lg border border-line overflow-hidden mb-4">
   <svg id="topology-canvas"></svg>
 </div>
 
@@ -120,7 +120,7 @@
 <!-- Legend + blast radius results -->
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
   <!-- Status + type legend -->
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4">
+  <div class="bg-card rounded-lg border border-line p-4">
     <h3 class="text-sm font-medium mb-3">{{ t.get('legend', 'Legend') }}</h3>
     <div class="flex flex-wrap gap-3 text-xs mb-3">
       <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-[#10B981]"></span> {{ t.healthy }}</span>
@@ -129,7 +129,7 @@
       <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-[#6B7280]"></span> {{ t.offline }}</span>
       <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-[#9CA3AF]"></span> {{ t.get('unknown', 'Unknown') }}</span>
     </div>
-    <div class="pt-3 border-t border-[#E5E7EB] dark:border-[#334155] flex flex-wrap gap-3 text-xs text-[#6B7280] dark:text-[#CBD5E1]">
+    <div class="pt-3 border-t border-line flex flex-wrap gap-3 text-xs text-muted">
       <span class="inline-flex items-center gap-1.5"><span class="w-5 h-0.5 bg-[#94A3B8] inline-block"></span> {{ t.get('dependency_arrow', 'Dependency') }}</span>
       <span class="inline-flex items-center gap-1.5"><span class="w-5 h-0.5 bg-[#F59E0B] inline-block"></span> {{ t.blast_radius }}</span>
       <span class="inline-flex items-center gap-1.5 ml-2 italic">{{ t.get('topology_hint', 'Drag to pan · Scroll to zoom · Click a node to open') }}</span>
@@ -137,7 +137,7 @@
   </div>
 
   <!-- Blast radius results -->
-  <div id="blast-radius-panel" class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4 hidden">
+  <div id="blast-radius-panel" class="bg-card rounded-lg border border-line p-4 hidden">
     <h3 class="text-sm font-medium mb-3 flex items-center gap-1.5">
       <i data-lucide="zap" class="w-4 h-4 text-[#F59E0B]"></i>
       {{ t.blast_radius }}

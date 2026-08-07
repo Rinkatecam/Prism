@@ -1,25 +1,21 @@
 {% if certificates %}
 <div class="space-y-2">
   {% for cert in certificates %}
-  <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg border
-              {% if cert.status == 'expired' %}border-[#DC2626]/40 bg-[#DC2626]/5
-              {% elif cert.status == 'expiring' %}border-[#F59E0B]/40 bg-[#F59E0B]/5
-              {% else %}border-[#6B7280]/30 bg-[#6B7280]/5{% endif %}">
+  <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg border {% if cert.status == 'expired' %}border-[#DC2626]/40 bg-[#DC2626]/5 {% elif cert.status == 'expiring' %}border-[#F59E0B]/40 bg-[#F59E0B]/5 {% else %}border-[#6B7280]/30 bg-[#6B7280]/5{% endif %}">
     <i data-lucide="{% if cert.status == 'expired' %}shield-x{% elif cert.status == 'expiring' %}shield-alert{% else %}shield-question{% endif %}"
        class="w-5 h-5 flex-shrink-0 {% if cert.status == 'expired' %}text-[#DC2626]{% elif cert.status == 'expiring' %}text-[#F59E0B]{% else %}text-[#6B7280]{% endif %}"></i>
     <div class="min-w-0 flex-1">
       <div class="flex items-center gap-2">
-        <span class="text-xs font-semibold {% if cert.status == 'expired' %}text-[#DC2626]{% elif cert.status == 'expiring' %}text-[#92400E] dark:text-[#FCD34D]{% else %}text-[#6B7280]{% endif %}">
+        <span class="text-xs font-semibold {% if cert.status == 'expired' %}text-critical{% elif cert.status == 'expiring' %}text-[#92400E] dark:text-[#FCD34D]{% else %}text-muted{% endif %}">
           {% if cert.status == 'expired' %}{{ t.get('cert_expired', 'Certificate Expired') }}{% elif cert.status == 'expiring' %}{{ t.get('cert_expiring', 'Certificate Expiring') }}{% else %}{{ t.get('cert_error', 'Certificate Error') }}{% endif %}
         </span>
         {% if cert.days_remaining is not none and cert.days_remaining >= 0 %}
-        <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full
-                     {% if cert.status == 'expired' %}bg-[#DC2626]/10 text-[#DC2626]{% else %}bg-[#F59E0B]/10 text-[#F59E0B]{% endif %}">
+        <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full {% if cert.status == 'expired' %}bg-[#DC2626]/10 text-[#DC2626]{% else %}bg-[#F59E0B]/10 text-[#F59E0B]{% endif %}">
           {{ cert.days_remaining }}d remaining
         </span>
         {% endif %}
       </div>
-      <div class="text-[11px] text-[#6B7280] dark:text-[#CBD5E1] mt-0.5">
+      <div class="text-[11px] text-muted mt-0.5">
         <strong>{{ cert.subject or cert.host }}</strong> · {{ cert.host }}:{{ cert.port }} · {{ cert.server_name }}
         {% if cert.error %}<span class="text-[#DC2626]"> · {{ cert.error[:80] }}</span>{% endif %}
       </div>

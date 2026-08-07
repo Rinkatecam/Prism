@@ -45,8 +45,7 @@
    data-server-host="{{ host }}"
    data-status="{{ status }}"
    {% if istatus %}data-install-status="{{ istatus }}"{% endif %}
-   class="server-card block bg-white dark:bg-[#1E293B] rounded-lg p-4 border border-[#E5E7EB] dark:border-[#334155] cursor-pointer
-          {% if istatus %}border-l-4 {{ _install_border.get(istatus, '!border-l-[#6366F1]') }}{% elif status == 'critical' %}border-l-4 !border-l-[#DC2626] dark:!border-l-[#EF4444]{% elif status == 'warning' %}border-l-4 !border-l-[#F59E0B] dark:!border-l-[#FBBF24]{% elif status == 'offline' %}border-l-4 !border-l-[#9CA3AF] opacity-60{% endif %}">
+   class="server-card block bg-card rounded-lg p-4 border border-line cursor-pointer {% if istatus %}border-l-4 {{ _install_border.get(istatus, '!border-l-[#6366F1]') }}{% elif status == 'critical' %}border-l-4 !border-l-[#DC2626] dark:!border-l-[#EF4444]{% elif status == 'warning' %}border-l-4 !border-l-[#F59E0B] dark:!border-l-[#FBBF24]{% elif status == 'offline' %}border-l-4 !border-l-[#9CA3AF] opacity-60{% endif %}">
 
   <!-- Header: name + badge -->
   <div class="flex items-center justify-between mb-3">
@@ -104,11 +103,11 @@
     {% set _kind = _mv.get('kind', '') if _mv else '' %}
     <div>
       <div class="flex justify-between text-xs mb-0.5">
-        <span class="text-[#6B7280] dark:text-[#CBD5E1]">{{ label }}</span>
-        <span class="font-medium inline-flex items-center gap-1 {% if crit is not none and value >= crit %}text-[#DC2626] dark:text-[#EF4444]{% elif warn is not none and value >= warn %}text-[#F59E0B] dark:text-[#FBBF24]{% elif _kind == 'deviation' %}text-[#6B7280] dark:text-[#CBD5E1]{% else %}text-[#1F2937] dark:text-[#F8FAFC]{% endif %}">
+        <span class="text-muted">{{ label }}</span>
+        <span class="font-medium inline-flex items-center gap-1 {% if crit is not none and value >= crit %}text-critical dark:text-[#EF4444]{% elif warn is not none and value >= warn %}text-warning dark:text-[#FBBF24]{% elif _kind == 'deviation' %}text-muted {% else %}text-[#1F2937] dark:text-[#F8FAFC]{% endif %}">
           {{ value | round(1) }}%
           {% if _elevated %}
-          <span class="inline-block w-1.5 h-1.5 rounded-full bg-[#8B5CF6] dark:bg-[#A78BFA] cursor-help"
+          <span class="inline-block w-1.5 h-1.5 rounded-full bg-brand cursor-help"
                 data-tip-title="{{ t.get('elevated_normal_title', 'Normal for this server') }}"
                 data-tip-desc="{{ _reason }}"
                 aria-label="{{ t.get('elevated_normal_title', 'Normal for this server') }}"></span>
@@ -118,14 +117,14 @@
              but hasn't lasted long enough to be a condition (kind='spike').
              Neutral grey, never amber, and the server still counts as healthy
              in every summary. #}
-          <span class="inline-block w-1.5 h-1.5 rounded-full bg-[#9CA3AF] dark:bg-[#64748B] opacity-70 cursor-help"
+          <span class="inline-block w-1.5 h-1.5 rounded-full bg-faint opacity-70 cursor-help"
                 data-tip-title="{{ t.get('observation_title', 'Observation — not alerting') }}"
                 data-tip-desc="{{ _reason }}"
                 aria-label="{{ t.get('observation_title', 'Observation — not alerting') }}"></span>
           {% elif _kind == 'deviation' %}
           {# Soft signal: absolutely within limits, only unusual for THIS host.
              Hollow ring, not a filled severity dot. #}
-          <span class="inline-block w-1.5 h-1.5 rounded-full border border-[#F59E0B] dark:border-[#FBBF24] cursor-help"
+          <span class="inline-block w-1.5 h-1.5 rounded-full border border-warning cursor-help"
                 data-tip-title="{{ t.get('deviation_title', 'Differs from this server\'s baseline') }}"
                 data-tip-desc="{{ _reason }}"
                 aria-label="{{ t.get('deviation_title', 'Differs from this server\'s baseline') }}"></span>
@@ -133,7 +132,7 @@
         </span>
       </div>
       <div class="metric-bar">
-        <div class="metric-bar-fill {% if crit is not none and value >= crit %}bg-[#DC2626] dark:bg-[#EF4444]{% elif warn is not none and value >= warn %}bg-[#F59E0B] dark:bg-[#FBBF24]{% else %}bg-[#10B981]{% endif %}"
+        <div class="metric-bar-fill {% if crit is not none and value >= crit %}bg-critical dark:bg-[#EF4444]{% elif warn is not none and value >= warn %}bg-warning dark:bg-[#FBBF24]{% else %}bg-healthy{% endif %}"
              style="width: {{ [value, 100] | min }}%"></div>
       </div>
     </div>
@@ -150,7 +149,7 @@
      is busy or rebooting). Show the install message instead of a misleading
      "server unreachable" — operators glancing at the tile should see WHY
      this server isn't reporting numbers. #}
-  <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1] italic py-4 text-center">
+  <div class="text-xs text-muted italic py-4 text-center">
     {% if istatus == 'rebooting' %}
     <i data-lucide="rotate-cw" class="w-4 h-4 inline mb-1 animate-spin"></i><br>
     {% elif istatus in ('downloading', 'installing') %}
@@ -163,11 +162,11 @@
     {{ istate.message or _install_labels.get(istatus, istatus) }}
   </div>
   {% elif status == 'unknown' %}
-  <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1] italic py-4 text-center">
+  <div class="text-xs text-muted italic py-4 text-center">
     {{ t.waiting_collection }}
   </div>
   {% elif status == 'offline' %}
-  <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1] italic py-4 text-center">
+  <div class="text-xs text-muted italic py-4 text-center">
     <i data-lucide="wifi-off" class="w-4 h-4 inline mb-1"></i><br>
     {{ t.server_unreachable }}
   </div>
@@ -189,12 +188,8 @@
   {% set _pick = (_floor or _breach or _dev) | first %}
   {% if _pick %}
   {% set _pk = _pick[1].get('kind') %}
-  <div class="mt-2 pt-2 border-t border-[#E5E7EB] dark:border-[#334155]">
-    <div class="flex items-start gap-1.5 text-[11px] leading-snug
-                {% if _pk == 'deviation' %}text-[#6B7280] dark:text-[#94A3B8]
-                {% elif _pk == 'floor' %}text-[#DC2626] dark:text-[#EF4444]
-                {% elif status == 'critical' %}text-[#DC2626] dark:text-[#EF4444]
-                {% else %}text-[#B45309] dark:text-[#FBBF24]{% endif %}">
+  <div class="mt-2 pt-2 border-t border-line">
+    <div class="flex items-start gap-1.5 text-[11px] leading-snug {% if _pk == 'deviation' %}text-muted dark:text-[#94A3B8] {% elif _pk == 'floor' %}text-critical {% elif status == 'critical' %}text-critical {% else %}text-[#B45309] dark:text-[#FBBF24]{% endif %}">
       {% if _pk == 'deviation' %}
       <i data-lucide="activity" class="w-3 h-3 flex-shrink-0 mt-0.5" aria-hidden="true"></i>
       {% elif _pk == 'floor' %}
@@ -209,7 +204,7 @@
             data-tip-desc="{{ _pick[1].get('reason', '') }}">{{ _pick[1].get('reason', '') }}</span>
     </div>
     {% if _pk == 'deviation' %}
-    <div class="text-[10px] text-[#9CA3AF] dark:text-[#64748B] mt-0.5 pl-[18px]">
+    <div class="text-[10px] text-faint mt-0.5 pl-[18px]">
       {{ t.get('within_limits_note', 'Within configured limits — unusual for this host only.') }}
     </div>
     {% endif %}
@@ -237,7 +232,7 @@
       stale
     </span>
     {% endif %}
-    <span class="text-[10px] text-[#9CA3AF] dark:text-[#475569]">
+    <span class="text-[10px] text-faint">
       {{ fmt_time(server.timestamp) }}
     </span>
   </div>
