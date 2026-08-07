@@ -49,10 +49,10 @@
   <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
     <input type="text" id="rbac-grant-user"
            placeholder="{{ t.get('username', 'Username (bare, no DOMAIN\\\\)') }}"
-           class="px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]"
+           class="px-3 py-1.5 text-sm rounded border border-line bg-field"
            aria-label="Username to grant">
     <select id="rbac-grant-server"
-            class="px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]"
+            class="px-3 py-1.5 text-sm rounded border border-line bg-field"
             aria-label="Server name">
       <option value="*">* — {{ t.get('all_servers', 'All servers (wildcard)') }}</option>
       {% for s in server_names %}
@@ -60,7 +60,7 @@
       {% endfor %}
     </select>
     <select id="rbac-grant-perm"
-            class="px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]"
+            class="px-3 py-1.5 text-sm rounded border border-line bg-field"
             aria-label="Permission level">
       <option value="view">view</option>
       <option value="control">control</option>
@@ -131,12 +131,12 @@
         <div class="mb-2"><b>${esc(data.user || '(no auth)')}</b>
           ${data.is_backup_admin ? '<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-brand/15 text-brand font-bold">BACKUP ADMIN</span>' : ''}
           ${data.permissive_mode ? '<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-warning/15 text-warning font-bold">PERMISSIVE</span>' : ''}
-          ${!data.auth_enabled ? '<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-[#94A3B8]/20 text-[#64748B] font-bold">AUTH OFF</span>' : ''}
+          ${!data.auth_enabled ? '<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-faint/20 text-[#64748B] font-bold">AUTH OFF</span>' : ''}
         </div>`;
       const rows = Object.entries(data.permissions || {}).map(([srv, p]) => {
         const tierBadge = p.tier === 0
           ? '<span class="px-1 py-0.5 rounded text-[9px] bg-critical/15 text-critical font-bold ml-1">T0</span>'
-          : (p.tier === 2 ? '<span class="px-1 py-0.5 rounded text-[9px] bg-[#94A3B8]/15 text-[#64748B] font-bold ml-1">T2</span>' : '');
+          : (p.tier === 2 ? '<span class="px-1 py-0.5 rounded text-[9px] bg-faint/15 text-[#64748B] font-bold ml-1">T2</span>' : '');
         const permClr = { admin: '#10B981', control: '#2563EB', view: '#6B7280', none: '#DC2626' }[p.permission] || '#6B7280';
         return `<tr><td class="py-0.5 pr-3 font-mono">${esc(srv)}${tierBadge}</td><td style="color:${permClr}" class="font-bold">${esc(p.permission)}</td></tr>`;
       }).join('');

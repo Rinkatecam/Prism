@@ -125,7 +125,7 @@
     .metric-value, .metric-bar-fill, .badge { transition: all 250ms ease-out; }
   </style>
 </head>
-<body class="bg-page text-[#1F2937] dark:text-[#F8FAFC] min-h-screen transition-colors duration-200"
+<body class="bg-page text-ink min-h-screen transition-colors duration-200"
       hx-ext="morph">
 
   <!-- Global custom tooltip (one per page) -->
@@ -194,12 +194,12 @@
           </span>
         </div>
         <!-- Desktop collapse toggle (mobile uses the header menu button instead). -->
-        <button data-action="toggle-sidebar" class="sidebar-collapse-btn hidden md:flex items-center justify-center p-1.5 rounded-md hover:bg-[#F1F5F9] dark:hover:bg-[#334155] text-muted flex-shrink-0" title="Toggle sidebar" aria-label="Collapse sidebar">
+        <button data-action="toggle-sidebar" class="sidebar-collapse-btn hidden md:flex items-center justify-center p-1.5 rounded-md hover:bg-raised dark:hover:bg-[#334155] text-muted flex-shrink-0" title="Toggle sidebar" aria-label="Collapse sidebar">
           <i data-lucide="panel-left" class="w-5 h-5"></i>
         </button>
       </div>
       {% if session.get('username') %}
-      <a href="/logout" class="sidebar-link text-critical hover:bg-[#FEE2E2] dark:hover:bg-[#7F1D1D]/30" title="{{ t.sign_out }}">
+      <a href="/logout" class="sidebar-link text-critical hover:bg-critical-tint dark:hover:bg-critical-tint/30" title="{{ t.sign_out }}">
         <i data-lucide="log-out" class="w-5 h-5 flex-shrink-0"></i>
         <span class="sidebar-label text-sm">{{ t.sign_out }}</span>
       </a>
@@ -213,7 +213,7 @@
   <header id="topbar" class="fixed top-0 left-0 right-0 z-[51] h-14 bg-card border-b border-line flex items-center gap-3 px-3 transition-colors duration-200">
     <!-- Mobile-only menu toggle (opens the off-canvas nav). Desktop uses the
          collapse control in the sidebar footer, next to the username. -->
-    <button data-action="toggle-sidebar" class="md:hidden p-1.5 rounded-md hover:bg-[#F1F5F9] dark:hover:bg-[#334155] text-muted flex-shrink-0" title="Toggle sidebar" aria-label="Toggle sidebar">
+    <button data-action="toggle-sidebar" class="md:hidden p-1.5 rounded-md hover:bg-raised dark:hover:bg-[#334155] text-muted flex-shrink-0" title="Toggle sidebar" aria-label="Toggle sidebar">
       <i data-lucide="panel-left" class="w-5 h-5"></i>
     </button>
     <!-- Brand -->
@@ -241,7 +241,7 @@
     <div id="pulse-panel" class="pulse-panel" role="region"
          aria-label="{{ t.get('pulse_aria_panel', 'Collector activity detail') }}"
          style="display:none"></div>
-    <button data-action="toggle-theme" class="p-1.5 rounded-md hover:bg-[#F1F5F9] dark:hover:bg-[#334155] text-muted" title="Toggle theme" aria-label="Toggle dark mode">
+    <button data-action="toggle-theme" class="p-1.5 rounded-md hover:bg-raised dark:hover:bg-[#334155] text-muted" title="Toggle theme" aria-label="Toggle dark mode">
       <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
       <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
     </button>
@@ -510,7 +510,7 @@
         <h3 id="prism-modal-title" class="font-semibold text-sm text-ink dark:text-[#F9FAFB]"></h3>
       </div>
       <p id="prism-modal-message" class="text-xs text-muted leading-relaxed"></p>
-      <input type="text" id="prism-modal-input" class="hidden w-full mt-3 px-3 py-1.5 text-sm rounded-lg border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-brand outline-none">
+      <input type="text" id="prism-modal-input" class="hidden w-full mt-3 px-3 py-1.5 text-sm rounded-lg border border-line bg-field focus:ring-2 focus:ring-brand outline-none">
     </div>
     <div id="prism-modal-buttons" class="flex justify-end gap-2 px-5 pb-4"></div>
   </div>

@@ -30,10 +30,10 @@
         </div>
         <p class="text-xs text-muted mb-3">{{ t.csv_metrics_desc }}</p>
         <div class="flex items-center gap-2 mb-3">
-          <select id="csv-metrics-server" class="flex-1 text-xs rounded border border-line bg-white dark:bg-[#0F172A] px-2 py-1.5">
+          <select id="csv-metrics-server" class="flex-1 text-xs rounded border border-line bg-field px-2 py-1.5">
             <option value="">{{ t.all }} {{ t.servers | lower }}</option>
           </select>
-          <select id="csv-metrics-hours" class="text-xs rounded border border-line bg-white dark:bg-[#0F172A] px-2 py-1.5">
+          <select id="csv-metrics-hours" class="text-xs rounded border border-line bg-field px-2 py-1.5">
             <option value="24">{{ t.hours_24 }}</option>
             <option value="48">{{ t.hours_48 }}</option>
             <option value="168">{{ t.hours_168 }}</option>
@@ -55,7 +55,7 @@
         </div>
         <p class="text-xs text-muted mb-3">{{ t.csv_events_desc }}</p>
         <div class="flex items-center gap-2 mb-3">
-          <select id="csv-events-server" class="flex-1 text-xs rounded border border-line bg-white dark:bg-[#0F172A] px-2 py-1.5">
+          <select id="csv-events-server" class="flex-1 text-xs rounded border border-line bg-field px-2 py-1.5">
             <option value="">{{ t.all }} {{ t.servers | lower }}</option>
           </select>
         </div>
@@ -88,17 +88,17 @@
         </div>
         <p class="text-xs text-muted mb-3">{{ t.json_metrics_desc }}</p>
         <div class="flex items-center gap-2 mb-3">
-          <select id="json-metrics-server" class="flex-1 text-xs rounded border border-line bg-white dark:bg-[#0F172A] px-2 py-1.5">
+          <select id="json-metrics-server" class="flex-1 text-xs rounded border border-line bg-field px-2 py-1.5">
             <option value="">{{ t.all }} {{ t.servers | lower }}</option>
           </select>
-          <select id="json-metrics-hours" class="text-xs rounded border border-line bg-white dark:bg-[#0F172A] px-2 py-1.5">
+          <select id="json-metrics-hours" class="text-xs rounded border border-line bg-field px-2 py-1.5">
             <option value="24">{{ t.hours_24 }}</option>
             <option value="48">{{ t.hours_48 }}</option>
             <option value="168">{{ t.hours_168 }}</option>
             <option value="720">{{ t.hours_720 }}</option>
           </select>
         </div>
-        <button data-action="downloadJSONMetrics" class="w-full text-xs font-medium px-3 py-2 rounded bg-info hover:bg-[#1D4ED8] text-white transition-colors">
+        <button data-action="downloadJSONMetrics" class="w-full text-xs font-medium px-3 py-2 rounded bg-info hover:bg-info-strong text-white transition-colors">
           <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>
           {{ t.export_json }}
         </button>
@@ -112,7 +112,7 @@
         </div>
         <p class="text-xs text-muted mb-3">{{ t.json_events_desc }}</p>
         <div class="flex items-center gap-2 mb-3">
-          <select id="json-events-server" class="flex-1 text-xs rounded border border-line bg-white dark:bg-[#0F172A] px-2 py-1.5">
+          <select id="json-events-server" class="flex-1 text-xs rounded border border-line bg-field px-2 py-1.5">
             <option value="">{{ t.all }} {{ t.servers | lower }}</option>
           </select>
         </div>
@@ -147,7 +147,7 @@
       </h2>
       <div class="flex items-center gap-2">
         <select id="fleet-hours" data-change="loadFleetReport"
-                class="text-xs rounded border border-line bg-white dark:bg-[#0F172A] px-2 py-1.5">
+                class="text-xs rounded border border-line bg-field px-2 py-1.5">
           <option value="168">{{ t.hours_168 }}</option>
           <option value="720" selected>{{ t.hours_720 }}</option>
         </select>

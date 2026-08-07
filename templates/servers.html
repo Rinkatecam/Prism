@@ -135,8 +135,8 @@
   <div class="bg-card rounded-lg p-5 border border-line space-y-4">
     <!-- Add tag form -->
     <div class="flex items-center gap-3">
-      <input type="text" id="new-tag-name" placeholder="Tag name..." class="px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
-      <input type="color" id="new-tag-color" value="#6B7280" class="w-8 h-8 rounded border border-line bg-white dark:bg-[#0F172A] cursor-pointer p-0.5">
+      <input type="text" id="new-tag-name" placeholder="Tag name..." class="px-3 py-1.5 text-sm rounded border border-line bg-field">
+      <input type="color" id="new-tag-color" value="#6B7280" class="w-8 h-8 rounded border border-line bg-field cursor-pointer p-0.5">
       <button data-action="createTag" class="px-3 py-1.5 text-sm font-medium rounded bg-info text-white hover:opacity-90 flex items-center gap-1">
         <i data-lucide="plus" class="w-4 h-4"></i>
         {{ t.get('add_tag', 'Add Tag') }}
@@ -173,18 +173,18 @@
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
         <div>
           <label class="block text-[10px] font-medium text-muted mb-1">Name</label>
-          <input type="text" id="hc-new-name" placeholder="e.g. SQL Listener" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+          <input type="text" id="hc-new-name" placeholder="e.g. SQL Listener" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
         </div>
         <div>
           <label class="block text-[10px] font-medium text-muted mb-1">{{ t.get('server', 'Server') }}</label>
-          <select id="hc-new-server" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+          <select id="hc-new-server" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
             <option value="">--</option>
             {% for s in servers %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
           </select>
         </div>
         <div>
           <label class="block text-[10px] font-medium text-muted mb-1">{{ t.get('check_type', 'Type') }}</label>
-          <select id="hc-new-type" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]" data-change="toggleNewHcFields">
+          <select id="hc-new-type" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field" data-change="toggleNewHcFields">
             <option value="tcp">TCP</option>
             <option value="http">HTTP</option>
             <option value="https">HTTPS</option>
@@ -196,15 +196,15 @@
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
         <div>
           <label class="block text-[10px] font-medium text-muted mb-1">{{ t.get('target_host', 'Host') }}</label>
-          <input type="text" id="hc-new-host" placeholder="hostname or IP" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A] font-mono">
+          <input type="text" id="hc-new-host" placeholder="hostname or IP" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field font-mono">
         </div>
         <div id="hc-new-port-wrap">
           <label class="block text-[10px] font-medium text-muted mb-1">{{ t.get('port', 'Port') }}</label>
-          <input type="number" id="hc-new-port" placeholder="443" min="1" max="65535" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+          <input type="number" id="hc-new-port" placeholder="443" min="1" max="65535" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
         </div>
         <div id="hc-new-path-wrap" class="hidden">
           <label class="block text-[10px] font-medium text-muted mb-1">HTTP Path</label>
-          <input type="text" id="hc-new-path" placeholder="/health" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A] font-mono">
+          <input type="text" id="hc-new-path" placeholder="/health" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field font-mono">
         </div>
       </div>
       <div class="flex items-center gap-2">
@@ -255,21 +255,21 @@
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
         <div>
           <label class="block text-[10px] font-medium text-muted mb-1">{{ t.get('server', 'Server') }}</label>
-          <select id="dep-server-name" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+          <select id="dep-server-name" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
             <option value="">--</option>
             {% for s in servers %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
           </select>
         </div>
         <div>
           <label class="block text-[10px] font-medium text-muted mb-1">{{ t.depends_on }}</label>
-          <select id="dep-depends-on" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+          <select id="dep-depends-on" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
             <option value="">--</option>
             {% for s in servers %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
           </select>
         </div>
         <div>
           <label class="block text-[10px] font-medium text-muted mb-1">{{ t.dependency_type }}</label>
-          <select id="dep-type" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]" data-change="onDepTypeChange">
+          <select id="dep-type" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field" data-change="onDepTypeChange">
             <option value="service">{{ t.dep_type_service }}</option>
             <option value="database">{{ t.dep_type_database }}</option>
             <option value="auth">{{ t.dep_type_auth }}</option>
@@ -277,13 +277,13 @@
             <option value="file_share">{{ t.dep_type_file_share }}</option>
             <option value="custom">+ Custom...</option>
           </select>
-          <input type="text" id="dep-custom-type" class="hidden w-full mt-1 px-2 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]" placeholder="Custom type name...">
+          <input type="text" id="dep-custom-type" class="hidden w-full mt-1 px-2 py-1.5 text-sm rounded border border-line bg-field" placeholder="Custom type name...">
         </div>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
         <div>
           <label class="block text-[10px] font-medium text-muted mb-1">Target</label>
-          <select id="dep-target-mode" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]" data-change="onDepTargetModeChange">
+          <select id="dep-target-mode" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field" data-change="onDepTargetModeChange">
             <option value="port">Port</option>
             <option value="service">Service</option>
             <option value="process">Process</option>
@@ -292,15 +292,15 @@
         <div>
           <label class="block text-[10px] font-medium text-muted mb-1" id="dep-target-label">Port</label>
           <input type="number" id="dep-port" placeholder="443" min="1" max="65535"
-                 class="w-full px-2 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+                 class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
           <div id="dep-service-wrap" class="hidden gap-1">
-            <input type="text" id="dep-service-name" class="flex-1 px-2 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]" placeholder="Service name">
+            <input type="text" id="dep-service-name" class="flex-1 px-2 py-1.5 text-sm rounded border border-line bg-field" placeholder="Service name">
             <button type="button" data-action="_srvBrowseDepService" class="px-2 py-1.5 text-xs rounded border border-line hover:bg-raised dark:hover:bg-[#334155] flex items-center gap-1" title="Browse from server">
               <i data-lucide="list" class="w-3 h-3"></i> Browse
             </button>
           </div>
           <div id="dep-process-wrap" class="hidden gap-1">
-            <input type="text" id="dep-process-name" class="flex-1 px-2 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]" placeholder="Process name">
+            <input type="text" id="dep-process-name" class="flex-1 px-2 py-1.5 text-sm rounded border border-line bg-field" placeholder="Process name">
             <button type="button" data-action="_srvBrowseDepProcess" class="px-2 py-1.5 text-xs rounded border border-line hover:bg-raised dark:hover:bg-[#334155] flex items-center gap-1" title="Browse from server">
               <i data-lucide="list" class="w-3 h-3"></i> Browse
             </button>
@@ -309,7 +309,7 @@
         <div>
           <label class="block text-[10px] font-medium text-muted mb-1">{{ t.description }}</label>
           <input type="text" id="dep-description" placeholder="Optional description"
-                 class="w-full px-2 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+                 class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
         </div>
       </div>
       <div class="flex items-center gap-2">
@@ -345,7 +345,7 @@
     <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-lg max-h-[90vh] flex flex-col relative">
       <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
         <h3 id="modal-title" class="text-lg font-semibold">{{ t.add_server }}</h3>
-        <button data-action="closeModal" class="p-1 text-muted hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -356,12 +356,12 @@
           <div>
             <label class="block text-xs font-medium mb-1">{{ t.server_name }} *</label>
             <input type="text" id="srv-name" placeholder="FileServer-01" required
-                   class="w-full px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+                   class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
           </div>
           <div>
             <label class="block text-xs font-medium mb-1">{{ t.host_ip }} *</label>
             <input type="text" id="srv-host" placeholder="192.168.1.50" required
-                   class="w-full px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+                   class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
           </div>
         </div>
 
@@ -374,7 +374,7 @@
                Clicking cancel reverts to the dropdown. #}
             <div id="srv-type-wrap">
               <select id="srv-type" data-change="onServerTypeChange"
-                      class="w-full px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+                      class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
                 <option value="file_server">{{ t.file_servers }}</option>
                 <option value="app_server">{{ t.app_servers }}</option>
                 <option value="domain_controller">{{ t.domain_controllers }}</option>
@@ -387,7 +387,7 @@
               </select>
               <div id="srv-custom-input" class="hidden relative">
                 <input type="text" id="srv-custom-type" placeholder="{{ t.get('custom_type_name', 'e.g. proxy_server') }}"
-                       class="w-full pl-3 pr-16 py-1.5 text-sm rounded border border-healthy dark:border-[#10B981] bg-white dark:bg-[#0F172A] focus:outline-none focus:ring-2 focus:ring-healthy">
+                       class="w-full pl-3 pr-16 py-1.5 text-sm rounded border border-healthy dark:border-[#10B981] bg-field focus:outline-none focus:ring-2 focus:ring-healthy">
                 <div class="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5">
                   <button type="button" data-action="confirmCustomType" title="{{ t.get('save', 'Save') }}"
                     class="p-1 rounded hover:bg-healthy/20 text-healthy">
@@ -404,12 +404,12 @@
           <div>
             <label class="block text-xs font-medium mb-1">{{ t.username }}</label>
             <input type="text" id="srv-user" placeholder="administrator"
-                   class="w-full px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+                   class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
           </div>
           <div>
             <label for="srv-port" class="block text-xs font-medium mb-1">{{ t.port }}</label>
             <input type="number" id="srv-port" value="5985" min="1" max="65535" required
-                   class="w-full px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+                   class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
           </div>
         </div>
 
@@ -437,7 +437,7 @@
               {{ t.get('rbac_tier', 'RBAC tier') }}
             </label>
             <select id="srv-tier"
-                    class="w-full px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+                    class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
               <option value="0">{{ t.get('tier_0_critical', 'Tier 0 — Critical (DC, primary DB, mail)') }}</option>
               <option value="1" selected>{{ t.get('tier_1_standard', 'Tier 1 — Standard') }}</option>
               <option value="2">{{ t.get('tier_2_dev', 'Tier 2 — Dev / Test') }}</option>
@@ -450,7 +450,7 @@
           <div class="relative">
             <input type="password" id="srv-pass" placeholder="Enter password"
                    autocomplete="new-password"
-                   class="w-full px-3 py-1.5 pr-10 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+                   class="w-full px-3 py-1.5 pr-10 text-sm rounded border border-line bg-field">
             <button type="button"
                     aria-label="Toggle password visibility"
                     data-action="_srvTogglePass"
@@ -470,27 +470,27 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-[10px] text-muted mb-0.5">{{ t.cpu_warning }}</label>
-              <input type="number" id="th-cpu-warn" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+              <input type="number" id="th-cpu-warn" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
             </div>
             <div>
               <label class="block text-[10px] text-muted mb-0.5">{{ t.cpu_critical }}</label>
-              <input type="number" id="th-cpu-crit" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+              <input type="number" id="th-cpu-crit" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
             </div>
             <div>
               <label class="block text-[10px] text-muted mb-0.5">{{ t.ram_warning }}</label>
-              <input type="number" id="th-ram-warn" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+              <input type="number" id="th-ram-warn" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
             </div>
             <div>
               <label class="block text-[10px] text-muted mb-0.5">{{ t.ram_critical }}</label>
-              <input type="number" id="th-ram-crit" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+              <input type="number" id="th-ram-crit" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
             </div>
             <div>
               <label class="block text-[10px] text-muted mb-0.5">{{ t.disk_warning }}</label>
-              <input type="number" id="th-disk-warn" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+              <input type="number" id="th-disk-warn" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
             </div>
             <div>
               <label class="block text-[10px] text-muted mb-0.5">{{ t.disk_critical }}</label>
-              <input type="number" id="th-disk-crit" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+              <input type="number" id="th-disk-crit" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
             </div>
           </div>
         </div>
@@ -524,7 +524,7 @@
           <i data-lucide="book-open" class="w-5 h-5 text-info"></i>
           {{ t.server_setup_guide }}
         </h3>
-        <button data-action="closeGuide" class="p-1 text-muted hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeGuide" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -634,7 +634,7 @@ Invoke-Command -ComputerName SERVER.DOMAIN.COM -Credential $cred -ScriptBlock { 
           <i data-lucide="alert-triangle" class="w-5 h-5"></i>
           <span id="delete-modal-title">{{ t.get('delete_server', 'Delete Server') }}?</span>
         </h3>
-        <button data-action="closeDeleteModal" class="p-1 text-muted hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeDeleteModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -645,7 +645,7 @@ Invoke-Command -ComputerName SERVER.DOMAIN.COM -Credential $cred -ScriptBlock { 
         <div>
           <label class="block text-xs font-medium mb-1">{{ t.get('type_name_to_confirm', 'Type the server name to confirm:') }}</label>
           <input type="text" id="delete-confirm-input" autocomplete="off"
-                 class="w-full px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A] font-mono"
+                 class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field font-mono"
                  data-input="checkDeleteConfirmation">
         </div>
       </div>
@@ -671,7 +671,7 @@ Invoke-Command -ComputerName SERVER.DOMAIN.COM -Credential $cred -ScriptBlock { 
           <i data-lucide="radar" class="w-5 h-5 text-healthy"></i>
           {{ t.discovered_servers }}
         </h3>
-        <button data-action="closeDiscoveryModal" class="p-1 text-muted hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeDiscoveryModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -1014,13 +1014,13 @@ function saveServerConfig(data) {
   .then(result => {
     const msg = document.getElementById('save-message');
     if (result.ok) {
-      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-healthy-tint text-healthy-strong';
       msg.textContent = {{ t.config_saved | tojson }};
       msg.classList.remove('hidden');
       closeModal(true);
       setTimeout(() => location.reload(), 500);
     } else {
-      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
       msg.textContent = 'Error: ' + (result.error || 'Unknown error');
       msg.classList.remove('hidden');
     }
@@ -1035,11 +1035,11 @@ function saveServerConfig(data) {
 function showTestResult(container, result) {
   const box = container.querySelector('.test-result-box');
   if (result.ok) {
-    box.className = 'test-result-box rounded p-2 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+    box.className = 'test-result-box rounded p-2 text-sm bg-healthy-tint text-healthy-strong';
     box.innerHTML = '<strong>&#10003; <span class="test-msg"></span></strong>';
     box.querySelector('.test-msg').textContent = result.message || 'Connected';
   } else {
-    box.className = 'test-result-box rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+    box.className = 'test-result-box rounded p-2 text-sm bg-critical-tint text-critical-strong';
     box.innerHTML = '<strong>&#10007; <span class="test-msg"></span></strong>'
       + (result.detail ? '<br><span class="test-detail text-xs opacity-80"></span>' : '');
     box.querySelector('.test-msg').textContent = result.error || 'Failed';
@@ -1052,7 +1052,7 @@ function showTestResult(container, result) {
 
 function setTestLoading(container, btn) {
   const box = container.querySelector('.test-result-box');
-  box.className = 'test-result-box rounded p-2 text-sm bg-[#F3F4F6] dark:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1]';
+  box.className = 'test-result-box rounded p-2 text-sm bg-raised dark:bg-[#334155] text-muted';
   box.innerHTML = '<span class="inline-block animate-spin mr-2">&#9696;</span> Testing connection...';
   container.classList.remove('hidden');
   if (btn) btn.disabled = true;
@@ -1107,11 +1107,11 @@ let serverStatusFetchTime = 0;
 let hoverTimers = {};
 
 const STATUS_COLORS = {
-  healthy:  'bg-[#10B981] text-white',
-  warning:  'bg-[#F59E0B] text-white',
-  critical: 'bg-[#DC2626] text-white',
-  offline:  'bg-[#6B7280] text-white',
-  unknown:  'bg-[#9CA3AF] text-white',
+  healthy:  'bg-healthy text-white',
+  warning:  'bg-warning text-white',
+  critical: 'bg-critical text-white',
+  offline:  'bg-muted text-white',
+  unknown:  'bg-faint text-white',
 };
 
 function fetchServerStatus() {
@@ -1365,7 +1365,7 @@ function discoverServers() {
     list.innerHTML = discoveredServers.map((s, i) => {
       const disabled = s.already_monitored ? 'disabled' : '';
       const opacity = s.already_monitored ? 'opacity-50' : '';
-      const badge = s.already_monitored ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-[#F1F5F9] dark:bg-[#334155] text-muted">Monitored</span>' : '';
+      const badge = s.already_monitored ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-raised dark:bg-[#334155] text-muted">Monitored</span>' : '';
       return `<label class="flex items-center gap-3 p-2 rounded hover:bg-page dark:hover:bg-page/50 cursor-pointer ${opacity}">
         <input type="checkbox" class="discovery-cb rounded border-gray-300" data-index="${i}" ${disabled}>
         <div class="flex-1 min-w-0">
@@ -1513,8 +1513,8 @@ function editTag(id, currentName, currentColor) {
 
   // Replace name display with inline edit
   row.querySelector('.flex.items-center.gap-2').innerHTML = `
-    <input type="color" class="edit-tag-color w-6 h-6 rounded border border-line bg-white dark:bg-[#0F172A] cursor-pointer p-0.5" value="${currentColor}">
-    <input type="text" class="edit-tag-name px-2 py-0.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]" value="${_escHtml(existingName)}">
+    <input type="color" class="edit-tag-color w-6 h-6 rounded border border-line bg-field cursor-pointer p-0.5" value="${currentColor}">
+    <input type="text" class="edit-tag-name px-2 py-0.5 text-sm rounded border border-line bg-field" value="${_escHtml(existingName)}">
   `;
   row.querySelector('.flex.items-center.gap-1').innerHTML = `
     <button data-action="saveEditTag" data-args="[${id}]" class="p-1 text-healthy hover:text-[#059669]" title="Save">

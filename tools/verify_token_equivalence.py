@@ -175,8 +175,16 @@ def main() -> int:
         files += 1
         rel = path.relative_to(REPO_ROOT).as_posix()
 
-        for b_attr, a_attr in zip(_CLASS_ATTR.findall(before),
-                                  _CLASS_ATTR.findall(after)):
+        # The SAME scope function the converter rewrites with — markup
+        # attributes and the JavaScript strings applied as classes at
+        # runtime. A verifier that inspects a narrower region than the
+        # converter touches reports success over changes it never saw.
+        b_bodies = [before[a:b] for a, b in dt.class_scopes(before)]
+        a_bodies = [after[a:b] for a, b in dt.class_scopes(after)]
+        if len(b_bodies) != len(a_bodies):
+            unexpected.append(
+                f"{rel}  class-list COUNT {len(b_bodies)} -> {len(a_bodies)}")
+        for b_attr, a_attr in zip(b_bodies, a_bodies):
             eb, ea = effective(b_attr), effective(a_attr)
             lost, gained = eb - ea, ea - eb
 

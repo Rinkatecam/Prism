@@ -181,6 +181,80 @@ def _split_variants(chain: str) -> tuple[bool, str]:
 
 _CLASS_ATTR = re.compile(r'class="([^"]*)"')
 
+# A class list does not have to be a markup attribute. 629 literals live in
+# JavaScript — `el.className = '…'`, ternary branches building a class string
+# — and the browser applies those exactly like the ones in the HTML. Leaving
+# them behind would mean 629 elements sitting out any palette change.
+_JS_STRING = re.compile(r"(['\"`])((?:\\.|(?!\1).)*?)\1", re.S)
+_CLASS_WORD = re.compile(r"^[A-Za-z0-9_:/\[\]#.%!()${}=+,\\-]+$")
+_BARE_WORD = re.compile(r"^[a-z]+$")
+
+# Bare alphabetic words are what prose is made of; a class list is almost
+# entirely compound. Measured over every candidate string in the templates,
+# the ONLY bare words present are `rounded`, `border` and `flex` — so
+# requiring bare words to be known utilities costs nothing today and stops
+# `'Check the text-[#DC2626] value'` from being rewritten as markup. The list
+# is wider than the three actually in use so that ordinary additions keep
+# converting instead of being silently skipped.
+_BARE_UTILITIES = frozenset("""
+    flex grid block inline hidden contents table relative absolute fixed
+    sticky static border rounded italic underline truncate uppercase
+    lowercase capitalize invisible visible transform transition resize
+    isolate container antialiased shadow ring outline overflow group peer
+    filter blur grayscale invert appearance cursor select
+""".split())
+
+
+_UTILITIES = (r"text|bg|border|ring|from|to|via|divide|placeholder|fill|"
+              r"stroke|accent|outline")
+
+
+def _colour_utility() -> re.Pattern:
+    """Matches a colour utility spelled EITHER way — arbitrary or token.
+
+    The scope test has to survive conversion. Keyed on the arbitrary form
+    alone, a string stops being a class list the moment it is converted, so
+    `class_scopes(before)` and `class_scopes(after)` return different counts
+    and the verifier compares body 7 against body 8 — 1,400 phantom
+    differences that look exactly like a catastrophic regression.
+    """
+    return re.compile(
+        rf"(?:{_VARIANT})*(?:{_UTILITIES})"
+        r"(?:-(?:t|r|b|l|x|y|top|right|bottom|left))?"
+        r"-(?:\[#[0-9A-Fa-f]{6}\]|(?:" + token_alternation() + r")\b)")
+
+
+def _is_class_list(body: str) -> bool:
+    words = body.split()
+    if not words:
+        return False
+    for w in words:
+        if not _CLASS_WORD.match(w):
+            return False
+        if _BARE_WORD.match(w) and w not in _BARE_UTILITIES:
+            return False
+    return True
+
+
+def class_scopes(text: str) -> list[tuple[int, int]]:
+    """Spans of every class LIST in a template — markup and JavaScript.
+
+    Exported so the verifier walks exactly the same regions the converter
+    rewrites. A verifier that looks at a narrower set than the converter
+    touches reports success over changes it never examined, which is the
+    failure this whole toolchain keeps rediscovering.
+    """
+    spans = [m.span(1) for m in _CLASS_ATTR.finditer(text)]
+    for m in _JS_STRING.finditer(text):
+        a, b = m.span(2)
+        # A JS string holding `<div class="…">` is not itself a class list;
+        # the attribute inside it is, and it is already in `spans`.
+        if any(a < y and x < b for x, y in spans):
+            continue
+        if _COLOUR_UTILITY.search(m.group(2)) and _is_class_list(m.group(2)):
+            spans.append((a, b))
+    return sorted(spans)
+
 # Tailwind BUILT-IN colour classes that appear as the light half of a pair
 # whose dark half is an arbitrary value. Measured: 275 elements are
 # `bg-white dark:bg-[#1E293B]` — the light side never spells `bg-[#FFFFFF]`.
@@ -250,8 +324,7 @@ def convert(text: str, paired_only: bool = False) -> str:
     two passes provably land where a single pass would; there is a test over
     the real templates asserting exactly that.
     """
-    def rewrite(match: re.Match) -> str:
-        body = match.group(1)
+    def rewrite(body: str) -> str:
         # Edits are (start, end, text) SPANS, applied right-to-left, never
         # `str.replace`. `bg-[#F9FAFB]` is a prefix of both `hover:bg-[#F9FAFB]`
         # and `bg-[#F9FAFB]/50`, so a substring edit can land inside a
@@ -355,12 +428,20 @@ def convert(text: str, paired_only: bool = False) -> str:
                 light_alpha[key] = ""
             # else: leave BOTH halves exactly as they are.
 
-        for start, end, text in sorted(edits, reverse=True):
-            body = body[:start] + text + body[end:]
+        for start, end, replacement in sorted(edits, reverse=True):
+            body = body[:start] + replacement + body[end:]
 
-        return 'class="' + re.sub(r"\s{2,}", " ", body).strip() + '"'
+        return re.sub(r"\s{2,}", " ", body).strip()
 
-    return _CLASS_ATTR.sub(rewrite, text)
+    out = text
+    # Right-to-left, so an earlier scope's span stays valid after a later one
+    # changes length.
+    for start, end in reversed(class_scopes(text)):
+        out = out[:start] + rewrite(text[start:end]) + out[end:]
+    return out
+
+
+_COLOUR_UTILITY = _colour_utility()
 
 
 def _channels(hex_value: str) -> str:

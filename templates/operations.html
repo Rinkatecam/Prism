@@ -31,15 +31,15 @@
       <div class="flex flex-wrap items-center gap-3">
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" id="flask-restart-enabled" class="sr-only peer">
-          <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+          <div class="w-9 h-5 bg-line dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
         </label>
-        <select id="flask-restart-schedule" class="px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+        <select id="flask-restart-schedule" class="px-2 py-1 text-sm rounded border border-line bg-field">
           <option value="daily">{{ t.schedule_daily }}</option>
           <option value="weekly">{{ t.schedule_weekly }}</option>
           <option value="monthly">{{ t.schedule_monthly }}</option>
         </select>
         <div id="flask-restart-day-wrap" class="hidden">
-          <select id="flask-restart-day" class="px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+          <select id="flask-restart-day" class="px-2 py-1 text-sm rounded border border-line bg-field">
             <option value="monday">{{ t.get('weekday_monday', 'Monday') }}</option>
             <option value="tuesday">{{ t.get('weekday_tuesday', 'Tuesday') }}</option>
             <option value="wednesday">{{ t.get('weekday_wednesday', 'Wednesday') }}</option>
@@ -50,12 +50,12 @@
           </select>
         </div>
         <div id="flask-restart-monthday-wrap" class="hidden">
-          <input type="number" id="flask-restart-monthday" min="1" max="28" value="1" class="w-16 px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] text-right">
+          <input type="number" id="flask-restart-monthday" min="1" max="28" value="1" class="w-16 px-2 py-1 text-sm rounded border border-line bg-field text-right">
           <span class="text-xs text-muted">{{ t.get('of_month', 'of month') }}</span>
         </div>
         <div class="flex items-center gap-1">
           <span class="text-xs text-muted">{{ t.restart_time }}:</span>
-          <input type="time" id="flask-restart-time" value="03:00" class="px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+          <input type="time" id="flask-restart-time" value="03:00" class="px-2 py-1 text-sm rounded border border-line bg-field">
         </div>
       </div>
     </div>
@@ -74,15 +74,15 @@
       <div class="flex flex-wrap items-center gap-2 mb-3 p-2.5 rounded-lg border border-line bg-page dark:bg-page/50">
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" id="server-restart-enabled" class="sr-only peer">
-          <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+          <div class="w-9 h-5 bg-line dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
         </label>
-        <select id="server-restart-schedule" class="px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+        <select id="server-restart-schedule" class="px-2 py-1 text-sm rounded border border-line bg-field">
           <option value="daily">{{ t.schedule_daily }}</option>
           <option value="weekly">{{ t.schedule_weekly }}</option>
           <option value="monthly">{{ t.schedule_monthly }}</option>
         </select>
         <div id="server-restart-day-wrap" class="hidden">
-          <select id="server-restart-day" class="px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+          <select id="server-restart-day" class="px-2 py-1 text-sm rounded border border-line bg-field">
             <option value="0">{{ t.get('weekday_monday', 'Monday') }}</option>
             <option value="1">{{ t.get('weekday_tuesday', 'Tuesday') }}</option>
             <option value="2">{{ t.get('weekday_wednesday', 'Wednesday') }}</option>
@@ -93,19 +93,19 @@
           </select>
         </div>
         <div id="server-restart-monthday-wrap" class="hidden">
-          <input type="number" id="server-restart-monthday" min="1" max="28" value="1" class="w-16 px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] text-right">
+          <input type="number" id="server-restart-monthday" min="1" max="28" value="1" class="w-16 px-2 py-1 text-sm rounded border border-line bg-field text-right">
           <span class="text-xs text-muted">{{ t.get('of_month', 'of month') }}</span>
         </div>
         <div class="flex items-center gap-1">
           <span class="text-xs text-muted">{{ t.restart_time }}:</span>
-          <input type="time" id="server-restart-time" value="03:00" class="px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+          <input type="time" id="server-restart-time" value="03:00" class="px-2 py-1 text-sm rounded border border-line bg-field">
         </div>
       </div>
 
       <!-- Delay between restarts -->
       <div class="flex items-center gap-2 mb-3">
         <span class="text-xs text-muted">{{ t.delay_between_desc }}:</span>
-        <input type="number" id="restart-delay" min="0" max="3600" value="60" class="w-20 px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] text-right">
+        <input type="number" id="restart-delay" min="0" max="3600" value="60" class="w-20 px-2 py-1 text-sm rounded border border-line bg-field text-right">
         <span class="text-xs text-muted">{{ t.delay_seconds }}</span>
       </div>
 
@@ -186,11 +186,11 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
           <label class="text-[10px] font-semibold uppercase text-muted">{{ t.name | default('Name') }}</label>
-          <input type="text" id="rb-name" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-info focus:border-transparent outline-none" placeholder="{{ t.get('runbook_name_placeholder', 'My Custom Runbook') }}">
+          <input type="text" id="rb-name" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-field focus:ring-2 focus:ring-info focus:border-transparent outline-none" placeholder="{{ t.get('runbook_name_placeholder', 'My Custom Runbook') }}">
         </div>
         <div>
           <label class="text-[10px] font-semibold uppercase text-muted">{{ t.get('category', 'Category') }}</label>
-          <select id="rb-category" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-info focus:border-transparent outline-none">
+          <select id="rb-category" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-field focus:ring-2 focus:ring-info focus:border-transparent outline-none">
             <option value="general">{{ t.get('cat_general', 'General') }}</option>
             <option value="maintenance">{{ t.get('cat_maintenance', 'Maintenance') }}</option>
             <option value="diagnostic">{{ t.get('cat_diagnostic', 'Diagnostic') }}</option>
@@ -202,11 +202,11 @@
       </div>
       <div class="mb-3">
         <label class="text-[10px] font-semibold uppercase text-muted">{{ t.get('description', 'Description') }}</label>
-        <input type="text" id="rb-description" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-info focus:border-transparent outline-none" placeholder="{{ t.get('runbook_desc_placeholder', 'What does this runbook do?') }}">
+        <input type="text" id="rb-description" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-field focus:ring-2 focus:ring-info focus:border-transparent outline-none" placeholder="{{ t.get('runbook_desc_placeholder', 'What does this runbook do?') }}">
       </div>
       <div class="mb-3">
         <label class="text-[10px] font-semibold uppercase text-muted">{{ t.get('steps_json', 'Steps (JSON)') }}</label>
-        <textarea id="rb-steps" rows="5" class="w-full px-3 py-1.5 text-xs font-mono rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-info focus:border-transparent outline-none" placeholder='[{"type": "powershell", "script": "Get-Date", "timeout": 15}]'></textarea>
+        <textarea id="rb-steps" rows="5" class="w-full px-3 py-1.5 text-xs font-mono rounded border border-line bg-field focus:ring-2 focus:ring-info focus:border-transparent outline-none" placeholder='[{"type": "powershell", "script": "Get-Date", "timeout": 15}]'></textarea>
       </div>
       <div class="flex gap-2">
         {# Save = green (matches servers.html / monitoring.html save buttons) #}
@@ -375,7 +375,7 @@
         <div class="flex items-center justify-between flex-wrap gap-3">
           <div class="flex items-center gap-2">
             <select id="audit-category-filter" data-change="loadAuditLog"
-                    class="px-2 py-1 text-xs rounded border border-line bg-white dark:bg-[#0F172A]">
+                    class="px-2 py-1 text-xs rounded border border-line bg-field">
               <option value="">{{ t.get('all_categories', 'All Categories') }}</option>
               <option value="settings">{{ t.settings }}</option>
               <option value="servers">{{ t.servers }}</option>
@@ -484,24 +484,24 @@
           <i data-lucide="alert-triangle" class="w-5 h-5 text-critical"></i>
           {{ t.confirm_action }}
         </h3>
-        <button data-action="closeDataActionModal" class="p-1 text-muted hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeDataActionModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
       <div class="p-4 space-y-3">
         <div id="data-action-desc" class="text-sm text-muted"></div>
-        <div class="flex items-start gap-2 p-2.5 rounded bg-[#FEE2E2] dark:bg-[#7F1D1D]/30 text-[#991B1B] dark:text-[#FCA5A5] text-xs">
+        <div class="flex items-start gap-2 p-2.5 rounded bg-critical-tint dark:bg-critical-tint/30 text-critical-strong text-xs">
           <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
           <span>{{ t.action_irreversible }}</span>
         </div>
         <div>
           <label class="block text-xs font-medium mb-1">{{ t.type_to_confirm }}:</label>
           <div class="flex items-center gap-2">
-            <code id="data-action-keyword" class="px-2 py-1 bg-[#FEE2E2] dark:bg-[#7F1D1D]/30 text-critical rounded text-xs font-mono break-all"></code>
+            <code id="data-action-keyword" class="px-2 py-1 bg-critical-tint dark:bg-critical-tint/30 text-critical rounded text-xs font-mono break-all"></code>
           </div>
           <input type="text" id="data-action-confirm-input" autocomplete="off" spellcheck="false"
                  placeholder="{{ t.get('type_phrase_placeholder', 'Type the phrase exactly') }}"
-                 class="mt-2 w-full px-3 py-2 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-critical focus:border-transparent outline-none font-mono"
+                 class="mt-2 w-full px-3 py-2 text-sm rounded border border-line bg-field focus:ring-2 focus:ring-critical focus:border-transparent outline-none font-mono"
                  data-input="checkDataActionConfirm">
         </div>
         <div id="data-action-result" class="hidden rounded-lg p-2.5 text-sm"></div>
@@ -530,17 +530,17 @@
           <i data-lucide="list" class="w-5 h-5 text-brand"></i>
           <span>{{ t.get('choose_services', 'Choose Services') }}</span>
         </h3>
-        <button data-action="closePickerModal" class="p-1 text-muted hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closePickerModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
       <div class="px-4 pt-3 pb-2 flex-shrink-0 space-y-2">
         <input type="text" id="picker-search" data-input="filterPickerItems"
                placeholder="{{ t.get('search_filter', 'Search / filter...') }}"
-               class="w-full px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-brand focus:border-transparent outline-none">
+               class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field focus:ring-2 focus:ring-brand focus:border-transparent outline-none">
         <label id="picker-running-only-wrap" class="hidden items-center gap-2 cursor-pointer">
           <input type="checkbox" id="picker-running-only" checked data-change="filterPickerItems"
-                 class="rounded border-[#D1D5DB] dark:border-[#475569] text-healthy focus:ring-healthy">
+                 class="rounded border-line dark:border-[#475569] text-healthy focus:ring-healthy">
           <span class="text-xs text-muted">{{ t.get('running_only', 'Running only') }}</span>
           <span id="picker-counts" class="text-[10px] text-faint"></span>
         </label>
@@ -584,7 +584,7 @@
           <i data-lucide="play" class="w-5 h-5 text-healthy"></i>
           <span id="rb-run-title">{{ t.get('run_runbook', 'Run Runbook') }}</span>
         </h3>
-        <button data-action="closeRunbookRunModal" class="p-1 text-muted hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeRunbookRunModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -592,7 +592,7 @@
         <div id="rb-run-desc" class="text-xs text-muted"></div>
         <div>
           <label class="block text-[10px] font-semibold uppercase mb-1 text-muted">{{ t.get('target_server', 'Target Server') }}</label>
-          <select id="rb-run-server" class="w-full px-3 py-2 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-healthy focus:border-transparent outline-none">
+          <select id="rb-run-server" class="w-full px-3 py-2 text-sm rounded border border-line bg-field focus:ring-2 focus:ring-healthy focus:border-transparent outline-none">
             {% for s in servers %}
             <option value="{{ s.name }}">{{ s.name }} ({{ s.host }})</option>
             {% endfor %}
@@ -699,7 +699,7 @@ function addServerRestartRow(data) {
   const d = data || {};
   const conditions = d.conditions || [];
   const row = document.createElement('div');
-  row.className = 'rounded-lg border border-[#E5E7EB] dark:border-[#334155] bg-[#F9FAFB] dark:bg-[#0F172A]/50 overflow-hidden';
+  row.className = 'rounded-lg border border-line bg-page dark:bg-page/50 overflow-hidden';
   const serverOpts = _serverNames.map(n => `<option value="${n}" ${d.server === n ? 'selected' : ''}>${n}</option>`).join('');
   row.innerHTML = `
     <div class="flex flex-wrap items-center gap-2 p-2.5">
@@ -707,14 +707,14 @@ function addServerRestartRow(data) {
         <span class="text-[10px] font-bold text-info">#</span>
         <input type="number" class="sr-order w-8 px-0 py-0 text-xs font-bold text-info bg-transparent border-0 text-center outline-none" value="${d.order || (idx + 1)}" min="1" max="99">
       </div>
-      <select class="sr-server px-2 py-1 text-xs font-medium rounded border border-line bg-white dark:bg-[#0F172A]">
+      <select class="sr-server px-2 py-1 text-xs font-medium rounded border border-line bg-field">
         <option value="">-- Server --</option>
         ${serverOpts}
       </select>
       <label class="flex items-center gap-1.5 px-2 py-1 rounded border border-warning/30 dark:border-[#F59E0B]/20 bg-warning/5 dark:bg-[#F59E0B]/5 cursor-pointer" title="` + {{ t.install_updates_desc | tojson }} + `">
-        <input type="checkbox" class="sr-install-updates w-3.5 h-3.5 rounded border-[#D1D5DB] dark:border-[#475569] accent-warning" ${d.install_updates ? 'checked' : ''}>
+        <input type="checkbox" class="sr-install-updates w-3.5 h-3.5 rounded border-line dark:border-[#475569] accent-warning" ${d.install_updates ? 'checked' : ''}>
         <i data-lucide="download" class="w-3 h-3 text-warning"></i>
-        <span class="text-[10px] font-medium text-[#92400E] dark:text-[#FCD34D]">` + {{ t.install_updates | tojson }} + `</span>
+        <span class="text-[10px] font-medium text-warning-strong">` + {{ t.install_updates | tojson }} + `</span>
       </label>
       <div class="flex items-center gap-1 ml-auto">
         <button data-action="toggleConditionsEl" class="px-2 py-1 text-[10px] font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1" title="` + {{ t.restart_conditions | tojson }} + `">
@@ -772,21 +772,21 @@ function addConditionToRow(btn, data) {
   condPanel.querySelector('.sr-no-cond').classList.add('hidden');
   const d = data || {};
   const condRow = document.createElement('div');
-  condRow.className = 'flex flex-wrap items-center gap-1.5 p-1.5 rounded bg-[#F9FAFB] dark:bg-[#0F172A]/50 border border-[#E5E7EB] dark:border-[#334155]';
+  condRow.className = 'flex flex-wrap items-center gap-1.5 p-1.5 rounded bg-page dark:bg-page/50 border border-line';
   condRow.innerHTML = `
-    <select class="cond-type px-1.5 py-0.5 text-[11px] rounded border border-line bg-white dark:bg-[#0F172A]" data-change="updateConditionFieldsEl">
+    <select class="cond-type px-1.5 py-0.5 text-[11px] rounded border border-line bg-field" data-change="updateConditionFieldsEl">
       <option value="wait_online" ${d.type==='wait_online'?'selected':''}>` + {{ t.wait_online | tojson }} + `</option>
       <option value="wait_service" ${d.type==='wait_service'?'selected':''}>` + {{ t.wait_service | tojson }} + `</option>
       <option value="wait_process" ${d.type==='wait_process'?'selected':''}>` + {{ t.wait_process | tojson }} + `</option>
     </select>
-    <input type="text" class="cond-value px-1.5 py-0.5 text-[11px] rounded border border-line bg-white dark:bg-[#0F172A] w-36 ${d.type && d.type !== 'wait_online' ? '' : 'hidden'}"
+    <input type="text" class="cond-value px-1.5 py-0.5 text-[11px] rounded border border-line bg-field w-36 ${d.type && d.type !== 'wait_online' ? '' : 'hidden'}"
            placeholder="${d.type === 'wait_process' ? '` + {{ t.process_name | tojson }} + `' : '` + {{ t.service_name | tojson }} + `'}" value="${d.value || ''}">
-    <button type="button" data-action="openServicePickerEl" class="cond-browse-btn px-1.5 py-0.5 text-[11px] rounded border border-line bg-white dark:bg-[#0F172A] hover:bg-page dark:hover:bg-[#334155] text-muted ${d.type && d.type !== 'wait_online' ? '' : 'hidden'}" title="Browse">
+    <button type="button" data-action="openServicePickerEl" class="cond-browse-btn px-1.5 py-0.5 text-[11px] rounded border border-line bg-field hover:bg-page dark:hover:bg-[#334155] text-muted ${d.type && d.type !== 'wait_online' ? '' : 'hidden'}" title="Browse">
       <i data-lucide="list" class="w-3 h-3"></i>
     </button>
     <div class="flex items-center gap-1">
       <span class="text-[10px] text-muted">` + {{ t.condition_timeout | tojson }} + `:</span>
-      <input type="number" class="cond-timeout w-14 px-1 py-0.5 text-[11px] rounded border border-line bg-white dark:bg-[#0F172A] text-center" value="${d.timeout || 300}" min="30" max="3600">
+      <input type="number" class="cond-timeout w-14 px-1 py-0.5 text-[11px] rounded border border-line bg-field text-center" value="${d.timeout || 300}" min="30" max="3600">
       <span class="text-[10px] text-muted">s</span>
     </div>
     <button data-action="removeConditionEl" class="p-0.5 text-critical hover:bg-critical/10 rounded ml-auto" title="` + {{ t.remove_condition | tojson }} + `">
@@ -892,15 +892,15 @@ function saveRestartSchedules() {
   .then(data => {
     if (data.ok) {
       result.textContent = {{ t.schedule_saved | tojson }};
-      result.className = 'text-xs text-[#10B981] dark:text-[#34D399]';
+      result.className = 'text-xs text-healthy';
     } else {
       result.textContent = data.error || 'Error';
-      result.className = 'text-xs text-[#DC2626] dark:text-[#EF4444]';
+      result.className = 'text-xs text-critical';
     }
   })
   .catch(err => {
     result.textContent = 'Error: ' + err.message;
-    result.className = 'text-xs text-[#DC2626] dark:text-[#EF4444]';
+    result.className = 'text-xs text-critical';
   })
   .finally(() => { btn.disabled = false; });
 }
@@ -1032,7 +1032,7 @@ function renderPickerItems(items) {
 
     return `
       <label class="flex items-center gap-2 px-3 py-1.5 rounded hover:bg-page dark:hover:bg-page/60 cursor-pointer">
-        <input type="checkbox" class="picker-check rounded border-[#D1D5DB] dark:border-[#475569] text-brand focus:ring-brand" value="${safeName}" ${checked}>
+        <input type="checkbox" class="picker-check rounded border-line dark:border-[#475569] text-brand focus:ring-brand" value="${safeName}" ${checked}>
         <span class="text-xs font-medium min-w-[120px]">${safeName}</span>
         <span class="flex items-center gap-1.5 ml-auto">${detail}</span>
       </label>`;
@@ -1167,15 +1167,15 @@ function loadRunbookExecHistory() {
         return;
       }
       const STATUS_CLS = {
-        completed: 'bg-[#10B981]/10 text-[#10B981]',
-        failed: 'bg-[#DC2626]/10 text-[#DC2626]',
-        running: 'bg-[#2563EB]/10 text-[#2563EB]',
-        pending: 'bg-[#F59E0B]/10 text-[#F59E0B]',
+        completed: 'bg-healthy/10 text-healthy',
+        failed: 'bg-critical/10 text-critical',
+        running: 'bg-info/10 text-info',
+        pending: 'bg-warning/10 text-warning',
       };
       const STATUS_LABEL = { completed: RB_T.completed, failed: RB_T.failed, running: RB_T.running, pending: RB_T.pending };
       let html = '';
       data.executions.forEach(ex => {
-        const cls = STATUS_CLS[ex.status] || 'bg-[#F3F4F6] text-[#4B5563]';
+        const cls = STATUS_CLS[ex.status] || 'bg-raised text-muted';
         const label = STATUS_LABEL[ex.status] || ex.status;
         const ts = (typeof formatTs === 'function') ? formatTs(ex.timestamp) : (ex.timestamp || '').substring(0, 16);
         const dur = ex.duration_ms ? (ex.duration_ms / 1000).toFixed(1) + 's' : '-';
@@ -1534,7 +1534,7 @@ function renderAuditEntries(entries, append) {
   }
   const html = entries.map(e => {
     const ts = formatTs(e.timestamp);
-    const catBadge = `<span class="inline-block px-1.5 py-0.5 text-[10px] rounded bg-[#F1F5F9] dark:bg-[#334155] text-muted">${e.category || ''}</span>`;
+    const catBadge = `<span class="inline-block px-1.5 py-0.5 text-[10px] rounded bg-raised dark:bg-[#334155] text-muted">${e.category || ''}</span>`;
     return `<tr class="border-b border-line last:border-0 hover:bg-page dark:hover:bg-page/50">
       <td class="px-3 py-2 text-xs font-mono text-muted whitespace-nowrap">${ts}</td>
       <td class="px-3 py-2 text-xs">${e.username || 'system'}</td>
@@ -1586,7 +1586,7 @@ function confirmRunbookRun() {
   btn.disabled = true;
   out.classList.remove('hidden');
   status.textContent = {{ t.get('execution_running', 'Running') | tojson }};
-  status.className = 'inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-[#2563EB]/10 text-[#2563EB]';
+  status.className = 'inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-info/10 text-info';
   dur.textContent = '';
   content.textContent = {{ t.get('starting', 'Starting...') | tojson }};
 
@@ -1599,7 +1599,7 @@ function confirmRunbookRun() {
   .then(data => {
     if (!data.ok) {
       status.textContent = {{ t.get('execution_failed', 'Failed') | tojson }};
-      status.className = 'inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-[#DC2626]/10 text-[#DC2626]';
+      status.className = 'inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-critical/10 text-critical';
       content.textContent = data.error || {{ t.get('unknown_error', 'Unknown error') | tojson }};
       btn.disabled = false;
       return;
@@ -1608,7 +1608,7 @@ function confirmRunbookRun() {
   })
   .catch(err => {
     status.textContent = {{ t.get('execution_failed', 'Failed') | tojson }};
-    status.className = 'inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-[#DC2626]/10 text-[#DC2626]';
+    status.className = 'inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-critical/10 text-critical';
     content.textContent = (err.message || 'Network error');
     btn.disabled = false;
   });
@@ -1627,12 +1627,12 @@ function pollRunbookExecution(execId) {
         const dur = document.getElementById('rb-run-duration');
         if (ex.status === 'running') {
           status.textContent = {{ t.get('execution_running', 'Running') | tojson }};
-          status.className = 'inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-[#2563EB]/10 text-[#2563EB]';
+          status.className = 'inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-info/10 text-info';
           content.textContent = ex.output || {{ t.get('executing', 'Executing...') | tojson }};
         } else if (ex.status === 'completed') {
           clearInterval(_rbPollTimer); _rbPollTimer = null;
           status.textContent = {{ t.get('execution_completed', 'Completed') | tojson }};
-          status.className = 'inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-[#10B981]/10 text-[#10B981]';
+          status.className = 'inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-healthy/10 text-healthy';
           dur.textContent = ex.duration_ms ? '(' + (ex.duration_ms / 1000).toFixed(1) + 's)' : '';
           content.textContent = ex.output || {{ t.get('completed_no_output', 'Completed with no output') | tojson }};
           document.getElementById('rb-run-confirm-btn').disabled = false;
@@ -1640,7 +1640,7 @@ function pollRunbookExecution(execId) {
         } else if (ex.status === 'failed') {
           clearInterval(_rbPollTimer); _rbPollTimer = null;
           status.textContent = {{ t.get('execution_failed', 'Failed') | tojson }};
-          status.className = 'inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-[#DC2626]/10 text-[#DC2626]';
+          status.className = 'inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-critical/10 text-critical';
           dur.textContent = ex.duration_ms ? '(' + (ex.duration_ms / 1000).toFixed(1) + 's)' : '';
           content.textContent = ex.output || {{ t.get('execution_failed', 'Failed') | tojson }};
           document.getElementById('rb-run-confirm-btn').disabled = false;

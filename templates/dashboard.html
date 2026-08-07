@@ -23,7 +23,7 @@
       {{ t.get('no_servers_yet', "You haven't added any servers yet. Add your first server to start monitoring CPU, RAM, disk, and Windows updates across your fleet.") }}
     </p>
     <a href="/servers"
-       class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-info hover:bg-[#1D4ED8] text-white transition-colors">
+       class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-info hover:bg-info-strong text-white transition-colors">
       <i data-lucide="plus" class="w-4 h-4"></i>
       {{ t.get('add_first_server', 'Add Your First Server') }}
     </a>
@@ -166,7 +166,7 @@
         <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted"></i>
         <input type="text" id="server-search" placeholder="{{ t.search_servers }}"
           data-input="applyFilters"
-          class="pl-9 pr-4 py-1.5 text-sm rounded border border-line bg-card text-[#1F2937] dark:text-[#F8FAFC] placeholder-muted focus:outline-none focus:ring-2 focus:ring-info w-48 sm:w-64">
+          class="pl-9 pr-4 py-1.5 text-sm rounded border border-line bg-card text-ink placeholder-muted focus:outline-none focus:ring-2 focus:ring-info w-48 sm:w-64">
       </div>
     </div>
     <div id="server-grid-container" hx-get="/partials/server-grid" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML">
@@ -363,9 +363,9 @@ function loadRestartStatus() {
         tr.className = 'border-t border-[#E5E7EB] dark:border-[#334155]';
         const isOk = r.status === 'success' || r.status === 'ok';
         tr.innerHTML =
-          '<td class="px-3 py-2 font-medium text-[#1F2937] dark:text-[#F8FAFC]">' + escapeHtml(r.server || r.name || 'Unknown') + '</td>' +
+          '<td class="px-3 py-2 font-medium text-ink">' + escapeHtml(r.server || r.name || 'Unknown') + '</td>' +
           '<td class="px-3 py-2">' +
-            '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ' + (isOk ? 'bg-[#D1FAE5] dark:bg-[#065F46] text-[#065F46] dark:text-[#A7F3D0]' : 'bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]') + '">' +
+            '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ' + (isOk ? 'bg-healthy-tint dark:bg-[#065F46] text-healthy-strong dark:text-[#A7F3D0]' : 'bg-critical-tint text-critical-strong ') + '">' +
               (isOk ? 'Success' : 'Failed') +
             '</span>' +
           '</td>' +

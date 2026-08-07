@@ -429,7 +429,7 @@
 <div id="workflow-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
 </div>
 <div id="no-workflows" class="hidden text-center py-12">
-  <i data-lucide="git-branch" class="w-12 h-12 mx-auto text-[#D1D5DB] dark:text-[#334155] mb-3"></i>
+  <i data-lucide="git-branch" class="w-12 h-12 mx-auto text-line mb-3"></i>
   <p class="text-sm text-muted">{{ t.get('no_workflows', 'No workflows yet. Create one to get started!') }}</p>
 </div>
 
@@ -447,7 +447,7 @@
 <!-- ═══════════════════════════════════════════════════════════════
      Workflow Editor Overlay (full-screen)
      ═══════════════════════════════════════════════════════════════ -->
-<div id="workflow-editor" class="fixed inset-0 z-[60] hidden bg-white dark:bg-[#0F172A]" style="display:none;">
+<div id="workflow-editor" class="fixed inset-0 z-[60] hidden bg-field" style="display:none;">
 
   <!-- Editor Top Bar -->
   <div class="flex items-center gap-3 px-4 py-2 border-b border-line bg-card flex-shrink-0" style="z-index: 20; position: relative;">
@@ -455,7 +455,7 @@
       <i data-lucide="x" class="w-5 h-5"></i>
     </button>
     <input type="text" id="editor-name" placeholder="Workflow name..." class="text-sm font-semibold bg-transparent border-0 border-b border-transparent hover:border-line focus:border-brand outline-none px-1 py-0.5 w-48">
-    <select id="editor-category" class="text-xs px-2 py-1 rounded border border-line bg-white dark:bg-[#0F172A]">
+    <select id="editor-category" class="text-xs px-2 py-1 rounded border border-line bg-field">
       <option value="">No category</option>
     </select>
     <!-- Trigger is configured via a canvas block (drag a Trigger
@@ -491,7 +491,7 @@
            trigger block on the canvas overrides the workflow-level
            trigger dropdown (it's the new way of doing things). -->
       <div class="mb-3">
-        <div class="text-[10px] font-semibold text-[#14B8A6] mb-1">{{ t.get('triggers', 'Triggers') }}</div>
+        <div class="text-[10px] font-semibold text-accent mb-1">{{ t.get('triggers', 'Triggers') }}</div>
         <div class="space-y-1" id="palette-triggers">
           <div class="drag-block" data-type="trigger_manual" data-category="trigger" draggable="true" title="Fires only when an operator clicks Run on the workflow page">
             <i data-lucide="play-circle" class="w-3 h-3"></i> Manual
@@ -654,13 +654,13 @@
             <span class="w-5 h-5 rounded bg-brand flex items-center justify-center text-[10px] font-bold text-white">1</span>
             Start with a Trigger
           </h4>
-          <p>Every workflow begins with one <strong class="text-[#14B8A6]">Trigger</strong> block (the teal section in the palette). Drag one onto the canvas first:</p>
+          <p>Every workflow begins with one <strong class="text-accent">Trigger</strong> block (the teal section in the palette). Drag one onto the canvas first:</p>
           <ul class="mt-1 space-y-0.5 list-disc list-inside">
             <li><strong class="text-white">Manual</strong> — runs only when you click <em>Run</em>.</li>
             <li><strong class="text-white">Schedule</strong> — daily / weekly / monthly at a set time.</li>
             <li><strong class="text-white">Event</strong> — fires when a condition flips false → true on a server (service stopped, process missing, port closed, CPU/RAM/disk over threshold).</li>
           </ul>
-          <p class="mt-1 text-[10px] text-[#94A3B8]">Event triggers are edge-triggered — they fire on the transition, not every poll. After choosing an event type the form re-shapes to show only the fields that event needs.</p>
+          <p class="mt-1 text-[10px] text-faint">Event triggers are edge-triggered — they fire on the transition, not every poll. After choosing an event type the form re-shapes to show only the fields that event needs.</p>
         </div>
 
         <div>
@@ -712,7 +712,7 @@
             Block Types
           </h4>
           <div class="space-y-1.5 mt-1">
-            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-[#14B8A6]"></span><strong class="text-white">Triggers</strong> — Manual / Schedule / Event. Required as the first block. 0 inputs, 1 output.</div>
+            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-accent"></span><strong class="text-white">Triggers</strong> — Manual / Schedule / Event. Required as the first block. 0 inputs, 1 output.</div>
             <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-info"></span><strong class="text-white">Checks</strong> — Test something (service, process, port, URL, threshold). Two outputs: success (green) + fail (red).</div>
             <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-warning"></span><strong class="text-white">Actions</strong> — Do something (restart service, kill process, run script, reboot, etc.). Sandboxed PowerShell.</div>
             <div class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-brand"></span><strong class="text-white">Flow Control</strong> — Wait, Retry, AND / OR gates for branching.</div>
@@ -734,7 +734,7 @@
             Example: Service Recovery
           </h4>
           <p class="text-[10px] bg-[#1A1A1A] rounded p-2 font-mono leading-relaxed">
-            <span class="text-[#14B8A6]">Event Trigger</span> (Spooler stopped) →<br>
+            <span class="text-accent">Event Trigger</span> (Spooler stopped) →<br>
             <span class="text-warning">Restart Service</span> →
             <span class="text-brand">Wait 30s</span> →<br>
             <span class="text-info">Check Service</span><br>
@@ -789,13 +789,13 @@
     <div class="space-y-3">
       <div>
         <label class="text-xs font-medium block mb-1">{{ t.get('name', 'Name') }}</label>
-        <input type="text" id="new-cat-name" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]" placeholder="e.g. Database">
+        <input type="text" id="new-cat-name" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field" placeholder="e.g. Database">
       </div>
       <div>
         <label class="text-xs font-medium block mb-1">{{ t.get('color', 'Color') }}</label>
         <div class="flex gap-2">
           <input type="color" id="new-cat-color" value="#8B5CF6" class="w-8 h-8 rounded cursor-pointer">
-          <input type="text" id="new-cat-color-hex" value="#8B5CF6" class="flex-1 px-2 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+          <input type="text" id="new-cat-color-hex" value="#8B5CF6" class="flex-1 px-2 py-1.5 text-sm rounded border border-line bg-field">
         </div>
       </div>
       <div class="flex justify-end gap-2 pt-2">
@@ -1175,9 +1175,9 @@ function renderExecutionHistory(executions) {
     return;
   }
   const rows = executions.map(ex => {
-    const statusColors = { completed: 'text-[#10B981]', failed: 'text-[#DC2626]', running: 'text-[#F59E0B]', cancelled: 'text-[#6B7280]', suppressed: 'text-[#F59E0B]' };
+    const statusColors = { completed: 'text-healthy', failed: 'text-critical', running: 'text-warning', cancelled: 'text-muted', suppressed: 'text-warning' };
     const statusIcons = { completed: 'check-circle', failed: 'x-circle', running: 'loader', cancelled: 'ban', suppressed: 'pause-circle' };
-    const sc = statusColors[ex.status] || 'text-[#6B7280]';
+    const sc = statusColors[ex.status] || 'text-muted';
     const si = statusIcons[ex.status] || 'circle';
     const extra = ex.status === 'running' ? ' animate-spin' : '';
     return `<tr class="border-b border-line hover:bg-page cursor-pointer" data-action="showExecution" data-args="[${ex.id}]">
@@ -2521,7 +2521,7 @@ function showNodeProperties(nodeId) {
       const inputType = browseType === 'ports' ? 'number' : 'text';
       html += `<div class="mb-2">${labelRow}
         <div class="flex gap-1">
-          <input type="${inputType}" id="prop-${f.key}-${nodeId}" class="flex-1 text-xs px-2 py-1 rounded border border-line bg-white dark:bg-[#0F172A]" value="${escapeHtml(val)}" data-input="_wfNodeInput" data-node-id="${nodeId}" data-field-key="${f.key}">
+          <input type="${inputType}" id="prop-${f.key}-${nodeId}" class="flex-1 text-xs px-2 py-1 rounded border border-line bg-field" value="${escapeHtml(val)}" data-input="_wfNodeInput" data-node-id="${nodeId}" data-field-key="${f.key}">
           <button data-action="browseFromServer" data-args='[${nodeId}, "${f.key}", "${browseType}"]' class="px-2 py-1 text-[10px] font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1 whitespace-nowrap" title="${browseLabel}">
             <i data-lucide="list" class="w-3 h-3"></i> Browse
           </button>
@@ -3352,7 +3352,7 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
     <div class="px-4 pt-3 pb-2">
       <input type="text" id="wf-browse-search" data-input="renderBrowseList" placeholder="Search..."
-             class="w-full px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-brand focus:border-transparent outline-none">
+             class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field focus:ring-2 focus:ring-brand focus:border-transparent outline-none">
     </div>
     <div id="wf-browse-list" class="px-4 py-2 overflow-y-auto flex-1" style="max-height: 400px;">
     </div>

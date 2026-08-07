@@ -8,15 +8,15 @@
     <div class="flex items-start justify-between gap-2">
       <div class="flex items-center gap-2 min-w-0">
         {% if inc.severity == 'critical' %}
-        <span class="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-[#FEE2E2] dark:bg-[#7F1D1D] text-critical dark:text-[#FCA5A5]">
+        <span class="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-critical-tint text-critical dark:text-[#FCA5A5]">
           {{ t.get('critical', 'Critical') }}
         </span>
         {% else %}
-        <span class="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-[#FEF3C7] dark:bg-[#78350F] text-[#D97706] dark:text-[#FDE68A]">
+        <span class="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-warning-tint text-[#D97706] dark:text-[#FDE68A]">
           {{ t.get('warning', 'Warning') }}
         </span>
         {% endif %}
-        <span class="text-sm font-medium text-[#1F2937] dark:text-[#F8FAFC] truncate">{{ inc.title }}</span>
+        <span class="text-sm font-medium text-ink truncate">{{ inc.title }}</span>
       </div>
       <div class="flex items-center gap-2 flex-shrink-0">
         {% if inc.event_count is defined and inc.event_count > 0 %}
@@ -53,11 +53,11 @@
           {{ t.get('resolve_incident', 'Resolve') }}
         </button>
         <input type="text" id="resolution-notes-{{ inc.id }}" placeholder="{{ t.get('resolution_notes', 'Resolution notes') }}..."
-               class="flex-1 px-2 py-1 text-xs rounded border border-line bg-white dark:bg-[#0F172A] text-[#1F2937] dark:text-[#F8FAFC] placeholder-faint">
+               class="flex-1 px-2 py-1 text-xs rounded border border-line bg-field text-ink placeholder-faint">
       </div>
       {% else %}
       <div class="text-xs">
-        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#D1FAE5] dark:bg-[#065F46] text-[#065F46] dark:text-[#A7F3D0] font-medium">
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-healthy-tint dark:bg-[#065F46] text-healthy-strong dark:text-[#A7F3D0] font-medium">
           {{ t.get('incident_resolved', 'Resolved') }}
         </span>
         {% if inc.resolved_by == 'auto' %}

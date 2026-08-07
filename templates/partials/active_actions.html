@@ -32,15 +32,15 @@
         partials/server_card.html so the dashboard visual language stays
         consistent across the Actions panel and the server tiles. -#}
     {%- set _status_color = {
-      'rebooting':        ('border-[#8B5CF6]/40 bg-[#8B5CF6]/5', '#8B5CF6'),
-      'stabilising':      ('border-[#10B981]/40 bg-[#10B981]/5', '#10B981'),
-      'restart_required': ('border-[#8B5CF6]/40 bg-[#8B5CF6]/5', '#8B5CF6'),
-      'installing':       ('border-[#F59E0B]/40 bg-[#F59E0B]/5', '#F59E0B'),
-      'downloading':      ('border-[#F59E0B]/40 bg-[#F59E0B]/5', '#F59E0B'),
+      'rebooting':        ('border-brand/40 bg-brand/5', '#8B5CF6'),
+      'stabilising':      ('border-healthy/40 bg-healthy/5', '#10B981'),
+      'restart_required': ('border-brand/40 bg-brand/5', '#8B5CF6'),
+      'installing':       ('border-warning/40 bg-warning/5', '#F59E0B'),
+      'downloading':      ('border-warning/40 bg-warning/5', '#F59E0B'),
       'searching':        ('border-[#6366F1]/40 bg-[#6366F1]/5', '#6366F1'),
       'queued':           ('border-[#6366F1]/40 bg-[#6366F1]/5', '#6366F1'),
     } -%}
-    {%- set _color = _status_color.get(it.status, ('border-[#9CA3AF]/40 bg-[#9CA3AF]/5', '#9CA3AF')) -%}
+    {%- set _color = _status_color.get(it.status, ('border-faint/40 bg-faint/5', '#9CA3AF')) -%}
     {%- set _label = {
       'rebooting':        t.get('action_rebooting',        'Rebooting'),
       'stabilising':      t.get('action_stabilising',      'Stabilising'),
@@ -92,7 +92,7 @@
           </span>
           {%- endif %}
           {%- if it.restart_after and it.status in ('installing', 'downloading', 'queued', 'searching') %}
-          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] rounded-full bg-[#E0E7FF] dark:bg-[#312E81]/40 text-[#3730A3] dark:text-[#A5B4FC]"
+          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] rounded-full bg-info-tint dark:bg-info-tint/40 text-[#3730A3] dark:text-[#A5B4FC]"
                 title="{{ t.get('auto_restart_armed_tip', 'Auto-restart is armed — server will reboot when install finishes.') }}">
             <i data-lucide="rotate-cw" class="w-2.5 h-2.5"></i>
             {{ t.get('auto_restart_label', 'auto-restart') }}

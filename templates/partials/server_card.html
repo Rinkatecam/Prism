@@ -32,11 +32,11 @@
 {% set _install_border = {
     'queued': '!border-l-[#6366F1]',
     'searching': '!border-l-[#6366F1]',
-    'downloading': '!border-l-[#F59E0B]',
-    'installing': '!border-l-[#F59E0B]',
-    'restart_required': '!border-l-[#8B5CF6]',
-    'rebooting': '!border-l-[#8B5CF6]',
-    'stabilising': '!border-l-[#10B981]',
+    'downloading': '!border-l-warning',
+    'installing': '!border-l-warning',
+    'restart_required': '!border-l-brand',
+    'rebooting': '!border-l-brand',
+    'stabilising': '!border-l-healthy',
 } %}
 
 <a href="/server/{{ name }}"
@@ -104,7 +104,7 @@
     <div>
       <div class="flex justify-between text-xs mb-0.5">
         <span class="text-muted">{{ label }}</span>
-        <span class="font-medium inline-flex items-center gap-1 {% if crit is not none and value >= crit %}text-critical dark:text-[#EF4444]{% elif warn is not none and value >= warn %}text-warning dark:text-[#FBBF24]{% elif _kind == 'deviation' %}text-muted {% else %}text-[#1F2937] dark:text-[#F8FAFC]{% endif %}">
+        <span class="font-medium inline-flex items-center gap-1 {% if crit is not none and value >= crit %}text-critical dark:text-[#EF4444]{% elif warn is not none and value >= warn %}text-warning dark:text-[#FBBF24]{% elif _kind == 'deviation' %}text-muted {% else %}text-ink {% endif %}">
           {{ value | round(1) }}%
           {% if _elevated %}
           <span class="inline-block w-1.5 h-1.5 rounded-full bg-brand cursor-help"

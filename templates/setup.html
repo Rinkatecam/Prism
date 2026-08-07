@@ -17,14 +17,14 @@
 
       <!-- Error message -->
       {% if error %}
-      <div class="mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]">
+      <div class="mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong">
         {{ error }}
       </div>
       {% endif %}
 
       <!-- S2-13 (W4): break-glass account governs all tier-0 servers when
            LDAP is unreachable, so the policy is intentionally stricter. -->
-      <div class="mb-4 rounded-lg p-3 text-xs bg-[#FEF3C7] dark:bg-[#78350F] text-[#92400E] dark:text-[#FDE68A]">
+      <div class="mb-4 rounded-lg p-3 text-xs bg-warning-tint text-warning-strong dark:text-[#FDE68A]">
         This is the <strong>break-glass admin</strong> account. It guards all tier-0
         servers when LDAP is unreachable. Required:
         <ul class="list-disc list-inside mt-1">
@@ -45,7 +45,7 @@
               <i data-lucide="user" class="w-4 h-4"></i>
             </span>
             <input type="text" id="username" name="username" required autofocus
-                   class="w-full pl-9 pr-3 py-2 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-brand focus:border-transparent outline-none">
+                   class="w-full pl-9 pr-3 py-2 text-sm rounded border border-line bg-field focus:ring-2 focus:ring-brand focus:border-transparent outline-none">
           </div>
         </div>
 
@@ -56,7 +56,7 @@
               <i data-lucide="lock" class="w-4 h-4"></i>
             </span>
             <input type="password" id="password" name="password" required minlength="12"
-                   class="w-full pl-9 pr-3 py-2 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-brand focus:border-transparent outline-none">
+                   class="w-full pl-9 pr-3 py-2 text-sm rounded border border-line bg-field focus:ring-2 focus:ring-brand focus:border-transparent outline-none">
           </div>
         </div>
 
@@ -67,12 +67,12 @@
               <i data-lucide="lock" class="w-4 h-4"></i>
             </span>
             <input type="password" id="confirm_password" name="confirm_password" required minlength="12"
-                   class="w-full pl-9 pr-3 py-2 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-brand focus:border-transparent outline-none">
+                   class="w-full pl-9 pr-3 py-2 text-sm rounded border border-line bg-field focus:ring-2 focus:ring-brand focus:border-transparent outline-none">
           </div>
         </div>
 
         <!-- Validation error (client-side) -->
-        <div id="validation-error" class="hidden rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]">
+        <div id="validation-error" class="hidden rounded-lg p-3 text-sm bg-critical-tint text-critical-strong">
         </div>
 
         <button type="submit" id="submit-btn"

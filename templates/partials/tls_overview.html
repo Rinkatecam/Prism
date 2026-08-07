@@ -6,7 +6,7 @@
        class="w-5 h-5 flex-shrink-0 {% if cert.status == 'expired' %}text-critical{% elif cert.status == 'expiring' %}text-warning{% else %}text-muted{% endif %}"></i>
     <div class="min-w-0 flex-1">
       <div class="flex items-center gap-2">
-        <span class="text-xs font-semibold {% if cert.status == 'expired' %}text-critical{% elif cert.status == 'expiring' %}text-[#92400E] dark:text-[#FCD34D]{% else %}text-muted{% endif %}">
+        <span class="text-xs font-semibold {% if cert.status == 'expired' %}text-critical{% elif cert.status == 'expiring' %}text-warning-strong {% else %}text-muted{% endif %}">
           {% if cert.status == 'expired' %}{{ t.get('cert_expired', 'Certificate Expired') }}{% elif cert.status == 'expiring' %}{{ t.get('cert_expiring', 'Certificate Expiring') }}{% else %}{{ t.get('cert_error', 'Certificate Error') }}{% endif %}
         </span>
         {% if cert.days_remaining is not none and cert.days_remaining >= 0 %}

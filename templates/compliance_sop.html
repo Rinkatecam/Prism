@@ -53,7 +53,7 @@
         <form id="exec-form" class="space-y-2">
           <div>
             <label class="text-xs text-muted block mb-1">{{ t.get('result', 'Result') }}</label>
-            <select id="exec-result" class="w-full text-xs px-2 py-1.5 rounded border border-line bg-white dark:bg-[#0F172A]">
+            <select id="exec-result" class="w-full text-xs px-2 py-1.5 rounded border border-line bg-field">
               <option value="pass">{{ t.get('result_pass', 'Pass') }}</option>
               <option value="partial">{{ t.get('result_partial', 'Partial') }}</option>
               <option value="fail">{{ t.get('result_fail', 'Fail') }}</option>
@@ -61,11 +61,11 @@
           </div>
           <div>
             <label class="text-xs text-muted block mb-1">{{ t.get('notes', 'Notes') }}</label>
-            <textarea id="exec-notes" rows="4" maxlength="2000" class="w-full text-xs px-2 py-1.5 rounded border border-line bg-white dark:bg-[#0F172A]" placeholder="{{ t.get('notes_placeholder', 'Brief description of what was verified...') }}"></textarea>
+            <textarea id="exec-notes" rows="4" maxlength="2000" class="w-full text-xs px-2 py-1.5 rounded border border-line bg-field" placeholder="{{ t.get('notes_placeholder', 'Brief description of what was verified...') }}"></textarea>
           </div>
           <div>
             <label class="text-xs text-muted block mb-1">{{ t.get('evidence_ref', 'Evidence reference (optional)') }}</label>
-            <input id="exec-evidence" type="text" maxlength="500" class="w-full text-xs px-2 py-1.5 rounded border border-line bg-white dark:bg-[#0F172A]" placeholder="e.g., data/sop_records/acl_review_2026Q2.csv">
+            <input id="exec-evidence" type="text" maxlength="500" class="w-full text-xs px-2 py-1.5 rounded border border-line bg-field" placeholder="e.g., data/sop_records/acl_review_2026Q2.csv">
           </div>
           <button type="submit" class="w-full mt-2 px-3 py-2 text-xs font-medium rounded bg-brand text-white hover:opacity-90">
             {{ t.get('record', 'Record') }}
@@ -346,7 +346,7 @@
         card.appendChild(tsRow);
 
         const userRow = document.createElement('div');
-        userRow.className = 'text-[#6B7280]';
+        userRow.className = 'text-muted';
         const userSpan = document.createElement('span');
         userSpan.textContent = h.executed_by + ' — ';
         userRow.appendChild(userSpan);
@@ -358,7 +358,7 @@
 
         if (h.notes) {
           const notesRow = document.createElement('div');
-          notesRow.className = 'text-[#9CA3AF] mt-1 text-xs';
+          notesRow.className = 'text-faint mt-1 text-xs';
           const noteText = h.notes.length > 200
             ? h.notes.substring(0, 200) + '…'
             : h.notes;
@@ -382,7 +382,7 @@
     };
     const fb = document.getElementById('exec-feedback');
     fb.textContent = 'Saving...';
-    fb.className = 'text-xs mt-1 text-[#6B7280]';
+    fb.className = 'text-xs mt-1 text-muted';
     try {
       const r = await fetch(`/api/sop/${SOP_ID}/execute`, {
         method: 'POST',
@@ -393,14 +393,14 @@
       const data = await r.json();
       if (!r.ok || !data.ok) throw new Error(data.error || ('http ' + r.status));
       fb.textContent = '✓ Recorded';
-      fb.className = 'text-xs mt-1 text-[#10B981]';
+      fb.className = 'text-xs mt-1 text-healthy';
       document.getElementById('exec-notes').value = '';
       document.getElementById('exec-evidence').value = '';
       // Refresh everything so [[csv:KEY]] live data + history reflect the new row.
       await loadAll();
     } catch (err) {
       fb.textContent = '✗ ' + err.message;
-      fb.className = 'text-xs mt-1 text-[#DC2626]';
+      fb.className = 'text-xs mt-1 text-critical';
     }
   });
 

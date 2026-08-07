@@ -29,7 +29,7 @@
       </div>
       <div class="flex items-center gap-1">
         <input type="number" id="retention-days" value="{{ settings.retention_days or 30 }}" min="1" max="365" required
-               class="general-input w-20 px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] text-right">
+               class="general-input w-20 px-2 py-1 text-sm rounded border border-line bg-field text-right">
         <span class="text-xs text-muted">{{ t.days }}</span>
       </div>
     </div>
@@ -38,7 +38,7 @@
         <div class="text-sm font-medium">{{ t.language }}</div>
         <div class="text-xs text-muted">{{ t.language_desc }}</div>
       </div>
-      <select id="setting-language" class="general-input px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+      <select id="setting-language" class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="en" {% if settings.language == 'en' %}selected{% endif %}>{{ t.lang_en }}</option>
         <option value="de" {% if settings.language == 'de' %}selected{% endif %}>{{ t.lang_de }}</option>
         <option value="fr" {% if settings.language == 'fr' %}selected{% endif %}>{{ t.lang_fr }}</option>
@@ -51,7 +51,7 @@
         <div class="text-sm font-medium">{{ t.timezone }}</div>
         <div class="text-xs text-muted">{{ t.timezone_desc }}</div>
       </div>
-      <select id="setting-timezone" class="general-input px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+      <select id="setting-timezone" class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="Europe/Berlin" {% if settings.timezone == 'Europe/Berlin' %}selected{% endif %}>Europe/Berlin (CET/CEST)</option>
         <option value="Europe/London" {% if settings.timezone == 'Europe/London' %}selected{% endif %}>Europe/London (GMT/BST)</option>
         <option value="Europe/Paris" {% if settings.timezone == 'Europe/Paris' %}selected{% endif %}>Europe/Paris (CET/CEST)</option>
@@ -69,7 +69,7 @@
         <div class="text-sm font-medium">{{ t.date_format }}</div>
         <div class="text-xs text-muted">{{ t.date_format_desc }}</div>
       </div>
-      <select id="setting-date-format" class="general-input px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+      <select id="setting-date-format" class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="DD.MM.YYYY" {% if settings.date_format == 'DD.MM.YYYY' %}selected{% endif %}>DD.MM.YYYY (31.12.2026)</option>
         <option value="YYYY-MM-DD" {% if settings.date_format == 'YYYY-MM-DD' %}selected{% endif %}>YYYY-MM-DD (2026-12-31)</option>
         <option value="MM/DD/YYYY" {% if settings.date_format == 'MM/DD/YYYY' %}selected{% endif %}>MM/DD/YYYY (12/31/2026)</option>
@@ -81,7 +81,7 @@
         <div class="text-sm font-medium">{{ t.time_format }}</div>
         <div class="text-xs text-muted">{{ t.time_format_desc }}</div>
       </div>
-      <select id="setting-time-format" class="general-input px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+      <select id="setting-time-format" class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="24h" {% if settings.time_format == '24h' %}selected{% endif %}>24-hour (14:30)</option>
         <option value="12h" {% if settings.time_format == '12h' %}selected{% endif %}>12-hour (2:30 PM)</option>
       </select>
@@ -134,11 +134,11 @@
         <div class="text-xs text-muted">{{ t.poll_interval_desc }}</div>
       </div>
       <div class="flex items-center gap-2">
-        <button type="button" data-action="syncNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-info hover:bg-[#1D4ED8] text-white transition-colors whitespace-nowrap">
+        <button type="button" data-action="syncNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-info hover:bg-info-strong text-white transition-colors whitespace-nowrap">
           {{ t.sync_now | default('Sync Now') }}
         </button>
         <input type="number" id="poll-interval" value="{{ ((settings.poll_interval_seconds or 60) / 60) | round(0) | int }}" min="1" max="60" step="1" required
-               class="general-input w-20 px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] text-right">
+               class="general-input w-20 px-2 py-1 text-sm rounded border border-line bg-field text-right">
         <span class="text-xs text-muted">{{ t.min }}</span>
       </div>
     </div>
@@ -156,11 +156,11 @@
         <div class="text-xs text-muted">{{ t.get('log_collection_interval_desc', 'How often to pull Windows event logs + failed login events from each server. Higher = less load on the targets.') }}</div>
       </div>
       <div class="flex items-center gap-2">
-        <button type="button" data-action="syncLogsNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-info hover:bg-[#1D4ED8] text-white transition-colors whitespace-nowrap">
+        <button type="button" data-action="syncLogsNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-info hover:bg-info-strong text-white transition-colors whitespace-nowrap">
           {{ t.sync_now | default('Sync Now') }}
         </button>
         <input type="number" id="log-collection-interval" value="{{ settings.log_collection_interval_minutes or 5 }}" min="1" max="60" required
-               class="general-input w-20 px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] text-right">
+               class="general-input w-20 px-2 py-1 text-sm rounded border border-line bg-field text-right">
         <span class="text-xs text-muted">{{ t.min }}</span>
       </div>
     </div>
@@ -177,11 +177,11 @@
         <div class="text-xs text-muted">{{ t.get('update_check_interval_desc', 'How often to check each server for pending Windows Updates.') }}</div>
       </div>
       <div class="flex items-center gap-2">
-        <button type="button" data-action="syncUpdatesNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-info hover:bg-[#1D4ED8] text-white transition-colors whitespace-nowrap">
+        <button type="button" data-action="syncUpdatesNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-info hover:bg-info-strong text-white transition-colors whitespace-nowrap">
           {{ t.sync_now | default('Sync Now') }}
         </button>
         <input type="number" id="update-check-interval" value="{{ settings.get('update_check_interval_minutes', 30) }}" min="10" max="120" required
-               class="general-input w-20 px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] text-right">
+               class="general-input w-20 px-2 py-1 text-sm rounded border border-line bg-field text-right">
         <span class="text-xs text-muted">{{ t.min }}</span>
       </div>
     </div>
@@ -192,7 +192,7 @@
           {{ t.get('collector_v2_workers_label', 'Worker pool size') }}
           {# Restart pill lives on THIS row, not the section header — it is the
              only field in the Collector section that needs one. #}
-          <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#78350F]/30 text-[#92400E] dark:text-[#FCD34D] font-normal">{{ t.get('requires_restart', 'Requires restart') }}</span>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong font-normal">{{ t.get('requires_restart', 'Requires restart') }}</span>
           <i data-lucide="info" class="w-3.5 h-3.5 text-faint cursor-help"
              data-tip-title="{{ t.get('collector_v2_workers_tip_title', 'Concurrent WinRM probes') }}"
              data-tip-desc="{{ t.get('collector_v2_workers_tip_desc', 'Number of worker threads pulling check items from the queue and executing WinRM probes against your servers. Default 15 handles ~150 servers with comfortable headroom (each worker can sit on a slow Windows Update query for up to 120 s). Increase for larger fleets or if the operations page shows workers active_count consistently near the pool size.') }}"></i>
@@ -202,7 +202,7 @@
       <div class="flex items-center gap-1">
         <input type="number" id="collector-v2-workers" min="2" max="100" step="1"
                value="{{ settings.get('collector_v2_num_workers', 15) }}"
-               class="security-input w-20 px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] text-right">
+               class="security-input w-20 px-2 py-1 text-sm rounded border border-line bg-field text-right">
       </div>
     </div>
   </div>
@@ -217,7 +217,7 @@
       <i data-lucide="shield-check" class="w-5 h-5 text-info"></i>
       {{ t.security }}
     </h2>
-    <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#78350F]/30 text-[#92400E] dark:text-[#FCD34D]">{{ t.get('requires_restart', 'Requires restart') }}</span>
+    <span class="text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong">{{ t.get('requires_restart', 'Requires restart') }}</span>
   </div>
   <div class="bg-card rounded-lg p-5 border border-line space-y-5">
 
@@ -235,24 +235,24 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="https-enabled" class="sr-only peer security-input"
                    {% if settings.https.enabled %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs text-muted mb-0.5">{{ t.cert_file }}</label>
             <input type="text" id="https-cert" value="{{ settings.https.cert_file or '' }}" placeholder="C:\certs\prism.pem"
-                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] font-mono text-xs"
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs"
                    data-change="checkCertExpiry">
           </div>
           <div>
             <label class="block text-xs text-muted mb-0.5">{{ t.key_file }}</label>
             <input type="text" id="https-key" value="{{ settings.https.key_file or '' }}" placeholder="C:\certs\prism-key.pem"
-                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] font-mono text-xs">
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
           </div>
         </div>
         <!-- HTTPS lockout warning -->
-        <div id="https-warning" class="hidden flex items-start gap-2 p-2.5 rounded bg-[#FEF3C7] dark:bg-[#78350F]/30 text-[#92400E] dark:text-[#FCD34D] text-xs">
+        <div id="https-warning" class="hidden flex items-start gap-2 p-2.5 rounded bg-warning-tint dark:bg-warning-tint/30 text-warning-strong text-xs">
           <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
           <span>{{ t.get('https_warning', 'Enabling HTTPS requires valid certificate and key files. Verify paths before saving.') }}</span>
         </div>
@@ -277,11 +277,11 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="auth-enabled" class="sr-only peer security-input"
                    {% if settings.auth.enabled %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <!-- Auth lockout warning -->
-        <div id="auth-warning" class="hidden flex items-start gap-2 p-2.5 rounded bg-[#FEE2E2] dark:bg-[#7F1D1D]/30 text-[#991B1B] dark:text-[#FCA5A5] text-xs">
+        <div id="auth-warning" class="hidden flex items-start gap-2 p-2.5 rounded bg-critical-tint dark:bg-critical-tint/30 text-critical-strong text-xs">
           <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
           <span>{{ t.get('auth_lockout_warning', 'Warning: Enable at least one login method (LDAP or Backup Admin) before enabling authentication, or you may be locked out.') }}</span>
         </div>
@@ -359,7 +359,7 @@
         <div>
           <label class="block text-xs text-muted mb-0.5">{{ t.auth_type }}</label>
           <select id="auth-type"
-                  class="security-input w-full max-w-xs px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+                  class="security-input w-full max-w-xs px-2 py-1 text-sm rounded border border-line bg-field">
             <option value="ldap" {% if settings.auth.type == 'ldap' %}selected{% endif %}>{{ t.ldap_ad }}</option>
           </select>
         </div>
@@ -367,12 +367,12 @@
           <div>
             <label class="block text-xs text-muted mb-0.5">{{ t.ldap_server_url }}</label>
             <input type="text" id="auth-ldap-url" value="{{ settings.auth.ldap_url or '' }}" placeholder="ldap://dc01.ad.example.com:389"
-                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] font-mono text-xs">
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
           </div>
           <div>
             <label class="block text-xs text-muted mb-0.5">{{ t.ldap_base_dn }}</label>
             <input type="text" id="auth-ldap-basedn" value="{{ settings.auth.ldap_base_dn or '' }}" placeholder="DC=ad,DC=example,DC=com"
-                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] font-mono text-xs">
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
           </div>
         </div>
         <!-- LDAP Bind Account (for AD Discovery) -->
@@ -387,12 +387,12 @@
               <label class="block text-xs text-muted mb-0.5">{{ t.username }}</label>
               <input type="text" id="auth-ldap-bind-user" value="{{ settings.auth.get('ldap_bind_user', '') }}"
                      placeholder="administrator@ad.example.com"
-                     class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] font-mono text-xs">
+                     class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
             </div>
             <div>
               <label class="block text-xs text-muted mb-0.5">{{ t.password }}</label>
               <input type="password" id="auth-ldap-bind-pass" value="" placeholder="{{ '••••••••' if settings.auth.get('ldap_bind_password') else 'Password' }}" autocomplete="off"
-                     class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] text-xs">
+                     class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field text-xs">
             </div>
           </div>
         </div>
@@ -414,7 +414,7 @@
                     {# `or []` not `| default([])`: Jinja's default filter only
                        substitutes for UNDEFINED, not None. A null on disk made
                        this raise TypeError and 500 the whole page. #}
-                    class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] font-mono text-xs">{{ (settings.auth.allowed_users or []) | join('\n') }}</textarea>
+                    class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">{{ (settings.auth.allowed_users or []) | join('\n') }}</textarea>
         </div>
 
         <div class="flex items-center justify-between">
@@ -423,7 +423,7 @@
           </div>
           <div class="flex items-center gap-1">
             <input type="number" id="auth-timeout" value="{{ settings.auth.session_timeout_minutes or 480 }}" min="5" max="1440" required
-                   class="security-input w-20 px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] text-right">
+                   class="security-input w-20 px-2 py-1 text-sm rounded border border-line bg-field text-right">
             <span class="text-xs text-muted">{{ t.min }}</span>
           </div>
         </div>
@@ -441,7 +441,7 @@
       <i data-lucide="bell" class="w-5 h-5 text-info"></i>
       {{ t.get('notifications', 'Notifications') }}
     </h2>
-    <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#78350F]/30 text-[#92400E] dark:text-[#FCD34D]">{{ t.get('requires_restart', 'Requires restart') }}</span>
+    <span class="text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong">{{ t.get('requires_restart', 'Requires restart') }}</span>
   </div>
   <div class="bg-card rounded-lg p-5 border border-line space-y-5">
 
@@ -459,19 +459,19 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="email-enabled" class="sr-only peer security-input"
                    {% if settings.email.enabled %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs text-muted mb-0.5">{{ t.smtp_server }}</label>
             <input type="text" id="email-smtp-server" value="{{ settings.email.smtp_server or '' }}" placeholder="smtp.gmail.com"
-                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] font-mono text-xs">
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
           </div>
           <div>
             <label class="block text-xs text-muted mb-0.5">{{ t.smtp_port }}</label>
             <input type="number" id="email-smtp-port" value="{{ settings.email.smtp_port or 587 }}" min="1" max="65535"
-                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] text-xs">
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field text-xs">
           </div>
         </div>
         <div class="flex items-center justify-between">
@@ -481,30 +481,30 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="email-use-tls" class="sr-only peer security-input"
                    {% if settings.email.use_tls %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs text-muted mb-0.5">{{ t.username }}</label>
             <input type="text" id="email-username" value="{{ settings.email.username or '' }}" placeholder="user@example.com"
-                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] font-mono text-xs">
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
           </div>
           <div>
             <label class="block text-xs text-muted mb-0.5">{{ t.password }}</label>
             <input type="password" id="email-password" value="" placeholder="{{ '••••••••' if settings.email.password else 'App password' }}" autocomplete="off"
-                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] text-xs">
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field text-xs">
           </div>
         </div>
         <div>
           <label class="block text-xs text-muted mb-0.5">{{ t.from_address }}</label>
           <input type="text" id="email-from" value="{{ settings.email.from_address or '' }}" placeholder="prism@example.com"
-                 class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] font-mono text-xs">
+                 class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
         </div>
         <div>
           <label class="block text-xs text-muted mb-0.5">{{ t.recipients }}</label>
           <input type="text" id="email-recipients" value="{{ settings.email.recipients | join(', ') }}" placeholder="admin@example.com, ops@example.com"
-                 class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] font-mono text-xs">
+                 class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
         </div>
         <div class="flex items-center justify-between">
           <div>
@@ -513,7 +513,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="email-send-critical" class="sr-only peer security-input"
                    {% if settings.email.send_on_critical %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="flex items-center justify-between">
@@ -523,13 +523,13 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="email-send-warning" class="sr-only peer security-input"
                    {% if settings.email.send_on_warning %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div>
           <label class="block text-xs text-muted mb-0.5">{{ t.dashboard_url }}</label>
           <input type="text" id="email-dashboard-url" value="{{ settings.email.dashboard_url or 'http://localhost:5000' }}" placeholder="http://localhost:5000"
-                 class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] font-mono text-xs">
+                 class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
         </div>
         <div>
           <button data-action="sendTestEmail" id="test-email-btn"
@@ -556,21 +556,21 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="webhook-enabled" class="sr-only peer security-input"
                    {% if settings.get('webhooks', {}).get('enabled') %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div>
           <label class="block text-xs text-muted mb-0.5">{{ t.webhook_url }}</label>
           <input type="text" id="webhook-url" value="{{ settings.get('webhooks', {}).get('teams_webhook_url', '') }}"
                  placeholder="https://outlook.office.com/webhook/..."
-                 class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] font-mono text-xs">
+                 class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
         </div>
         <div class="flex items-center justify-between">
           <div class="text-xs text-muted">{{ t.send_on_critical_webhook }}</div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="webhook-send-critical" class="sr-only peer security-input"
                    {% if settings.get('webhooks', {}).get('send_on_critical', True) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="flex items-center justify-between">
@@ -578,7 +578,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="webhook-send-warning" class="sr-only peer security-input"
                    {% if settings.get('webhooks', {}).get('send_on_warning', False) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div>
@@ -607,7 +607,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="sched-enabled" class="sr-only peer security-input"
                    {% if settings.get('scheduled_reports', {}).get('enabled') %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] rounded-full peer-checked:bg-info transition-colors"></div>
+            <div class="w-9 h-5 bg-line dark:bg-[#4B5563] rounded-full peer-checked:bg-info transition-colors"></div>
             <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
           </label>
         </div>
@@ -619,11 +619,11 @@
             <label class="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" id="sched-daily-enabled" class="sr-only peer security-input"
                      {% if settings.get('scheduled_reports', {}).get('daily_enabled', True) %}checked{% endif %}>
-              <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] rounded-full peer-checked:bg-healthy transition-colors"></div>
+              <div class="w-9 h-5 bg-line dark:bg-[#4B5563] rounded-full peer-checked:bg-healthy transition-colors"></div>
               <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
             </label>
             <input type="time" id="sched-daily-time" value="{{ settings.get('scheduled_reports', {}).get('daily_time', '07:00') }}"
-                   class="security-input text-xs rounded border border-line bg-white dark:bg-[#0F172A] px-2 py-1">
+                   class="security-input text-xs rounded border border-line bg-field px-2 py-1">
           </div>
         </div>
 
@@ -634,10 +634,10 @@
             <label class="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" id="sched-weekly-enabled" class="sr-only peer security-input"
                      {% if settings.get('scheduled_reports', {}).get('weekly_enabled', False) %}checked{% endif %}>
-              <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] rounded-full peer-checked:bg-healthy transition-colors"></div>
+              <div class="w-9 h-5 bg-line dark:bg-[#4B5563] rounded-full peer-checked:bg-healthy transition-colors"></div>
               <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
             </label>
-            <select id="sched-weekly-day" class="security-input text-xs rounded border border-line bg-white dark:bg-[#0F172A] px-2 py-1">
+            <select id="sched-weekly-day" class="security-input text-xs rounded border border-line bg-field px-2 py-1">
               {% for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] %}
               <option value="{{ day }}" {% if settings.get('scheduled_reports', {}).get('weekly_day', 'monday') == day %}selected{% endif %}>
                 {{ day | capitalize }}
@@ -645,7 +645,7 @@
               {% endfor %}
             </select>
             <input type="time" id="sched-weekly-time" value="{{ settings.get('scheduled_reports', {}).get('weekly_time', '07:00') }}"
-                   class="security-input text-xs rounded border border-line bg-white dark:bg-[#0F172A] px-2 py-1">
+                   class="security-input text-xs rounded border border-line bg-field px-2 py-1">
           </div>
         </div>
 
@@ -655,7 +655,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="sched-email-report" class="sr-only peer security-input"
                    {% if settings.get('scheduled_reports', {}).get('email_report', True) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] rounded-full peer-checked:bg-info transition-colors"></div>
+            <div class="w-9 h-5 bg-line dark:bg-[#4B5563] rounded-full peer-checked:bg-info transition-colors"></div>
             <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
           </label>
         </div>
@@ -664,7 +664,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="sched-include-pdf" class="sr-only peer security-input"
                    {% if settings.get('scheduled_reports', {}).get('include_pdf', True) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] rounded-full peer-checked:bg-info transition-colors"></div>
+            <div class="w-9 h-5 bg-line dark:bg-[#4B5563] rounded-full peer-checked:bg-info transition-colors"></div>
             <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
           </label>
         </div>
@@ -688,7 +688,7 @@
         <div class="text-xs text-muted">{{ t.get('time_range_desc', 'Default time range for charts and reports') }}</div>
       </div>
       <select id="pref-time-range" data-change="savePreferences"
-              class="px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+              class="px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="1">1 hour</option>
         <option value="6">6 hours</option>
         <option value="12">12 hours</option>
@@ -703,7 +703,7 @@
         <div class="text-xs text-muted">{{ t.get('refresh_desc', 'How often the dashboard checks for new data') }}</div>
       </div>
       <select id="pref-refresh-interval" data-change="savePreferences"
-              class="px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
+              class="px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="5000">5 seconds</option>
         <option value="10000">10 seconds</option>
         <option value="30000">30 seconds</option>
@@ -745,7 +745,7 @@
       <div class="flex items-center gap-3">
         <div class="w-2 h-2 rounded-full bg-warning animate-pulse"></div>
         <span class="text-sm text-muted">{{ t.get('unsaved_changes', 'You have unsaved changes') }}</span>
-        <span id="restart-badge" class="hidden text-[10px] px-2 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#78350F]/30 text-[#92400E] dark:text-[#FCD34D] flex items-center gap-1">
+        <span id="restart-badge" class="hidden text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong flex items-center gap-1">
           <i data-lucide="refresh-cw" class="w-3 h-3"></i>
           {{ t.get('will_restart', 'Server will restart') }}
         </span>
@@ -783,7 +783,7 @@
           <i data-lucide="search" class="w-5 h-5 text-info"></i>
           {{ t.get('ldap_picker_title', 'Query Active Directory') }}
         </h3>
-        <button data-action="closeLdapPicker" class="p-1 text-muted hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeLdapPicker" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -805,7 +805,7 @@
           </div>
           <input type="text" id="ldap-picker-search"
                  placeholder="{{ t.get('search_filter', 'Search / filter...') }}"
-                 class="flex-1 px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-info focus:border-transparent outline-none">
+                 class="flex-1 px-3 py-1.5 text-sm rounded border border-line bg-field focus:ring-2 focus:ring-info focus:border-transparent outline-none">
           <button type="button" data-action="runLdapPickerQuery" id="ldap-picker-search-btn"
                   class="px-3 py-1.5 text-sm font-medium rounded bg-info text-white hover:opacity-90 flex items-center gap-1">
             <i data-lucide="search" class="w-4 h-4"></i>
@@ -844,22 +844,22 @@
           <i data-lucide="key" class="w-5 h-5 text-warning"></i>
           {{ t.change_admin_password }}
         </h3>
-        <button data-action="closeResetPasswordModal" class="p-1 text-muted hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeResetPasswordModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
       <div class="p-4 space-y-3">
-        <div id="reset-pw-error" class="hidden rounded-lg p-2.5 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]"></div>
-        <div id="reset-pw-success" class="hidden rounded-lg p-2.5 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]"></div>
+        <div id="reset-pw-error" class="hidden rounded-lg p-2.5 text-sm bg-critical-tint text-critical-strong"></div>
+        <div id="reset-pw-success" class="hidden rounded-lg p-2.5 text-sm bg-healthy-tint text-healthy-strong"></div>
         <div>
           <label class="block text-xs font-medium mb-1">{{ t.new_password }}</label>
           <input type="password" id="reset-pw-new" placeholder="••••••••" minlength="8"
-                 class="w-full px-3 py-2 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-info focus:border-transparent outline-none">
+                 class="w-full px-3 py-2 text-sm rounded border border-line bg-field focus:ring-2 focus:ring-info focus:border-transparent outline-none">
         </div>
         <div>
           <label class="block text-xs font-medium mb-1">{{ t.confirm_new_password }}</label>
           <input type="password" id="reset-pw-confirm" placeholder="••••••••" minlength="8"
-                 class="w-full px-3 py-2 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-info focus:border-transparent outline-none">
+                 class="w-full px-3 py-2 text-sm rounded border border-line bg-field focus:ring-2 focus:ring-info focus:border-transparent outline-none">
         </div>
       </div>
       <div class="flex justify-end gap-2 p-4 border-t border-line">
@@ -883,7 +883,7 @@
           <i data-lucide="git-compare" class="w-5 h-5 text-warning"></i>
           {{ t.review_changes }}
         </h3>
-        <button data-action="closeDiffModal" class="p-1 text-muted hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeDiffModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -1291,7 +1291,7 @@ function doSaveAllSettings(needsRestart) {
     .then(ldapResult => {
       if (!ldapResult.ok) {
         const msg = document.getElementById('save-message');
-        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
         msg.textContent = 'Error: ' + (ldapResult.error || 'LDAP settings rejected');
         msg.classList.remove('hidden');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1308,7 +1308,7 @@ function doSaveAllSettings(needsRestart) {
       if (result === null) return;  // LDAP stage already reported the failure
       const msg = document.getElementById('save-message');
       if (result.ok) {
-        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-healthy-tint text-healthy-strong';
         // Hide save bar
         const bar = document.getElementById('save-bar');
         bar.classList.add('translate-y-full');
@@ -1333,7 +1333,7 @@ function doSaveAllSettings(needsRestart) {
           setTimeout(() => location.reload(), 500);
         }
       } else {
-        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
         msg.textContent = 'Error: ' + (result.error || 'Unknown error');
         msg.classList.remove('hidden');
         _settingsSaving = false;  // let the user retry after a server-side error
@@ -1376,7 +1376,7 @@ function sendTestEmail() {
   var btn = document.getElementById('test-email-btn');
   var result = document.getElementById('test-email-result');
   btn.disabled = true;
-  result.className = 'mt-2 rounded p-2 text-sm bg-[#F3F4F6] dark:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1]';
+  result.className = 'mt-2 rounded p-2 text-sm bg-raised dark:bg-[#334155] text-muted';
   result.innerHTML = '<span class="inline-block animate-spin mr-2">&#9696;</span> Sending test email...';
   result.classList.remove('hidden');
 
@@ -1388,15 +1388,15 @@ function sendTestEmail() {
   .then(function(r) { return r.json(); })
   .then(function(data) {
     if (data.ok) {
-      result.className = 'mt-2 rounded p-2 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+      result.className = 'mt-2 rounded p-2 text-sm bg-healthy-tint text-healthy-strong';
       result.textContent = data.message || 'Test email sent successfully.';
     } else {
-      result.className = 'mt-2 rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      result.className = 'mt-2 rounded p-2 text-sm bg-critical-tint text-critical-strong';
       result.textContent = data.error || 'Failed to send test email.';
     }
   })
   .catch(function(err) {
-    result.className = 'mt-2 rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+    result.className = 'mt-2 rounded p-2 text-sm bg-critical-tint text-critical-strong';
     result.textContent = 'Request failed: ' + err.message;
   })
   .finally(function() { btn.disabled = false; });
@@ -1411,30 +1411,30 @@ function checkCertExpiry() {
     return;
   }
   infoDiv.classList.remove('hidden');
-  infoDiv.className = 'text-xs rounded p-2 bg-[#F3F4F6] dark:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1]';
+  infoDiv.className = 'text-xs rounded p-2 bg-raised dark:bg-[#334155] text-muted';
   infoDiv.textContent = 'Checking certificate...';
 
   fetch('/api/cert-info?path=' + encodeURIComponent(certPath))
     .then(r => r.json())
     .then(data => {
       if (!data.valid) {
-        infoDiv.className = 'text-xs rounded p-2 bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+        infoDiv.className = 'text-xs rounded p-2 bg-critical-tint text-critical-strong';
         infoDiv.textContent = data.error || 'Invalid certificate';
         return;
       }
       if (data.expired) {
-        infoDiv.className = 'text-xs rounded p-2 bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+        infoDiv.className = 'text-xs rounded p-2 bg-critical-tint text-critical-strong';
         infoDiv.textContent = '\u26A0 Certificate EXPIRED on ' + data.not_after + ' (Subject: ' + data.subject + ', Issuer: ' + data.issuer + ')';
       } else if (data.days_remaining <= 30) {
-        infoDiv.className = 'text-xs rounded p-2 bg-[#FEF3C7] dark:bg-[#78350F] text-[#92400E] dark:text-[#FDE68A]';
+        infoDiv.className = 'text-xs rounded p-2 bg-warning-tint text-warning-strong dark:text-[#FDE68A]';
         infoDiv.textContent = '\u26A0 Certificate expires in ' + data.days_remaining + ' days (' + data.not_after + ') \u2014 Subject: ' + data.subject + ', Issuer: ' + data.issuer;
       } else {
-        infoDiv.className = 'text-xs rounded p-2 bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+        infoDiv.className = 'text-xs rounded p-2 bg-healthy-tint text-healthy-strong';
         infoDiv.textContent = '\u2713 Certificate valid until ' + data.not_after + ' (' + data.days_remaining + ' days) \u2014 Subject: ' + data.subject + ', Issuer: ' + data.issuer;
       }
     })
     .catch(() => {
-      infoDiv.className = 'text-xs rounded p-2 bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      infoDiv.className = 'text-xs rounded p-2 bg-critical-tint text-critical-strong';
       infoDiv.textContent = 'Failed to check certificate';
     });
 }
@@ -1490,7 +1490,7 @@ function _validateBeforeSave() {
     const key = document.getElementById('https-key').value.trim();
     if (!cert || !key) {
       const msg = document.getElementById('save-message');
-      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
       msg.textContent = {{ t.get('https_cert_required', 'HTTPS is enabled but certificate or key file path is empty. Please provide both paths or disable HTTPS.') | tojson }};
       msg.classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1503,7 +1503,7 @@ function _validateBeforeSave() {
     const backupAdminConfigured = backupSection && backupSection.querySelector('.badge-healthy');
     if (!ldapUrl && !backupAdminConfigured) {
       const msg = document.getElementById('save-message');
-      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
       msg.textContent = {{ t.get('auth_method_required', 'Authentication is enabled but no login method is configured. Set up LDAP or create an admin account first.') | tojson }};
       msg.classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1552,13 +1552,13 @@ function sendTestWebhook() {
   const result = document.getElementById('test-webhook-result');
   const url = document.getElementById('webhook-url').value.trim();
   if (!url) {
-    result.className = 'mt-2 rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+    result.className = 'mt-2 rounded p-2 text-sm bg-critical-tint text-critical-strong';
     result.textContent = {{ t.get('webhook_url_required', 'Please enter a webhook URL first') | tojson }};
     result.classList.remove('hidden');
     return;
   }
   btn.disabled = true;
-  result.className = 'mt-2 rounded p-2 text-sm bg-[#F3F4F6] dark:bg-[#334155] text-[#6B7280]';
+  result.className = 'mt-2 rounded p-2 text-sm bg-raised dark:bg-[#334155] text-muted';
   result.innerHTML = '<span class="inline-block animate-spin mr-2">&#9696;</span> Sending test...';
   result.classList.remove('hidden');
 
@@ -1570,15 +1570,15 @@ function sendTestWebhook() {
   .then(r => r.json())
   .then(data => {
     if (data.ok) {
-      result.className = 'mt-2 rounded p-2 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+      result.className = 'mt-2 rounded p-2 text-sm bg-healthy-tint text-healthy-strong';
       result.textContent = data.message || {{ t.webhook_test_success | tojson }};
     } else {
-      result.className = 'mt-2 rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      result.className = 'mt-2 rounded p-2 text-sm bg-critical-tint text-critical-strong';
       result.textContent = data.error || {{ t.webhook_test_failed | tojson }};
     }
   })
   .catch(err => {
-    result.className = 'mt-2 rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+    result.className = 'mt-2 rounded p-2 text-sm bg-critical-tint text-critical-strong';
     result.textContent = 'Request failed: ' + err.message;
   })
   .finally(() => { btn.disabled = false; });
@@ -1607,10 +1607,10 @@ function validateField(inputId, rules) {
   }
 
   if (!valid) {
-    el.classList.add('border-[#DC2626]', 'dark:border-[#EF4444]');
+    el.classList.add('border-critical', 'dark:border-[#EF4444]');
     el.title = message;
   } else {
-    el.classList.remove('border-[#DC2626]', 'dark:border-[#EF4444]');
+    el.classList.remove('border-critical', 'dark:border-[#EF4444]');
     el.title = '';
   }
   return valid;
@@ -1736,9 +1736,9 @@ function showDiffModal(changes) {
       <div class="flex-1 min-w-0">
         <div class="text-xs font-medium">${c.label}</div>
         <div class="flex items-center gap-2 mt-1">
-          <span class="text-xs px-1.5 py-0.5 rounded bg-[#FEE2E2] dark:bg-[#7F1D1D]/30 text-critical dark:text-[#FCA5A5] line-through truncate max-w-[180px]">${c.oldVal}</span>
+          <span class="text-xs px-1.5 py-0.5 rounded bg-critical-tint dark:bg-critical-tint/30 text-critical dark:text-[#FCA5A5] line-through truncate max-w-[180px]">${c.oldVal}</span>
           <i data-lucide="arrow-right" class="w-3 h-3 text-muted flex-shrink-0"></i>
-          <span class="text-xs px-1.5 py-0.5 rounded bg-[#D1FAE5] dark:bg-[#064E3B]/30 text-[#065F46] dark:text-[#6EE7B7] truncate max-w-[180px]">${c.newVal}</span>
+          <span class="text-xs px-1.5 py-0.5 rounded bg-healthy-tint dark:bg-healthy-tint/30 text-healthy-strong truncate max-w-[180px]">${c.newVal}</span>
         </div>
       </div>
     </div>`).join('');
@@ -1812,8 +1812,8 @@ function setLdapPickerKind(kind) {
   _ldapPickerKind = kind;
   const usersBtn = document.getElementById('ldap-kind-users-btn');
   const groupsBtn = document.getElementById('ldap-kind-groups-btn');
-  const active = 'bg-[#2563EB] dark:bg-[#3B82F6] text-white';
-  const inactive = 'text-[#6B7280] dark:text-[#CBD5E1]';
+  const active = 'bg-info text-white';
+  const inactive = 'text-muted';
   if (kind === 'users') {
     usersBtn.className = 'px-3 py-1 text-xs font-medium rounded ' + active;
     groupsBtn.className = 'px-3 py-1 text-xs font-medium rounded ' + inactive;
@@ -1880,7 +1880,7 @@ function runLdapPickerQuery() {
       list.innerHTML =
         '<div class="py-10 text-center">' +
         '<i data-lucide="alert-triangle" class="w-10 h-10 mx-auto mb-2 text-critical"></i>' +
-        '<p class="text-sm text-[#991B1B] dark:text-[#FCA5A5] font-medium">' + {{ t.get('ldap_query_failed', 'Query failed') | tojson }} + '</p>' +
+        '<p class="text-sm text-critical-strong font-medium">' + {{ t.get('ldap_query_failed', 'Query failed') | tojson }} + '</p>' +
         '<p class="text-[10px] mt-1 text-faint font-mono">' + _escapeHtml(data.error || '') + '</p>' +
         '</div>';
       if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -1930,7 +1930,7 @@ function runLdapPickerQuery() {
     list.innerHTML =
       '<div class="py-10 text-center">' +
       '<i data-lucide="alert-triangle" class="w-10 h-10 mx-auto mb-2 text-critical"></i>' +
-      '<p class="text-sm text-[#991B1B] dark:text-[#FCA5A5] font-medium">' + {{ t.get('ldap_query_failed', 'Query failed') | tojson }} + '</p>' +
+      '<p class="text-sm text-critical-strong font-medium">' + {{ t.get('ldap_query_failed', 'Query failed') | tojson }} + '</p>' +
       '<p class="text-[10px] mt-1 text-faint font-mono">' + _escapeHtml(err.message || '') + '</p>' +
       '</div>';
     if (typeof lucide !== 'undefined') lucide.createIcons();

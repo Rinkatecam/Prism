@@ -159,7 +159,7 @@
     statusEl.textContent = ok
       ? `OK — ${rd.current} of ${rd.total} SOPs current`
       : `Attention — ${rd.overdue} overdue, ${rd.never} never run`;
-    statusEl.className = 'text-2xl font-bold ' + (ok ? 'text-[#10B981]' : 'text-[#DC2626]');
+    statusEl.className = 'text-2xl font-bold ' + (ok ? 'text-healthy' : 'text-critical');
 
     const br = document.getElementById('readiness-breakdown');
     br.innerHTML = `
@@ -194,14 +194,14 @@
       fs.textContent = (open === 0)
         ? `OK — ${f.closed}+${f.risk_accepted} of ${f.total} disposed`
         : `Open: ${open} of ${f.total}`;
-      fs.className = 'text-2xl font-bold ' + (open === 0 ? 'text-[#10B981]' : 'text-[#DC2626]');
+      fs.className = 'text-2xl font-bold ' + (open === 0 ? 'text-healthy' : 'text-critical');
       document.getElementById('findings-breakdown').innerHTML = `
         <div class="text-center"><div class="text-lg font-semibold text-healthy">${f.closed}</div><div class="text-muted">Closed</div></div>
         <div class="text-center"><div class="text-lg font-semibold text-warning">${f.risk_accepted}</div><div class="text-muted">Accepted</div></div>
         <div class="text-center"><div class="text-lg font-semibold text-critical">${f.open}</div><div class="text-muted">Open</div></div>`;
     } else {
       fs.textContent = '(see CSV-17)';
-      fs.className = 'text-sm font-medium text-[#6B7280]';
+      fs.className = 'text-sm font-medium text-muted';
     }
 
     // SOP cards
@@ -209,7 +209,7 @@
     grid.innerHTML = '';
     for (const s of data.sops) {
       const card = document.createElement('div');
-      card.className = 'bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-3 flex flex-col gap-2';
+      card.className = 'bg-card rounded-lg border border-line p-3 flex flex-col gap-2';
       const cadence = s.cadence_days ? `${s.cadence_days} d cadence` : T.cadence_none;
       const overdueMsg = s.days_overdue > 0 ? `<span class="text-critical text-xs">${s.days_overdue} ${T.days_overdue}</span>` : '';
       card.innerHTML = `
@@ -250,7 +250,7 @@
     for (const [cat, docs] of Object.entries(byCategory)) {
       if (!docs.length) continue;
       const section = document.createElement('div');
-      section.className = 'bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] overflow-hidden';
+      section.className = 'bg-card rounded-lg border border-line overflow-hidden';
       section.innerHTML = `
         <div class="px-4 py-2 border-b border-line text-xs font-semibold uppercase tracking-wide text-muted">${categoryTitles[cat] || cat}</div>
         <ul class="divide-y divide-line">

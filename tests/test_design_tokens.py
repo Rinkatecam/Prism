@@ -130,6 +130,44 @@ def test_dark_hover_pairs_with_light_hover():
         '<b class="hover:text-muted">'
 
 
+# ── classes assigned from JavaScript are still classes ───────────────────
+#
+# 629 literals live outside any `class="…"` attribute — in `className = '…'`
+# assignments and ternary branches that build a class string at runtime. The
+# browser applies them exactly like the ones in the markup, so leaving them
+# behind would mean those elements sitting out the palette change.
+
+def test_a_classname_assignment_is_converted():
+    src = "el.className = 'text-[#6B7280] dark:text-[#CBD5E1] font-medium';"
+    assert dt.convert(src) == "el.className = 'text-muted font-medium';"
+
+
+def test_each_branch_of_a_ternary_is_its_own_class_list():
+    """`ok ? 'text-[#10B981]' : 'text-[#DC2626]'` — two strings, only one of
+    which is ever applied. They cannot pair with each other."""
+    src = "fs.className = 'text-2xl ' + (open === 0 ? 'text-[#10B981]' : 'text-[#DC2626]');"
+    out = dt.convert(src)
+    assert "'text-healthy'" in out and "'text-critical'" in out
+
+
+def test_prose_containing_a_utility_is_left_alone():
+    """The guard on widening the scope. A class list is almost entirely
+    compound words; prose is bare ones. Measured across every candidate
+    string in the templates, the only bare words are `rounded`, `border` and
+    `flex`, so requiring bare words to be utilities costs nothing and stops
+    a sentence from being rewritten as markup."""
+    src = "const msg = 'Check the text-[#DC2626] value before saving';"
+    assert dt.convert(src) == src
+
+
+def test_a_template_literal_holding_markup_is_handled_by_its_inner_attribute():
+    """A JS string containing `<div class="…">` is not itself a class list —
+    the attribute inside it is. Converting the outer string as one would
+    treat `<div` as a class."""
+    src = 'html += \'<div class="text-[#6B7280] dark:text-[#CBD5E1]">x</div>\';'
+    assert dt.convert(src) == 'html += \'<div class="text-muted">x</div>\';'
+
+
 # ── the families the first twelve tokens had no name for ─────────────────
 
 def test_the_input_surface_resolves_past_three_colliding_darks():
