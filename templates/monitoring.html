@@ -145,7 +145,7 @@
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" id="baseline-enabled" class="sr-only peer general-input"
                  {% if settings.get('baseline_detection', {}).get('enabled', true) %}checked{% endif %}>
-          <div class="w-9 h-5 bg-line dark:bg-[#4B5563] peer-checked:bg-brand rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+          <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
         </label>
         <div class="flex items-center gap-1">
           <label class="text-xs text-muted">{{ t.get('sigma_warning', 'Sigma Warning') }}</label>
@@ -187,7 +187,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="baseline-allow-downgrade" class="sr-only peer general-input"
                    {% if settings.get('baseline_detection', {}).get('allow_downgrade', true) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-[#4B5563] peer-checked:bg-brand rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
           <span class="text-xs text-muted">{{ t.get('allow_baseline_downgrade', 'Allow baseline to downgrade') }}</span>
         </div>
@@ -231,7 +231,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="baseline-deviation-requires-authority" class="sr-only peer general-input"
                    {% if settings.get('baseline_detection', {}).get('deviation_requires_authority', true) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-[#4B5563] peer-checked:bg-brand rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
           <span class="text-xs text-muted">{{ t.get('deviation_requires_authority', 'Require mature baseline to alarm') }}</span>
         </div>
@@ -259,7 +259,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="security-failed-login-tracking" class="sr-only peer general-input"
                    {% if settings.get('security_alerts', {}).get('failed_login_tracking', true) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-[#4B5563] peer-checked:bg-critical rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-critical rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
           <span class="text-xs text-muted">{{ t.get('failed_login_tracking', 'Failed Login Tracking') }}</span>
         </div>
@@ -273,7 +273,7 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="security-lockout-alert" class="sr-only peer general-input"
                    {% if settings.get('security_alerts', {}).get('lockout_alert', true) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-line dark:bg-[#4B5563] peer-checked:bg-critical rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-critical rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
           <span class="text-xs text-muted">{{ t.get('lockout_alert', 'Lockout Alert') }}</span>
         </div>
@@ -340,7 +340,7 @@
     <div class="flex items-center gap-3 mb-3">
       <label class="relative inline-flex items-center cursor-pointer">
         <input type="checkbox" id="tls-monitoring-enabled" class="sr-only peer security-input">
-        <div class="w-9 h-5 bg-line dark:bg-[#4B5563] peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+        <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-info dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-info/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
       </label>
       <div class="flex items-center gap-2">
         <span class="text-xs text-muted">{{ t.get('warning_label', 'Warning:') }}</span>
@@ -478,7 +478,7 @@
           <label class="block text-xs font-medium mb-1">{{ t.maint_days }}</label>
           <div class="flex flex-wrap gap-1.5">
             {% for day, label in [(0, 'Mon'), (1, 'Tue'), (2, 'Wed'), (3, 'Thu'), (4, 'Fri'), (5, 'Sat'), (6, 'Sun')] %}
-            <label class="flex items-center gap-1 text-xs cursor-pointer px-2 py-1 rounded border border-line dark:border-[#334155] has-[:checked]:bg-info has-[:checked]:text-white has-[:checked]:border-info">
+            <label class="flex items-center gap-1 text-xs cursor-pointer px-2 py-1 rounded border border-line dark:border-line has-[:checked]:bg-info has-[:checked]:text-white has-[:checked]:border-info">
               <input type="checkbox" value="{{ day }}" class="maint-day-cb sr-only">
               {{ label }}
             </label>
@@ -757,11 +757,11 @@ function loadAlertFatigueDigest() {
           <td class="py-2 pr-3 font-medium text-info">${s.server_name}</td>
           <td class="py-2 pr-3">${s.metric || '-'} / ${s.event_type}</td>
           <td class="py-2 pr-3">
-            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold ${s.score > 70 ? 'bg-critical/10 text-critical dark:bg-[#EF4444]/10 dark:text-[#EF4444]' : s.score > 40 ? 'bg-warning/10 text-warning dark:bg-[#FBBF24]/10 dark:text-[#FBBF24]' : 'bg-muted/10 text-muted '}">${s.score}</span>
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold ${s.score > 70 ? 'bg-critical/10 text-critical dark:bg-critical/10 dark:text-critical' : s.score > 40 ? 'bg-warning/10 text-warning dark:bg-warning/10 dark:text-warning' : 'bg-muted/10 text-muted '}">${s.score}</span>
           </td>
           <td class="py-2 pr-3">${s.fire_count}</td>
           <td class="py-2 pr-3">${s.ack_count}</td>
-          <td class="py-2 text-[10px] ${s.suggestion ? 'text-warning dark:text-[#FBBF24]' : 'text-faint '}">${s.suggestion || '-'}</td>
+          <td class="py-2 text-[10px] ${s.suggestion ? 'text-warning dark:text-warning' : 'text-faint '}">${s.suggestion || '-'}</td>
         </tr>
       `).join('');
       if (typeof lucide !== 'undefined') lucide.createIcons();

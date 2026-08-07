@@ -208,17 +208,17 @@ function setStatusFilter(status) {
       btn.classList.remove('border', 'hover:bg-critical', 'hover:bg-warning', 'hover:bg-healthy', 'hover:bg-faint',
         'hover:bg-[#EF4444]', 'hover:bg-[#FBBF24]', 'hover:bg-[#34D399]', 'hover:bg-muted',
         'text-critical', 'text-warning', 'text-healthy', 'text-faint',
-        'dark:text-[#EF4444]', 'dark:text-[#FBBF24]', 'dark:text-[#34D399]', 'dark:text-[#6B7280]',
+        'dark:text-critical', 'dark:text-warning', 'dark:text-healthy', 'dark:text-[#6B7280]',
         'border-critical', 'border-warning', 'border-healthy', 'border-faint',
-        'dark:border-[#EF4444]', 'dark:border-[#FBBF24]', 'dark:border-[#34D399]', 'dark:border-[#6B7280]');
+        'dark:border-critical', 'dark:border-warning', 'dark:border-healthy', 'dark:border-[#6B7280]');
     } else {
       btn.classList.remove('active', 'bg-info', 'text-white');
       // Restore original border/text classes based on filter type
       const styles = {
-        all: ['border', 'border-line', 'text-muted', 'dark:border-[#334155]', 'dark:text-[#CBD5E1]'],
-        critical: ['border', 'border-critical', 'text-critical', 'dark:border-[#EF4444]', 'dark:text-[#EF4444]', 'hover:bg-critical', 'hover:text-white', 'dark:hover:bg-[#EF4444]'],
-        warning: ['border', 'border-warning', 'text-warning', 'dark:border-[#FBBF24]', 'dark:text-[#FBBF24]', 'hover:bg-warning', 'hover:text-white', 'dark:hover:bg-[#FBBF24]'],
-        healthy: ['border', 'border-healthy', 'text-healthy', 'dark:border-[#34D399]', 'dark:text-[#34D399]', 'hover:bg-healthy', 'hover:text-white', 'dark:hover:bg-[#34D399]'],
+        all: ['border', 'border-line', 'text-muted', 'dark:border-line', 'dark:text-muted'],
+        critical: ['border', 'border-critical', 'text-critical', 'dark:border-critical', 'dark:text-critical', 'hover:bg-critical', 'hover:text-white', 'dark:hover:bg-critical'],
+        warning: ['border', 'border-warning', 'text-warning', 'dark:border-warning', 'dark:text-warning', 'hover:bg-warning', 'hover:text-white', 'dark:hover:bg-warning'],
+        healthy: ['border', 'border-healthy', 'text-healthy', 'dark:border-healthy', 'dark:text-healthy', 'hover:bg-healthy', 'hover:text-white', 'dark:hover:bg-healthy'],
         offline: ['border', 'border-faint', 'text-faint', 'dark:border-[#6B7280]', 'dark:text-[#6B7280]', 'hover:bg-faint', 'hover:text-white', 'dark:hover:bg-[#6B7280]']
       };
       (styles[filter] || styles.all).forEach(c => btn.classList.add(c));
@@ -343,7 +343,7 @@ function loadRestartStatus() {
       const icon = document.getElementById('restart-banner-icon');
       inner.className = 'rounded-lg border p-4 flex items-start gap-3 relative ' +
         (allOk
-          ? 'bg-[#ECFDF5] dark:bg-[#064E3B]/30 border-healthy dark:border-healthy/50 text-healthy-strong dark:text-[#A7F3D0]'
+          ? 'bg-[#ECFDF5] dark:bg-healthy-tint/30 border-healthy dark:border-healthy/50 text-healthy-strong dark:text-[#A7F3D0]'
           : 'bg-warning-tint dark:bg-warning-tint/30 border-warning dark:border-warning/50 text-warning-strong dark:text-[#FDE68A]');
 
       // Title and summary

@@ -483,7 +483,15 @@ def convert(text: str, paired_only: bool = False) -> str:
                 light_utilities.add(key)
                 light_token[key] = token
                 light_alpha[key] = ""
-            # else: leave BOTH halves exactly as they are.
+            elif not paired_only:
+                # No light half to collapse with, so nothing is removed — the
+                # literal is just re-spelled as the token that already holds
+                # this exact value. `dark:border-line` renders #334155 in dark
+                # mode and nothing in light mode, which is what it did before.
+                # Skipped when the value is ambiguous: token_for returns None
+                # rather than guess, and a guess would only surface once the
+                # palette pulled the candidates apart.
+                edits.append((*m.span(), f"dark:{chain}{utility}-{token}{alpha}"))
 
         for start, end, replacement in sorted(edits, reverse=True):
             body = body[:start] + replacement + body[end:]

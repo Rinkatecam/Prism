@@ -47,7 +47,7 @@
           <div class="flex justify-between gap-3"><dt>Path:</dt><dd class="text-right text-[10px] truncate" title="{{ doc.doc_path }}">{{ doc.doc_path }}</dd></div>
         </dl>
 
-        <p class="text-xs text-ink dark:text-[#D1D5DB] mt-3">{{ doc.short_desc }}</p>
+        <p class="text-xs text-ink dark:text-line mt-3">{{ doc.short_desc }}</p>
 
         <hr class="my-4 border-line">
 
@@ -109,7 +109,7 @@
       // Level class drives indent + size in the shared stylesheet.
       // The findings register has 30+ entries — H4 is the level we
       // want navigable here (each finding card is an H4).
-      a.className = 'block py-0.5 truncate text-ink dark:text-[#D1D5DB] toc-l' + item.level;
+      a.className = 'block py-0.5 truncate text-ink dark:text-line toc-l' + item.level;
       a.title = item.text;
       a.dataset.targetId = item.id;
       navEl.appendChild(a);

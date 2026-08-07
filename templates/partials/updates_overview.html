@@ -7,7 +7,7 @@
     <h2 class="text-sm font-semibold flex items-center gap-2">
       <i data-lucide="download-cloud" class="w-4 h-4 text-info"></i>
       {{ t.get('windows_updates', 'Windows Updates') }}
-      <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-info/10 text-info dark:bg-info/20 dark:text-[#60A5FA]">
+      <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-info/10 text-info dark:bg-info/20 dark:text-info-strong">
         {{ items | length }}
       </span>
     </h2>
@@ -29,7 +29,7 @@
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-2 flex-wrap">
           <span class="text-xs font-semibold">{{ it.server_name }}</span>
-          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-info/10 text-info dark:text-[#60A5FA]">
+          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-info/10 text-info dark:text-info-strong">
             {% if it.install_status == 'queued' %}
               <i data-lucide="clock" class="w-3 h-3"></i> {{ t.get('update_queued', 'Queued') }}
             {% elif it.install_status == 'searching' %}
@@ -68,7 +68,7 @@
             </span>
           {% else %}
             {% if it.count > 0 %}
-            <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full {% if it.sev == 'critical' %}bg-critical/10 text-critical {% elif it.sev == 'warning' %}bg-warning/10 text-warning {% else %}bg-info/10 text-info dark:text-[#60A5FA]{% endif %}">
+            <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full {% if it.sev == 'critical' %}bg-critical/10 text-critical {% elif it.sev == 'warning' %}bg-warning/10 text-warning {% else %}bg-info/10 text-info dark:text-info-strong{% endif %}">
               {{ it.count }} {{ t.get('updates', 'updates') }}
             </span>
             {% endif %}

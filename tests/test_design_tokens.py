@@ -93,17 +93,47 @@ def test_builtin_light_class_paired_with_arbitrary_dark_collapses():
 
 
 def test_an_orphan_dark_utility_is_never_deleted():
-    """The safety property behind the bug above: a `dark:` utility may only be
-    removed when something has actually replaced it. Otherwise leave it."""
-    src = '<div class="p-4 dark:bg-[#1E293B]">'
+    """The safety property behind the bug above: a `dark:` utility may only
+    be removed when something has actually replaced it.
+
+    It may be RE-SPELLED, which is a different thing — `dark:bg-card` renders
+    #1E293B in dark mode and nothing in light mode, exactly as before. What
+    must never happen is the value disappearing.
+    """
+    assert dt.convert('<div class="p-4 dark:bg-[#1E293B]">') == \
+        '<div class="p-4 dark:bg-card">'
+
+
+def test_a_dark_only_utility_becomes_a_dark_token_utility():
+    """`dark:border-[#334155]` with no light half at all — 200 of these.
+
+    Inert: in dark mode the token's dark value IS #334155, and in light mode
+    the variant does not apply. But it is the difference between the border
+    following the palette and staying navy after everything around it moves.
+    """
+    assert dt.convert('<div class="dark:border-[#334155]">') == \
+        '<div class="dark:border-line">'
+
+
+def test_an_ambiguous_dark_only_utility_is_left_alone():
+    """#0F172A is the dark half of page, raised AND field. With no light half
+    to disambiguate there is nothing to resolve it, and picking one would be
+    a guess that only shows up after the palette splits them apart."""
+    src = '<div class="p-4 dark:bg-[#0F172A]">'
     assert dt.convert(src) == src
 
 
 def test_builtin_is_only_collapsed_when_the_colours_actually_agree():
     """`bg-white` is #FFFFFF. It must not absorb a token whose light value is
-    something else, or the light theme silently shifts."""
-    src = '<div class="bg-white dark:bg-[#334155]">'   # #334155 is line, light #E5E7EB
-    assert dt.convert(src) == src
+    something else, or the light theme silently shifts.
+
+    #334155 is `line`, whose light value is #E5E7EB — so `bg-white` stays
+    exactly as it is. The dark half may still be re-spelled on its own,
+    which leaves both themes rendering what they rendered before.
+    """
+    out = dt.convert('<div class="bg-white dark:bg-[#334155]">')
+    assert "bg-white" in out, "the light half must not be absorbed"
+    assert out == '<div class="bg-white dark:bg-line">'
 
 
 def test_variant_prefixes_are_preserved():

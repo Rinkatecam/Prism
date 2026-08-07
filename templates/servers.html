@@ -212,7 +212,7 @@
           <i data-lucide="save" class="w-4 h-4"></i>
           {{ t.get('save', 'Save') }}
         </button>
-        <button data-action="toggleHcForm" class="px-4 py-1.5 text-sm font-medium rounded border border-line hover:bg-page dark:hover:bg-[#334155] flex items-center gap-1">
+        <button data-action="toggleHcForm" class="px-4 py-1.5 text-sm font-medium rounded border border-line hover:bg-page dark:hover:bg-line flex items-center gap-1">
           <i data-lucide="x" class="w-4 h-4"></i>
           {{ t.get('cancel', 'Cancel') }}
         </button>
@@ -295,13 +295,13 @@
                  class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
           <div id="dep-service-wrap" class="hidden gap-1">
             <input type="text" id="dep-service-name" class="flex-1 px-2 py-1.5 text-sm rounded border border-line bg-field" placeholder="Service name">
-            <button type="button" data-action="_srvBrowseDepService" class="px-2 py-1.5 text-xs rounded border border-line hover:bg-raised dark:hover:bg-[#334155] flex items-center gap-1" title="Browse from server">
+            <button type="button" data-action="_srvBrowseDepService" class="px-2 py-1.5 text-xs rounded border border-line hover:bg-raised dark:hover:bg-line flex items-center gap-1" title="Browse from server">
               <i data-lucide="list" class="w-3 h-3"></i> Browse
             </button>
           </div>
           <div id="dep-process-wrap" class="hidden gap-1">
             <input type="text" id="dep-process-name" class="flex-1 px-2 py-1.5 text-sm rounded border border-line bg-field" placeholder="Process name">
-            <button type="button" data-action="_srvBrowseDepProcess" class="px-2 py-1.5 text-xs rounded border border-line hover:bg-raised dark:hover:bg-[#334155] flex items-center gap-1" title="Browse from server">
+            <button type="button" data-action="_srvBrowseDepProcess" class="px-2 py-1.5 text-xs rounded border border-line hover:bg-raised dark:hover:bg-line flex items-center gap-1" title="Browse from server">
               <i data-lucide="list" class="w-3 h-3"></i> Browse
             </button>
           </div>
@@ -318,7 +318,7 @@
           <i data-lucide="save" class="w-4 h-4"></i>
           {{ t.get('save', 'Save') }}
         </button>
-        <button data-action="toggleDepForm" class="px-4 py-1.5 text-sm font-medium rounded border border-line hover:bg-page dark:hover:bg-[#334155] flex items-center gap-1">
+        <button data-action="toggleDepForm" class="px-4 py-1.5 text-sm font-medium rounded border border-line hover:bg-page dark:hover:bg-line flex items-center gap-1">
           <i data-lucide="x" class="w-4 h-4"></i>
           {{ t.get('cancel', 'Cancel') }}
         </button>
@@ -629,7 +629,7 @@ Invoke-Command -ComputerName SERVER.DOMAIN.COM -Credential $cred -ScriptBlock { 
   <div class="fixed inset-0 bg-black/50"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
     <div class="bg-card rounded-lg shadow-xl border border-critical/30 w-full max-w-md relative">
-      <div class="flex items-center justify-between p-4 border-b border-[#FCA5A5] dark:border-[#7F1D1D]">
+      <div class="flex items-center justify-between p-4 border-b border-[#FCA5A5] dark:border-critical-tint">
         <h3 class="text-lg font-semibold text-critical flex items-center gap-2">
           <i data-lucide="alert-triangle" class="w-5 h-5"></i>
           <span id="delete-modal-title">{{ t.get('delete_server', 'Delete Server') }}?</span>
@@ -1052,7 +1052,7 @@ function showTestResult(container, result) {
 
 function setTestLoading(container, btn) {
   const box = container.querySelector('.test-result-box');
-  box.className = 'test-result-box rounded p-2 text-sm bg-raised dark:bg-[#334155] text-muted';
+  box.className = 'test-result-box rounded p-2 text-sm bg-raised dark:bg-line text-muted';
   box.innerHTML = '<span class="inline-block animate-spin mr-2">&#9696;</span> Testing connection...';
   container.classList.remove('hidden');
   if (btn) btn.disabled = true;
@@ -1365,7 +1365,7 @@ function discoverServers() {
     list.innerHTML = discoveredServers.map((s, i) => {
       const disabled = s.already_monitored ? 'disabled' : '';
       const opacity = s.already_monitored ? 'opacity-50' : '';
-      const badge = s.already_monitored ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-raised dark:bg-[#334155] text-muted">Monitored</span>' : '';
+      const badge = s.already_monitored ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-raised dark:bg-line text-muted">Monitored</span>' : '';
       return `<label class="flex items-center gap-3 p-2 rounded hover:bg-page dark:hover:bg-page/50 cursor-pointer ${opacity}">
         <input type="checkbox" class="discovery-cb rounded border-gray-300" data-index="${i}" ${disabled}>
         <div class="flex-1 min-w-0">

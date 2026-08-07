@@ -194,7 +194,14 @@ def main() -> int:
                 # alias cannot license an alpha change.
                 base, _, alpha = hexv.partition("/")
                 table = _INTENDED_LIGHT if slot_name == "light" else _INTENDED
-                replacement = {h for kk, s, h in gained
+                # Against the whole AFTER set, not just what was gained. A
+                # class list can already reach the canonical value by another
+                # route — `text-muted dark:text-[#94A3B8]` collapses onto
+                # #CBD5E1, which `text-muted` was producing all along — so the
+                # fold shows up as a pure loss with nothing gained. Reported
+                # as a defect, it is not one, and two of them were enough to
+                # start reading the verifier's output as noise.
+                replacement = {h for kk, s, h in ea
                                if kk == k and s == slot_name}
                 canonical = table.get(base)
                 if canonical and f"{canonical}/{alpha}".rstrip("/") in replacement:

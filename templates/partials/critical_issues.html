@@ -68,7 +68,7 @@
                       or (_vd | dictsort | selectattr('1.kind', 'equalto', 'deviation') | list)) | first %}
       {% if _pick %}
       {% set _pk = _pick[1].get('kind') %}
-      <div class="mt-2 pt-2 border-t border-line flex items-start gap-1.5 text-[11px] leading-snug {% if _pk == 'deviation' %}text-muted dark:text-[#94A3B8] {% elif _pk == 'floor' or issue.status == 'critical' %}text-critical {% else %}text-[#B45309] dark:text-[#FBBF24]{% endif %}">
+      <div class="mt-2 pt-2 border-t border-line flex items-start gap-1.5 text-[11px] leading-snug {% if _pk == 'deviation' %}text-muted dark:text-muted {% elif _pk == 'floor' or issue.status == 'critical' %}text-critical {% else %}text-[#B45309] dark:text-warning{% endif %}">
         <i data-lucide="{% if _pk == 'deviation' %}activity{% elif _pk == 'floor' %}alert-octagon{% else %}alert-triangle{% endif %}"
            class="w-3 h-3 flex-shrink-0 mt-0.5" aria-hidden="true"></i>
         <span class="line-clamp-2">{{ _pick[1].get('reason', '') }}</span>

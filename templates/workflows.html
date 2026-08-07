@@ -451,7 +451,7 @@
 
   <!-- Editor Top Bar -->
   <div class="flex items-center gap-3 px-4 py-2 border-b border-line bg-card flex-shrink-0" style="z-index: 20; position: relative;">
-    <button data-action="closeEditor" class="p-1 rounded hover:bg-raised dark:hover:bg-[#334155]">
+    <button data-action="closeEditor" class="p-1 rounded hover:bg-raised dark:hover:bg-line">
       <i data-lucide="x" class="w-5 h-5"></i>
     </button>
     <input type="text" id="editor-name" placeholder="Workflow name..." class="text-sm font-semibold bg-transparent border-0 border-b border-transparent hover:border-line focus:border-brand outline-none px-1 py-0.5 w-48">
@@ -756,7 +756,7 @@
 <div id="exec-slideout" class="fixed right-0 top-0 bottom-0 w-96 z-[55] hidden bg-card border-l border-line shadow-xl" style="display:none;">
   <div class="flex items-center justify-between p-4 border-b border-line">
     <h3 class="text-sm font-semibold">{{ t.get('execution_detail', 'Execution Detail') }}</h3>
-    <button data-action="closeExecSlideout" class="p-1 rounded hover:bg-raised dark:hover:bg-[#334155]">
+    <button data-action="closeExecSlideout" class="p-1 rounded hover:bg-raised dark:hover:bg-line">
       <i data-lucide="x" class="w-4 h-4"></i>
     </button>
   </div>
@@ -3346,7 +3346,7 @@ document.addEventListener('DOMContentLoaded', () => {
   <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md shadow-xl w-[420px] max-h-[70vh] overflow-hidden flex flex-col">
     <div class="p-4 border-b border-line flex items-center justify-between">
       <h3 class="font-semibold text-sm" id="wf-browse-title">Choose Service</h3>
-      <button data-action="closeBrowseModal" class="p-1 rounded hover:bg-raised dark:hover:bg-[#334155]">
+      <button data-action="closeBrowseModal" class="p-1 rounded hover:bg-raised dark:hover:bg-line">
         <i data-lucide="x" class="w-4 h-4"></i>
       </button>
     </div>

@@ -194,7 +194,7 @@
           </span>
         </div>
         <!-- Desktop collapse toggle (mobile uses the header menu button instead). -->
-        <button data-action="toggle-sidebar" class="sidebar-collapse-btn hidden md:flex items-center justify-center p-1.5 rounded-md hover:bg-raised dark:hover:bg-[#334155] text-muted flex-shrink-0" title="Toggle sidebar" aria-label="Collapse sidebar">
+        <button data-action="toggle-sidebar" class="sidebar-collapse-btn hidden md:flex items-center justify-center p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted flex-shrink-0" title="Toggle sidebar" aria-label="Collapse sidebar">
           <i data-lucide="panel-left" class="w-5 h-5"></i>
         </button>
       </div>
@@ -213,7 +213,7 @@
   <header id="topbar" class="fixed top-0 left-0 right-0 z-[51] h-14 bg-card border-b border-line flex items-center gap-3 px-3 transition-colors duration-200">
     <!-- Mobile-only menu toggle (opens the off-canvas nav). Desktop uses the
          collapse control in the sidebar footer, next to the username. -->
-    <button data-action="toggle-sidebar" class="md:hidden p-1.5 rounded-md hover:bg-raised dark:hover:bg-[#334155] text-muted flex-shrink-0" title="Toggle sidebar" aria-label="Toggle sidebar">
+    <button data-action="toggle-sidebar" class="md:hidden p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted flex-shrink-0" title="Toggle sidebar" aria-label="Toggle sidebar">
       <i data-lucide="panel-left" class="w-5 h-5"></i>
     </button>
     <!-- Brand -->
@@ -241,7 +241,7 @@
     <div id="pulse-panel" class="pulse-panel" role="region"
          aria-label="{{ t.get('pulse_aria_panel', 'Collector activity detail') }}"
          style="display:none"></div>
-    <button data-action="toggle-theme" class="p-1.5 rounded-md hover:bg-raised dark:hover:bg-[#334155] text-muted" title="Toggle theme" aria-label="Toggle dark mode">
+    <button data-action="toggle-theme" class="p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted" title="Toggle theme" aria-label="Toggle dark mode">
       <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
       <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
     </button>
@@ -624,7 +624,7 @@
         document.getElementById('prism-modal-message').innerHTML = message;
         document.getElementById('prism-modal-input').classList.add('hidden');
         document.getElementById('prism-modal-buttons').innerHTML = `
-          <button data-action="modal-cancel" class="px-4 py-1.5 text-sm font-medium rounded-lg border border-line hover:bg-page dark:hover:bg-[#334155]">Cancel</button>
+          <button data-action="modal-cancel" class="px-4 py-1.5 text-sm font-medium rounded-lg border border-line hover:bg-page dark:hover:bg-line">Cancel</button>
           <button data-action="modal-ok" class="px-4 py-1.5 text-sm font-medium rounded-lg bg-critical text-white hover:opacity-90">Confirm</button>`;
         overlay.classList.remove('hidden');
         modal.classList.remove('hidden');
@@ -651,7 +651,7 @@
         document.getElementById('prism-modal-input').classList.add('hidden');
         document.getElementById('prism-modal-buttons').innerHTML =
           '<button data-action="modal-opt-cancel" ' +
-            'class="px-4 py-1.5 text-sm font-medium rounded-lg border border-line hover:bg-page dark:hover:bg-[#334155]">Cancel</button>' +
+            'class="px-4 py-1.5 text-sm font-medium rounded-lg border border-line hover:bg-page dark:hover:bg-line">Cancel</button>' +
           '<button data-action="modal-opt-ok" ' +
             'class="px-4 py-1.5 text-sm font-medium rounded-lg bg-critical text-white hover:opacity-90">Confirm</button>';
         overlay.classList.remove('hidden');
@@ -675,7 +675,7 @@
         input.value = defaultValue || '';
         input.focus();
         document.getElementById('prism-modal-buttons').innerHTML = `
-          <button data-action="modal-prompt-cancel" class="px-4 py-1.5 text-sm font-medium rounded-lg border border-line hover:bg-page dark:hover:bg-[#334155]">Cancel</button>
+          <button data-action="modal-prompt-cancel" class="px-4 py-1.5 text-sm font-medium rounded-lg border border-line hover:bg-page dark:hover:bg-line">Cancel</button>
           <button data-action="modal-prompt-ok" class="px-4 py-1.5 text-sm font-medium rounded-lg bg-brand text-white hover:opacity-90">OK</button>`;
         overlay.classList.remove('hidden');
         modal.classList.remove('hidden');

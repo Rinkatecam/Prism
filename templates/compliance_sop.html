@@ -150,7 +150,7 @@
       // _compliance_doc_styles.html. Truncate so a long finding title
       // ("F-075 — No static-analysis enforcement of universal RBAC")
       // doesn't wrap and break the sidebar grid.
-      a.className = 'block py-0.5 truncate text-ink dark:text-[#D1D5DB] toc-l' + item.level;
+      a.className = 'block py-0.5 truncate text-ink dark:text-line toc-l' + item.level;
       a.title = item.text;  // hover-tooltip when truncated
       a.dataset.targetId = item.id;
       navEl.appendChild(a);
