@@ -99,14 +99,23 @@
           </tr>
           <tr id="server-info-{{ loop.index0 }}" style="display:none;">
             <td colspan="6" class="px-0 py-0 border-0">
+              {# The grid child must carry NO padding. A 0fr track's automatic
+                 minimum is the item's CONTENT size plus its padding, so with
+                 `py-2` on this element the panel floored at 16px instead of
+                 collapsing — it held a visible 16px band for 218ms and then
+                 snapped to nothing when display:none landed. `min-height:0`
+                 does not help; padding is not what it reaches. Measured:
+                 16px with the padding here, 0px with it one level in. #}
               <div class="server-info-panel grid transition-[grid-template-rows] duration-slow ease-standard" style="grid-template-rows:0fr;">
-                <div class="overflow-hidden py-2 px-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted bg-page dark:bg-page/50">
-                  <span class="server-info-status"></span>
+                <div class="overflow-hidden min-h-0">
+                  <div class="py-2 px-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted bg-page dark:bg-page/50">
+                    <span class="server-info-status"></span>
 
-                  <span class="server-info-transport"></span>
-                  <span class="server-info-auth"></span>
-                  <span class="server-info-metrics"></span>
-                  <span class="server-info-lastcheck"></span>
+                    <span class="server-info-transport"></span>
+                    <span class="server-info-auth"></span>
+                    <span class="server-info-metrics"></span>
+                    <span class="server-info-lastcheck"></span>
+                  </div>
                 </div>
               </div>
             </td>

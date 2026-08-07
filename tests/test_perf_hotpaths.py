@@ -385,6 +385,32 @@ def test_cleanup_timeouts_read_dur_slow_at_runtime_not_hardcoded():
         )
 
 
+
+def _dur_slow_helper_files() -> list[tuple[str, str]]:
+    """(name, text) for EVERY template defining a --dur-slow reader.
+
+    Discovered, not listed. The first version of these tests hardcoded three
+    files; three more copies existed under a second name (`_durSlowMs` rather
+    than `getDurSlowMs`), added by a different author, and a wrong fallback
+    or a dropped unit branch in any of those three passed green.
+
+    This is the failure the commit that introduced them named in its own
+    message — "the scope of a check has to be the scope of the thing it
+    checks" — committed in the same breath as the sentence.
+    """
+    root = Path(__file__).resolve().parent.parent
+    out = []
+    for path in sorted((root / "templates").rglob("*.html")):
+        text = path.read_text(encoding="utf-8")
+        if re.search(r"function\s+_?[gG]etDurSlowMs\s*\(|function\s+_durSlowMs\s*\(", text):
+            out.append((path.name, text))
+    assert len(out) >= 6, (
+        f"expected at least 6 files defining a --dur-slow reader, found "
+        f"{len(out)}: {[n for n, _ in out]} — if a copy was removed, lower "
+        f"this floor deliberately rather than letting coverage shrink silently"
+    )
+    return out
+
 def test_dur_slow_fallback_matches_css_token():
     """Each of the three templates' DUR_SLOW_FALLBACK_MS (used only when
     getComputedStyle can't resolve the custom property) must stay
@@ -399,15 +425,11 @@ def test_dur_slow_fallback_matches_css_token():
     assert m, "app.css no longer defines --dur-slow in ms"
     token_ms = float(m.group(1))
 
-    for path, html in (
-        (SERVERS_HTML, servers_html()),
-        (SETTINGS_HTML, settings_html()),
-        (MONITORING_HTML, monitoring_html()),
-    ):
+    for name, html in _dur_slow_helper_files():
         fm = re.search(r"DUR_SLOW_FALLBACK_MS\s*=\s*([\d.]+)", html)
-        assert fm, f"{path.name} has no DUR_SLOW_FALLBACK_MS fallback constant"
+        assert fm, f"{name} has no DUR_SLOW_FALLBACK_MS fallback constant"
         assert float(fm.group(1)) == token_ms, (
-            f"{path.name}'s DUR_SLOW_FALLBACK_MS ({fm.group(1)}) does not "
+            f"{name}'s DUR_SLOW_FALLBACK_MS ({fm.group(1)}) does not "
             f"match app.css's --dur-slow ({token_ms}ms)"
         )
 
@@ -423,16 +445,19 @@ def test_get_dur_slow_ms_parses_ms_and_bare_seconds():
     silently be wrong. Since this suite can't execute JS, this test instead
     asserts the branching logic is present in the source.
     """
-    for path, html in (
-        (SERVERS_HTML, servers_html()),
-        (SETTINGS_HTML, settings_html()),
-        (MONITORING_HTML, monitoring_html()),
-    ):
-        fn_start = html.index("function getDurSlowMs()")
-        fn_end = html.index("\n}", fn_start)
-        body = html[fn_start:fn_end]
+    for name, html in _dur_slow_helper_files():
+        m = re.search(r"function\s+_?(?:get)?[dD]urSlowMs\s*\(", html)
+        assert m, f"{name} lost its --dur-slow reader"
+        fn_start = m.start()
+        # Indentation-tolerant: three of the six copies are nested inside a
+        # callback and close with "\n  }", not "\n}". Keyed on the literal
+        # the first version used, this raised ValueError rather than
+        # reporting a real result.
+        close = re.compile(r"\n\s*\}").search(html, fn_start)
+        assert close, f"{name}'s --dur-slow reader has no closing brace"
+        body = html[fn_start:close.start()]
         assert re.search(r"endsWith\(\s*'ms'\s*\)", body), (
-            f"{path.name}'s getDurSlowMs() no longer branches on a 'ms' "
+            f"{name}'s --dur-slow reader no longer branches on a 'ms' "
             "suffix -- a token authored in bare seconds would be "
             "misinterpreted as milliseconds (500x too long)"
         )

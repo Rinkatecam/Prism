@@ -192,7 +192,18 @@ def test_no_template_uses_a_motion_utility_off_the_scale():
         + "\n  ".join(offenders))
 
 
-_RAW_TRANSITION = re.compile(r"transition[^;`\"'{}]*")
+# `animation` as well as `transition`. The app.css check beside this one
+# has covered both since it was written; the template version checked only
+# `transition` and missed `animation: wf-ctx-pop 0.15s` — a context-menu
+# entrance, which is exactly the "how long it takes to GET somewhere" case
+# the loop exemption is NOT meant to cover.
+#
+# Anchored on a word boundary and required to be followed by a colon, so it
+# cannot start matching inside the English word "transition" in help text.
+# One template says "they fire on the transition, not every poll" in a <p>,
+# and the unanchored version swallowed 172 characters of prose — a finding
+# a contributor could only clear by rewording documentation.
+_RAW_TRANSITION = re.compile(r"\b(?:transition|animation)\s*:[^;`\"'{}]*")
 _RAW_DURATION = re.compile(r"(?<![\w.-])(\d*\.?\d+)(ms|s)(?![\w.-])")
 
 
