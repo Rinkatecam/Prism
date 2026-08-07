@@ -128,9 +128,36 @@ def effective(body: str) -> set[tuple[str, str, str]]:
     return out
 
 
+def _leaked_light(before: set[tuple[str, str, str]], k: str, gained: str) -> str:
+    """Which light value was leaking into dark mode, for this gained dark one.
+
+    Not simply "a light value on this key". One class attribute routinely
+    carries several mutually-exclusive Jinja branches — `bg-[#10B981]` in one,
+    `bg-[#DC2626]` in another — so picking the first reported
+    `bg: dark was #10B981 -> #EF4444`, a green light half gaining a red dark,
+    which is nonsense and would have been read as a conversion bug. Match on
+    the token that actually owns the gained value.
+    """
+    base, _, alpha = gained.partition("/")
+    for _kk, slot, hexv in sorted(before):
+        if _kk != k or slot != "light":
+            continue
+        lbase, _, lalpha = hexv.partition("/")
+        token = dt.token_for(lbase, is_dark=False)
+        if token and dt.TOKENS[token][1].upper() == base and lalpha == alpha:
+            return hexv
+    return "(ambiguous)"
+
+
 def main() -> int:
     paired_only = "--paired-only" in sys.argv[1:]
+    by_file = "--by-file" in sys.argv[1:]
     intended = Counter()
+    # Spec §5: the utilities with no dark half change dark mode when they are
+    # tokenised, and that change is supposed to be INSPECTED rather than
+    # absorbed. `--by-file` is what makes that inspection possible — per page,
+    # which utility, what leaked, what it becomes.
+    per_file: dict[str, Counter] = {}
     unexpected: list[str] = []
     files = 0
 
@@ -172,9 +199,19 @@ def main() -> int:
                     # No dark value existed: the light colour was leaking into
                     # dark mode. This is the 870-utility fix the spec predicts.
                     intended[f"dark-mode value added  ({hexv})"] += 1
+                    per_file.setdefault(rel, Counter())[
+                        f"{k}: {_leaked_light(eb, k, hexv)} -> {hexv}"] += 1
 
     mode = "paired-only" if paired_only else "full"
     print(f"scanned {files} templates that the converter changes  [{mode}]\n")
+
+    if by_file:
+        for rel in sorted(per_file):
+            rows = per_file[rel]
+            print(f"{rel}  ({sum(rows.values())} elements gain a dark value)")
+            for line, n in sorted(rows.items()):
+                print(f"  {n:>4}x  {line}")
+            print()
     print("INTENDED alias collapses (dark-mode consolidation):")
     for k, n in intended.most_common():
         print(f"  {n:>5}  {k}")
