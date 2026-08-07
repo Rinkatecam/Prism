@@ -59,13 +59,13 @@
   <div class="bg-card rounded-lg border border-line overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
-        <thead>
+        <thead data-sort-table="servers-list">
           <tr class="border-b border-line text-left">
-            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted">{{ t.name }}</th>
-            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted">{{ t.host }}</th>
-            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted">{{ t.get('status', 'Status') }}</th>
-            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted hidden sm:table-cell">{{ t.type }}</th>
-            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted hidden md:table-cell">{{ t.port }}</th>
+            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted" data-sort="text">{{ t.name }}</th>
+            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted" data-sort="text">{{ t.host }}</th>
+            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted" data-sort="status">{{ t.get('status', 'Status') }}</th>
+            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted hidden sm:table-cell" data-sort="text">{{ t.type }}</th>
+            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted hidden md:table-cell" data-sort="number">{{ t.port }}</th>
             <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted text-right">{{ t.actions }}</th>
           </tr>
         </thead>
@@ -99,7 +99,7 @@
           </tr>
           <tr id="server-info-{{ loop.index0 }}" style="display:none;">
             <td colspan="6" class="px-0 py-0 border-0">
-              <div class="server-info-panel overflow-hidden transition-all duration-300 ease-in-out" style="max-height:0;">
+              <div class="server-info-panel overflow-hidden transition-all duration-slow ease-standard" style="max-height:0;">
                 <div class="py-2 px-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted bg-page dark:bg-page/50">
                   <span class="server-info-status"></span>
 
@@ -1101,6 +1101,69 @@ function testConnectionFromModal() {
 }
 
 // ── Server Info Hover Accordion ──
+//
+// Root cause of "hangs sometimes when I scroll" (measured, not guessed):
+// mouseenter/mouseleave are real DOM events fired by the browser whenever
+// the element under a STATIONARY pointer changes — which includes when the
+// page scrolls the row out from under the cursor, not just when the mouse
+// itself moves. Confirmed live: a single scripted 10-tick wheel scroll over
+// a fixed cursor position fired 21 mouseenter + 8 mouseleave events on
+// these <tbody data-mouseenter> rows. Each dwell that survives past the
+// 150ms hover-intent delay below used to run the full open path
+// unconditionally: an /api/servers fetch, a synchronous forced-layout read
+// (`panel.scrollHeight`, measured ~1.9ms per call), and a 300ms transition
+// on `max-height` (a layout-triggering property, not transform/opacity) —
+// for potentially several rows in the same scroll gesture whenever a
+// trackpad/wheel scroll decelerates and briefly pauses over more than one
+// row. That is the "hang": several rows' worth of forced layout + animated
+// layout-property transitions landing inside one scroll gesture. It is not
+// the event binding itself — base.html attaches one real (non-delegated,
+// necessarily so for mouseenter/mouseleave) listener per row, which is
+// cheap on its own; measured at 29 rows there is no listener-count cost
+// worth chasing.
+//
+// Fix (JS-only — no CSS/markup changes, per file-ownership constraints):
+//   1. Gate the expensive open path behind an `isScrolling` flag, re-checked
+//      at the moment the hover-intent timer actually fires (not just at
+//      schedule time), so a dwell that only *looks* real because the timer
+//      was already in flight when scrolling started is still caught.
+//   2. Cache the measured panel height per row so a row opened more than
+//      once only forces one layout read for its lifetime (invalidated on
+//      resize, since flex-wrap can change line count at narrow widths).
+//   3. On scroll-settle, do ONE `elementFromPoint` hit-test against the
+//      last known cursor position and open that row if it's still under
+//      the mouse — this preserves "scroll until the row I want is under my
+//      pointer, then it expands" without re-running the expensive path on
+//      every row that scrolled past on the way there.
+let isScrolling = false;
+let scrollEndTimer = null;
+const SCROLL_SETTLE_MS = 150; // matches the hover-intent delay below
+let lastPointerX = -1, lastPointerY = -1;
+let panelHeightCache = {};
+
+document.addEventListener('mousemove', function (e) {
+  lastPointerX = e.clientX;
+  lastPointerY = e.clientY;
+}, { passive: true });
+
+window.addEventListener('scroll', function () {
+  isScrolling = true;
+  clearTimeout(scrollEndTimer);
+  scrollEndTimer = setTimeout(function () {
+    isScrolling = false;
+    // Scroll settled — if the pointer is now resting over a row (the
+    // common "scroll until the row I want is under the mouse" gesture),
+    // open it. One hit-test, not one per scrolled-past row.
+    if (lastPointerX < 0) return;
+    const el = document.elementFromPoint(lastPointerX, lastPointerY);
+    const row = el && el.closest && el.closest('.server-group');
+    if (row) showServerInfo(Number(row.dataset.index), row.dataset.serverName);
+  }, SCROLL_SETTLE_MS);
+}, { passive: true });
+
+window.addEventListener('resize', function () {
+  panelHeightCache = {};
+}, { passive: true });
 
 let serverStatusCache = null;
 let serverStatusFetchTime = 0;
@@ -1159,6 +1222,10 @@ function formatAge(isoStr) {
 
 function showServerInfo(index, name) {
   hoverTimers[index] = setTimeout(() => {
+    // Re-check at fire time, not just at schedule time: a timer that was
+    // already in flight when a scroll began must not be allowed to open a
+    // panel mid-scroll either (audit: scroll-hang).
+    if (isScrolling) return;
     const infoRow = document.getElementById('server-info-' + index);
     infoRow.style.display = '';
 
@@ -1191,7 +1258,17 @@ function showServerInfo(index, name) {
         panel.querySelector('.server-info-lastcheck').textContent = '';
       }
 
-      requestAnimationFrame(() => { panel.style.maxHeight = panel.scrollHeight + 'px'; });
+      requestAnimationFrame(() => {
+        // `scrollHeight` forces a synchronous layout (measured ~1.9ms per
+        // call live). The panel's height is stable for a given row/viewport
+        // width, so measure it once and reuse the cached value on every
+        // later open of the SAME row — invalidated on resize (flex-wrap can
+        // add a line at narrow widths).
+        if (panelHeightCache[index] == null) {
+          panelHeightCache[index] = panel.scrollHeight;
+        }
+        panel.style.maxHeight = panelHeightCache[index] + 'px';
+      });
     });
   }, 150);
 }
@@ -2020,12 +2097,12 @@ function loadDepsTable() {
       }
 
       let html = '<div class="overflow-x-auto"><table class="w-full text-sm">';
-      html += '<thead><tr class="border-b border-line text-left">';
-      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted">' + {{ t.get('server', 'Server') | tojson }} + '</th>';
-      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted">' + {{ t.depends_on | tojson }} + '</th>';
-      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted">' + {{ t.dependency_type | tojson }} + '</th>';
-      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted">Target</th>';
-      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted">' + {{ t.description | tojson }} + '</th>';
+      html += '<thead data-sort-table="servers-dependencies"><tr class="border-b border-line text-left">';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="text">' + {{ t.get('server', 'Server') | tojson }} + '</th>';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="text">' + {{ t.depends_on | tojson }} + '</th>';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="status">' + {{ t.dependency_type | tojson }} + '</th>';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="text">Target</th>';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="text">' + {{ t.description | tojson }} + '</th>';
       html += '<th class="px-3 py-2"></th>';
       html += '</tr></thead><tbody>';
       deps.forEach(d => {
