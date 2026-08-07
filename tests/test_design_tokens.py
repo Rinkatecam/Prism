@@ -130,6 +130,58 @@ def test_dark_hover_pairs_with_light_hover():
         '<b class="hover:text-muted">'
 
 
+# ── splitting the conversion into two reviewable halves ──────────────────
+#
+# Spec §5: Phase 1a must be visually inert, and the ONE honest exception —
+# the utilities that set a light colour with no `dark:` counterpart, which
+# leaks straight into dark mode — gets its own commit so those changes are
+# inspected rather than absorbed into a 5,000-line diff. `paired_only=True`
+# is that split.
+
+def test_paired_only_leaves_an_unpaired_light_utility_alone():
+    """Converting this ADDS a dark value where none existed. Real change, so
+    it belongs in the commit that lists the changes, not the bulk one."""
+    src = '<p class="text-[#6B7280]">x</p>'
+    assert dt.convert(src, paired_only=True) == src
+    assert dt.convert(src) == '<p class="text-muted">x</p>'
+
+
+def test_paired_only_still_collapses_a_real_pair():
+    """Both halves already exist, so the token renders the same two colours."""
+    before = '<span class="text-[#6B7280] dark:text-[#CBD5E1]">x</span>'
+    assert dt.convert(before, paired_only=True) == '<span class="text-muted">x</span>'
+
+
+def test_paired_only_still_collapses_a_builtin_pair():
+    """`bg-white dark:bg-[#1E293B]` is paired — the light half just isn't an
+    arbitrary value. 275 elements; excluding them would strand the dark half."""
+    before = '<div class="bg-white dark:bg-[#1E293B] p-6">'
+    assert dt.convert(before, paired_only=True) == '<div class="bg-card p-6">'
+
+
+def test_paired_only_is_scoped_per_variant_chain():
+    """A `dark:hover:` counterpart pairs with `hover:`, not with the base."""
+    src = '<a class="text-[#6B7280] dark:hover:text-[#CBD5E1]">'
+    assert dt.convert(src, paired_only=True) == src, \
+        "the base light utility has no base dark counterpart"
+
+
+def test_the_two_passes_reach_the_same_place_as_one():
+    """The split is a review device, not a semantic change.
+
+    Task 6 (paired) followed by Task 7 (the rest) must land on exactly the
+    output a single full pass produces — otherwise the two-commit sequence
+    quietly ships something the verifier never checked. Asserted on the real
+    templates, because the interesting shapes are the ones nobody would think
+    to write by hand.
+    """
+    for path in sorted((PROJECT_ROOT / "templates").rglob("*.html")):
+        source = path.read_text(encoding="utf-8")
+        staged = dt.convert(dt.convert(source, paired_only=True))
+        assert staged == dt.convert(source), \
+            f"{path.name}: two-pass conversion diverges from one-pass"
+
+
 def test_css_uses_channel_triplets_not_hex():
     """A bare hex inside var() breaks Tailwind's opacity modifier, and 329
     sites depend on it. The format is a requirement, not a preference."""

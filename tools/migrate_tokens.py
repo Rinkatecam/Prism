@@ -27,6 +27,11 @@ def main() -> int:
     parser.add_argument("paths", nargs="+", help="template files to convert")
     parser.add_argument("--check", action="store_true",
                         help="report what would change, write nothing")
+    parser.add_argument("--paired-only", action="store_true",
+                        help="convert only utilities that already have a dark: "
+                             "counterpart, so both themes render identically. "
+                             "The unpaired ones change dark mode and get their "
+                             "own commit — see DESIGN_TOKENS_SPEC.md §5.")
     args = parser.parse_args()
 
     changed = total_before = total_after = 0
@@ -37,7 +42,7 @@ def main() -> int:
             print(f"  skipped (not a file): {path}", file=sys.stderr)
             continue
         before = path.read_text(encoding="utf-8")
-        after = dt.convert(before)
+        after = dt.convert(before, paired_only=args.paired_only)
         n_before = len(_LITERAL.findall(before))
         n_after = len(_LITERAL.findall(after))
         total_before += n_before

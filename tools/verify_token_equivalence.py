@@ -100,13 +100,14 @@ def effective(body: str) -> set[tuple[str, str, str]]:
 
 
 def main() -> int:
+    paired_only = "--paired-only" in sys.argv[1:]
     intended = Counter()
     unexpected: list[str] = []
     files = 0
 
     for path in sorted((REPO_ROOT / "templates").rglob("*.html")):
         before = path.read_text(encoding="utf-8")
-        after = dt.convert(before)
+        after = dt.convert(before, paired_only=paired_only)
         if before == after:
             continue
         files += 1
@@ -138,12 +139,22 @@ def main() -> int:
                     # dark mode. This is the 870-utility fix the spec predicts.
                     intended[f"dark-mode value added  ({hexv})"] += 1
 
-    print(f"scanned {files} templates that the converter changes\n")
+    mode = "paired-only" if paired_only else "full"
+    print(f"scanned {files} templates that the converter changes  [{mode}]\n")
     print("INTENDED alias collapses (dark-mode consolidation):")
     for k, n in intended.most_common():
         print(f"  {n:>5}  {k}")
     if not intended:
         print("  (none)")
+
+    if paired_only:
+        # The whole point of the paired pass: a utility that had no dark half
+        # is left alone, so nothing GAINS a dark value here. If one did, the
+        # pass is not the inert half it claims to be.
+        added = sum(n for k, n in intended.items() if k.startswith("dark-mode value added"))
+        if added:
+            unexpected.append(
+                f"paired-only pass added {added} dark-mode value(s) — it must add none")
 
     print(f"\nUNEXPECTED differences: {len(unexpected)}")
     for line in unexpected[:25]:

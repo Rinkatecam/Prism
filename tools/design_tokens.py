@@ -130,7 +130,7 @@ def token_for(hex_value: str, is_dark: bool) -> str | None:
     return (_DARK if is_dark else _LIGHT).get(hex_value.upper())
 
 
-def convert(text: str) -> str:
+def convert(text: str, paired_only: bool = False) -> str:
     """Rewrite arbitrary-colour utilities inside class="..." to token classes.
 
     A light utility and its `dark:` counterpart collapse to ONE class, because
@@ -145,11 +145,27 @@ def convert(text: str) -> str:
       * An unmapped colour is left exactly as it was. A partial conversion is
         fine — the guardrail test reports the residue. A wrong conversion is
         not, because nothing downstream would catch it.
+
+    `paired_only=True` additionally skips any light utility that has no
+    `dark:` counterpart. Those 870 utilities leak their light colour straight
+    into dark mode, so tokenising one is a real change — the spec puts them in
+    their own commit, listed, rather than buried in the mechanical bulk. The
+    two passes provably land where a single pass would; there is a test over
+    the real templates asserting exactly that.
     """
     def rewrite(match: re.Match) -> str:
         body = match.group(1)
         replacements: list[tuple[str, str]] = []
         light_utilities: set[str] = set()
+
+        # Which utilities have a dark half at all? Needed BEFORE pass 1 under
+        # `paired_only`, and keyed by the full variant chain so `hover:` and
+        # the base utility are never mistaken for each other.
+        has_dark: set[str] = set()
+        for m in _UTIL.finditer(body):
+            is_dark, chain = _split_variants(m.group("variants"))
+            if is_dark:
+                has_dark.add(chain + m.group("util") + (m.group("side") or ""))
 
         # Pass 1 — light arbitrary values become tokens. The KEY includes the
         # variant chain, so `hover:bg` and `bg` never pair with each other.
@@ -163,6 +179,8 @@ def convert(text: str) -> str:
                 continue
             utility = m.group("util") + (m.group("side") or "")
             key = chain + utility
+            if paired_only and key not in has_dark:
+                continue
             light_utilities.add(key)
             light_token[key] = token
             replacements.append(
