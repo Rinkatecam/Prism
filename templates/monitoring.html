@@ -580,6 +580,22 @@ function loadConfig() {
 // Save Monitoring Settings (baseline_detection, security_alerts, tls_monitoring)
 // ═══════════════════════════════════════════════════════════════
 
+// AUDIT FIX (DEFECT 3): #save-bar's hide transition moved from duration-300
+// to duration-slow (--dur-slow, 320ms) but the cleanup timeout below still
+// hardcoded 300. Read the live custom property instead, so a future retune
+// of --dur-slow doesn't leave this racing ahead of the transition. The
+// fallback below only covers a browser that can't resolve the custom
+// property; tests/test_perf_hotpaths.py asserts it stays numerically equal
+// to app.css's --dur-slow so the fallback can't quietly drift from the token
+// it stands in for.
+const DUR_SLOW_FALLBACK_MS = 320;
+function getDurSlowMs() {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--dur-slow').trim();
+  const num = parseFloat(raw);
+  if (!raw || isNaN(num)) return DUR_SLOW_FALLBACK_MS;
+  return raw.endsWith('ms') ? num : num * 1000;
+}
+
 function saveMonitoringSettings() {
   const data = { settings: {} };
 
@@ -661,7 +677,7 @@ function saveMonitoringSettings() {
       // Hide save bar
       const bar = document.getElementById('save-bar');
       bar.classList.add('translate-y-full');
-      setTimeout(() => bar.classList.add('hidden'), 300);
+      setTimeout(() => bar.classList.add('hidden'), getDurSlowMs());
       window.scrollTo({ top: 0, behavior: 'smooth' });
       setTimeout(() => location.reload(), 800);
     } else {

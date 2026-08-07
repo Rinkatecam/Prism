@@ -99,8 +99,8 @@
           </tr>
           <tr id="server-info-{{ loop.index0 }}" style="display:none;">
             <td colspan="6" class="px-0 py-0 border-0">
-              <div class="server-info-panel overflow-hidden transition-all duration-slow ease-standard" style="max-height:0;">
-                <div class="py-2 px-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted bg-page dark:bg-page/50">
+              <div class="server-info-panel grid transition-[grid-template-rows] duration-slow ease-standard" style="grid-template-rows:0fr;">
+                <div class="overflow-hidden py-2 px-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted bg-page dark:bg-page/50">
                   <span class="server-info-status"></span>
 
                   <span class="server-info-transport"></span>
@@ -1122,28 +1122,49 @@ function testConnectionFromModal() {
 // cheap on its own; measured at 29 rows there is no listener-count cost
 // worth chasing.
 //
-// Fix (JS-only — no CSS/markup changes, per file-ownership constraints):
+// Fix (JS-only for the timer defect below; the panel's height mechanism was
+// also changed — see the DEFECT 2 note further down):
 //   1. Gate the expensive open path behind an `isScrolling` flag, re-checked
 //      at the moment the hover-intent timer actually fires (not just at
 //      schedule time), so a dwell that only *looks* real because the timer
 //      was already in flight when scrolling started is still caught.
-//   2. Cache the measured panel height per row so a row opened more than
-//      once only forces one layout read for its lifetime (invalidated on
-//      resize, since flex-wrap can change line count at narrow widths).
-//   3. On scroll-settle, do ONE `elementFromPoint` hit-test against the
+//   2. On scroll-settle, do ONE `elementFromPoint` hit-test against the
 //      last known cursor position and open that row if it's still under
 //      the mouse — this preserves "scroll until the row I want is under my
 //      pointer, then it expands" without re-running the expensive path on
 //      every row that scrolled past on the way there.
+//
+// AUDIT FIX (stuck-open panel): this scroll-settle path calls showServerInfo()
+// directly, as a SECOND independent scheduler alongside the mouseenter one.
+// mouseenter/mouseleave can never alias hoverTimers[index] on their own (the
+// browser never fires two mouseenter without an intervening mouseleave), but
+// this second caller can — it can run while a mouseenter timer for the same
+// row is still pending, and showServerInfo() used to overwrite
+// hoverTimers[index] with the new timer's id with no clearTimeout first,
+// orphaning the first one. hideServerInfo() only ever clears the survivor,
+// so the orphaned timer fires later, on a row nothing is pointing at, and
+// nothing left to fire is left to close it (mouseleave already ran). Fixed
+// at the source: showServerInfo() now clears any pending timer for the row
+// before scheduling a new one, so no caller can alias it.
+//
+// AUDIT FIX (stale pointer): lastPointerX/Y used to survive the pointer
+// leaving the document entirely. A wheel, keyboard or scrollbar scroll fired
+// while the mouse was off-window (or never on the page at all) would then
+// hit-test against a stale, unrelated position. Invalidated on `mouseleave`
+// on the document, matching the "pointer-inside" flag suggested in review.
 let isScrolling = false;
 let scrollEndTimer = null;
 const SCROLL_SETTLE_MS = 150; // matches the hover-intent delay below
 let lastPointerX = -1, lastPointerY = -1;
-let panelHeightCache = {};
 
 document.addEventListener('mousemove', function (e) {
   lastPointerX = e.clientX;
   lastPointerY = e.clientY;
+}, { passive: true });
+
+document.addEventListener('mouseleave', function () {
+  lastPointerX = -1;
+  lastPointerY = -1;
 }, { passive: true });
 
 window.addEventListener('scroll', function () {
@@ -1161,9 +1182,25 @@ window.addEventListener('scroll', function () {
   }, SCROLL_SETTLE_MS);
 }, { passive: true });
 
-window.addEventListener('resize', function () {
-  panelHeightCache = {};
-}, { passive: true });
+// AUDIT FIX (DEFECT 3 — hardcoded 300ms against a 320ms token): the panel's
+// close-then-hide cleanup timeout used to hardcode 300, one migration commit
+// after `.server-info-panel` moved from `duration-300` to `duration-slow`
+// (--dur-slow, 320ms in app.css). Invisible today because 300/320 of a
+// hard-decelerating curve is ~99% done, but the whole point of the token is
+// that it can be retuned centrally — the first retune to something further
+// out cuts this cleanup off early, leaving the row's display toggled early
+// while the transition is still visibly running. Read the live value instead
+// of hardcoding it. DUR_SLOW_FALLBACK_MS only covers a browser that can't
+// resolve the custom property; tests/test_perf_hotpaths.py asserts it stays
+// numerically equal to app.css's --dur-slow so the fallback itself can't
+// quietly drift from the token it stands in for.
+const DUR_SLOW_FALLBACK_MS = 320;
+function getDurSlowMs() {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--dur-slow').trim();
+  const num = parseFloat(raw);
+  if (!raw || isNaN(num)) return DUR_SLOW_FALLBACK_MS;
+  return raw.endsWith('ms') ? num : num * 1000;
+}
 
 let serverStatusCache = null;
 let serverStatusFetchTime = 0;
@@ -1221,6 +1258,15 @@ function formatAge(isoStr) {
 }
 
 function showServerInfo(index, name) {
+  // AUDIT FIX (DEFECT 1 — stuck-open panel): this is the second caller of
+  // showServerInfo() (the scroll-settle hit-test above is the first) and the
+  // two can race — a mouseenter timer can still be pending when scroll-settle
+  // fires for the same row. Without clearing it first, the second call used
+  // to overwrite hoverTimers[index] and orphan the first timer, which then
+  // fired ~750ms later (150ms delay, minus whatever had already elapsed)
+  // with no mouseleave left to come and close it. Clearing unconditionally
+  // here means no caller, present or future, can alias this timer slot.
+  clearTimeout(hoverTimers[index]);
   hoverTimers[index] = setTimeout(() => {
     // Re-check at fire time, not just at schedule time: a timer that was
     // already in flight when a scroll began must not be allowed to open a
@@ -1258,16 +1304,27 @@ function showServerInfo(index, name) {
         panel.querySelector('.server-info-lastcheck').textContent = '';
       }
 
+      // AUDIT FIX (DEFECT 2 — stale height cache): this used to measure
+      // `panel.scrollHeight` once per row and cache it, invalidated only on
+      // `resize`. The panel's content comes from /api/servers and changes
+      // independently of viewport width — a server that starts reporting
+      // metrics after its first hover, a `Disk D:` clause that only appears
+      // conditionally, a status word of a different length — every one of
+      // those grows the real content height while the cached max-height stays
+      // put, clipping the new line for the rest of the tab's life. Also,
+      // nothing ever fired a resize event for the one thing that DOES change
+      // viewport width from JS: toggleSidebar() in base.html sets
+      // sidebar.style.width directly, no event dispatched, so that path could
+      // never have invalidated the cache either even with a fix.
+      //
+      // Fixed by deleting the measurement instead of patching the
+      // invalidation: `.server-info-panel` is now `display:grid` and opens
+      // by animating `grid-template-rows` 0fr -> 1fr (declared on the
+      // element in the markup above), which sizes itself to whatever the
+      // content actually is on every frame. No scrollHeight read, no cache,
+      // no staleness class is reachable anymore.
       requestAnimationFrame(() => {
-        // `scrollHeight` forces a synchronous layout (measured ~1.9ms per
-        // call live). The panel's height is stable for a given row/viewport
-        // width, so measure it once and reuse the cached value on every
-        // later open of the SAME row — invalidated on resize (flex-wrap can
-        // add a line at narrow widths).
-        if (panelHeightCache[index] == null) {
-          panelHeightCache[index] = panel.scrollHeight;
-        }
-        panel.style.maxHeight = panelHeightCache[index] + 'px';
+        panel.style.gridTemplateRows = '1fr';
       });
     });
   }, 150);
@@ -1277,12 +1334,16 @@ function hideServerInfo(index) {
   clearTimeout(hoverTimers[index]);
   const infoRow = document.getElementById('server-info-' + index);
   const panel = infoRow.querySelector('.server-info-panel');
-  panel.style.maxHeight = '0';
+  panel.style.gridTemplateRows = '0fr';
+  // AUDIT FIX (DEFECT 3): was a hardcoded 300 against duration-slow's 320ms
+  // transition — read the live custom property instead so a future retune of
+  // --dur-slow doesn't leave this cleanup racing ahead of the transition it
+  // is meant to wait out.
   setTimeout(() => {
-    if (panel.style.maxHeight === '0' || panel.style.maxHeight === '0px') {
+    if (panel.style.gridTemplateRows === '0fr') {
       infoRow.style.display = 'none';
     }
-  }, 300);
+  }, getDurSlowMs());
 }
 
 // ── Setup Guide ──
