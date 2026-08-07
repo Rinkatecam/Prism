@@ -518,6 +518,24 @@ These are the ones that cost time and are not obvious from the documentation.
 animations before reading anything. This is trap number one and it will happen
 again.
 
+**`requestAnimationFrame` never fires in that pane either, and the reason is
+worse than it sounds.** `document.visibilityState` is `"hidden"`, so the
+browser suspends frame callbacks entirely — zero in 600ms, and a chained rAF
+never resolves. Any code path that schedules its real work in a rAF simply
+does not run, and the page looks *broken* rather than unmeasured.
+
+This cost a wrong conclusion. Verifying a panel fix, the panel appeared not
+to open at all: content populated, row displayed, `grid-template-rows` stuck
+at `0fr`. That is indistinguishable from a fix that does not work. The open
+path sets `1fr` inside a rAF. Shimming rAF to a macrotask — and verifying the
+shim itself fired before trusting anything downstream — showed the fix was
+correct all along.
+
+The general rule, which is the third instance of it in this document: **when a
+measurement says something is broken, test the instrument before you believe
+it.** Under-measuring costs a bug. Over-trusting a broken measurement costs a
+correct implementation, thrown away and rewritten worse.
+
 **Tailwind Play builds at runtime, from a `MutationObserver`.** Classes do not
 exist in the same tick you inject the element.
 

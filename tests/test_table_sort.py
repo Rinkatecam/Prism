@@ -375,52 +375,57 @@ def test_is_continuation_row_checks_single_cell_and_colspan(js_source):
 
 # ── empties-always-last comparison rule ─────────────────────────────────────
 
-def test_apply_sort_suppresses_the_mutation_observer_during_its_own_reorder(js_source):
+def test_apply_sort_marks_its_reorder_target_before_placing_rows(js_source):
     """Found live, not by reasoning about it first: clicking a header on
     /servers hung the browser tab solid. Reordering rows via appendChild()
     is itself a childList mutation, and the MutationObserver exists
     specifically to notice a table's rows changing and re-apply the stored
     sort — so an unguarded applySort() fed its own output straight back
     into restoreSortState(), which called applySort() again, forever.
-    Fixed with a `_sorting` flag: set around the reorder, checked (and
-    bailed on) at the top of the observer callback, reset via a
-    Promise.resolve().then() microtask queued strictly after the mutations
-    it guards, so same-queue microtask ordering keeps it true for exactly
-    the mutations this function caused."""
+
+    Originally fixed with a batch-wide `_sorting` boolean; a second
+    adversarial-review round (module docstring, "DEFECT 1, ROUND 2") found
+    that a boolean read once for the WHOLE MutationObserver delivery
+    discarded unrelated mutations that happened to share a delivery with
+    one of this file's own writes, not just this file's own mutations —
+    see test_mutation_observer_filters_per_record_not_per_batch below.
+    Replaced with `_ownMutationTargets`, a Set of exact nodes: applySort()
+    must add the node its reorder will actually mutate (the <table> in the
+    multi-tbody branch, the single <tbody> otherwise) BEFORE calling
+    place() on any unit, mirroring where `_sorting = true` used to sit."""
     fn_start = js_source.index("function applySort(table, colIndex, type, dir)")
     fn_end = js_source.index("\n  }", fn_start)
     apply_body = js_source[fn_start:fn_end]
-    assert "_sorting = true" in apply_body
-    assert "_sorting = false" in apply_body
-    # the flag must be set BEFORE the reorder (d.u.place() calls), not after
-    assert apply_body.index("_sorting = true") < apply_body.index("d.u.place()")
+    assert "_ownMutationTargets.add(reorderTarget)" in apply_body
+    # the mark must be set BEFORE the reorder (d.u.place() calls), not after
+    assert apply_body.index("_ownMutationTargets.add(reorderTarget)") < apply_body.index("d.u.place()")
+    # and it must name the actual mutation target: the <table> when rows are
+    # grouped into multiple <tbody> elements (table.appendChild(tb) in
+    # sortUnits()), the single <tbody> otherwise.
+    assert "table.tBodies.length > 1 ? table : table.tBodies[0]" in apply_body
 
     mo_start = js_source.index("var _mo = new MutationObserver")
     mo_end = js_source.index("\n  _mo.observe(", mo_start)
     mo_body = js_source[mo_start:mo_end]
-    # DEFECT 1 widened the guard from `_sorting` alone to also cover header
-    # writes — same reasoning, same mechanics, see _headerMutating.
-    assert "if (_sorting || _headerMutating) return;" in mo_body
+    # The old batch-wide guard must be gone, not just supplemented.
+    assert "if (_sorting || _headerMutating) return;" not in mo_body
+    assert "_ownMutationTargets.has(target)" in mo_body
 
 
-def test_apply_sort_no_op_guard_wraps_the_reorder_in_try_finally(js_source):
-    """Audit ask (this branch): _sorting was set with no try/finally, so an
-    exception mid-reorder would leave it stuck true forever — silently
-    disabling every future restoreSortState() with no error anywhere. No
-    reproduction exists (every throwable step runs before the flag is
-    set), but the insurance is cheap: assert the reset sits inside a
-    `finally` attached to the `try` that wraps d.u.place(), not just
-    present somewhere in the function."""
+def test_apply_sort_no_longer_needs_try_finally_around_the_reorder(js_source):
+    """The old `_sorting` boolean was reset through a Promise microtask, so
+    an exception mid-reorder could in principle leave it stuck true forever
+    — hence a defensive try/finally, even with no known reproduction.
+    _ownMutationTargets removes that risk structurally: the mark is not
+    reset by this function at all, it is cleared by the MutationObserver
+    callback the next time it runs (see that callback), which happens
+    regardless of whether d.u.place() throws, returns normally, or is never
+    reached. There is nothing left for a try/finally here to insure."""
     fn_start = js_source.index("function applySort(table, colIndex, type, dir)")
     fn_end = js_source.index("\n  }", fn_start)
     body = js_source[fn_start:fn_end]
-    try_idx = body.index("try {")
-    place_idx = body.index("d.u.place()")
-    finally_idx = body.index("} finally {")
-    reset_idx = body.index("_sorting = false")
-    assert try_idx < place_idx < finally_idx < reset_idx, (
-        "expected try { ... d.u.place() ... } finally { ... _sorting = false ... } in that order"
-    )
+    assert "} finally {" not in body
+    assert "Promise.resolve()" not in body
 
 
 def test_apply_sort_skips_the_reorder_when_the_target_order_is_unchanged(js_source):
@@ -429,15 +434,59 @@ def test_apply_sort_skips_the_reorder_when_the_target_order_is_unchanged(js_sour
     is still a real detach+re-insert. Measured live: 58 tbody moves every
     15s on a 29-row fleet table, order unchanged 100% of the time (see the
     task report for the before/after timings). Structural guard: the
-    no-op check must run BEFORE `_sorting = true`, otherwise the flag
-    would guard a reorder that never happens."""
+    no-op check must run BEFORE the reorder target gets marked, otherwise
+    the mark would guard a reorder that never happens."""
     fn_start = js_source.index("function applySort(table, colIndex, type, dir)")
     fn_end = js_source.index("\n  }", fn_start)
     body = js_source[fn_start:fn_end]
     assert "d.i === pos" in body, "expected an identity-permutation check against the original index order"
     guard_idx = body.index("if (alreadyInOrder) return;")
-    sorting_idx = body.index("_sorting = true")
-    assert guard_idx < sorting_idx
+    mark_idx = body.index("_ownMutationTargets.add(reorderTarget)")
+    assert guard_idx < mark_idx
+
+
+def test_mutation_observer_filters_per_record_not_per_batch(js_source):
+    """DEFECT 1, ROUND 2 (second adversarial review). The original
+    cause-based guard — `if (_sorting || _headerMutating) return;` — was
+    read ONCE per MutationObserver delivery and discarded the delivery's
+    entire mutation array. A MutationObserver callback fires once per
+    synchronous task and carries every mutation that task produced, from
+    every source: if a direct call to __prismHealTableSort() (a real header
+    rebind, or a reorder) shared a task with an unrelated external write —
+    e.g. a row's sort key changing — both landed in one delivery, the flag
+    was true, and the unrelated write was discarded permanently: there is
+    no poll and no retry behind this observer by design.
+
+    Reproduced live (see the task report): gut a bound header, call
+    `__prismHealTableSort()`, then change a row's sort key, all in one
+    task — the row did not move even after 3s, while the same key change
+    alone (no header rebind sharing the task) reordered correctly.
+
+    Fixed by checking each mutation record's own `target` against
+    `_ownMutationTargets` INSIDE the loop (`continue`, not a `return`
+    before the loop starts) — a record on any other node is processed
+    normally regardless of what else is in the same delivery."""
+    mo_start = js_source.index("var _mo = new MutationObserver")
+    mo_end = js_source.index("\n  _mo.observe(", mo_start)
+    mo_body = js_source[mo_start:mo_end]
+
+    loop_idx = mo_body.index("for (var i = 0; i < mutations.length; i++)")
+    guard_idx = mo_body.index("_ownMutationTargets.has(target)")
+    continue_idx = mo_body.index("continue;")
+    queue_idx = mo_body.index("queueTable(tablesToRestore, ownerTable)")
+    clear_idx = mo_body.index("_ownMutationTargets.clear()")
+
+    # the guard must be INSIDE the loop (per record) ...
+    assert loop_idx < guard_idx < continue_idx < queue_idx
+    # ... and skip only the current record (continue), never the batch
+    # (no bare top-of-callback `return` reintroducing the old shape).
+    return_before_loop = mo_body[:loop_idx]
+    assert "return;" not in return_before_loop
+    # the set must be drained once the whole delivery has been read,
+    # after every record's queueTable/addedNodes handling, not before.
+    assert queue_idx < clear_idx
+    forEach_idx = mo_body.index("tablesToRestore.forEach(")
+    assert clear_idx < forEach_idx
 
 
 def test_set_arrow_is_idempotent(js_source):
@@ -463,22 +512,39 @@ def test_set_arrow_is_idempotent(js_source):
     assert body.index("if (arrow.dataset.state === state) return;") < body.index("innerHTML")
 
 
-def test_set_arrow_and_bind_header_guard_with_header_mutating_flag(js_source):
-    """Both DOM-writing header functions must set _headerMutating around
-    their writes (mirroring _sorting for applySort — see the module
-    docstring's DEFECT 1 section), with the reset deferred through a
-    microtask exactly like _sorting's, not reset synchronously (which
-    would make the observer's callback — queued as its own microtask at
-    the moment of the mutation, strictly before a `.then()` queued after
-    it — see the flag as already false and defeat the guard)."""
-    for fn_name in ("function setArrow(th, state)", "function bindHeader(th)"):
-        fn_start = js_source.index(fn_name)
-        fn_end = js_source.index("\n  }", fn_start)
-        body = js_source[fn_start:fn_end]
-        assert "_headerMutating = true" in body, f"{fn_name} does not set _headerMutating"
-        assert "Promise.resolve().then(function () { _headerMutating = false; });" in body, (
-            f"{fn_name} does not defer the _headerMutating reset through a microtask"
-        )
+def test_set_arrow_and_bind_header_mark_their_own_write_targets(js_source):
+    """Both DOM-writing header functions must mark the exact node they are
+    about to mutate in `_ownMutationTargets` (module docstring, "DEFECT 1,
+    ROUND 2") before writing to it — replacing the batch-wide
+    `_headerMutating` boolean, which discarded a whole MutationObserver
+    delivery rather than just the records these functions caused. Unlike
+    the old flag, there is no deferred microtask reset to check for: the
+    mark is drained by the observer callback itself once it has read the
+    delivery, not by a `Promise.resolve().then()` racing the callback's own
+    queued microtask.
+
+    setArrow() writes to the `.sort-arrow` <span> it looked up, not to the
+    <th> — mark `arrow`. bindHeader() writes to the <th> itself (moving its
+    children into the new <button>, appending the button) — mark `th`."""
+    fn_start = js_source.index("function setArrow(th, state)")
+    fn_end = js_source.index("\n  }", fn_start)
+    body = js_source[fn_start:fn_end]
+    assert "_ownMutationTargets.add(arrow)" in body
+    # "arrow.innerHTML" (the actual write), not the bare word "innerHTML" —
+    # the explanatory comment above the mark uses that word too.
+    assert body.index("_ownMutationTargets.add(arrow)") < body.index("arrow.innerHTML")
+    assert "_headerMutating" not in body
+    assert "Promise.resolve()" not in body
+
+    fn_start = js_source.index("function bindHeader(th)")
+    fn_end = js_source.index("\n  }", fn_start)
+    body = js_source[fn_start:fn_end]
+    assert "_ownMutationTargets.add(th)" in body
+    # "th.appendChild(btn);" (the actual write) — the explanatory comment
+    # above the mark references the same call without the semicolon.
+    assert body.index("_ownMutationTargets.add(th)") < body.index("th.appendChild(btn);")
+    assert "_headerMutating" not in body
+    assert "Promise.resolve()" not in body
 
 
 def test_set_aria_sort_is_idempotent_and_guarded(js_source):
@@ -490,13 +556,17 @@ def test_set_aria_sort_is_idempotent_and_guarded(js_source):
     heal/restore pass that changed nothing from generating any mutation,
     which matters now that the observer no longer ignores thead-internal
     mutations by location (DEFECT 1) and instead relies on there being
-    nothing left to react to once a table is already correct."""
+    nothing left to react to once a table is already correct. Marks `th`
+    in `_ownMutationTargets` (DEFECT 1, ROUND 2) rather than setting the
+    old batch-wide `_headerMutating` boolean."""
     fn_start = js_source.index("function setAriaSort(th, value)")
     fn_end = js_source.index("\n  }", fn_start)
     body = js_source[fn_start:fn_end]
     assert "if (th.getAttribute('aria-sort') === value) return;" in body
     assert body.index("if (th.getAttribute('aria-sort') === value) return;") < body.index("setAttribute")
-    assert "_headerMutating = true" in body
+    assert "_ownMutationTargets.add(th)" in body
+    assert body.index("_ownMutationTargets.add(th)") < body.index("th.setAttribute")
+    assert "_headerMutating" not in body
 
     # every direct th.setAttribute('aria-sort', …) call site must be gone —
     # replaced by the guarded helper, everywhere in the file.
@@ -529,16 +599,19 @@ def test_mutation_observer_no_longer_excludes_mutations_by_thead_location(js_sou
 
 def test_mutation_observer_excludes_by_cause_not_location(js_source):
     """The replacement for the old thead-location exclusion: a mutation
-    this file itself just caused (writing to a header) is recognised by
-    the _headerMutating flag being true, checked once at the top of the
-    callback — not by re-deriving "was this inside a thead" per mutation,
-    which is exactly the check that stopped being reliable."""
+    this file itself just caused (writing to a header or reordering rows)
+    is recognised by its exact target node being in `_ownMutationTargets`
+    — not by re-deriving "was this inside a thead" per mutation, which is
+    exactly the check that stopped being reliable (DEFECT 1), and not by a
+    single boolean read once for the whole delivery, which is exactly the
+    check that stopped being reliable one round later (DEFECT 1, ROUND 2 —
+    see test_mutation_observer_filters_per_record_not_per_batch)."""
     mo_start = js_source.index("var _mo = new MutationObserver")
     mo_end = js_source.index("\n  _mo.observe(", mo_start)
     body = js_source[mo_start:mo_end]
-    guard_idx = body.index("if (_sorting || _headerMutating) return;")
-    # the combined guard must be the first executable statement in the
-    # callback — before any mutation is inspected, not interleaved with it
+    guard_idx = body.index("if (_ownMutationTargets.has(target)) continue;")
+    # the per-record guard must run before a record's mutation is used to
+    # decide anything about which table needs restoring.
     queue_idx = body.index("queueTable(tablesToRestore, ownerTable)")
     assert guard_idx < queue_idx
 
@@ -585,6 +658,55 @@ def test_bind_header_self_heals_instead_of_trusting_the_flag_alone(js_source):
     assert "sortBound" in isbound_body
     assert "querySelector" in isbound_body  # the actual-DOM check, not just the flag
     assert "aria-sort" in isbound_body
+
+
+# ── DEFECT 2 (second adversarial review) — two exports, zero callers ───────
+#
+# `window.__prismBindTableSort` (= scan) and `window.__prismHealTableSort`
+# had no call sites anywhere in this repository — checked with a
+# repo-wide grep, including the 7 morphHTML() call sites in
+# server_detail.html that __prismHealTableSort's own docstring names as
+# its intended use. docs/OPS-LEARNINGS.md #1: "an abstraction with no
+# enforcement decays to zero users; count the references, not the
+# definitions." Decided per-export rather than blanket-deleting both:
+#
+#   __prismBindTableSort: deleted. scan() alone (bind headers, do not
+#   restore any stored sort) is not a coherent standalone operation for any
+#   caller this file's own docstring describes — every real rebind need
+#   also wants the stored sort reapplied, which is exactly what
+#   restoreAll() adds for a few cheap extra DOM reads. Nothing in this task
+#   depends on it existing.
+#
+#   __prismHealTableSort: kept, and its documentation tightened. It is the
+#   exact scenario DEFECT 1 ROUND 2 fixed: a caller invoking it
+#   synchronously, right after its own DOM write, puts this file's own
+#   header/row mutations in the SAME task — and therefore the SAME
+#   MutationObserver delivery — as whatever else that caller's write
+#   touched. Before the per-record fix, a shared delivery could be
+#   discarded whole; after it, only this call's own mutations are skipped,
+#   by exact node, and anything else in the same delivery is still
+#   processed. Deleting it would have made it impossible to demonstrate
+#   that "documented usage is now safe" against the same repro recipe the
+#   defect was found with.
+
+def test_bind_only_export_was_deleted(js_source):
+    assert "__prismBindTableSort" not in js_source
+
+
+def test_heal_export_still_exists_and_documents_its_synchronous_use_case(js_source):
+    assert "window.__prismHealTableSort = function (root) { scan(root); restoreAll(root); };" in js_source
+    # the comment immediately above the export must explain WHEN to reach
+    # for it (synchronously, same task as a caller's own DOM write) rather
+    # than just that it exists — the "abstraction with no enforcement"
+    # trap (OPS-LEARNINGS #1) is as much about undocumented usage as about
+    # zero callers.
+    comment_start = js_source.index("Hook for a direct caller")
+    export_idx = js_source.index("window.__prismHealTableSort =")
+    preceding_comment = js_source[comment_start:export_idx]
+    assert "synchronously" in preceding_comment
+    assert "SAME task" in preceding_comment
+    assert "morphHTML" in preceding_comment
+    assert "checked across the repo" in preceding_comment  # zero-callers claim must be backed by a stated check
 
 
 def test_compare_for_sort_pins_empties_last_regardless_of_direction(js_source):
