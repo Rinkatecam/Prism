@@ -3,7 +3,7 @@
 
 <div class="flex items-center justify-between mb-6">
   <h1 class="text-2xl font-bold flex items-center gap-2">
-    <i data-lucide="wrench" class="w-6 h-6 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    <i data-lucide="wrench" class="w-6 h-6 text-info"></i>
     Operations
   </h1>
 </div>
@@ -16,30 +16,30 @@
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="timer-reset" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    <i data-lucide="timer-reset" class="w-5 h-5 text-info"></i>
     {{ t.scheduled_restarts }}
   </h2>
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155] space-y-5">
+  <div class="bg-card rounded-lg p-5 border border-line space-y-5">
 
     <!-- Prism Service Restart -->
     <div>
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="refresh-cw" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6]"></i>
+        <i data-lucide="refresh-cw" class="w-4 h-4 text-info"></i>
         {{ t.flask_restart_schedule }}
       </div>
-      <div class="text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mb-3">{{ t.flask_restart_desc }}</div>
+      <div class="text-[10px] text-muted mb-3">{{ t.flask_restart_desc }}</div>
       <div class="flex flex-wrap items-center gap-3">
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" id="flask-restart-enabled" class="sr-only peer">
           <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
         </label>
-        <select id="flask-restart-schedule" class="px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+        <select id="flask-restart-schedule" class="px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
           <option value="daily">{{ t.schedule_daily }}</option>
           <option value="weekly">{{ t.schedule_weekly }}</option>
           <option value="monthly">{{ t.schedule_monthly }}</option>
         </select>
         <div id="flask-restart-day-wrap" class="hidden">
-          <select id="flask-restart-day" class="px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+          <select id="flask-restart-day" class="px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
             <option value="monday">{{ t.get('weekday_monday', 'Monday') }}</option>
             <option value="tuesday">{{ t.get('weekday_tuesday', 'Tuesday') }}</option>
             <option value="wednesday">{{ t.get('weekday_wednesday', 'Wednesday') }}</option>
@@ -50,39 +50,39 @@
           </select>
         </div>
         <div id="flask-restart-monthday-wrap" class="hidden">
-          <input type="number" id="flask-restart-monthday" min="1" max="28" value="1" class="w-16 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
-          <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('of_month', 'of month') }}</span>
+          <input type="number" id="flask-restart-monthday" min="1" max="28" value="1" class="w-16 px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] text-right">
+          <span class="text-xs text-muted">{{ t.get('of_month', 'of month') }}</span>
         </div>
         <div class="flex items-center gap-1">
-          <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.restart_time }}:</span>
-          <input type="time" id="flask-restart-time" value="03:00" class="px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+          <span class="text-xs text-muted">{{ t.restart_time }}:</span>
+          <input type="time" id="flask-restart-time" value="03:00" class="px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
         </div>
       </div>
     </div>
 
-    <hr class="border-[#E5E7EB] dark:border-[#334155]">
+    <hr class="border-line">
 
     <!-- Server Restart Schedule -->
     <div>
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="server" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6]"></i>
+        <i data-lucide="server" class="w-4 h-4 text-info"></i>
         {{ t.server_restart_schedule }}
       </div>
-      <div class="text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mb-3">{{ t.server_restart_desc }}</div>
+      <div class="text-[10px] text-muted mb-3">{{ t.server_restart_desc }}</div>
 
       <!-- Global schedule for all server restarts -->
-      <div class="flex flex-wrap items-center gap-2 mb-3 p-2.5 rounded-lg border border-[#E5E7EB] dark:border-[#334155] bg-[#F9FAFB] dark:bg-[#0F172A]/50">
+      <div class="flex flex-wrap items-center gap-2 mb-3 p-2.5 rounded-lg border border-line bg-page dark:bg-page/50">
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" id="server-restart-enabled" class="sr-only peer">
           <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
         </label>
-        <select id="server-restart-schedule" class="px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+        <select id="server-restart-schedule" class="px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
           <option value="daily">{{ t.schedule_daily }}</option>
           <option value="weekly">{{ t.schedule_weekly }}</option>
           <option value="monthly">{{ t.schedule_monthly }}</option>
         </select>
         <div id="server-restart-day-wrap" class="hidden">
-          <select id="server-restart-day" class="px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+          <select id="server-restart-day" class="px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
             <option value="0">{{ t.get('weekday_monday', 'Monday') }}</option>
             <option value="1">{{ t.get('weekday_tuesday', 'Tuesday') }}</option>
             <option value="2">{{ t.get('weekday_wednesday', 'Wednesday') }}</option>
@@ -93,20 +93,20 @@
           </select>
         </div>
         <div id="server-restart-monthday-wrap" class="hidden">
-          <input type="number" id="server-restart-monthday" min="1" max="28" value="1" class="w-16 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
-          <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('of_month', 'of month') }}</span>
+          <input type="number" id="server-restart-monthday" min="1" max="28" value="1" class="w-16 px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] text-right">
+          <span class="text-xs text-muted">{{ t.get('of_month', 'of month') }}</span>
         </div>
         <div class="flex items-center gap-1">
-          <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.restart_time }}:</span>
-          <input type="time" id="server-restart-time" value="03:00" class="px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+          <span class="text-xs text-muted">{{ t.restart_time }}:</span>
+          <input type="time" id="server-restart-time" value="03:00" class="px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A]">
         </div>
       </div>
 
       <!-- Delay between restarts -->
       <div class="flex items-center gap-2 mb-3">
-        <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.delay_between_desc }}:</span>
-        <input type="number" id="restart-delay" min="0" max="3600" value="60" class="w-20 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
-        <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.delay_seconds }}</span>
+        <span class="text-xs text-muted">{{ t.delay_between_desc }}:</span>
+        <input type="number" id="restart-delay" min="0" max="3600" value="60" class="w-20 px-2 py-1 text-sm rounded border border-line bg-white dark:bg-[#0F172A] text-right">
+        <span class="text-xs text-muted">{{ t.delay_seconds }}</span>
       </div>
 
       <!-- Server list (order + conditions only) -->
@@ -114,27 +114,27 @@
       {# Empty state: matches the centered icon + message + hint pattern from servers.html #}
       <div id="no-server-restarts" class="hidden py-8 text-center mb-3">
         <i data-lucide="timer-off" class="w-10 h-10 mx-auto mb-2 text-[#9CA3AF] opacity-50"></i>
-        <p class="text-sm text-[#6B7280] dark:text-[#CBD5E1] font-medium">{{ t.no_server_restarts }}</p>
+        <p class="text-sm text-muted font-medium">{{ t.no_server_restarts }}</p>
         <p class="text-[10px] mt-1 text-[#9CA3AF]">{{ t.get('no_server_restarts_hint', 'Click the button below to schedule a server for automatic restart') }}</p>
       </div>
 
       {# Primary action button: blue filled (matches servers.html pattern) #}
-      <button data-action="addServerRestartRow" class="px-3 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1">
+      <button data-action="addServerRestartRow" class="px-3 py-1.5 text-sm font-medium rounded bg-info text-white hover:opacity-90 flex items-center gap-1">
         <i data-lucide="plus" class="w-4 h-4"></i>
         {{ t.add_server_restart }}
       </button>
     </div>
 
-    <hr class="border-[#E5E7EB] dark:border-[#334155]">
+    <hr class="border-line">
 
     <!-- Save button for this section -->
     <div class="flex items-center gap-3">
       <button data-action="saveRestartSchedules" id="save-restart-btn"
-              class="px-4 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1.5">
+              class="px-4 py-1.5 text-sm font-medium rounded bg-info text-white hover:opacity-90 flex items-center gap-1.5">
         <i data-lucide="save" class="w-4 h-4"></i>
         {{ t.save_restart_schedule }}
       </button>
-      <span id="restart-save-result" class="text-xs text-[#6B7280] dark:text-[#CBD5E1]"></span>
+      <span id="restart-save-result" class="text-xs text-muted"></span>
     </div>
   </div>
 </section>
@@ -146,27 +146,27 @@
   {# Section header: title left, primary action right (matches servers.html / monitoring.html pattern) #}
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="book-open" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+      <i data-lucide="book-open" class="w-5 h-5 text-info"></i>
       {{ t.runbooks | default('Runbooks') }}
     </h2>
     <button data-action="showCreateRunbookForm"
-            class="px-3 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1">
+            class="px-3 py-1.5 text-sm font-medium rounded bg-info text-white hover:opacity-90 flex items-center gap-1">
       <i data-lucide="plus" class="w-4 h-4"></i>
       {{ t.create_runbook | default('Create Runbook') }}
     </button>
   </div>
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155] space-y-6">
+  <div class="bg-card rounded-lg p-5 border border-line space-y-6">
 
     <!-- Runbook list table -->
     <div>
       <div class="overflow-x-auto">
         <table class="w-full text-xs">
           <thead>
-            <tr class="border-b border-[#E5E7EB] dark:border-[#334155]">
-              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.name | default('Name') }}</th>
-              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('category', 'Category') }}</th>
-              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.type | default('Type') }}</th>
-              <th class="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.actions | default('Actions') }}</th>
+            <tr class="border-b border-line">
+              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted">{{ t.name | default('Name') }}</th>
+              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted">{{ t.get('category', 'Category') }}</th>
+              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted">{{ t.type | default('Type') }}</th>
+              <th class="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-muted">{{ t.actions | default('Actions') }}</th>
             </tr>
           </thead>
           <tbody id="runbook-table-body">
@@ -180,17 +180,17 @@
     </div>
 
     <!-- Create / Edit runbook form (hidden by default) -->
-    <div id="runbook-form-wrap" class="hidden border-t border-[#E5E7EB] dark:border-[#334155] pt-4">
+    <div id="runbook-form-wrap" class="hidden border-t border-line pt-4">
       <h3 class="text-sm font-semibold mb-3" id="runbook-form-title">{{ t.create_runbook | default('Create Runbook') }}</h3>
       <input type="hidden" id="runbook-edit-id" value="">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
-          <label class="text-[10px] font-semibold uppercase text-[#6B7280] dark:text-[#CBD5E1]">{{ t.name | default('Name') }}</label>
-          <input type="text" id="rb-name" class="w-full px-3 py-1.5 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#2563EB] focus:border-transparent outline-none" placeholder="{{ t.get('runbook_name_placeholder', 'My Custom Runbook') }}">
+          <label class="text-[10px] font-semibold uppercase text-muted">{{ t.name | default('Name') }}</label>
+          <input type="text" id="rb-name" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#2563EB] focus:border-transparent outline-none" placeholder="{{ t.get('runbook_name_placeholder', 'My Custom Runbook') }}">
         </div>
         <div>
-          <label class="text-[10px] font-semibold uppercase text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('category', 'Category') }}</label>
-          <select id="rb-category" class="w-full px-3 py-1.5 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#2563EB] focus:border-transparent outline-none">
+          <label class="text-[10px] font-semibold uppercase text-muted">{{ t.get('category', 'Category') }}</label>
+          <select id="rb-category" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#2563EB] focus:border-transparent outline-none">
             <option value="general">{{ t.get('cat_general', 'General') }}</option>
             <option value="maintenance">{{ t.get('cat_maintenance', 'Maintenance') }}</option>
             <option value="diagnostic">{{ t.get('cat_diagnostic', 'Diagnostic') }}</option>
@@ -201,35 +201,35 @@
         </div>
       </div>
       <div class="mb-3">
-        <label class="text-[10px] font-semibold uppercase text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('description', 'Description') }}</label>
-        <input type="text" id="rb-description" class="w-full px-3 py-1.5 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#2563EB] focus:border-transparent outline-none" placeholder="{{ t.get('runbook_desc_placeholder', 'What does this runbook do?') }}">
+        <label class="text-[10px] font-semibold uppercase text-muted">{{ t.get('description', 'Description') }}</label>
+        <input type="text" id="rb-description" class="w-full px-3 py-1.5 text-xs rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#2563EB] focus:border-transparent outline-none" placeholder="{{ t.get('runbook_desc_placeholder', 'What does this runbook do?') }}">
       </div>
       <div class="mb-3">
-        <label class="text-[10px] font-semibold uppercase text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('steps_json', 'Steps (JSON)') }}</label>
-        <textarea id="rb-steps" rows="5" class="w-full px-3 py-1.5 text-xs font-mono rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#2563EB] focus:border-transparent outline-none" placeholder='[{"type": "powershell", "script": "Get-Date", "timeout": 15}]'></textarea>
+        <label class="text-[10px] font-semibold uppercase text-muted">{{ t.get('steps_json', 'Steps (JSON)') }}</label>
+        <textarea id="rb-steps" rows="5" class="w-full px-3 py-1.5 text-xs font-mono rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#2563EB] focus:border-transparent outline-none" placeholder='[{"type": "powershell", "script": "Get-Date", "timeout": 15}]'></textarea>
       </div>
       <div class="flex gap-2">
         {# Save = green (matches servers.html / monitoring.html save buttons) #}
         <button data-action="saveRunbook" class="px-4 py-1.5 text-xs font-medium rounded bg-[#10B981] text-white hover:opacity-90">{{ t.save | default('Save') }}</button>
-        <button data-action="hideRunbookForm" class="px-4 py-1.5 text-xs font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.cancel | default('Cancel') }}</button>
+        <button data-action="hideRunbookForm" class="px-4 py-1.5 text-xs font-medium rounded border border-line hover:bg-page">{{ t.cancel | default('Cancel') }}</button>
       </div>
     </div>
 
     <!-- Execution History -->
-    <div class="border-t border-[#E5E7EB] dark:border-[#334155] pt-4">
+    <div class="border-t border-line pt-4">
       <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">
-        <i data-lucide="history" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6]"></i>
+        <i data-lucide="history" class="w-4 h-4 text-info"></i>
         {{ t.execution_history | default('Execution History') }}
       </h3>
       <div class="overflow-x-auto">
         <table class="w-full text-xs">
           <thead>
-            <tr class="border-b border-[#E5E7EB] dark:border-[#334155]">
-              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.runbook | default('Runbook') }}</th>
-              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.server | default('Server') }}</th>
-              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.status | default('Status') }}</th>
-              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.time | default('Time') }}</th>
-              <th class="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('duration', 'Duration') }}</th>
+            <tr class="border-b border-line">
+              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted">{{ t.runbook | default('Runbook') }}</th>
+              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted">{{ t.server | default('Server') }}</th>
+              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted">{{ t.status | default('Status') }}</th>
+              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted">{{ t.time | default('Time') }}</th>
+              <th class="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-muted">{{ t.get('duration', 'Duration') }}</th>
             </tr>
           </thead>
           <tbody id="runbook-exec-table-body">
@@ -250,37 +250,37 @@
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="wrench" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    <i data-lucide="wrench" class="w-5 h-5 text-info"></i>
     {{ t.get('system_tools', 'System & Tools') }}
   </h2>
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155] space-y-5">
+  <div class="bg-card rounded-lg p-5 border border-line space-y-5">
 
     <!-- Config Backup & Restore -->
     <div>
       <div class="text-sm font-medium mb-3 flex items-center gap-1.5">
-        <i data-lucide="archive" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6]"></i>
+        <i data-lucide="archive" class="w-4 h-4 text-info"></i>
         {{ t.config_backups }}
       </div>
       <div class="space-y-4">
         <!-- Backup info & actions -->
         <div class="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <span id="backup-count" class="text-sm text-[#6B7280] dark:text-[#CBD5E1]">{{ t.no_backups }}</span>
+            <span id="backup-count" class="text-sm text-muted">{{ t.no_backups }}</span>
           </div>
           <div class="flex items-center gap-2">
             <a href="/api/config" download="prism_config.json"
-               class="px-3 py-1.5 text-xs font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] flex items-center gap-1">
+               class="px-3 py-1.5 text-xs font-medium rounded border border-line hover:bg-page flex items-center gap-1">
               <i data-lucide="download" class="w-3.5 h-3.5"></i>
               {{ t.download_current }}
             </a>
             <button data-action="clickConfigUpload"
-                    class="px-3 py-1.5 text-xs font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] flex items-center gap-1">
+                    class="px-3 py-1.5 text-xs font-medium rounded border border-line hover:bg-page flex items-center gap-1">
               <i data-lucide="upload" class="w-3.5 h-3.5"></i>
               {{ t.upload_config }}
             </button>
             <input type="file" id="config-upload-input" accept=".json" class="hidden" data-change="uploadConfigEl">
             <button data-action="toggleBackupList"
-                    class="px-3 py-1.5 text-xs font-medium rounded border border-[#2563EB] dark:border-[#3B82F6] text-[#2563EB] dark:text-[#3B82F6] hover:bg-[#2563EB]/10 flex items-center gap-1">
+                    class="px-3 py-1.5 text-xs font-medium rounded border border-info text-info hover:bg-[#2563EB]/10 flex items-center gap-1">
               <i data-lucide="history" class="w-3.5 h-3.5"></i>
               {{ t.backup_list }}
             </button>
@@ -290,13 +290,13 @@
         <div id="upload-result" class="hidden rounded p-2 text-sm"></div>
         <!-- Expandable backup list -->
         <div id="backup-list-container" class="hidden">
-          <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg overflow-hidden">
+          <div class="border border-line rounded-lg overflow-hidden">
             <table class="w-full text-sm">
               <thead>
-                <tr class="bg-[#F9FAFB] dark:bg-[#0F172A]/50 border-b border-[#E5E7EB] dark:border-[#334155]">
-                  <th class="px-3 py-2 text-left text-xs font-semibold text-[#6B7280] dark:text-[#CBD5E1]">{{ t.audit_timestamp }}</th>
-                  <th class="px-3 py-2 text-left text-xs font-semibold text-[#6B7280] dark:text-[#CBD5E1]">{{ t.db_size }}</th>
-                  <th class="px-3 py-2 text-right text-xs font-semibold text-[#6B7280] dark:text-[#CBD5E1]">{{ t.actions }}</th>
+                <tr class="bg-page dark:bg-page/50 border-b border-line">
+                  <th class="px-3 py-2 text-left text-xs font-semibold text-muted">{{ t.audit_timestamp }}</th>
+                  <th class="px-3 py-2 text-left text-xs font-semibold text-muted">{{ t.db_size }}</th>
+                  <th class="px-3 py-2 text-right text-xs font-semibold text-muted">{{ t.actions }}</th>
                 </tr>
               </thead>
               <tbody id="backup-list-body"></tbody>
@@ -306,76 +306,76 @@
       </div>
     </div>
 
-    <hr class="border-[#E5E7EB] dark:border-[#334155]">
+    <hr class="border-line">
 
     <!-- System Health & Diagnostics -->
     <div>
       <div class="text-sm font-medium mb-3 flex items-center gap-1.5">
-        <i data-lucide="heart-pulse" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6]"></i>
+        <i data-lucide="heart-pulse" class="w-4 h-4 text-info"></i>
         {{ t.system_health }}
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <!-- Collector Status -->
-        <div class="bg-[#F9FAFB] dark:bg-[#0F172A]/50 rounded-lg p-3 border border-[#E5E7EB] dark:border-[#334155]">
-          <div class="text-xs font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.collector_status }}</div>
+        <div class="bg-page dark:bg-page/50 rounded-lg p-3 border border-line">
+          <div class="text-xs font-medium text-muted mb-1">{{ t.collector_status }}</div>
           <div id="health-collector" class="text-sm font-semibold">
             <span class="inline-block w-2 h-2 rounded-full bg-[#6B7280] mr-1"></span>--
           </div>
         </div>
         <!-- Last Collection -->
-        <div class="bg-[#F9FAFB] dark:bg-[#0F172A]/50 rounded-lg p-3 border border-[#E5E7EB] dark:border-[#334155]">
-          <div class="text-xs font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.last_collection }}</div>
+        <div class="bg-page dark:bg-page/50 rounded-lg p-3 border border-line">
+          <div class="text-xs font-medium text-muted mb-1">{{ t.last_collection }}</div>
           <div id="health-last-cycle" class="text-sm font-mono">--</div>
         </div>
         <!-- DB Size -->
-        <div class="bg-[#F9FAFB] dark:bg-[#0F172A]/50 rounded-lg p-3 border border-[#E5E7EB] dark:border-[#334155]">
-          <div class="text-xs font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.db_size }}</div>
+        <div class="bg-page dark:bg-page/50 rounded-lg p-3 border border-line">
+          <div class="text-xs font-medium text-muted mb-1">{{ t.db_size }}</div>
           <div id="health-db-size" class="text-sm font-semibold">--</div>
         </div>
         <!-- Records Count -->
-        <div class="bg-[#F9FAFB] dark:bg-[#0F172A]/50 rounded-lg p-3 border border-[#E5E7EB] dark:border-[#334155]">
-          <div class="text-xs font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.records_count }}</div>
+        <div class="bg-page dark:bg-page/50 rounded-lg p-3 border border-line">
+          <div class="text-xs font-medium text-muted mb-1">{{ t.records_count }}</div>
           <div id="health-records" class="text-sm font-semibold">--</div>
         </div>
         <!-- DB Backup freshness (feature 1.8) -->
-        <div class="bg-[#F9FAFB] dark:bg-[#0F172A]/50 rounded-lg p-3 border border-[#E5E7EB] dark:border-[#334155]">
-          <div class="text-xs font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.get('health_db_backup', 'DB Backup') }}</div>
+        <div class="bg-page dark:bg-page/50 rounded-lg p-3 border border-line">
+          <div class="text-xs font-medium text-muted mb-1">{{ t.get('health_db_backup', 'DB Backup') }}</div>
           <div id="health-backup" class="text-sm font-semibold">--</div>
         </div>
         <!-- Audit integrity -->
-        <div class="bg-[#F9FAFB] dark:bg-[#0F172A]/50 rounded-lg p-3 border border-[#E5E7EB] dark:border-[#334155]">
-          <div class="text-xs font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.get('health_audit', 'Audit Integrity') }}</div>
+        <div class="bg-page dark:bg-page/50 rounded-lg p-3 border border-line">
+          <div class="text-xs font-medium text-muted mb-1">{{ t.get('health_audit', 'Audit Integrity') }}</div>
           <div id="health-audit" class="text-sm font-semibold">--</div>
         </div>
         <!-- Scheduler thread liveness -->
-        <div class="bg-[#F9FAFB] dark:bg-[#0F172A]/50 rounded-lg p-3 border border-[#E5E7EB] dark:border-[#334155]">
-          <div class="text-xs font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.get('health_threads', 'Scheduler Threads') }}</div>
+        <div class="bg-page dark:bg-page/50 rounded-lg p-3 border border-line">
+          <div class="text-xs font-medium text-muted mb-1">{{ t.get('health_threads', 'Scheduler Threads') }}</div>
           <div id="health-threads" class="text-sm font-semibold">--</div>
         </div>
       </div>
       <div class="flex items-center gap-3">
         <button data-action="vacuumDatabase" id="vacuum-btn"
-                class="px-3 py-1.5 text-xs font-medium rounded border border-[#F59E0B] dark:border-[#FBBF24] text-[#F59E0B] dark:text-[#FBBF24] hover:bg-[#F59E0B]/10 flex items-center gap-1.5">
+                class="px-3 py-1.5 text-xs font-medium rounded border border-warning text-warning hover:bg-[#F59E0B]/10 flex items-center gap-1.5">
           <i data-lucide="hard-drive" class="w-3.5 h-3.5"></i>
           {{ t.vacuum_db }}
         </button>
-        <span id="vacuum-result" class="text-xs text-[#6B7280] dark:text-[#CBD5E1]"></span>
+        <span id="vacuum-result" class="text-xs text-muted"></span>
       </div>
     </div>
 
-    <hr class="border-[#E5E7EB] dark:border-[#334155]">
+    <hr class="border-line">
 
     <!-- Audit Trail -->
     <div>
       <div class="text-sm font-medium mb-3 flex items-center gap-1.5">
-        <i data-lucide="scroll-text" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6]"></i>
+        <i data-lucide="scroll-text" class="w-4 h-4 text-info"></i>
         {{ t.audit_trail }}
       </div>
       <div class="space-y-4">
         <div class="flex items-center justify-between flex-wrap gap-3">
           <div class="flex items-center gap-2">
             <select id="audit-category-filter" data-change="loadAuditLog"
-                    class="px-2 py-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                    class="px-2 py-1 text-xs rounded border border-line bg-white dark:bg-[#0F172A]">
               <option value="">{{ t.get('all_categories', 'All Categories') }}</option>
               <option value="settings">{{ t.settings }}</option>
               <option value="servers">{{ t.servers }}</option>
@@ -384,29 +384,29 @@
             </select>
           </div>
           <a href="/api/audit-log/export" download
-             class="px-3 py-1.5 text-xs font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] flex items-center gap-1">
+             class="px-3 py-1.5 text-xs font-medium rounded border border-line hover:bg-page flex items-center gap-1">
             <i data-lucide="download" class="w-3.5 h-3.5"></i>
             {{ t.export_audit }}
           </a>
         </div>
-        <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg overflow-hidden">
+        <div class="border border-line rounded-lg overflow-hidden">
           <table class="w-full text-sm">
             <thead>
-              <tr class="bg-[#F9FAFB] dark:bg-[#0F172A]/50 border-b border-[#E5E7EB] dark:border-[#334155]">
-                <th class="px-3 py-2 text-left text-xs font-semibold text-[#6B7280] dark:text-[#CBD5E1]">{{ t.audit_timestamp }}</th>
-                <th class="px-3 py-2 text-left text-xs font-semibold text-[#6B7280] dark:text-[#CBD5E1]">{{ t.audit_user }}</th>
-                <th class="px-3 py-2 text-left text-xs font-semibold text-[#6B7280] dark:text-[#CBD5E1]">{{ t.audit_action }}</th>
-                <th class="px-3 py-2 text-left text-xs font-semibold text-[#6B7280] dark:text-[#CBD5E1] hidden sm:table-cell">{{ t.audit_category }}</th>
-                <th class="px-3 py-2 text-left text-xs font-semibold text-[#6B7280] dark:text-[#CBD5E1] hidden md:table-cell">{{ t.audit_details }}</th>
+              <tr class="bg-page dark:bg-page/50 border-b border-line">
+                <th class="px-3 py-2 text-left text-xs font-semibold text-muted">{{ t.audit_timestamp }}</th>
+                <th class="px-3 py-2 text-left text-xs font-semibold text-muted">{{ t.audit_user }}</th>
+                <th class="px-3 py-2 text-left text-xs font-semibold text-muted">{{ t.audit_action }}</th>
+                <th class="px-3 py-2 text-left text-xs font-semibold text-muted hidden sm:table-cell">{{ t.audit_category }}</th>
+                <th class="px-3 py-2 text-left text-xs font-semibold text-muted hidden md:table-cell">{{ t.audit_details }}</th>
               </tr>
             </thead>
             <tbody id="audit-log-body">
-              <tr><td colspan="5" class="px-3 py-4 text-center text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.no_audit_entries }}</td></tr>
+              <tr><td colspan="5" class="px-3 py-4 text-center text-xs text-muted">{{ t.no_audit_entries }}</td></tr>
             </tbody>
           </table>
         </div>
         <div class="flex justify-center">
-          <button id="audit-load-more" data-action="loadMoreAudit" class="hidden px-4 py-1.5 text-xs font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">
+          <button id="audit-load-more" data-action="loadMoreAudit" class="hidden px-4 py-1.5 text-xs font-medium rounded border border-line hover:bg-page">
             {{ t.load_more }}
           </button>
         </div>
@@ -420,50 +420,50 @@
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="database" class="w-5 h-5 text-[#DC2626] dark:text-[#EF4444]"></i>
-    <span class="text-[#DC2626] dark:text-[#EF4444]">{{ t.data_management }}</span>
+    <i data-lucide="database" class="w-5 h-5 text-critical"></i>
+    <span class="text-critical">{{ t.data_management }}</span>
   </h2>
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#DC2626]/30 dark:border-[#EF4444]/30 space-y-4">
-    <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.data_management_desc }}</div>
+  <div class="bg-card rounded-lg p-5 border border-critical/30 space-y-4">
+    <div class="text-xs text-muted">{{ t.data_management_desc }}</div>
 
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <!-- Clean Data -->
-      <div class="bg-[#F9FAFB] dark:bg-[#0F172A]/50 rounded-lg p-4 border border-[#E5E7EB] dark:border-[#334155] flex flex-col">
+      <div class="bg-page dark:bg-page/50 rounded-lg p-4 border border-line flex flex-col">
         <div class="flex items-center gap-2 mb-2">
           <i data-lucide="eraser" class="w-4 h-4 text-[#F59E0B]"></i>
           <span class="text-sm font-medium">{{ t.clean_data }}</span>
         </div>
-        <p class="text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mb-3 flex-1">{{ t.clean_data_desc }}</p>
+        <p class="text-[10px] text-muted mb-3 flex-1">{{ t.clean_data_desc }}</p>
         <button data-action="showDataActionModal" data-args='["clean"]'
-                class="w-full px-3 py-1.5 text-xs font-medium rounded border border-[#F59E0B] dark:border-[#FBBF24] text-[#F59E0B] dark:text-[#FBBF24] hover:bg-[#F59E0B]/10 flex items-center justify-center gap-1">
+                class="w-full px-3 py-1.5 text-xs font-medium rounded border border-warning text-warning hover:bg-[#F59E0B]/10 flex items-center justify-center gap-1">
           <i data-lucide="eraser" class="w-3.5 h-3.5"></i>
           {{ t.clean_data }}
         </button>
       </div>
 
       <!-- Delete All -->
-      <div class="bg-[#F9FAFB] dark:bg-[#0F172A]/50 rounded-lg p-4 border border-[#E5E7EB] dark:border-[#334155] flex flex-col">
+      <div class="bg-page dark:bg-page/50 rounded-lg p-4 border border-line flex flex-col">
         <div class="flex items-center gap-2 mb-2">
           <i data-lucide="trash-2" class="w-4 h-4 text-[#DC2626]"></i>
           <span class="text-sm font-medium">{{ t.delete_all }}</span>
         </div>
-        <p class="text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mb-3 flex-1">{{ t.delete_all_desc }}</p>
+        <p class="text-[10px] text-muted mb-3 flex-1">{{ t.delete_all_desc }}</p>
         <button data-action="showDataActionModal" data-args='["delete"]'
-                class="w-full px-3 py-1.5 text-xs font-medium rounded border border-[#DC2626] dark:border-[#EF4444] text-[#DC2626] dark:text-[#EF4444] hover:bg-[#DC2626]/10 flex items-center justify-center gap-1">
+                class="w-full px-3 py-1.5 text-xs font-medium rounded border border-critical text-critical hover:bg-[#DC2626]/10 flex items-center justify-center gap-1">
           <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
           {{ t.delete_all }}
         </button>
       </div>
 
       <!-- Factory Reset -->
-      <div class="bg-[#F9FAFB] dark:bg-[#0F172A]/50 rounded-lg p-4 border border-[#DC2626]/20 dark:border-[#EF4444]/20 flex flex-col">
+      <div class="bg-page dark:bg-page/50 rounded-lg p-4 border border-critical/20 flex flex-col">
         <div class="flex items-center gap-2 mb-2">
           <i data-lucide="bomb" class="w-4 h-4 text-[#DC2626]"></i>
-          <span class="text-sm font-medium text-[#DC2626] dark:text-[#EF4444]">{{ t.factory_reset }}</span>
+          <span class="text-sm font-medium text-critical">{{ t.factory_reset }}</span>
         </div>
-        <p class="text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mb-3 flex-1">{{ t.factory_reset_desc }}</p>
+        <p class="text-[10px] text-muted mb-3 flex-1">{{ t.factory_reset_desc }}</p>
         <button data-action="showDataActionModal" data-args='["factory-reset"]'
-                class="w-full px-3 py-1.5 text-xs font-medium rounded bg-[#DC2626] dark:bg-[#EF4444] text-white hover:opacity-90 flex items-center justify-center gap-1">
+                class="w-full px-3 py-1.5 text-xs font-medium rounded bg-critical text-white hover:opacity-90 flex items-center justify-center gap-1">
           <i data-lucide="bomb" class="w-3.5 h-3.5"></i>
           {{ t.factory_reset }}
         </button>
@@ -478,8 +478,8 @@
 <div id="data-action-modal" class="fixed inset-0 z-[70] hidden">
   <div class="fixed inset-0 bg-black/50" data-action="closeDataActionModal"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#E5E7EB] dark:border-[#334155] w-full max-w-sm relative">
-      <div class="flex items-center justify-between p-4 border-b border-[#E5E7EB] dark:border-[#334155]">
+    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-sm relative">
+      <div class="flex items-center justify-between p-4 border-b border-line">
         <h3 class="text-base font-semibold flex items-center gap-2">
           <i data-lucide="alert-triangle" class="w-5 h-5 text-[#DC2626]"></i>
           {{ t.confirm_action }}
@@ -489,7 +489,7 @@
         </button>
       </div>
       <div class="p-4 space-y-3">
-        <div id="data-action-desc" class="text-sm text-[#6B7280] dark:text-[#CBD5E1]"></div>
+        <div id="data-action-desc" class="text-sm text-muted"></div>
         <div class="flex items-start gap-2 p-2.5 rounded bg-[#FEE2E2] dark:bg-[#7F1D1D]/30 text-[#991B1B] dark:text-[#FCA5A5] text-xs">
           <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
           <span>{{ t.action_irreversible }}</span>
@@ -497,19 +497,19 @@
         <div>
           <label class="block text-xs font-medium mb-1">{{ t.type_to_confirm }}:</label>
           <div class="flex items-center gap-2">
-            <code id="data-action-keyword" class="px-2 py-1 bg-[#FEE2E2] dark:bg-[#7F1D1D]/30 text-[#DC2626] dark:text-[#EF4444] rounded text-xs font-mono break-all"></code>
+            <code id="data-action-keyword" class="px-2 py-1 bg-[#FEE2E2] dark:bg-[#7F1D1D]/30 text-critical rounded text-xs font-mono break-all"></code>
           </div>
           <input type="text" id="data-action-confirm-input" autocomplete="off" spellcheck="false"
                  placeholder="{{ t.get('type_phrase_placeholder', 'Type the phrase exactly') }}"
-                 class="mt-2 w-full px-3 py-2 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#DC2626] dark:focus:ring-[#EF4444] focus:border-transparent outline-none font-mono"
+                 class="mt-2 w-full px-3 py-2 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-critical focus:border-transparent outline-none font-mono"
                  data-input="checkDataActionConfirm">
         </div>
         <div id="data-action-result" class="hidden rounded-lg p-2.5 text-sm"></div>
       </div>
-      <div class="flex justify-end gap-2 p-4 border-t border-[#E5E7EB] dark:border-[#334155]">
-        <button data-action="closeDataActionModal" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.cancel }}</button>
+      <div class="flex justify-end gap-2 p-4 border-t border-line">
+        <button data-action="closeDataActionModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
         <button id="data-action-confirm-btn" disabled data-action="executeDataAction"
-                class="px-4 py-1.5 text-sm font-medium rounded bg-[#DC2626] dark:bg-[#EF4444] text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
+                class="px-4 py-1.5 text-sm font-medium rounded bg-critical text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
           <i data-lucide="check" class="w-4 h-4"></i>
           {{ t.confirm_action }}
         </button>
@@ -524,8 +524,8 @@
 <div id="service-picker-modal" class="fixed inset-0 z-[70] hidden">
   <div class="fixed inset-0 bg-black/50" data-action="closePickerModal"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#E5E7EB] dark:border-[#334155] w-full max-w-lg max-h-[80vh] flex flex-col relative">
-      <div class="flex items-center justify-between p-4 border-b border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-lg max-h-[80vh] flex flex-col relative">
+      <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
         <h3 id="picker-title" class="text-lg font-semibold flex items-center gap-2">
           <i data-lucide="list" class="w-5 h-5 text-[#8B5CF6]"></i>
           <span>{{ t.get('choose_services', 'Choose Services') }}</span>
@@ -537,27 +537,27 @@
       <div class="px-4 pt-3 pb-2 flex-shrink-0 space-y-2">
         <input type="text" id="picker-search" data-input="filterPickerItems"
                placeholder="{{ t.get('search_filter', 'Search / filter...') }}"
-               class="w-full px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#8B5CF6] focus:border-transparent outline-none">
+               class="w-full px-3 py-1.5 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#8B5CF6] focus:border-transparent outline-none">
         <label id="picker-running-only-wrap" class="hidden items-center gap-2 cursor-pointer">
           <input type="checkbox" id="picker-running-only" checked data-change="filterPickerItems"
                  class="rounded border-[#D1D5DB] dark:border-[#475569] text-[#10B981] focus:ring-[#10B981]">
-          <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('running_only', 'Running only') }}</span>
-          <span id="picker-counts" class="text-[10px] text-[#9CA3AF] dark:text-[#475569]"></span>
+          <span class="text-xs text-muted">{{ t.get('running_only', 'Running only') }}</span>
+          <span id="picker-counts" class="text-[10px] text-faint"></span>
         </label>
       </div>
       <div id="picker-list" class="px-4 py-2 overflow-y-auto flex-1" style="max-height: 400px;">
       </div>
-      <div class="flex justify-between items-center gap-2 p-4 border-t border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+      <div class="flex justify-between items-center gap-2 p-4 border-t border-line flex-shrink-0">
         <div class="flex items-center gap-2">
-          <button id="picker-select-all-btn" data-action="selectAllFiltered" class="hidden px-3 py-1 text-xs font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">
+          <button id="picker-select-all-btn" data-action="selectAllFiltered" class="hidden px-3 py-1 text-xs font-medium rounded border border-line hover:bg-page">
             {{ t.get('select_all_filtered', 'Select All Filtered') }}
           </button>
-          <button id="picker-clear-btn" data-action="clearPickerSelection" class="hidden px-3 py-1 text-xs font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">
+          <button id="picker-clear-btn" data-action="clearPickerSelection" class="hidden px-3 py-1 text-xs font-medium rounded border border-line hover:bg-page">
             {{ t.get('clear_selection', 'Clear') }}
           </button>
         </div>
         <div class="flex gap-2">
-          <button data-action="closePickerModal" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.cancel }}</button>
+          <button data-action="closePickerModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
           <button data-action="applyPickerSelection" class="px-4 py-1.5 text-sm rounded bg-[#8B5CF6] text-white hover:opacity-90 flex items-center gap-1.5">
             <i data-lucide="check" class="w-4 h-4"></i>
             {{ t.get('apply_selection', 'Apply') }}
@@ -578,8 +578,8 @@
 <div id="runbook-run-modal" class="fixed inset-0 z-[70] hidden">
   <div class="fixed inset-0 bg-black/50" data-action="closeRunbookRunModal"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#E5E7EB] dark:border-[#334155] w-full max-w-md relative">
-      <div class="flex items-center justify-between p-4 border-b border-[#E5E7EB] dark:border-[#334155]">
+    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-md relative">
+      <div class="flex items-center justify-between p-4 border-b border-line">
         <h3 class="text-base font-semibold flex items-center gap-2">
           <i data-lucide="play" class="w-5 h-5 text-[#10B981]"></i>
           <span id="rb-run-title">{{ t.get('run_runbook', 'Run Runbook') }}</span>
@@ -589,16 +589,16 @@
         </button>
       </div>
       <div class="p-4 space-y-3">
-        <div id="rb-run-desc" class="text-xs text-[#6B7280] dark:text-[#CBD5E1]"></div>
+        <div id="rb-run-desc" class="text-xs text-muted"></div>
         <div>
-          <label class="block text-[10px] font-semibold uppercase mb-1 text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('target_server', 'Target Server') }}</label>
-          <select id="rb-run-server" class="w-full px-3 py-2 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#10B981] focus:border-transparent outline-none">
+          <label class="block text-[10px] font-semibold uppercase mb-1 text-muted">{{ t.get('target_server', 'Target Server') }}</label>
+          <select id="rb-run-server" class="w-full px-3 py-2 text-sm rounded border border-line bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#10B981] focus:border-transparent outline-none">
             {% for s in servers %}
             <option value="{{ s.name }}">{{ s.name }} ({{ s.host }})</option>
             {% endfor %}
           </select>
         </div>
-        <label class="flex items-center gap-2 cursor-pointer p-2 rounded border border-[#E5E7EB] dark:border-[#334155]">
+        <label class="flex items-center gap-2 cursor-pointer p-2 rounded border border-line">
           <input type="checkbox" id="rb-run-dry" checked>
           <div>
             <span class="text-xs font-medium">{{ t.get('dry_run', 'Dry Run') }}</span>
@@ -610,11 +610,11 @@
             <span id="rb-run-status" class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium"></span>
             <span id="rb-run-duration" class="text-[10px] text-[#9CA3AF]"></span>
           </div>
-          <pre id="rb-run-content" class="px-3 py-2 text-[10px] font-mono whitespace-pre-wrap max-h-48 overflow-y-auto bg-[#F9FAFB] dark:bg-[#0F172A] rounded border border-[#E5E7EB] dark:border-[#334155]"></pre>
+          <pre id="rb-run-content" class="px-3 py-2 text-[10px] font-mono whitespace-pre-wrap max-h-48 overflow-y-auto bg-page rounded border border-line"></pre>
         </div>
       </div>
-      <div class="flex justify-end gap-2 p-4 border-t border-[#E5E7EB] dark:border-[#334155]">
-        <button data-action="closeRunbookRunModal" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.cancel }}</button>
+      <div class="flex justify-end gap-2 p-4 border-t border-line">
+        <button data-action="closeRunbookRunModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
         <button id="rb-run-confirm-btn" data-action="confirmRunbookRun" class="px-4 py-1.5 text-sm font-medium rounded bg-[#10B981] text-white hover:opacity-90 flex items-center gap-1.5">
           <i data-lucide="play" class="w-4 h-4"></i>
           <span>{{ t.get('execute', 'Execute') }}</span>
@@ -703,21 +703,21 @@ function addServerRestartRow(data) {
   const serverOpts = _serverNames.map(n => `<option value="${n}" ${d.server === n ? 'selected' : ''}>${n}</option>`).join('');
   row.innerHTML = `
     <div class="flex flex-wrap items-center gap-2 p-2.5">
-      <div class="flex items-center gap-1 bg-[#2563EB]/10 dark:bg-[#3B82F6]/10 rounded px-1.5 py-0.5">
-        <span class="text-[10px] font-bold text-[#2563EB] dark:text-[#3B82F6]">#</span>
-        <input type="number" class="sr-order w-8 px-0 py-0 text-xs font-bold text-[#2563EB] dark:text-[#3B82F6] bg-transparent border-0 text-center outline-none" value="${d.order || (idx + 1)}" min="1" max="99">
+      <div class="flex items-center gap-1 bg-info/10 rounded px-1.5 py-0.5">
+        <span class="text-[10px] font-bold text-info">#</span>
+        <input type="number" class="sr-order w-8 px-0 py-0 text-xs font-bold text-info bg-transparent border-0 text-center outline-none" value="${d.order || (idx + 1)}" min="1" max="99">
       </div>
-      <select class="sr-server px-2 py-1 text-xs font-medium rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+      <select class="sr-server px-2 py-1 text-xs font-medium rounded border border-line bg-white dark:bg-[#0F172A]">
         <option value="">-- Server --</option>
         ${serverOpts}
       </select>
-      <label class="flex items-center gap-1.5 px-2 py-1 rounded border border-[#F59E0B]/30 dark:border-[#F59E0B]/20 bg-[#F59E0B]/5 dark:bg-[#F59E0B]/5 cursor-pointer" title="` + {{ t.install_updates_desc | tojson }} + `">
+      <label class="flex items-center gap-1.5 px-2 py-1 rounded border border-warning/30 dark:border-[#F59E0B]/20 bg-warning/5 dark:bg-[#F59E0B]/5 cursor-pointer" title="` + {{ t.install_updates_desc | tojson }} + `">
         <input type="checkbox" class="sr-install-updates w-3.5 h-3.5 rounded border-[#D1D5DB] dark:border-[#475569] accent-[#F59E0B]" ${d.install_updates ? 'checked' : ''}>
-        <i data-lucide="download" class="w-3 h-3 text-[#F59E0B] dark:text-[#FBBF24]"></i>
+        <i data-lucide="download" class="w-3 h-3 text-warning"></i>
         <span class="text-[10px] font-medium text-[#92400E] dark:text-[#FCD34D]">` + {{ t.install_updates | tojson }} + `</span>
       </label>
       <div class="flex items-center gap-1 ml-auto">
-        <button data-action="toggleConditionsEl" class="px-2 py-1 text-[10px] font-medium rounded border border-[#8B5CF6] dark:border-[#A78BFA] text-[#8B5CF6] dark:text-[#A78BFA] hover:bg-[#8B5CF6]/10 flex items-center gap-1" title="` + {{ t.restart_conditions | tojson }} + `">
+        <button data-action="toggleConditionsEl" class="px-2 py-1 text-[10px] font-medium rounded border border-brand text-brand hover:bg-[#8B5CF6]/10 flex items-center gap-1" title="` + {{ t.restart_conditions | tojson }} + `">
           <i data-lucide="filter" class="w-3 h-3"></i>
           <span class="sr-cond-count">${conditions.length || 0}</span>
         </button>
@@ -727,16 +727,16 @@ function addServerRestartRow(data) {
         </button>
       </div>
     </div>
-    <div class="sr-conditions hidden border-t border-[#E5E7EB] dark:border-[#334155] bg-white/50 dark:bg-[#1E293B]/50 p-2.5">
+    <div class="sr-conditions hidden border-t border-line bg-card/50 dark:bg-card/50 p-2.5">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-[10px] font-semibold uppercase tracking-wider text-[#8B5CF6] dark:text-[#A78BFA]">` + {{ t.restart_conditions | tojson }} + `</span>
-        <button data-action="addConditionToRowEl" class="px-2 py-0.5 text-[10px] font-medium rounded border border-[#8B5CF6] dark:border-[#A78BFA] text-[#8B5CF6] dark:text-[#A78BFA] hover:bg-[#8B5CF6]/10 flex items-center gap-1">
+        <span class="text-[10px] font-semibold uppercase tracking-wider text-brand">` + {{ t.restart_conditions | tojson }} + `</span>
+        <button data-action="addConditionToRowEl" class="px-2 py-0.5 text-[10px] font-medium rounded border border-brand text-brand hover:bg-[#8B5CF6]/10 flex items-center gap-1">
           <i data-lucide="plus" class="w-3 h-3"></i>
           ` + {{ t.add_condition | tojson }} + `
         </button>
       </div>
       <div class="sr-cond-list space-y-1.5"></div>
-      <div class="sr-no-cond text-[10px] text-[#9CA3AF] dark:text-[#475569] italic ${conditions.length > 0 ? 'hidden' : ''}">` + {{ t.no_conditions | tojson }} + `</div>
+      <div class="sr-no-cond text-[10px] text-faint italic ${conditions.length > 0 ? 'hidden' : ''}">` + {{ t.no_conditions | tojson }} + `</div>
     </div>`;
   container.appendChild(row);
   // Load existing conditions
@@ -774,22 +774,22 @@ function addConditionToRow(btn, data) {
   const condRow = document.createElement('div');
   condRow.className = 'flex flex-wrap items-center gap-1.5 p-1.5 rounded bg-[#F9FAFB] dark:bg-[#0F172A]/50 border border-[#E5E7EB] dark:border-[#334155]';
   condRow.innerHTML = `
-    <select class="cond-type px-1.5 py-0.5 text-[11px] rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" data-change="updateConditionFieldsEl">
+    <select class="cond-type px-1.5 py-0.5 text-[11px] rounded border border-line bg-white dark:bg-[#0F172A]" data-change="updateConditionFieldsEl">
       <option value="wait_online" ${d.type==='wait_online'?'selected':''}>` + {{ t.wait_online | tojson }} + `</option>
       <option value="wait_service" ${d.type==='wait_service'?'selected':''}>` + {{ t.wait_service | tojson }} + `</option>
       <option value="wait_process" ${d.type==='wait_process'?'selected':''}>` + {{ t.wait_process | tojson }} + `</option>
     </select>
-    <input type="text" class="cond-value px-1.5 py-0.5 text-[11px] rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] w-36 ${d.type && d.type !== 'wait_online' ? '' : 'hidden'}"
+    <input type="text" class="cond-value px-1.5 py-0.5 text-[11px] rounded border border-line bg-white dark:bg-[#0F172A] w-36 ${d.type && d.type !== 'wait_online' ? '' : 'hidden'}"
            placeholder="${d.type === 'wait_process' ? '` + {{ t.process_name | tojson }} + `' : '` + {{ t.service_name | tojson }} + `'}" value="${d.value || ''}">
-    <button type="button" data-action="openServicePickerEl" class="cond-browse-btn px-1.5 py-0.5 text-[11px] rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] hover:bg-[#F9FAFB] dark:hover:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1] ${d.type && d.type !== 'wait_online' ? '' : 'hidden'}" title="Browse">
+    <button type="button" data-action="openServicePickerEl" class="cond-browse-btn px-1.5 py-0.5 text-[11px] rounded border border-line bg-white dark:bg-[#0F172A] hover:bg-page dark:hover:bg-[#334155] text-muted ${d.type && d.type !== 'wait_online' ? '' : 'hidden'}" title="Browse">
       <i data-lucide="list" class="w-3 h-3"></i>
     </button>
     <div class="flex items-center gap-1">
-      <span class="text-[10px] text-[#6B7280] dark:text-[#CBD5E1]">` + {{ t.condition_timeout | tojson }} + `:</span>
-      <input type="number" class="cond-timeout w-14 px-1 py-0.5 text-[11px] rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-center" value="${d.timeout || 300}" min="30" max="3600">
-      <span class="text-[10px] text-[#6B7280] dark:text-[#CBD5E1]">s</span>
+      <span class="text-[10px] text-muted">` + {{ t.condition_timeout | tojson }} + `:</span>
+      <input type="number" class="cond-timeout w-14 px-1 py-0.5 text-[11px] rounded border border-line bg-white dark:bg-[#0F172A] text-center" value="${d.timeout || 300}" min="30" max="3600">
+      <span class="text-[10px] text-muted">s</span>
     </div>
-    <button data-action="removeConditionEl" class="p-0.5 text-[#DC2626] dark:text-[#EF4444] hover:bg-[#DC2626]/10 rounded ml-auto" title="` + {{ t.remove_condition | tojson }} + `">
+    <button data-action="removeConditionEl" class="p-0.5 text-critical hover:bg-[#DC2626]/10 rounded ml-auto" title="` + {{ t.remove_condition | tojson }} + `">
       <i data-lucide="x" class="w-3 h-3"></i>
     </button>`;
   condList.appendChild(condRow);
@@ -942,7 +942,7 @@ function openServicePicker(btn) {
   document.getElementById('picker-list').innerHTML = `
     <div class="text-center py-8">
       <div class="animate-spin rounded-full h-6 w-6 border-2 border-[#8B5CF6] border-t-transparent mx-auto"></div>
-      <p class="text-xs text-[#6B7280] dark:text-[#CBD5E1] mt-2">${_loadingText}</p>
+      <p class="text-xs text-muted mt-2">${_loadingText}</p>
     </div>`;
   document.getElementById('picker-select-all-btn').classList.add('hidden');
   document.getElementById('picker-clear-btn').classList.add('hidden');
@@ -957,7 +957,7 @@ function openServicePicker(btn) {
     .then(data => {
       if (fetchId !== _pickerFetchId) return;
       if (!data.ok) {
-        document.getElementById('picker-list').innerHTML = `<div class="text-center py-6 text-sm text-[#DC2626] dark:text-[#EF4444]">${_escHtml(data.error || 'Error loading items')}</div>`;
+        document.getElementById('picker-list').innerHTML = `<div class="text-center py-6 text-sm text-critical">${_escHtml(data.error || 'Error loading items')}</div>`;
         return;
       }
       _pickerItems = _pickerType === 'service' ? (data.services || []) : (data.processes || []);
@@ -967,7 +967,7 @@ function openServicePicker(btn) {
     })
     .catch(err => {
       if (fetchId !== _pickerFetchId) return;
-      document.getElementById('picker-list').innerHTML = `<div class="text-center py-6 text-sm text-[#DC2626] dark:text-[#EF4444]">${_escHtml(err.message || 'Failed to fetch')}</div>`;
+      document.getElementById('picker-list').innerHTML = `<div class="text-center py-6 text-sm text-critical">${_escHtml(err.message || 'Failed to fetch')}</div>`;
     });
 }
 
@@ -984,7 +984,7 @@ function renderPickerItems(items) {
   const list = document.getElementById('picker-list');
   const _noItemsText = {{ t.get('no_items_found', 'No items found') | tojson }};
   if (filtered.length === 0) {
-    list.innerHTML = `<div class="text-center py-6 text-sm text-[#6B7280] dark:text-[#CBD5E1]">${_noItemsText}</div>`;
+    list.innerHTML = `<div class="text-center py-6 text-sm text-muted">${_noItemsText}</div>`;
     return;
   }
 
@@ -1025,13 +1025,13 @@ function renderPickerItems(items) {
 
     let detail = '';
     if (_pickerType === 'service') {
-      detail = `<span class="text-[10px] text-[#6B7280] dark:text-[#CBD5E1] truncate max-w-[200px]">${safeDisplay}</span>`;
+      detail = `<span class="text-[10px] text-muted truncate max-w-[200px]">${safeDisplay}</span>`;
     } else {
-      detail = memory ? `<span class="text-[10px] text-[#6B7280] dark:text-[#CBD5E1]">${_escHtml(String(memory))} MB</span>` : '';
+      detail = memory ? `<span class="text-[10px] text-muted">${_escHtml(String(memory))} MB</span>` : '';
     }
 
     return `
-      <label class="flex items-center gap-2 px-3 py-1.5 rounded hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]/60 cursor-pointer">
+      <label class="flex items-center gap-2 px-3 py-1.5 rounded hover:bg-page dark:hover:bg-page/60 cursor-pointer">
         <input type="checkbox" class="picker-check rounded border-[#D1D5DB] dark:border-[#475569] text-[#8B5CF6] focus:ring-[#8B5CF6]" value="${safeName}" ${checked}>
         <span class="text-xs font-medium min-w-[120px]">${safeName}</span>
         <span class="flex items-center gap-1.5 ml-auto">${detail}</span>
@@ -1102,7 +1102,7 @@ function loadRunbooksSettings() {
       if (_opsRunbooks.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" class="px-3 py-10 text-center">' +
           '<i data-lucide="book-open" class="w-10 h-10 mx-auto mb-2 text-[#9CA3AF] opacity-50"></i>' +
-          '<p class="text-sm text-[#6B7280] dark:text-[#CBD5E1] font-medium">' + {{ t.get('no_runbooks', 'No runbooks yet') | tojson }} + '</p>' +
+          '<p class="text-sm text-muted font-medium">' + {{ t.get('no_runbooks', 'No runbooks yet') | tojson }} + '</p>' +
           '<p class="text-[10px] mt-1 text-[#9CA3AF]">' + {{ t.get('no_runbooks_hint', 'Click Create Runbook to add your first one') | tojson }} + '</p>' +
           '</td></tr>';
         if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -1120,7 +1120,7 @@ function loadRunbooksSettings() {
           '<i data-lucide="play" class="w-3.5 h-3.5"></i></button>';
         const editBtn = rb.is_builtin ? '' :
           '<button data-action="editRunbook" data-args="[' + rb.id + ']" title="' + {{ t.edit | default('Edit') | tojson }} + '" ' +
-          'class="inline-flex items-center justify-center w-7 h-7 rounded border border-[#E5E7EB] dark:border-[#334155] text-[#2563EB] dark:text-[#3B82F6] hover:bg-[#2563EB]/10">' +
+          'class="inline-flex items-center justify-center w-7 h-7 rounded border border-line text-info hover:bg-[#2563EB]/10">' +
           '<i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>';
         const delBtn = rb.is_builtin ? '' :
           '<button data-action="deleteRunbook" data-args="[' + rb.id + ', ' + JSON.stringify(rb.name).replace(/"/g, '&quot;') + ']" ' +
@@ -1128,9 +1128,9 @@ function loadRunbooksSettings() {
           'class="inline-flex items-center justify-center w-7 h-7 rounded border border-[#DC2626] text-[#DC2626] hover:bg-[#DC2626]/10">' +
           '<i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>';
         const actions = '<div class="inline-flex items-center gap-1">' + runBtn + editBtn + delBtn + '</div>';
-        html += '<tr class="border-b border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]/50">';
+        html += '<tr class="border-b border-line hover:bg-page dark:hover:bg-page/50">';
         html += '<td class="px-3 py-2">' + _escHtml(rb.name) + (rb.description ? '<div class="text-[10px] text-[#9CA3AF]">' + _escHtml(rb.description) + '</div>' : '') + '</td>';
-        html += '<td class="px-3 py-2 text-[#6B7280] dark:text-[#CBD5E1]">' + _escHtml(rb.category || 'general') + '</td>';
+        html += '<td class="px-3 py-2 text-muted">' + _escHtml(rb.category || 'general') + '</td>';
         html += '<td class="px-3 py-2">' + typeBadge + '</td>';
         html += '<td class="px-3 py-2 text-right">' + actions + '</td>';
         html += '</tr>';
@@ -1160,7 +1160,7 @@ function loadRunbookExecHistory() {
       if (data.executions.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-10 text-center">' +
           '<i data-lucide="history" class="w-10 h-10 mx-auto mb-2 text-[#9CA3AF] opacity-50"></i>' +
-          '<p class="text-sm text-[#6B7280] dark:text-[#CBD5E1] font-medium">' + {{ t.get('no_executions', 'No executions yet') | tojson }} + '</p>' +
+          '<p class="text-sm text-muted font-medium">' + {{ t.get('no_executions', 'No executions yet') | tojson }} + '</p>' +
           '<p class="text-[10px] mt-1 text-[#9CA3AF]">' + {{ t.get('no_executions_hint', 'Click the play icon on any runbook to run it') | tojson }} + '</p>' +
           '</td></tr>';
         if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -1179,12 +1179,12 @@ function loadRunbookExecHistory() {
         const label = STATUS_LABEL[ex.status] || ex.status;
         const ts = (typeof formatTs === 'function') ? formatTs(ex.timestamp) : (ex.timestamp || '').substring(0, 16);
         const dur = ex.duration_ms ? (ex.duration_ms / 1000).toFixed(1) + 's' : '-';
-        html += '<tr class="border-b border-[#E5E7EB] dark:border-[#334155]">';
+        html += '<tr class="border-b border-line">';
         html += '<td class="px-3 py-2">' + (ex.runbook_name || '#' + ex.runbook_id) + (ex.dry_run ? ' <span class="text-[10px] text-[#9CA3AF]">(dry run)</span>' : '') + '</td>';
-        html += '<td class="px-3 py-2 text-[#6B7280] dark:text-[#CBD5E1]">' + ex.server_name + '</td>';
+        html += '<td class="px-3 py-2 text-muted">' + ex.server_name + '</td>';
         html += '<td class="px-3 py-2"><span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ' + cls + '">' + label + '</span></td>';
-        html += '<td class="px-3 py-2 text-[#6B7280] dark:text-[#CBD5E1] whitespace-nowrap">' + ts + '</td>';
-        html += '<td class="px-3 py-2 text-right text-[#6B7280] dark:text-[#CBD5E1]">' + dur + '</td>';
+        html += '<td class="px-3 py-2 text-muted whitespace-nowrap">' + ts + '</td>';
+        html += '<td class="px-3 py-2 text-right text-muted">' + dur + '</td>';
         html += '</tr>';
       });
       tbody.innerHTML = html;
@@ -1393,20 +1393,20 @@ function loadBackups() {
 
       const tbody = document.getElementById('backup-list-body');
       if (backups.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="px-3 py-4 text-center text-xs text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.no_backups | tojson }} + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" class="px-3 py-4 text-center text-xs text-muted">' + {{ t.no_backups | tojson }} + '</td></tr>';
         return;
       }
       tbody.innerHTML = backups.map(b => {
         const size = (b.size_bytes / 1024).toFixed(1) + ' KB';
         const ts = formatTs(b.timestamp);
-        return `<tr class="border-b border-[#E5E7EB] dark:border-[#334155] last:border-0">
-          <td class="px-3 py-2 text-xs font-mono text-[#6B7280] dark:text-[#CBD5E1]">${ts}</td>
-          <td class="px-3 py-2 text-xs text-[#6B7280] dark:text-[#CBD5E1]">${size}</td>
+        return `<tr class="border-b border-line last:border-0">
+          <td class="px-3 py-2 text-xs font-mono text-muted">${ts}</td>
+          <td class="px-3 py-2 text-xs text-muted">${size}</td>
           <td class="px-3 py-2 text-right whitespace-nowrap">
-            <a href="/api/config/backups/download/${b.filename}" download class="p-1 text-[#6B7280] dark:text-[#CBD5E1] hover:text-[#2563EB] dark:hover:text-[#3B82F6]" title="${{ t.download_backup | tojson }}">
+            <a href="/api/config/backups/download/${b.filename}" download class="p-1 text-muted hover:text-info" title="${{ t.download_backup | tojson }}">
               <i data-lucide="download" class="w-3.5 h-3.5 inline"></i>
             </a>
-            <button data-action="restoreBackup" data-args='["${b.filename}"]' class="p-1 text-[#6B7280] dark:text-[#CBD5E1] hover:text-[#F59E0B] dark:hover:text-[#FBBF24] ml-1" title="${{ t.restore | tojson }}">
+            <button data-action="restoreBackup" data-args='["${b.filename}"]' class="p-1 text-muted hover:text-warning ml-1" title="${{ t.restore | tojson }}">
               <i data-lucide="undo-2" class="w-3.5 h-3.5 inline"></i>
             </button>
           </td>
@@ -1529,18 +1529,18 @@ function renderAuditEntries(entries, append) {
   const tbody = document.getElementById('audit-log-body');
   if (!append) tbody.innerHTML = '';
   if (entries.length === 0 && !append) {
-    tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-4 text-center text-xs text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.no_audit_entries | tojson }} + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-4 text-center text-xs text-muted">' + {{ t.no_audit_entries | tojson }} + '</td></tr>';
     return;
   }
   const html = entries.map(e => {
     const ts = formatTs(e.timestamp);
-    const catBadge = `<span class="inline-block px-1.5 py-0.5 text-[10px] rounded bg-[#F1F5F9] dark:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1]">${e.category || ''}</span>`;
-    return `<tr class="border-b border-[#E5E7EB] dark:border-[#334155] last:border-0 hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]/50">
-      <td class="px-3 py-2 text-xs font-mono text-[#6B7280] dark:text-[#CBD5E1] whitespace-nowrap">${ts}</td>
+    const catBadge = `<span class="inline-block px-1.5 py-0.5 text-[10px] rounded bg-[#F1F5F9] dark:bg-[#334155] text-muted">${e.category || ''}</span>`;
+    return `<tr class="border-b border-line last:border-0 hover:bg-page dark:hover:bg-page/50">
+      <td class="px-3 py-2 text-xs font-mono text-muted whitespace-nowrap">${ts}</td>
       <td class="px-3 py-2 text-xs">${e.username || 'system'}</td>
       <td class="px-3 py-2 text-xs">${e.action || ''}</td>
       <td class="px-3 py-2 hidden sm:table-cell">${catBadge}</td>
-      <td class="px-3 py-2 text-xs text-[#6B7280] dark:text-[#CBD5E1] hidden md:table-cell truncate max-w-[200px]">${e.details || ''}</td>
+      <td class="px-3 py-2 text-xs text-muted hidden md:table-cell truncate max-w-[200px]">${e.details || ''}</td>
     </tr>`;
   }).join('');
   tbody.insertAdjacentHTML('beforeend', html);
