@@ -3,7 +3,7 @@
 
 <!-- Back button + header -->
 <div class="mb-6">
-  <a href="/" class="inline-flex items-center gap-1 text-sm text-[#6B7280] dark:text-[#CBD5E1] hover:text-[#2563EB] dark:hover:text-[#3B82F6] mb-3">
+  <a href="/" class="inline-flex items-center gap-1 text-sm text-muted hover:text-info mb-3">
     <i data-lucide="arrow-left" class="w-4 h-4"></i>
     {{ t.back_to_dashboard }}
   </a>
@@ -52,8 +52,8 @@
           {{ t.quick_actions | default('Quick Actions') }}
           <i data-lucide="chevron-down" class="w-3 h-3"></i>
         </button>
-        <div id="runbook-dropdown" class="hidden absolute right-0 top-full mt-1 w-64 bg-white dark:bg-[#1E293B] border border-[#E5E7EB] dark:border-[#334155] rounded-lg shadow-lg z-50 py-1 max-h-80 overflow-y-auto">
-          <div class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1] border-b border-[#E5E7EB] dark:border-[#334155]">
+        <div id="runbook-dropdown" class="hidden absolute right-0 top-full mt-1 w-64 bg-card border border-line rounded-lg shadow-lg z-50 py-1 max-h-80 overflow-y-auto">
+          <div class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted border-b border-line">
             {{ t.quick_actions | default('Quick Actions') }}
           </div>
           <div id="runbook-dropdown-list">
@@ -63,7 +63,7 @@
       </div>
     </div>
   </div>
-  <div class="flex items-center gap-2 flex-wrap text-xs text-[#6B7280] dark:text-[#CBD5E1] mt-1">
+  <div class="flex items-center gap-2 flex-wrap text-xs text-muted mt-1">
     <span>{{ server.type | replace('_', ' ') | title }}</span>
     <span id="os-info" class="hidden"></span>
     <span id="last-check-text">
@@ -83,20 +83,20 @@
   {# ── Thresholds chip row (compact at-a-glance limits for this server) ── #}
   {% set _th = server.thresholds or {} %}
   <div class="flex items-center gap-2 flex-wrap mt-2">
-    <span class="text-[10px] font-semibold uppercase tracking-wider text-[#9CA3AF] dark:text-[#64748B]">{{ t.get('thresholds', 'Thresholds') }}</span>
-    <span class="threshold-chip inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono rounded border border-[#E5E7EB] dark:border-[#334155] bg-[#F9FAFB] dark:bg-[#0F172A] text-[#6B7280] dark:text-[#CBD5E1]"
+    <span class="text-[10px] font-semibold uppercase tracking-wider text-faint">{{ t.get('thresholds', 'Thresholds') }}</span>
+    <span class="threshold-chip inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono rounded border border-line bg-page text-muted"
           data-tip-title="CPU Thresholds"
           data-tip-desc="Warning at {{ _th.get('cpu_warning', 75) }}% — Critical at {{ _th.get('cpu_critical', 90) }}%. Edit on the Servers settings page.">
       <i data-lucide="cpu" class="w-3 h-3"></i>
       CPU {{ _th.get('cpu_warning', 75) }}/{{ _th.get('cpu_critical', 90) }}
     </span>
-    <span class="threshold-chip inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono rounded border border-[#E5E7EB] dark:border-[#334155] bg-[#F9FAFB] dark:bg-[#0F172A] text-[#6B7280] dark:text-[#CBD5E1]"
+    <span class="threshold-chip inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono rounded border border-line bg-page text-muted"
           data-tip-title="RAM Thresholds"
           data-tip-desc="Warning at {{ _th.get('ram_warning', 80) }}% — Critical at {{ _th.get('ram_critical', 90) }}%. Edit on the Servers settings page.">
       <i data-lucide="memory-stick" class="w-3 h-3"></i>
       RAM {{ _th.get('ram_warning', 80) }}/{{ _th.get('ram_critical', 90) }}
     </span>
-    <span class="threshold-chip inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono rounded border border-[#E5E7EB] dark:border-[#334155] bg-[#F9FAFB] dark:bg-[#0F172A] text-[#6B7280] dark:text-[#CBD5E1]"
+    <span class="threshold-chip inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono rounded border border-line bg-page text-muted"
           data-tip-title="Disk Thresholds"
           data-tip-desc="Warning at {{ _th.get('disk_warning', 80) }}% — Critical at {{ _th.get('disk_critical', 90) }}%. Applies to every disk on this server (C:, D:, etc).">
       <i data-lucide="hard-drive" class="w-3 h-3"></i>
@@ -117,13 +117,13 @@
 <!-- Current Metrics (JS-rendered for auto-refresh) -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">
-    <i data-lucide="gauge" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    <i data-lucide="gauge" class="w-5 h-5 text-info"></i>
     {{ t.current_metrics }}
   </h2>
   <div id="metrics-container">
     <!-- Populated by JS -->
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg p-8 border border-[#E5E7EB] dark:border-[#334155] text-center">
-      <i data-lucide="loader" class="w-10 h-10 mx-auto mb-3 text-[#6B7280] dark:text-[#CBD5E1] animate-spin"></i>
+    <div class="bg-card rounded-lg p-8 border border-line text-center">
+      <i data-lucide="loader" class="w-10 h-10 mx-auto mb-3 text-muted animate-spin"></i>
     </div>
   </div>
 
@@ -132,7 +132,7 @@
 <!-- Anomalies & Forecasts -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">
-    <i data-lucide="search" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    <i data-lucide="search" class="w-5 h-5 text-info"></i>
     {{ t.anomalies }} &amp; {{ t.forecasts }}
   </h2>
 
@@ -140,18 +140,17 @@
   <!-- Anomaly cards -->
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
     {% for a in analytics.anomalies %}
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg p-4 border
-      {% if a.severity == 'critical' %}border-[#DC2626] dark:border-[#EF4444]{% else %}border-[#F59E0B] dark:border-[#FBBF24]{% endif %}">
+    <div class="bg-card rounded-lg p-4 border {% if a.severity == 'critical' %}border-critical dark:border-[#EF4444]{% else %}border-warning {% endif %}">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-sm font-medium text-[#6B7280] dark:text-[#CBD5E1]">
+        <span class="text-sm font-medium text-muted">
           {{ t.get(a.metric, a.metric) }}
         </span>
         <span class="badge badge-{{ a.severity }}">{{ a.severity }}</span>
       </div>
-      <div class="text-xl font-bold {% if a.severity == 'critical' %}text-[#DC2626] dark:text-[#EF4444]{% else %}text-[#F59E0B] dark:text-[#FBBF24]{% endif %}">
+      <div class="text-xl font-bold {% if a.severity == 'critical' %}text-critical dark:text-[#EF4444]{% else %}text-warning {% endif %}">
         {{ a.value }}%
       </div>
-      <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1] mt-1">
+      <div class="text-xs text-muted mt-1">
         {# Direction-aware label: analytics may emit below_baseline (e.g. CPU
            dropping = service crashed) which is just as alarming as above. #}
         {% if a.direction == 'below_baseline' %}
@@ -163,9 +162,9 @@
       </div>
       {# ── Context enrichment ── #}
       {% if a.trend_context %}
-      <div class="flex items-center gap-1 text-xs text-[#6B7280] dark:text-[#CBD5E1] mt-2">
+      <div class="flex items-center gap-1 text-xs text-muted mt-2">
         {% if a.trend_direction == 'up' %}
-          <i data-lucide="trending-up" class="w-3 h-3 text-[#DC2626] dark:text-[#EF4444]"></i>
+          <i data-lucide="trending-up" class="w-3 h-3 text-critical"></i>
         {% elif a.trend_direction == 'down' %}
           <i data-lucide="trending-down" class="w-3 h-3 text-[#10B981]"></i>
         {% else %}
@@ -175,50 +174,44 @@
       </div>
       {% endif %}
       {% if a.forecast_to_threshold %}
-      <div class="flex items-center gap-1 text-xs mt-1
-        {% if a.forecast_to_threshold.days < 7 %}text-[#DC2626] dark:text-[#EF4444] font-semibold
-        {% elif a.forecast_to_threshold.days < 30 %}text-[#F59E0B] dark:text-[#FBBF24]
-        {% else %}text-[#6B7280] dark:text-[#CBD5E1]{% endif %}">
+      <div class="flex items-center gap-1 text-xs mt-1 {% if a.forecast_to_threshold.days < 7 %}text-critical dark:text-[#EF4444] font-semibold {% elif a.forecast_to_threshold.days < 30 %}text-warning dark:text-[#FBBF24] {% else %}text-muted {% endif %}">
         <i data-lucide="clock" class="w-3 h-3"></i>
         <span>{{ t.get('reaches_threshold', 'Reaches threshold') }} ({{ a.forecast_to_threshold.threshold }}%) {{ t.get('in_approx', 'in ~') }}{{ a.forecast_to_threshold.days | int }} {{ t.get('days', 'days') }}</span>
       </div>
       {% endif %}
       {% if a.suggested_action %}
-      <div class="flex items-center gap-1 text-xs text-[#2563EB] dark:text-[#3B82F6] mt-1">
+      <div class="flex items-center gap-1 text-xs text-info mt-1">
         <i data-lucide="lightbulb" class="w-3 h-3"></i>
         <span>{{ t.get(a.suggested_action, '') }}</span>
       </div>
       {% endif %}
       {% if a.confidence_level %}
       <div class="mt-2">
-        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium
-          {% if a.confidence_level == 'high' %}bg-[#D1FAE5] text-[#065F46] dark:bg-[#064E3B] dark:text-[#6EE7B7]
-          {% elif a.confidence_level == 'medium' %}bg-[#FEF3C7] text-[#92400E] dark:bg-[#78350F] dark:text-[#FCD34D]
-          {% else %}bg-[#F3F4F6] text-[#4B5563] dark:bg-[#374151] dark:text-[#9CA3AF]{% endif %}">
+        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium {% if a.confidence_level == 'high' %}bg-[#D1FAE5] text-[#065F46] dark:bg-[#064E3B] dark:text-[#6EE7B7] {% elif a.confidence_level == 'medium' %}bg-[#FEF3C7] text-[#92400E] dark:bg-[#78350F] dark:text-[#FCD34D] {% else %}bg-raised text-[#4B5563] dark:bg-[#374151] dark:text-[#9CA3AF]{% endif %}">
           {{ t.get('confidence', 'Confidence') }}: {{ t.get('confidence_' + a.confidence_level, a.confidence_level) }}
         </span>
       </div>
       {% endif %}
       {# ── Acknowledge / Snooze controls ── #}
-      <div class="flex items-center gap-2 mt-3 pt-2 border-t border-[#E5E7EB] dark:border-[#334155]">
+      <div class="flex items-center gap-2 mt-3 pt-2 border-t border-line">
         <button data-action="_sdAckAnomaly" data-server="{{ server.name }}" data-metric="{{ a.metric }}" data-state="acknowledged"
-                class="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded border border-[#E5E7EB] dark:border-[#334155] text-[#6B7280] dark:text-[#CBD5E1] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">
+                class="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded border border-line text-muted hover:bg-page">
           <i data-lucide="check" class="w-3 h-3"></i>
           {{ t.get('acknowledge', 'Acknowledge') }}
         </button>
         <div class="relative">
           <button data-action="_sdToggleNextSibling"
-                  class="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded border border-[#E5E7EB] dark:border-[#334155] text-[#6B7280] dark:text-[#CBD5E1] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">
+                  class="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded border border-line text-muted hover:bg-page">
             <i data-lucide="bell-off" class="w-3 h-3"></i>
             {{ t.get('snooze', 'Snooze') }}
           </button>
-          <div class="hidden absolute left-0 bottom-full mb-1 bg-white dark:bg-[#1E293B] border border-[#E5E7EB] dark:border-[#334155] rounded shadow-lg z-10 py-1 min-w-[100px]">
+          <div class="hidden absolute left-0 bottom-full mb-1 bg-card border border-line rounded shadow-lg z-10 py-1 min-w-[100px]">
             <button data-action="_sdAckAnomaly" data-server="{{ server.name }}" data-metric="{{ a.metric }}" data-state="snoozed" data-days="1" data-hide="1"
-                    class="block w-full text-left px-3 py-1 text-xs text-[#374151] dark:text-[#E2E8F0] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">1 {{ t.get('days', 'days') }}</button>
+                    class="block w-full text-left px-3 py-1 text-xs text-[#374151] dark:text-[#E2E8F0] hover:bg-page">1 {{ t.get('days', 'days') }}</button>
             <button data-action="_sdAckAnomaly" data-server="{{ server.name }}" data-metric="{{ a.metric }}" data-state="snoozed" data-days="3" data-hide="1"
-                    class="block w-full text-left px-3 py-1 text-xs text-[#374151] dark:text-[#E2E8F0] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">3 {{ t.get('days', 'days') }}</button>
+                    class="block w-full text-left px-3 py-1 text-xs text-[#374151] dark:text-[#E2E8F0] hover:bg-page">3 {{ t.get('days', 'days') }}</button>
             <button data-action="_sdAckAnomaly" data-server="{{ server.name }}" data-metric="{{ a.metric }}" data-state="snoozed" data-days="7" data-hide="1"
-                    class="block w-full text-left px-3 py-1 text-xs text-[#374151] dark:text-[#E2E8F0] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">7 {{ t.get('days', 'days') }}</button>
+                    class="block w-full text-left px-3 py-1 text-xs text-[#374151] dark:text-[#E2E8F0] hover:bg-page">7 {{ t.get('days', 'days') }}</button>
           </div>
         </div>
       </div>
@@ -227,8 +220,8 @@
   </div>
   {% else %}
   {# Empty state — same centered icon + message + hint pattern used elsewhere #}
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-6 border border-[#E5E7EB] dark:border-[#334155] mb-4">
-    <div class="text-sm text-[#9CA3AF] dark:text-[#475569] text-center py-4">
+  <div class="bg-card rounded-lg p-6 border border-line mb-4">
+    <div class="text-sm text-faint text-center py-4">
       <i data-lucide="check-circle" class="w-8 h-8 mx-auto mb-2 text-[#10B981] opacity-40"></i>
       <p class="text-[#10B981]">{{ t.no_anomalies }}</p>
       <p class="text-[10px] mt-1 opacity-60">{{ t.get('no_anomalies_hint', 'Detected anomalies will appear here with severity, deviation, and acknowledgement controls') }}</p>
@@ -263,10 +256,10 @@
     {% set label = t.get('cpu_forecast', 'CPU') if metric_key == 'cpu' else (t.get('ram_forecast', 'RAM') if metric_key == 'ram' else t.get(metric_key, metric_key)) %}
     {% set full_label = t.get('threshold_in', 'Threshold in') if is_stationary_metric else t.get('disk_full_in', 'Full in') %}
     {% if fc.enough_data %}
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg p-4 border border-[#E5E7EB] dark:border-[#334155]">
+    <div class="bg-card rounded-lg p-4 border border-line">
       <div class="flex items-center gap-2 mb-2">
-        <i data-lucide="{{ icon }}" class="w-4 h-4 text-[#6B7280] dark:text-[#CBD5E1]"></i>
-        <span class="text-sm font-medium text-[#6B7280] dark:text-[#CBD5E1]">{{ label }}</span>
+        <i data-lucide="{{ icon }}" class="w-4 h-4 text-muted"></i>
+        <span class="text-sm font-medium text-muted">{{ label }}</span>
       </div>
 
       {# ── Render based on forecast kind (set by analytics.forecast_metric) ── #}
@@ -286,7 +279,7 @@
            in all 5 languages, so RAM and CPU deliberately share them rather
            than duplicating 10 identical translations. #}
         {% if fc.elevated_but_stable %}
-        <div class="text-lg font-bold text-[#F59E0B] dark:text-[#FBBF24] flex items-center gap-1.5">
+        <div class="text-lg font-bold text-warning flex items-center gap-1.5">
           <i data-lucide="alert-triangle" class="w-4 h-4"></i>
           {{ t.get('ram_elevated_stable', 'Elevated but stable') }}
         </div>
@@ -295,12 +288,12 @@
           {{ t.get('ram_normal', 'Normal usage') }}
         </div>
         {% endif %}
-        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1] mt-1">
+        <div class="text-xs text-muted mt-1">
           {{ t.get('range_label', 'Range') }}: {{ fc.range_min }}% – {{ fc.range_max }}%
           | {{ t.get('avg_label', 'avg') }}: {{ fc.range_avg }}%
           | {{ t.get('current_label', 'now') }}: {{ fc.current }}%
         </div>
-        <div class="text-[10px] text-[#9CA3AF] dark:text-[#475569] mt-1 italic">
+        <div class="text-[10px] text-faint mt-1 italic">
           {% if metric_key == 'cpu' %}
           {{ t.get('cpu_stationary_hint', 'No sustained climb detected — CPU is oscillating around its workload steady state') }}
           {% else %}
@@ -313,7 +306,7 @@
            This IS leak-like behavior and worth forecasting. CPU does not "leak"
            though — a rising CPU baseline is added load or a runaway process, so
            it gets its own headline rather than borrowing the memory wording. #}
-        <div class="text-lg font-bold text-[#DC2626] dark:text-[#EF4444] flex items-center gap-1.5">
+        <div class="text-lg font-bold text-critical flex items-center gap-1.5">
           <i data-lucide="trending-up" class="w-4 h-4"></i>
           {% if metric_key == 'cpu' %}
           {{ t.get('cpu_climb_suspected', 'Sustained CPU climb') }}
@@ -322,12 +315,12 @@
           {% endif %}
         </div>
         {% if fc.days_until_full is not none and fc.days_until_full > 0 %}
-        <div class="text-sm font-medium {% if fc.days_until_full < 7 %}text-[#DC2626] dark:text-[#EF4444]{% elif fc.days_until_full < 30 %}text-[#F59E0B] dark:text-[#FBBF24]{% else %}text-[#10B981]{% endif %} mt-1">
+        <div class="text-sm font-medium {% if fc.days_until_full < 7 %}text-critical dark:text-[#EF4444]{% elif fc.days_until_full < 30 %}text-warning dark:text-[#FBBF24]{% else %}text-healthy{% endif %} mt-1">
           {{ full_label }}: {{ fc.days_until_full }} {{ t.days }}
         </div>
         {% endif %}
-        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1] mt-1">
-          {{ t.trend_per_day }}: <strong class="text-[#DC2626] dark:text-[#EF4444]">+{{ fc.trend_per_day }}{{ t.get('per_day', '%/day') }}</strong>
+        <div class="text-xs text-muted mt-1">
+          {{ t.trend_per_day }}: <strong class="text-critical">+{{ fc.trend_per_day }}{{ t.get('per_day', '%/day') }}</strong>
           | {{ t.confidence }}: {{ fc.confidence }}
           | {{ t.get('forecast_7d', '7d forecast') }}: {{ fc.forecast_7d }}%
         </div>
@@ -337,11 +330,11 @@
            monotonically, so days-until-full from a regression is meaningful. #}
         {% if fc.days_until_full is not none %}
           {% if fc.days_until_full < 7 %}
-          <div class="text-lg font-bold text-[#DC2626] dark:text-[#EF4444]">
+          <div class="text-lg font-bold text-critical">
             {{ full_label }}: {{ fc.days_until_full }} {{ t.days }}
           </div>
           {% elif fc.days_until_full < 30 %}
-          <div class="text-lg font-bold text-[#F59E0B] dark:text-[#FBBF24]">
+          <div class="text-lg font-bold text-warning">
             {{ full_label }}: {{ fc.days_until_full }} {{ t.days }}
           </div>
           {% else %}
@@ -354,7 +347,7 @@
             {{ t.trend_per_day }}: {{ fc.trend_per_day }}%
           </div>
         {% endif %}
-        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1] mt-1">
+        <div class="text-xs text-muted mt-1">
           {{ t.trend_per_day }}: {{ fc.trend_per_day }}{{ t.get('per_day', '%/day') }}
           | {{ t.confidence }}: {{ fc.confidence }}
           | {{ t.get('forecast_7d', '7d forecast') }}: {{ fc.forecast_7d }}%
@@ -362,12 +355,12 @@
       {% endif %}
     </div>
     {% else %}
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg p-4 border border-[#E5E7EB] dark:border-[#334155]">
+    <div class="bg-card rounded-lg p-4 border border-line">
       <div class="flex items-center gap-2 mb-2">
-        <i data-lucide="{{ icon }}" class="w-4 h-4 text-[#6B7280] dark:text-[#CBD5E1]"></i>
-        <span class="text-sm font-medium text-[#6B7280] dark:text-[#CBD5E1]">{{ label }}</span>
+        <i data-lucide="{{ icon }}" class="w-4 h-4 text-muted"></i>
+        <span class="text-sm font-medium text-muted">{{ label }}</span>
       </div>
-      <div class="text-sm text-[#9CA3AF] dark:text-[#475569]">
+      <div class="text-sm text-faint">
         <i data-lucide="info" class="w-3 h-3 inline"></i>
         {{ t.not_enough_data }}
       </div>
@@ -381,20 +374,20 @@
 <!-- 24h Trend Chart -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">
-    <i data-lucide="trending-up" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    <i data-lucide="trending-up" class="w-5 h-5 text-info"></i>
     {{ t.trends_24h }}
   </h2>
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155]">
+  <div class="bg-card rounded-lg p-5 border border-line">
     <div class="flex gap-2 mb-4">
-      <button data-action="_sdLoadChart" data-hours="6" class="chart-range-btn px-3 py-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">6h</button>
-      <button data-action="_sdLoadChart" data-hours="12" class="chart-range-btn px-3 py-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">12h</button>
-      <button data-action="_sdLoadChart" data-hours="24" class="chart-range-btn px-3 py-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155]">24h</button>
-      <button data-action="_sdLoadChart" data-hours="168" class="chart-range-btn px-3 py-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">7d</button>
+      <button data-action="_sdLoadChart" data-hours="6" class="chart-range-btn px-3 py-1 text-xs rounded border border-line hover:bg-page">6h</button>
+      <button data-action="_sdLoadChart" data-hours="12" class="chart-range-btn px-3 py-1 text-xs rounded border border-line hover:bg-page">12h</button>
+      <button data-action="_sdLoadChart" data-hours="24" class="chart-range-btn px-3 py-1 text-xs rounded border border-line">24h</button>
+      <button data-action="_sdLoadChart" data-hours="168" class="chart-range-btn px-3 py-1 text-xs rounded border border-line hover:bg-page">7d</button>
     </div>
     <div style="height: 300px; position: relative;">
       <canvas id="trend-chart"></canvas>
     </div>
-    <div id="chart-loading" class="text-center py-8 text-sm text-[#6B7280] dark:text-[#CBD5E1]">
+    <div id="chart-loading" class="text-center py-8 text-sm text-muted">
       {{ t.loading_chart }}
     </div>
   </div>
@@ -403,11 +396,11 @@
 <!-- Recent Events (JS-rendered for auto-refresh) -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">
-    <i data-lucide="list" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    <i data-lucide="list" class="w-5 h-5 text-info"></i>
     {{ t.recent_events }}
   </h2>
   <div id="events-filter-bar" class="flex flex-wrap items-center gap-2 mb-3">
-    <span class="text-xs font-medium text-[#6B7280] dark:text-[#CBD5E1]">Filter:</span>
+    <span class="text-xs font-medium text-muted">Filter:</span>
     <button data-action="filterEvents" data-args='["all"]' data-type="all" id="events-filter-all" class="px-2 py-0.5 text-[10px] font-medium rounded-full border border-[#2563EB] text-[#2563EB] bg-[#2563EB]/10 ring-2 ring-[#2563EB]">All</button>
     <div id="events-type-buttons" class="flex flex-wrap gap-1"></div>
   </div>
@@ -429,7 +422,7 @@
   </div>
 
   <!-- Security Status Panel -->
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-4 border border-[#E5E7EB] dark:border-[#334155] mb-4">
+  <div class="bg-card rounded-lg p-4 border border-line mb-4">
     <h3 class="text-sm font-semibold flex items-center gap-2 mb-3">
       <i data-lucide="shield-check" class="w-4 h-4 text-[#10B981]"></i>
       Security Status
@@ -440,36 +433,36 @@
   </div>
 
   <!-- Failed Login Heatmap -->
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-4 border border-[#E5E7EB] dark:border-[#334155] mb-4">
+  <div class="bg-card rounded-lg p-4 border border-line mb-4">
     <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
       <h3 class="text-sm font-medium flex items-center gap-1.5">
         <i data-lucide="grid-3x3" class="w-4 h-4 text-[#DC2626]"></i>
         {{ t.get('failed_login_heatmap', 'Failed Login Heatmap') }}
-        <span id="heatmap-range-label" class="text-[10px] text-[#9CA3AF] dark:text-[#475569] ml-1">{{ t.get('last_4_weeks', '(last 4 weeks)') }}</span>
+        <span id="heatmap-range-label" class="text-[10px] text-faint ml-1">{{ t.get('last_4_weeks', '(last 4 weeks)') }}</span>
       </h3>
       {# Week selector — pick a single 168h window or the 4-week aggregate. #}
-      <div id="heatmap-week-selector" class="inline-flex rounded border border-[#E5E7EB] dark:border-[#334155] p-0.5 bg-[#F9FAFB] dark:bg-[#0F172A] text-[10px]">
+      <div id="heatmap-week-selector" class="inline-flex rounded border border-line p-0.5 bg-page text-[10px]">
         <button type="button" data-week="all"  data-action="_sdSetHeatmapWeek"  class="hm-week-btn px-2 py-0.5 rounded font-medium bg-[#DC2626] text-white">{{ t.get('all_weeks', 'All') }}</button>
-        <button type="button" data-week="0"    data-action="_sdSetHeatmapWeek"    class="hm-week-btn px-2 py-0.5 rounded font-medium text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('this_week', 'This week') }}</button>
-        <button type="button" data-week="1"    data-action="_sdSetHeatmapWeek"    class="hm-week-btn px-2 py-0.5 rounded font-medium text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('week_minus_1', 'Last week') }}</button>
-        <button type="button" data-week="2"    data-action="_sdSetHeatmapWeek"    class="hm-week-btn px-2 py-0.5 rounded font-medium text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('week_minus_2', '2 wks ago') }}</button>
-        <button type="button" data-week="3"    data-action="_sdSetHeatmapWeek"    class="hm-week-btn px-2 py-0.5 rounded font-medium text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('week_minus_3', '3 wks ago') }}</button>
+        <button type="button" data-week="0"    data-action="_sdSetHeatmapWeek"    class="hm-week-btn px-2 py-0.5 rounded font-medium text-muted">{{ t.get('this_week', 'This week') }}</button>
+        <button type="button" data-week="1"    data-action="_sdSetHeatmapWeek"    class="hm-week-btn px-2 py-0.5 rounded font-medium text-muted">{{ t.get('week_minus_1', 'Last week') }}</button>
+        <button type="button" data-week="2"    data-action="_sdSetHeatmapWeek"    class="hm-week-btn px-2 py-0.5 rounded font-medium text-muted">{{ t.get('week_minus_2', '2 wks ago') }}</button>
+        <button type="button" data-week="3"    data-action="_sdSetHeatmapWeek"    class="hm-week-btn px-2 py-0.5 rounded font-medium text-muted">{{ t.get('week_minus_3', '3 wks ago') }}</button>
       </div>
     </div>
     <div id="login-heatmap">
-      <div class="text-xs text-[#9CA3AF] dark:text-[#475569] text-center py-4">{{ t.get('loading', 'Loading...') }}</div>
+      <div class="text-xs text-faint text-center py-4">{{ t.get('loading', 'Loading...') }}</div>
     </div>
   </div>
 
   <!-- Recent Failed Logins Table -->
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-4 border border-[#E5E7EB] dark:border-[#334155]">
+  <div class="bg-card rounded-lg p-4 border border-line">
     <h3 class="text-sm font-medium mb-3 flex items-center gap-1.5">
       <i data-lucide="user-x" class="w-4 h-4 text-[#DC2626]"></i>
       {{ t.get('recent_failed_logins', 'Recent Failed Logins') }}
-      <span class="text-[10px] text-[#9CA3AF] dark:text-[#475569] ml-1">{{ t.get('last_24h', '(last 24h)') }}</span>
+      <span class="text-[10px] text-faint ml-1">{{ t.get('last_24h', '(last 24h)') }}</span>
     </h3>
     <div id="recent-failed-logins">
-      <div class="text-xs text-[#9CA3AF] dark:text-[#475569] text-center py-4">{{ t.get('loading', 'Loading...') }}</div>
+      <div class="text-xs text-faint text-center py-4">{{ t.get('loading', 'Loading...') }}</div>
     </div>
   </div>
 </section>
@@ -477,27 +470,27 @@
 <!-- Dependencies (F8) -->
 <section class="mt-8">
   <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">
-    <i data-lucide="network" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    <i data-lucide="network" class="w-5 h-5 text-info"></i>
     {{ t.dependencies }}
   </h2>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <!-- Depends on -->
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg p-4 border border-[#E5E7EB] dark:border-[#334155]">
+    <div class="bg-card rounded-lg p-4 border border-line">
       <h3 class="text-sm font-medium mb-3 flex items-center gap-1.5">
         <i data-lucide="arrow-up-right" class="w-4 h-4 text-[#6B7280]"></i>
         {{ t.depends_on }}
       </h3>
-      <div id="deps-depends-on" class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">
+      <div id="deps-depends-on" class="text-xs text-muted">
         <div class="text-center py-2">{{ t.get('loading', 'Loading...') }}</div>
       </div>
     </div>
     <!-- Depended by -->
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg p-4 border border-[#E5E7EB] dark:border-[#334155]">
+    <div class="bg-card rounded-lg p-4 border border-line">
       <h3 class="text-sm font-medium mb-3 flex items-center gap-1.5">
         <i data-lucide="arrow-down-left" class="w-4 h-4 text-[#6B7280]"></i>
         {{ t.depended_by }}
       </h3>
-      <div id="deps-depended-by" class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">
+      <div id="deps-depended-by" class="text-xs text-muted">
         <div class="text-center py-2">{{ t.get('loading', 'Loading...') }}</div>
       </div>
     </div>
@@ -518,8 +511,8 @@
       {{ t.get('take_snapshot', 'Take Snapshot') }}
     </button>
   </div>
-  <div id="config-changes-container" class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] overflow-hidden">
-    <div class="text-xs text-[#9CA3AF] dark:text-[#475569] text-center py-4">{{ t.get('loading', 'Loading...') }}</div>
+  <div id="config-changes-container" class="bg-card rounded-lg border border-line overflow-hidden">
+    <div class="text-xs text-faint text-center py-4">{{ t.get('loading', 'Loading...') }}</div>
   </div>
 </section>
 
@@ -527,11 +520,11 @@
 <section class="mt-8">
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="scroll-text" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+      <i data-lucide="scroll-text" class="w-5 h-5 text-info"></i>
       {{ t.windows_logs }}
     </h2>
     <button data-action="exportLogsCSV"
-            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-[#E5E7EB] dark:border-[#334155] text-[#6B7280] dark:text-[#CBD5E1] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] transition-colors"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-line text-muted hover:bg-page transition-colors"
             title="{{ t.get('download_csv', 'Download CSV') }}">
       <i data-lucide="download" class="w-3.5 h-3.5"></i>
       {{ t.get('download_csv', 'Download CSV') }}
@@ -541,14 +534,14 @@
   <!-- Filters -->
   <div class="flex flex-wrap gap-3 mb-4">
     <select id="log-source-filter"
-            class="text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#1E293B] text-[#374151] dark:text-[#E2E8F0] px-3 py-1.5">
+            class="text-sm rounded border border-line bg-card text-[#374151] dark:text-[#E2E8F0] px-3 py-1.5">
       <option value="">{{ t.log_source }}: {{ t.all }}</option>
       <option value="System">{{ t.system }}</option>
       <option value="Application">{{ t.application }}</option>
       <option value="Security">{{ t.security }}</option>
     </select>
     <select id="log-level-filter"
-            class="text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#1E293B] text-[#374151] dark:text-[#E2E8F0] px-3 py-1.5">
+            class="text-sm rounded border border-line bg-card text-[#374151] dark:text-[#E2E8F0] px-3 py-1.5">
       <option value="">{{ t.level }}: {{ t.all }}</option>
       <option value="Error">{{ t.level_error }}</option>
       <option value="Warning">{{ t.level_warning }}</option>
@@ -556,7 +549,7 @@
       <option value="Critical">{{ t.level_critical }}</option>
     </select>
     <input id="log-search-input" type="text" placeholder="{{ t.search_logs }}"
-           class="text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#1E293B] text-[#374151] dark:text-[#E2E8F0] px-3 py-1.5 w-48" />
+           class="text-sm rounded border border-line bg-card text-[#374151] dark:text-[#E2E8F0] px-3 py-1.5 w-48" />
   </div>
 
   <div id="logs-container">
@@ -573,11 +566,11 @@
 <section class="mt-8">
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="shield" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+      <i data-lucide="shield" class="w-5 h-5 text-info"></i>
       {{ t.get('firewall_logs', 'Firewall Logs') }}
     </h2>
     <button data-action="exportFirewallLogsCSV"
-            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-[#E5E7EB] dark:border-[#334155] text-[#6B7280] dark:text-[#CBD5E1] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] transition-colors"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-line text-muted hover:bg-page transition-colors"
             title="{{ t.get('download_csv', 'Download CSV') }}">
       <i data-lucide="download" class="w-3.5 h-3.5"></i>
       {{ t.get('download_csv', 'Download CSV') }}
@@ -588,7 +581,7 @@
        single-source by definition. -->
   <div class="flex flex-wrap gap-3 mb-4">
     <select id="firewall-level-filter"
-            class="text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#1E293B] text-[#374151] dark:text-[#E2E8F0] px-3 py-1.5">
+            class="text-sm rounded border border-line bg-card text-[#374151] dark:text-[#E2E8F0] px-3 py-1.5">
       <option value="">{{ t.level }}: {{ t.all }}</option>
       <option value="Error">{{ t.level_error }}</option>
       <option value="Warning">{{ t.level_warning }}</option>
@@ -597,7 +590,7 @@
     </select>
     <input id="firewall-search-input" type="text"
            placeholder="{{ t.get('search_firewall_logs', 'Search firewall logs…') }}"
-           class="text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#1E293B] text-[#374151] dark:text-[#E2E8F0] px-3 py-1.5 w-48" />
+           class="text-sm rounded border border-line bg-card text-[#374151] dark:text-[#E2E8F0] px-3 py-1.5 w-48" />
   </div>
 
   <div id="firewall-logs-container">
@@ -607,24 +600,24 @@
 
 <!-- Power Action Confirmation Modal -->
 <div id="power-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50">
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
+  <div class="bg-card rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
     <div id="power-modal-header" class="px-5 py-3 flex items-center gap-2">
       <i id="power-modal-icon" data-lucide="power" class="w-5 h-5"></i>
       <h3 id="power-modal-title" class="text-sm font-semibold text-white"></h3>
     </div>
     <div class="px-5 py-4">
-      <p id="power-modal-consequence" class="text-sm text-[#6B7280] dark:text-[#CBD5E1] mb-4"></p>
-      <label class="block text-xs font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">
+      <p id="power-modal-consequence" class="text-sm text-muted mb-4"></p>
+      <label class="block text-xs font-medium text-muted mb-1">
         {{ t.get('type_server_name', 'Type the server name to confirm') }}:
         <span class="font-bold text-[#1F2937] dark:text-[#F8FAFC]">{{ server.name }}</span>
       </label>
       <input id="power-modal-input" type="text" autocomplete="off"
-             class="w-full text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-[#374151] dark:text-[#E2E8F0] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+             class="w-full text-sm rounded border border-line bg-white dark:bg-[#0F172A] text-[#374151] dark:text-[#E2E8F0] px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
              placeholder="{{ server.name }}" />
     </div>
-    <div class="flex justify-end gap-2 px-5 py-3 border-t border-[#E5E7EB] dark:border-[#334155]">
+    <div class="flex justify-end gap-2 px-5 py-3 border-t border-line">
       <button data-action="closePowerModal"
-              class="px-3 py-1.5 text-xs font-medium rounded border border-[#E5E7EB] dark:border-[#334155] text-[#6B7280] dark:text-[#CBD5E1] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">
+              class="px-3 py-1.5 text-xs font-medium rounded border border-line text-muted hover:bg-page">
         {{ t.get('cancel', 'Cancel') }}
       </button>
       <button id="power-modal-confirm" disabled
@@ -723,13 +716,13 @@
     const start = (currentPage - 1) * perPage + 1;
     const end = Math.min(currentPage * perPage, totalItems);
 
-    let html = '<div class="flex items-center justify-between px-4 py-3 border-t border-[#E5E7EB] dark:border-[#334155]">';
-    html += `<span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">${start}–${end} / ${totalItems}</span>`;
+    let html = '<div class="flex items-center justify-between px-4 py-3 border-t border-line">';
+    html += `<span class="text-xs text-muted">${start}–${end} / ${totalItems}</span>`;
     html += '<div class="flex items-center gap-1">';
 
     // Previous
     html += `<button data-action="${onPageChange}" data-args="[${currentPage - 1}]" ${currentPage <= 1 ? 'disabled' : ''}
-      class="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] text-[#6B7280] dark:text-[#CBD5E1] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent">
+      class="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded border border-line text-muted hover:bg-page disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent">
       <i data-lucide="chevron-left" class="w-3 h-3"></i>
     </button>`;
 
@@ -740,24 +733,24 @@
     if (endPage - startPage < maxVisible - 1) startPage = Math.max(1, endPage - maxVisible + 1);
 
     if (startPage > 1) {
-      html += `<button data-action="${onPageChange}" data-args="[1]" class="px-2.5 py-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] text-[#6B7280] dark:text-[#CBD5E1] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">1</button>`;
+      html += `<button data-action="${onPageChange}" data-args="[1]" class="px-2.5 py-1 text-xs rounded border border-line text-muted hover:bg-page">1</button>`;
       if (startPage > 2) html += '<span class="px-1 text-xs text-[#9CA3AF]">…</span>';
     }
     for (let p = startPage; p <= endPage; p++) {
       if (p === currentPage) {
         html += `<button class="px-2.5 py-1 text-xs rounded bg-[#2563EB] text-white font-medium">${p}</button>`;
       } else {
-        html += `<button data-action="${onPageChange}" data-args="[${p}]" class="px-2.5 py-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] text-[#6B7280] dark:text-[#CBD5E1] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">${p}</button>`;
+        html += `<button data-action="${onPageChange}" data-args="[${p}]" class="px-2.5 py-1 text-xs rounded border border-line text-muted hover:bg-page">${p}</button>`;
       }
     }
     if (endPage < totalPages) {
       if (endPage < totalPages - 1) html += '<span class="px-1 text-xs text-[#9CA3AF]">…</span>';
-      html += `<button data-action="${onPageChange}" data-args="[${totalPages}]" class="px-2.5 py-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] text-[#6B7280] dark:text-[#CBD5E1] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">${totalPages}</button>`;
+      html += `<button data-action="${onPageChange}" data-args="[${totalPages}]" class="px-2.5 py-1 text-xs rounded border border-line text-muted hover:bg-page">${totalPages}</button>`;
     }
 
     // Next
     html += `<button data-action="${onPageChange}" data-args="[${currentPage + 1}]" ${currentPage >= totalPages ? 'disabled' : ''}
-      class="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] text-[#6B7280] dark:text-[#CBD5E1] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent">
+      class="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded border border-line text-muted hover:bg-page disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent">
       <i data-lucide="chevron-right" class="w-3 h-3"></i>
     </button>`;
 
@@ -873,13 +866,13 @@
     const crit = THRESHOLDS[critKey] || 90;
     const c = metricColor(value, warn, crit);
     const pct = Math.min(value, 100);
-    const hwLine = hwDetail ? `<span class="text-[10px] text-[#9CA3AF] dark:text-[#64748B] ml-1">(${hwDetail})</span>` : '';
+    const hwLine = hwDetail ? `<span class="text-[10px] text-faint ml-1">(${hwDetail})</span>` : '';
     return `
-      <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155]">
+      <div class="bg-card rounded-lg p-5 border border-line">
         <div class="flex items-center justify-between mb-3">
           <div class="flex items-center gap-2">
-            <i data-lucide="${icon}" class="w-4 h-4 text-[#6B7280] dark:text-[#CBD5E1]"></i>
-            <span class="text-sm font-medium text-[#6B7280] dark:text-[#CBD5E1]">${escapeHtml(label)}${hwLine}</span>
+            <i data-lucide="${icon}" class="w-4 h-4 text-muted"></i>
+            <span class="text-sm font-medium text-muted">${escapeHtml(label)}${hwLine}</span>
           </div>
           <span class="metric-value text-2xl ${c.text}">${value.toFixed(1)}%</span>
         </div>
@@ -890,7 +883,7 @@
           <div class="absolute top-0 h-4 border-l-2 border-dashed border-[#F59E0B]/50" style="left:${warn}%"></div>
           <div class="absolute top-0 h-4 border-l-2 border-dashed border-[#DC2626]/50" style="left:${crit}%"></div>
         </div>
-        <div class="relative h-4 mt-1 text-[10px] text-[#9CA3AF] dark:text-[#475569] overflow-hidden">
+        <div class="relative h-4 mt-1 text-[10px] text-faint overflow-hidden">
           <span class="absolute left-0">0%</span>
           ${_renderThresholdLabel('Warn', warn, '#F59E0B', crit)}
           ${_renderThresholdLabel('Crit', crit, '#DC2626', null)}
@@ -916,12 +909,12 @@
   function renderMetrics(data) {
     const container = document.getElementById('metrics-container');
     if (data.status === 'offline') {
-      container.innerHTML = '<div class="bg-white dark:bg-[#1E293B] rounded-lg p-8 border border-[#E5E7EB] dark:border-[#334155] text-center"><i data-lucide="wifi-off" class="w-10 h-10 mx-auto mb-3 text-[#9CA3AF]"></i><p class="text-sm text-[#6B7280] dark:text-[#CBD5E1]">{{ t.server_unreachable }}</p></div>';
+      container.innerHTML = '<div class="bg-card rounded-lg p-8 border border-line text-center"><i data-lucide="wifi-off" class="w-10 h-10 mx-auto mb-3 text-[#9CA3AF]"></i><p class="text-sm text-muted">{{ t.server_unreachable }}</p></div>';
       lucide.createIcons({ nodes: [container] });
       return;
     }
     if (data.status === 'unknown' || (data.cpu == null && data.ram == null)) {
-      container.innerHTML = '<div class="bg-white dark:bg-[#1E293B] rounded-lg p-8 border border-[#E5E7EB] dark:border-[#334155] text-center"><i data-lucide="loader" class="w-10 h-10 mx-auto mb-3 text-[#6B7280] dark:text-[#CBD5E1] animate-spin"></i></div>';
+      container.innerHTML = '<div class="bg-card rounded-lg p-8 border border-line text-center"><i data-lucide="loader" class="w-10 h-10 mx-auto mb-3 text-muted animate-spin"></i></div>';
       lucide.createIcons({ nodes: [container] });
       return;
     }
@@ -1056,11 +1049,11 @@
       if (installBtn) { installBtn.classList.add('hidden'); installBtn.classList.remove('inline-flex'); }
       const checkedStr = data.checked_at ? (' · {{ t.get("checked", "Checked") }}: ' + formatTs(data.checked_at)) : '';
       banner.innerHTML =
-        '<div class="rounded-lg border border-[#6B7280] bg-[#F9FAFB] dark:bg-[#1E293B] p-4 flex items-start gap-3">' +
+        '<div class="rounded-lg border border-[#6B7280] bg-page dark:bg-[#1E293B] p-4 flex items-start gap-3">' +
           '<i data-lucide="alert-octagon" class="w-5 h-5 flex-shrink-0 mt-0.5 text-[#6B7280]"></i>' +
           '<div class="flex-1 min-w-0">' +
             '<div class="text-sm font-semibold">{{ t.get("update_check_failed", "Update check failed") }}</div>' +
-            '<div class="text-[11px] text-[#6B7280] dark:text-[#CBD5E1] mt-1 font-mono break-all">' + escapeHtml(String(checkError).slice(0,240)) + '</div>' +
+            '<div class="text-[11px] text-muted mt-1 font-mono break-all">' + escapeHtml(String(checkError).slice(0,240)) + '</div>' +
             '<div class="text-[10px] text-[#9CA3AF] mt-1">{{ t.get("update_check_retry_note", "Prism retries this server automatically on its next scheduled update check.") }}' + checkedStr + '</div>' +
           '</div>' +
           '<button type="button" data-action="_sdHideEl" data-target="updates-banner" class="flex-shrink-0 p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 bg-transparent border-0 cursor-pointer">' +
@@ -1091,7 +1084,7 @@
           '<i data-lucide="alert-triangle" class="w-5 h-5 flex-shrink-0 mt-0.5 text-[#DC2626]"></i>' +
           '<div class="flex-1 min-w-0">' +
             '<div class="text-sm font-semibold text-[#DC2626]">' + (T.restart_pending || 'Restart pending') + '</div>' +
-            '<div class="text-xs text-[#6B7280] dark:text-[#CBD5E1] mt-0.5">' +
+            '<div class="text-xs text-muted mt-0.5">' +
               '{{ t.get("restart_pending_desc", "A previously installed update requires a server restart to finish.") }}' + lastInstallStr +
             '</div>' +
           '</div>' +
@@ -1136,7 +1129,7 @@
     if (important > 0) parts.push(`<span class="text-[#F59E0B] font-bold">${important} ${T.important}</span>`);
     const other = data.count - critical - important;
     if (other > 0) parts.push(`${other}`);
-    if (parts.length) html += `<span class="text-xs text-[#6B7280] dark:text-[#94A3B8] ml-2">(${parts.join(', ')})</span>`;
+    if (parts.length) html += `<span class="text-xs text-muted ml-2">(${parts.join(', ')})</span>`;
 
     html += `</div></div>`;
     html += `<i data-lucide="chevron-down" class="w-4 h-4 text-[#9CA3AF] transition-transform duration-200" id="updates-chevron"></i>`;
@@ -1144,17 +1137,17 @@
 
     // Restart info
     if (pendingReboot) {
-      html += `<div class="flex items-center gap-2 mt-2 px-2 py-1.5 rounded bg-[#DC2626]/10 dark:bg-[#DC2626]/20">`;
+      html += `<div class="flex items-center gap-2 mt-2 px-2 py-1.5 rounded bg-critical/10 dark:bg-[#DC2626]/20">`;
       html += `<i data-lucide="alert-triangle" class="w-4 h-4 text-[#DC2626] flex-shrink-0"></i>`;
       html += `<span class="text-xs font-semibold text-[#DC2626]">${T.restart_pending}</span>`;
       html += `</div>`;
     } else if (needsReboot) {
-      html += `<div class="flex items-center gap-2 mt-2 px-2 py-1.5 rounded bg-[#F59E0B]/10 dark:bg-[#F59E0B]/20">`;
+      html += `<div class="flex items-center gap-2 mt-2 px-2 py-1.5 rounded bg-warning/10 dark:bg-[#F59E0B]/20">`;
       html += `<i data-lucide="rotate-ccw" class="w-4 h-4 text-[#F59E0B] flex-shrink-0"></i>`;
       html += `<span class="text-xs font-semibold text-[#F59E0B]">${rebootUpdates} ${T.updates_need_restart}</span>`;
       html += `</div>`;
     } else {
-      html += `<div class="flex items-center gap-2 mt-2 px-2 py-1.5 rounded bg-[#10B981]/10 dark:bg-[#10B981]/20">`;
+      html += `<div class="flex items-center gap-2 mt-2 px-2 py-1.5 rounded bg-healthy/10 dark:bg-[#10B981]/20">`;
       html += `<i data-lucide="check-circle" class="w-4 h-4 text-[#10B981] flex-shrink-0"></i>`;
       html += `<span class="text-xs font-semibold text-[#10B981]">${T.no_restart_required}</span>`;
       html += `</div>`;
@@ -1163,45 +1156,45 @@
     html += `</div>`;
 
     // Expandable detail list
-    html += `<div id="updates-detail" class="hidden mt-3 rounded-lg border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#1E293B] overflow-hidden">`;
-    html += `<table class="w-full text-xs"><thead><tr class="border-b border-[#E5E7EB] dark:border-[#334155]">`;
-    html += `<th class="px-4 py-2 text-left font-semibold text-[#6B7280] dark:text-[#CBD5E1]">${T.status}</th>`;
-    html += `<th class="px-4 py-2 text-left font-semibold text-[#6B7280] dark:text-[#CBD5E1]">${T.kb}</th>`;
-    html += `<th class="px-4 py-2 text-left font-semibold text-[#6B7280] dark:text-[#CBD5E1]">${T.severity}</th>`;
-    html += `<th class="px-4 py-2 text-left font-semibold text-[#6B7280] dark:text-[#CBD5E1]">${T.category}</th>`;
-    html += `<th class="px-4 py-2 text-left font-semibold text-[#6B7280] dark:text-[#CBD5E1]">${T.size}</th>`;
-    html += `<th class="px-4 py-2 text-left font-semibold text-[#6B7280] dark:text-[#CBD5E1]">${T.reboot}</th>`;
-    html += `<th class="px-4 py-2 text-left font-semibold text-[#6B7280] dark:text-[#CBD5E1]">${T.title}</th>`;
+    html += `<div id="updates-detail" class="hidden mt-3 rounded-lg border border-line bg-card overflow-hidden">`;
+    html += `<table class="w-full text-xs"><thead><tr class="border-b border-line">`;
+    html += `<th class="px-4 py-2 text-left font-semibold text-muted">${T.status}</th>`;
+    html += `<th class="px-4 py-2 text-left font-semibold text-muted">${T.kb}</th>`;
+    html += `<th class="px-4 py-2 text-left font-semibold text-muted">${T.severity}</th>`;
+    html += `<th class="px-4 py-2 text-left font-semibold text-muted">${T.category}</th>`;
+    html += `<th class="px-4 py-2 text-left font-semibold text-muted">${T.size}</th>`;
+    html += `<th class="px-4 py-2 text-left font-semibold text-muted">${T.reboot}</th>`;
+    html += `<th class="px-4 py-2 text-left font-semibold text-muted">${T.title}</th>`;
     html += `</tr></thead><tbody>`;
     for (const u of (data.updates || [])) {
       // Status badge
       const st = (u.status || 'pending').toLowerCase();
       let statusBadge;
       if (st === 'downloaded') {
-        statusBadge = `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#3B82F6]/20 dark:text-[#60A5FA]"><i data-lucide="hard-drive-download" class="w-3 h-3"></i>${T.downloaded}</span>`;
+        statusBadge = `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-info/10 text-info dark:bg-info/20 dark:text-[#60A5FA]"><i data-lucide="hard-drive-download" class="w-3 h-3"></i>${T.downloaded}</span>`;
       } else if (st === 'installing') {
-        statusBadge = `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#F59E0B]/10 text-[#92400E] dark:bg-[#F59E0B]/20 dark:text-[#FBBF24]"><i data-lucide="loader" class="w-3 h-3 animate-spin"></i>${T.installing}</span>`;
+        statusBadge = `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-warning/10 text-[#92400E] dark:bg-[#F59E0B]/20 dark:text-[#FBBF24]"><i data-lucide="loader" class="w-3 h-3 animate-spin"></i>${T.installing}</span>`;
       } else {
-        statusBadge = `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-[#6B7280] bg-[#F3F4F6] dark:bg-[#334155] dark:text-[#94A3B8]"><i data-lucide="clock" class="w-3 h-3"></i>${T.pending}</span>`;
+        statusBadge = `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-muted bg-raised dark:bg-[#334155]"><i data-lucide="clock" class="w-3 h-3"></i>${T.pending}</span>`;
       }
       // Severity badge
       const sevBadge = u.severity === 'Critical'
-        ? `<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#DC2626]/15 text-[#DC2626] dark:bg-[#DC2626]/25 dark:text-[#EF4444]">${T.level_critical}</span>`
+        ? `<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-critical/15 text-critical dark:bg-[#DC2626]/25">${T.level_critical}</span>`
         : u.severity === 'Important'
-        ? `<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#F59E0B]/15 text-[#92400E] dark:bg-[#F59E0B]/25 dark:text-[#FBBF24]">${T.important}</span>`
+        ? `<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-warning/15 text-[#92400E] dark:bg-[#F59E0B]/25 dark:text-[#FBBF24]">${T.important}</span>`
         : u.severity === 'Moderate'
-        ? `<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#3B82F6]/10 text-[#2563EB] dark:bg-[#3B82F6]/20 dark:text-[#60A5FA]">${T.moderate}</span>`
-        : '<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] text-[#6B7280] bg-[#F3F4F6] dark:bg-[#334155] dark:text-[#94A3B8]">' + escapeHtml(u.severity || '-') + '</span>';
+        ? `<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#3B82F6]/10 text-info dark:bg-[#3B82F6]/20 dark:text-[#60A5FA]">${T.moderate}</span>`
+        : '<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] text-muted bg-raised dark:bg-[#334155]">' + escapeHtml(u.severity || '-') + '</span>';
       const rebootIcon = u.reboot
         ? `<span class="inline-flex items-center gap-1 text-[#F59E0B]"><i data-lucide="alert-circle" class="w-3 h-3"></i>${T.yes}</span>`
         : `<span class="text-[#10B981]">${T.no}</span>`;
       const sizeStr = u.size_mb != null && u.size_mb > 0 ? u.size_mb + ' MB' : '-';
-      html += `<tr class="border-b border-[#E5E7EB] dark:border-[#334155] last:border-0">`;
+      html += `<tr class="border-b border-line last:border-0">`;
       html += `<td class="px-4 py-1.5">${statusBadge}</td>`;
       html += `<td class="px-4 py-1.5 font-mono">${escapeHtml(u.kb || '-')}</td>`;
       html += `<td class="px-4 py-1.5">${sevBadge}</td>`;
-      html += `<td class="px-4 py-1.5 text-[#6B7280] dark:text-[#94A3B8]">${escapeHtml(u.category || '-')}</td>`;
-      html += `<td class="px-4 py-1.5 font-mono text-[#6B7280] dark:text-[#94A3B8]">${sizeStr}</td>`;
+      html += `<td class="px-4 py-1.5 text-muted">${escapeHtml(u.category || '-')}</td>`;
+      html += `<td class="px-4 py-1.5 font-mono text-muted">${sizeStr}</td>`;
       html += `<td class="px-4 py-1.5">${rebootIcon}</td>`;
       html += `<td class="px-4 py-1.5 text-[#374151] dark:text-[#E2E8F0]">${escapeHtml(u.title)}</td>`;
       html += `</tr>`;
@@ -1371,43 +1364,43 @@
     const start = (_eventsPage - 1) * EVENTS_PER_PAGE;
     const pageEvents = displayEvents.slice(start, start + EVENTS_PER_PAGE);
 
-    let html = '<div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm"><thead>';
-    html += '<tr class="border-b border-[#E5E7EB] dark:border-[#334155] text-left">';
-    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">${T.time}</th>`;
-    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">${T.type}</th>`;
-    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">${T.metric}</th>`;
-    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">${T.value}</th>`;
-    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">${T.message}</th>`;
-    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1] w-8"></th>`;
+    let html = '<div class="bg-card rounded-lg border border-line overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm"><thead>';
+    html += '<tr class="border-b border-line text-left">';
+    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted">${T.time}</th>`;
+    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted">${T.type}</th>`;
+    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted">${T.metric}</th>`;
+    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted">${T.value}</th>`;
+    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted">${T.message}</th>`;
+    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted w-8"></th>`;
     html += '</tr></thead><tbody>';
     for (const e of pageEvents) {
       const ts = formatTs(e.timestamp);
       const typeColor = EVENT_TYPE_COLORS[e.event_type] || EVENT_TYPE_COLORS['info'] || '#6B7280';
 
       // Main row - clickable
-      html += `<tr style="border-left: 3px solid ${typeColor}" class="border-b border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]/50 cursor-pointer" data-action="_sdToggleEventDetail">`;
-      html += `<td class="px-4 py-2 text-xs font-mono text-[#6B7280] dark:text-[#CBD5E1] whitespace-nowrap">${escapeHtml(ts)}</td>`;
+      html += `<tr style="border-left: 3px solid ${typeColor}" class="border-b border-line hover:bg-page dark:hover:bg-page/50 cursor-pointer" data-action="_sdToggleEventDetail">`;
+      html += `<td class="px-4 py-2 text-xs font-mono text-muted whitespace-nowrap">${escapeHtml(ts)}</td>`;
       html += `<td class="px-4 py-2">${eventBadge(e.event_type)}</td>`;
       html += `<td class="px-4 py-2 text-xs">${escapeHtml(e.metric || '-')}</td>`;
       html += `<td class="px-4 py-2 text-xs font-mono">${_formatEventValue(e)}</td>`;
-      html += `<td class="px-4 py-2 text-xs text-[#6B7280] dark:text-[#CBD5E1] truncate max-w-[300px]">${escapeHtml(e.message)}</td>`;
+      html += `<td class="px-4 py-2 text-xs text-muted truncate max-w-[300px]">${escapeHtml(e.message)}</td>`;
       html += `<td class="px-4 py-1 text-[#9CA3AF]"><i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform"></i></td>`;
       html += '</tr>';
 
       // Detail row - hidden by default
-      html += `<tr class="hidden border-b border-[#E5E7EB] dark:border-[#334155] bg-[#F9FAFB] dark:bg-[#0F172A]/30">`;
+      html += `<tr class="hidden border-b border-line bg-page dark:bg-page/30">`;
       html += `<td colspan="6" class="px-4 py-3">`;
       html += `<div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">`;
-      html += `<div><span class="font-medium text-[#6B7280] dark:text-[#9CA3AF] block mb-0.5">Event Type</span><span>${eventBadge(e.event_type)}</span></div>`;
-      html += `<div><span class="font-medium text-[#6B7280] dark:text-[#9CA3AF] block mb-0.5">Metric</span><span>${escapeHtml(e.metric || '-')}</span></div>`;
-      html += `<div><span class="font-medium text-[#6B7280] dark:text-[#9CA3AF] block mb-0.5">Value</span><span class="font-mono">${e.value != null ? e.value.toFixed(1) + '%' : '-'}</span></div>`;
-      html += `<div><span class="font-medium text-[#6B7280] dark:text-[#9CA3AF] block mb-0.5">Threshold</span><span class="font-mono">${e.threshold != null ? e.threshold.toFixed(1) + '%' : '-'}</span></div>`;
+      html += `<div><span class="font-medium text-muted block mb-0.5">Event Type</span><span>${eventBadge(e.event_type)}</span></div>`;
+      html += `<div><span class="font-medium text-muted block mb-0.5">Metric</span><span>${escapeHtml(e.metric || '-')}</span></div>`;
+      html += `<div><span class="font-medium text-muted block mb-0.5">Value</span><span class="font-mono">${e.value != null ? e.value.toFixed(1) + '%' : '-'}</span></div>`;
+      html += `<div><span class="font-medium text-muted block mb-0.5">Threshold</span><span class="font-mono">${e.threshold != null ? e.threshold.toFixed(1) + '%' : '-'}</span></div>`;
       html += `</div>`;
-      html += `<div class="mt-2 text-xs"><span class="font-medium text-[#6B7280] dark:text-[#9CA3AF] block mb-0.5">Full Message</span><p class="text-[#374151] dark:text-[#E2E8F0] whitespace-pre-wrap">${escapeHtml(e.message)}</p></div>`;
+      html += `<div class="mt-2 text-xs"><span class="font-medium text-muted block mb-0.5">Full Message</span><p class="text-[#374151] dark:text-[#E2E8F0] whitespace-pre-wrap">${escapeHtml(e.message)}</p></div>`;
       if (e.correlation_id) {
-        html += `<div class="mt-2 text-xs"><span class="font-medium text-[#6B7280] dark:text-[#9CA3AF]">Correlation ID:</span> <span class="font-mono">${escapeHtml(e.correlation_id)}</span></div>`;
+        html += `<div class="mt-2 text-xs"><span class="font-medium text-muted">Correlation ID:</span> <span class="font-mono">${escapeHtml(e.correlation_id)}</span></div>`;
       }
-      html += `<div class="mt-1 text-[10px] text-[#9CA3AF] dark:text-[#475569]">Full timestamp: ${escapeHtml(e.timestamp)}</div>`;
+      html += `<div class="mt-1 text-[10px] text-faint">Full timestamp: ${escapeHtml(e.timestamp)}</div>`;
       html += `</td></tr>`;
     }
     html += '</tbody></table></div>';
@@ -1449,7 +1442,7 @@
       return `<span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-[#FEE2E2] text-[#991B1B] dark:bg-[#7F1D1D] dark:text-[#FCA5A5]">${label}</span>`;
     if (level === 'Warning')
       return `<span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-[#FEF3C7] text-[#92400E] dark:bg-[#78350F] dark:text-[#FCD34D]">${label}</span>`;
-    return `<span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-[#F3F4F6] text-[#4B5563] dark:bg-[#374151] dark:text-[#9CA3AF]">${label}</span>`;
+    return `<span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-raised text-[#4B5563] dark:bg-[#374151] dark:text-[#9CA3AF]">${label}</span>`;
   }
 
   function escapeHtml(str) {
@@ -1491,13 +1484,13 @@
     const safeMsg = escapeHtml(message || '');
     const safeHint = escapeHtml(hint || '');
     const inner =
-      '<div class="text-sm text-[#9CA3AF] dark:text-[#475569] text-center py-8">' +
+      '<div class="text-sm text-faint text-center py-8">' +
         '<i data-lucide="' + escapeHtml(icon || 'info') + '" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>' +
         '<p>' + safeMsg + '</p>' +
         (safeHint ? '<p class="text-[10px] mt-1 opacity-60">' + safeHint + '</p>' : '') +
       '</div>';
     if (opts && opts.cardWrap) {
-      return '<div class="bg-white dark:bg-[#1E293B] rounded-lg p-6 border border-[#E5E7EB] dark:border-[#334155]">' + inner + '</div>';
+      return '<div class="bg-card rounded-lg p-6 border border-line">' + inner + '</div>';
     }
     return inner;
   }
@@ -1574,15 +1567,15 @@
     const start = (_logsPage - 1) * LOGS_PER_PAGE;
     const pageGroups = groups.slice(start, start + LOGS_PER_PAGE);
 
-    let html = '<div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] overflow-hidden">';
+    let html = '<div class="bg-card rounded-lg border border-line overflow-hidden">';
     html += '<div class="overflow-x-auto"><table class="w-full text-sm"><thead>';
-    html += '<tr class="border-b border-[#E5E7EB] dark:border-[#334155] text-left">';
-    html += '<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1] w-8"></th>';
-    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">${T.log_source}</th>`;
-    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">${T.value}</th>`;
-    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">${T.event_id}</th>`;
-    html += '<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">#</th>';
-    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">${T.message}</th>`;
+    html += '<tr class="border-b border-line text-left">';
+    html += '<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted w-8"></th>';
+    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted">${T.log_source}</th>`;
+    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted">${T.value}</th>`;
+    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted">${T.event_id}</th>`;
+    html += '<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted">#</th>';
+    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted">${T.message}</th>`;
     html += '</tr></thead><tbody>';
 
     pageGroups.forEach((g, localIdx) => {
@@ -1591,35 +1584,33 @@
                         g.level === 'Warning' ? 'border-l-[3px] border-l-[#F59E0B]' : '';
 
       // Summary row (always visible, clickable)
-      html += `<tr class="border-b border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]/50 cursor-pointer select-none ${borderCls}" data-action="toggleLogGroup" data-args="[${idx}]">`;
+      html += `<tr class="border-b border-line hover:bg-page dark:hover:bg-page/50 cursor-pointer select-none ${borderCls}" data-action="toggleLogGroup" data-args="[${idx}]">`;
       html += `<td class="px-3 py-2 text-center"><i data-lucide="chevron-right" class="w-3.5 h-3.5 text-[#9CA3AF] transition-transform duration-200" id="log-chevron-${idx}"></i></td>`;
       html += `<td class="px-4 py-2 text-xs">${escapeHtml(g.log_source)}</td>`;
       html += `<td class="px-4 py-2">${levelBadge(g.level)}</td>`;
       html += `<td class="px-4 py-2 text-xs font-mono">${g.event_id || '-'}</td>`;
-      html += `<td class="px-4 py-2 text-xs"><span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-full font-bold ${
-        g.count > 1 ? 'bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#3B82F6]/20 dark:text-[#3B82F6]' : 'text-[#9CA3AF]'
-      }">${g.count}</span></td>`;
-      html += `<td class="px-4 py-2 text-xs text-[#6B7280] dark:text-[#CBD5E1]" style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(g.message)}">${escapeHtml(g.message)}</td>`;
+      html += `<td class="px-4 py-2 text-xs"><span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-full font-bold ${ g.count > 1 ? 'bg-info/10 text-info dark:bg-info/20 dark:text-[#3B82F6]' : 'text-faint' }">${g.count}</span></td>`;
+      html += `<td class="px-4 py-2 text-xs text-muted" style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(g.message)}">${escapeHtml(g.message)}</td>`;
       html += '</tr>';
 
       // Detail panel (hidden by default)
       html += `<tr id="log-detail-${idx}" class="hidden">`;
       html += '<td colspan="6" class="p-0">';
-      html += '<div class="bg-[#F9FAFB] dark:bg-[#0F172A] px-6 py-3 border-b border-[#E5E7EB] dark:border-[#334155]">';
+      html += '<div class="bg-page px-6 py-3 border-b border-line">';
 
       // Summary info
-      html += '<div class="flex flex-wrap gap-4 mb-3 text-xs text-[#6B7280] dark:text-[#CBD5E1]">';
+      html += '<div class="flex flex-wrap gap-4 mb-3 text-xs text-muted">';
       html += `<span><strong>First:</strong> ${formatTs(g.last)}</span>`;
       html += `<span><strong>Last:</strong> ${formatTs(g.first)}</span>`;
       html += `<span><strong>Occurrences:</strong> ${g.count}</span>`;
       html += '</div>';
 
       // Full message
-      html += `<div class="text-xs text-[#374151] dark:text-[#E2E8F0] mb-3 whitespace-pre-wrap break-words bg-white dark:bg-[#1E293B] rounded p-3 border border-[#E5E7EB] dark:border-[#334155]">${escapeHtml(g.message)}</div>`;
+      html += `<div class="text-xs text-[#374151] dark:text-[#E2E8F0] mb-3 whitespace-pre-wrap break-words bg-card rounded p-3 border border-line">${escapeHtml(g.message)}</div>`;
 
       // Timestamps list
       if (g.count > 1) {
-        html += '<div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">';
+        html += '<div class="text-xs text-muted">';
         html += '<strong>Timestamps:</strong>';
         html += '<div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 font-mono">';
         g.timestamps.forEach(ts => {
@@ -1722,14 +1713,14 @@
     const start = (_firewallPage - 1) * LOGS_PER_PAGE;
     const pageGroups = groups.slice(start, start + LOGS_PER_PAGE);
 
-    let html = '<div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] overflow-hidden">';
+    let html = '<div class="bg-card rounded-lg border border-line overflow-hidden">';
     html += '<div class="overflow-x-auto"><table class="w-full text-sm"><thead>';
-    html += '<tr class="border-b border-[#E5E7EB] dark:border-[#334155] text-left">';
-    html += '<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1] w-8"></th>';
-    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">${T.value}</th>`;
-    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">${T.event_id}</th>`;
-    html += '<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">#</th>';
-    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">${T.message}</th>`;
+    html += '<tr class="border-b border-line text-left">';
+    html += '<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted w-8"></th>';
+    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted">${T.value}</th>`;
+    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted">${T.event_id}</th>`;
+    html += '<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted">#</th>';
+    html += `<th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted">${T.message}</th>`;
     html += '</tr></thead><tbody>';
 
     pageGroups.forEach((g, localIdx) => {
@@ -1737,27 +1728,25 @@
       const borderCls = g.level === 'Error' ? 'border-l-[3px] border-l-[#DC2626]' :
                         g.level === 'Warning' ? 'border-l-[3px] border-l-[#F59E0B]' : '';
 
-      html += `<tr class="border-b border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]/50 cursor-pointer select-none ${borderCls}" data-action="toggleFirewallLogGroup" data-args="[${idx}]">`;
+      html += `<tr class="border-b border-line hover:bg-page dark:hover:bg-page/50 cursor-pointer select-none ${borderCls}" data-action="toggleFirewallLogGroup" data-args="[${idx}]">`;
       html += `<td class="px-3 py-2 text-center"><i data-lucide="chevron-right" class="w-3.5 h-3.5 text-[#9CA3AF] transition-transform duration-200" id="fwlog-chevron-${idx}"></i></td>`;
       html += `<td class="px-4 py-2">${levelBadge(g.level)}</td>`;
       html += `<td class="px-4 py-2 text-xs font-mono">${g.event_id || '-'}</td>`;
-      html += `<td class="px-4 py-2 text-xs"><span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-full font-bold ${
-        g.count > 1 ? 'bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#3B82F6]/20 dark:text-[#3B82F6]' : 'text-[#9CA3AF]'
-      }">${g.count}</span></td>`;
-      html += `<td class="px-4 py-2 text-xs text-[#6B7280] dark:text-[#CBD5E1]" style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(g.message)}">${escapeHtml(g.message)}</td>`;
+      html += `<td class="px-4 py-2 text-xs"><span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-full font-bold ${ g.count > 1 ? 'bg-info/10 text-info dark:bg-info/20 dark:text-[#3B82F6]' : 'text-faint' }">${g.count}</span></td>`;
+      html += `<td class="px-4 py-2 text-xs text-muted" style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(g.message)}">${escapeHtml(g.message)}</td>`;
       html += '</tr>';
 
       html += `<tr id="fwlog-detail-${idx}" class="hidden">`;
       html += '<td colspan="5" class="p-0">';
-      html += '<div class="bg-[#F9FAFB] dark:bg-[#0F172A] px-6 py-3 border-b border-[#E5E7EB] dark:border-[#334155]">';
-      html += '<div class="flex flex-wrap gap-4 mb-3 text-xs text-[#6B7280] dark:text-[#CBD5E1]">';
+      html += '<div class="bg-page px-6 py-3 border-b border-line">';
+      html += '<div class="flex flex-wrap gap-4 mb-3 text-xs text-muted">';
       html += `<span><strong>First:</strong> ${formatTs(g.last)}</span>`;
       html += `<span><strong>Last:</strong> ${formatTs(g.first)}</span>`;
       html += `<span><strong>Occurrences:</strong> ${g.count}</span>`;
       html += '</div>';
-      html += `<div class="text-xs text-[#374151] dark:text-[#E2E8F0] mb-3 whitespace-pre-wrap break-words bg-white dark:bg-[#1E293B] rounded p-3 border border-[#E5E7EB] dark:border-[#334155]">${escapeHtml(g.message)}</div>`;
+      html += `<div class="text-xs text-[#374151] dark:text-[#E2E8F0] mb-3 whitespace-pre-wrap break-words bg-card rounded p-3 border border-line">${escapeHtml(g.message)}</div>`;
       if (g.count > 1) {
-        html += '<div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">';
+        html += '<div class="text-xs text-muted">';
         html += '<strong>Timestamps:</strong>';
         html += '<div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 font-mono">';
         g.timestamps.forEach(ts => { html += `<span>${formatTs(ts)}</span>`; });
@@ -2492,7 +2481,7 @@
       '<i data-lucide="' + icon + '" class="w-5 h-5 flex-shrink-0 mt-0.5 ' + iconCls + '"></i>' +
       '<div class="flex-1 min-w-0">' +
         '<div class="text-sm font-semibold">' + title + '</div>' +
-        '<div class="text-xs text-[#6B7280] dark:text-[#CBD5E1] mt-0.5">' + msg +
+        '<div class="text-xs text-muted mt-0.5">' + msg +
           (installed > 0 ? ' · ' + installed + ' {{ t.get("installed", "installed") }}' : '') +
           (pending > 0 && status !== 'completed' && status !== 'restart_required' ? ' · ' + pending + ' {{ t.get("pending", "pending") }}' : '') +
           updated +
@@ -2581,9 +2570,9 @@
           return d.innerHTML;
         };
         const tile = (label, value, color, icon, tipTitle, tipDesc) => `
-          <div class="rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-2.5 bg-[#F9FAFB] dark:bg-[#0F172A]/50 cursor-help"
+          <div class="rounded-lg border border-line p-2.5 bg-page dark:bg-page/50 cursor-help"
                data-tip-title="${_esc(tipTitle)}" data-tip-desc="${_esc(tipDesc)}">
-            <div class="flex items-center gap-1.5 text-[10px] text-[#6B7280] dark:text-[#9CA3AF] mb-1">
+            <div class="flex items-center gap-1.5 text-[10px] text-muted mb-1">
               <i data-lucide="${icon}" class="w-3 h-3"></i> ${_esc(label)}
             </div>
             <div class="text-xs font-semibold ${color}">${_esc(value)}</div>
@@ -2857,12 +2846,12 @@
     html += '<div></div>';
     for (let h = 0; h < 24; h++) {
       const label = h.toString().padStart(2, '0');
-      html += '<div class="text-center text-[9px] text-[#9CA3AF] dark:text-[#475569] font-mono">' + label + '</div>';
+      html += '<div class="text-center text-[9px] text-faint font-mono">' + label + '</div>';
     }
 
     // Data rows
     HEATMAP_DAYS.forEach((day, i) => {
-      html += '<div class="text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] pr-1 text-right">' + day + '</div>';
+      html += '<div class="text-[10px] font-medium text-muted pr-1 text-right">' + day + '</div>';
       for (let h = 0; h < 24; h++) {
         const count = grid[i][h];
         const intensity = maxCount > 0 ? count / maxCount : 0;
@@ -2885,7 +2874,7 @@
     html += '</div></div>';
 
     // Legend — 6 swatches from 0 to maxCount
-    html += '<div class="flex items-center justify-end gap-2 mt-2 text-[9px] text-[#9CA3AF] dark:text-[#475569]">';
+    html += '<div class="flex items-center justify-end gap-2 mt-2 text-[9px] text-faint">';
     html += '<span>0</span>';
     const steps = [0.1, 0.3, 0.5, 0.7, 0.9, 1.0];
     steps.forEach(s => {
@@ -2922,7 +2911,7 @@
       })
       .catch(() => {
         document.getElementById('recent-failed-logins').innerHTML =
-          '<div class="text-xs text-[#9CA3AF] dark:text-[#475569] text-center py-4">{{ t.get("no_data", "No data available") }}</div>';
+          '<div class="text-xs text-faint text-center py-4">{{ t.get("no_data", "No data available") }}</div>';
       });
   }
 
@@ -3048,7 +3037,7 @@
         cardThreatColor = '#6B7280';
       }
 
-      html += `<div class="rounded-lg border-l-4 border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#1E293B] hover:shadow-md transition-all cursor-pointer break-inside-avoid" style="border-left-color: ${borderColor}" data-action="_sdToggleLoginCard">`;
+      html += `<div class="rounded-lg border-l-4 border border-line bg-card hover:shadow-md transition-all cursor-pointer break-inside-avoid" style="border-left-color: ${borderColor}" data-action="_sdToggleLoginCard">`;
       // Collapsed summary
       html += `<div class="p-3">`;
 
@@ -3056,9 +3045,9 @@
       html += `<div class="flex items-start justify-between mb-2">`;
       html += `<div class="min-w-0">`;
       html += `<div class="flex items-center gap-1.5"><i data-lucide="user-x" class="w-4 h-4 text-[#DC2626] flex-shrink-0"></i>`;
-      html += `<span class="text-sm font-medium text-[#111827] dark:text-[#F9FAFB] truncate" title="${fullAccount}">${fullAccount}</span></div>`;
+      html += `<span class="text-sm font-medium text-ink dark:text-[#F9FAFB] truncate" title="${fullAccount}">${fullAccount}</span></div>`;
       if (reason) {
-        html += `<div class="text-[10px] text-[#DC2626] dark:text-[#FCA5A5] mt-0.5 ml-5.5">${reason}</div>`;
+        html += `<div class="text-[10px] text-critical dark:text-[#FCA5A5] mt-0.5 ml-5.5">${reason}</div>`;
       }
       html += `</div>`;
       html += `<span class="flex-shrink-0 px-2 py-0.5 text-xs font-bold rounded-full ${g.count >= 10 ? 'bg-[#DC2626]/10 text-[#DC2626]' : g.count >= 5 ? 'bg-[#F59E0B]/10 text-[#F59E0B]' : 'bg-[#6B7280]/10 text-[#6B7280]'}">${g.count}×</span>`;
@@ -3068,19 +3057,19 @@
       html += `<div class="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">`;
 
       // Source IP + port
-      html += `<div class="flex items-center gap-1.5 text-[#6B7280] dark:text-[#CBD5E1]"><i data-lucide="globe" class="w-3 h-3 flex-shrink-0"></i><span class="font-mono truncate" title="${ipDisplay}">${ipDisplay}</span></div>`;
+      html += `<div class="flex items-center gap-1.5 text-muted"><i data-lucide="globe" class="w-3 h-3 flex-shrink-0"></i><span class="font-mono truncate" title="${ipDisplay}">${ipDisplay}</span></div>`;
 
       // Logon type with tooltip
-      html += `<div class="flex items-center gap-1.5 text-[#6B7280] dark:text-[#CBD5E1]" title="${ltInfo.desc}"><i data-lucide="${ltInfo.icon}" class="w-3 h-3 flex-shrink-0"></i><span class="truncate">${logonType}</span></div>`;
+      html += `<div class="flex items-center gap-1.5 text-muted" title="${ltInfo.desc}"><i data-lucide="${ltInfo.icon}" class="w-3 h-3 flex-shrink-0"></i><span class="truncate">${logonType}</span></div>`;
 
       // Last seen
-      html += `<div class="flex items-center gap-1.5 text-[#6B7280] dark:text-[#CBD5E1]"><i data-lucide="clock" class="w-3 h-3 flex-shrink-0"></i><span class="truncate">${lastTs}</span></div>`;
+      html += `<div class="flex items-center gap-1.5 text-muted"><i data-lucide="clock" class="w-3 h-3 flex-shrink-0"></i><span class="truncate">${lastTs}</span></div>`;
 
       // Workstation
       if (workstation) {
-        html += `<div class="flex items-center gap-1.5 text-[#6B7280] dark:text-[#CBD5E1]"><i data-lucide="laptop" class="w-3 h-3 flex-shrink-0"></i><span class="truncate" title="${workstation}">${workstation}</span></div>`;
+        html += `<div class="flex items-center gap-1.5 text-muted"><i data-lucide="laptop" class="w-3 h-3 flex-shrink-0"></i><span class="truncate" title="${workstation}">${workstation}</span></div>`;
       } else if (g.count > 1) {
-        html += `<div class="flex items-center gap-1.5 text-[#9CA3AF] dark:text-[#475569]"><i data-lucide="calendar" class="w-3 h-3 flex-shrink-0"></i><span class="truncate">First: ${firstTs}</span></div>`;
+        html += `<div class="flex items-center gap-1.5 text-faint"><i data-lucide="calendar" class="w-3 h-3 flex-shrink-0"></i><span class="truncate">First: ${firstTs}</span></div>`;
       } else {
         html += '<div></div>';
       }
@@ -3090,9 +3079,9 @@
       // Bottom badges + chevron
       html += `<div class="flex items-center justify-between mt-2">`;
       html += `<div class="flex flex-wrap items-center gap-1.5">`;
-      html += `<span class="px-1.5 py-0.5 text-[10px] rounded-full bg-[#DC2626]/10 text-[#DC2626] dark:bg-[#DC2626]/20">${eventLabel}</span>`;
+      html += `<span class="px-1.5 py-0.5 text-[10px] rounded-full bg-critical/10 text-[#DC2626] dark:bg-[#DC2626]/20">${eventLabel}</span>`;
       if (g.sub_status) {
-        html += `<span class="px-1.5 py-0.5 text-[10px] rounded-full bg-[#6B7280]/10 text-[#6B7280] dark:bg-[#6B7280]/20 font-mono">${g.sub_status}</span>`;
+        html += `<span class="px-1.5 py-0.5 text-[10px] rounded-full bg-muted/10 text-[#6B7280] dark:bg-[#6B7280]/20 font-mono">${g.sub_status}</span>`;
       }
       html += `</div>`;
       html += `<i data-lucide="chevron-down" class="card-chevron w-3.5 h-3.5 text-[#9CA3AF] transition-transform duration-200"></i>`;
@@ -3100,7 +3089,7 @@
       html += `</div>`; // end collapsed summary
 
       // Expandable detail panel (hidden by default)
-      html += `<div class="card-detail hidden border-t border-[#E5E7EB] dark:border-[#334155] p-3 bg-[#F9FAFB]/50 dark:bg-[#0F172A]/30">`;
+      html += `<div class="card-detail hidden border-t border-line p-3 bg-page/50 dark:bg-page/30">`;
       // Threat assessment
       html += `<div class="flex items-start gap-2 mb-3 p-2 rounded-lg" style="background-color: ${cardThreatColor}08; border: 1px solid ${cardThreatColor}20;">`;
       html += `<i data-lucide="scan" class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: ${cardThreatColor}"></i>`;
@@ -3108,24 +3097,24 @@
       html += `<p class="text-[11px] text-[#4B5563] dark:text-[#CBD5E1]">${cardThreat}</p></div></div>`;
       // Full details table
       html += `<div class="grid grid-cols-2 gap-2 text-[11px]">`;
-      html += `<div><span class="text-[#9CA3AF] dark:text-[#475569] block text-[10px]">Full Account</span><span class="font-medium">${fullAccount}</span></div>`;
-      html += `<div><span class="text-[#9CA3AF] dark:text-[#475569] block text-[10px]">Source</span><span class="font-mono">${ipDisplay}</span></div>`;
-      html += `<div><span class="text-[#9CA3AF] dark:text-[#475569] block text-[10px]">Logon Type</span><span>${logonType}</span><div class="text-[9px] text-[#9CA3AF]">${ltInfo.desc}</div></div>`;
-      html += `<div><span class="text-[#9CA3AF] dark:text-[#475569] block text-[10px]">Failure Reason</span><span class="text-[#DC2626]">${reason || 'Unknown'}</span></div>`;
-      if (workstation) html += `<div><span class="text-[#9CA3AF] dark:text-[#475569] block text-[10px]">Workstation</span><span>${workstation}</span></div>`;
-      if (processName) html += `<div class="sm:col-span-2"><span class="text-[#9CA3AF] dark:text-[#475569] block text-[10px]">Calling Process / Service</span><span class="font-medium text-[#2563EB] dark:text-[#3B82F6]">${processName}</span></div>`;
-      html += `<div><span class="text-[#9CA3AF] dark:text-[#475569] block text-[10px]">Event ID</span><span class="font-mono">${g.event_id}</span></div>`;
-      html += `<div><span class="text-[#9CA3AF] dark:text-[#475569] block text-[10px]">First Seen</span><span>${firstTs}</span></div>`;
-      html += `<div><span class="text-[#9CA3AF] dark:text-[#475569] block text-[10px]">Last Seen</span><span>${lastTs}</span></div>`;
-      if (g.status_code) html += `<div><span class="text-[#9CA3AF] dark:text-[#475569] block text-[10px]">Status</span><span class="font-mono">${g.status_code}</span></div>`;
-      if (g.sub_status) html += `<div><span class="text-[#9CA3AF] dark:text-[#475569] block text-[10px]">Sub-Status</span><span class="font-mono">${g.sub_status}</span></div>`;
+      html += `<div><span class="text-faint block text-[10px]">Full Account</span><span class="font-medium">${fullAccount}</span></div>`;
+      html += `<div><span class="text-faint block text-[10px]">Source</span><span class="font-mono">${ipDisplay}</span></div>`;
+      html += `<div><span class="text-faint block text-[10px]">Logon Type</span><span>${logonType}</span><div class="text-[9px] text-[#9CA3AF]">${ltInfo.desc}</div></div>`;
+      html += `<div><span class="text-faint block text-[10px]">Failure Reason</span><span class="text-[#DC2626]">${reason || 'Unknown'}</span></div>`;
+      if (workstation) html += `<div><span class="text-faint block text-[10px]">Workstation</span><span>${workstation}</span></div>`;
+      if (processName) html += `<div class="sm:col-span-2"><span class="text-faint block text-[10px]">Calling Process / Service</span><span class="font-medium text-info">${processName}</span></div>`;
+      html += `<div><span class="text-faint block text-[10px]">Event ID</span><span class="font-mono">${g.event_id}</span></div>`;
+      html += `<div><span class="text-faint block text-[10px]">First Seen</span><span>${firstTs}</span></div>`;
+      html += `<div><span class="text-faint block text-[10px]">Last Seen</span><span>${lastTs}</span></div>`;
+      if (g.status_code) html += `<div><span class="text-faint block text-[10px]">Status</span><span class="font-mono">${g.status_code}</span></div>`;
+      if (g.sub_status) html += `<div><span class="text-faint block text-[10px]">Sub-Status</span><span class="font-mono">${g.sub_status}</span></div>`;
       html += `</div>`;
       html += `</div>`; // end detail panel
       html += `</div>`; // end card
     });
 
     html += '</div>';
-    html += `<div class="mt-2 text-[10px] text-[#9CA3AF] dark:text-[#475569] text-right">${logins.length} {{ t.get('events', 'events') }} {{ t.get('grouped_into', 'grouped into') }} ${sorted.length} {{ t.get('sources', 'sources') }}</div>`;
+    html += `<div class="mt-2 text-[10px] text-faint text-right">${logins.length} {{ t.get('events', 'events') }} {{ t.get('grouped_into', 'grouped into') }} ${sorted.length} {{ t.get('sources', 'sources') }}</div>`;
     document.getElementById('recent-failed-logins').innerHTML = html;
     lucide.createIcons({ nodes: [document.getElementById('recent-failed-logins')] });
 
@@ -3265,7 +3254,7 @@
 
     findings.sort((a, b) => ({critical:0,warning:1,info:2}[a.severity]||2) - ({critical:0,warning:1,info:2}[b.severity]||2));
 
-    let html = '<div class="bg-white dark:bg-[#1E293B] rounded-lg p-4 border border-[#E5E7EB] dark:border-[#334155]">';
+    let html = '<div class="bg-card rounded-lg p-4 border border-line">';
     html += '<h3 class="text-sm font-medium mb-3 flex items-center gap-1.5">';
     html += '<i data-lucide="brain" class="w-4 h-4 text-[#8B5CF6]"></i>';
     html += '{{ t.get("security_analysis", "Security Analysis") }}';
@@ -3279,15 +3268,15 @@
       const c = sColors[f.severity] || sColors.info;
       html += `<div class="rounded-lg border ${c.bg} p-3">`;
       html += `<div class="flex items-start gap-2"><i data-lucide="${f.icon}" class="w-4 h-4 ${c.icon} flex-shrink-0 mt-0.5"></i><div class="min-w-0">`;
-      html += `<div class="flex items-center gap-2 mb-1"><span class="text-xs font-semibold text-[#111827] dark:text-[#F9FAFB]">${f.title}</span>`;
+      html += `<div class="flex items-center gap-2 mb-1"><span class="text-xs font-semibold text-ink dark:text-[#F9FAFB]">${f.title}</span>`;
       html += `<span class="px-1.5 py-0.5 text-[9px] font-bold rounded-full ${c.badge} uppercase">${f.severity}</span></div>`;
       html += `<p class="text-[11px] text-[#4B5563] dark:text-[#CBD5E1] mb-1.5">${f.detail}</p>`;
-      html += `<p class="text-[10px] text-[#6B7280] dark:text-[#9CA3AF] italic flex items-start gap-1"><i data-lucide="lightbulb" class="w-3 h-3 flex-shrink-0 mt-0.5"></i>${f.recommendation}</p>`;
+      html += `<p class="text-[10px] text-muted italic flex items-start gap-1"><i data-lucide="lightbulb" class="w-3 h-3 flex-shrink-0 mt-0.5"></i>${f.recommendation}</p>`;
       html += '</div></div></div>';
     });
 
     // Stats bar
-    html += '<div class="flex flex-wrap gap-3 mt-3 pt-3 border-t border-[#E5E7EB] dark:border-[#334155] text-[10px] text-[#6B7280] dark:text-[#9CA3AF]">';
+    html += '<div class="flex flex-wrap gap-3 mt-3 pt-3 border-t border-line text-[10px] text-muted">';
     html += `<span><strong>${totalCount}</strong> total failures</span>`;
     html += `<span><strong>${uniqueIPs.size}</strong> unique IPs</span>`;
     html += `<span><strong>${uniqueAccounts.size}</strong> accounts</span>`;
@@ -3326,25 +3315,25 @@
           return;
         }
         let html = '<div class="overflow-x-auto"><table class="w-full text-xs">';
-        html += '<thead><tr class="border-b border-[#E5E7EB] dark:border-[#334155] text-left">';
-        html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.get('time', 'Time') | tojson }} + '</th>';
-        html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.get('snapshot_type', 'Type') | tojson }} + '</th>';
-        html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.get('change_type', 'Change') | tojson }} + '</th>';
-        html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">Field</th>';
-        html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.get('old_value', 'Old Value') | tojson }} + '</th>';
-        html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.get('new_value', 'New Value') | tojson }} + '</th>';
+        html += '<thead><tr class="border-b border-line text-left">';
+        html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted">' + {{ t.get('time', 'Time') | tojson }} + '</th>';
+        html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted">' + {{ t.get('snapshot_type', 'Type') | tojson }} + '</th>';
+        html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted">' + {{ t.get('change_type', 'Change') | tojson }} + '</th>';
+        html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted">Field</th>';
+        html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted">' + {{ t.get('old_value', 'Old Value') | tojson }} + '</th>';
+        html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted">' + {{ t.get('new_value', 'New Value') | tojson }} + '</th>';
         html += '</tr></thead><tbody>';
         data.changes.forEach(c => {
           const ts = (typeof formatTs === 'function') ? formatTs(c.timestamp) : c.timestamp;
           const badgeCls = CHANGE_TYPE_COLORS[c.change_type] || 'bg-[#F3F4F6] text-[#4B5563]';
           const label = CHANGE_TYPE_LABELS[c.change_type] || c.change_type;
-          html += '<tr class="border-b border-[#E5E7EB] dark:border-[#334155]">';
-          html += '<td class="px-3 py-1.5 text-[#6B7280] dark:text-[#CBD5E1] whitespace-nowrap">' + ts + '</td>';
-          html += '<td class="px-3 py-1.5 text-[#6B7280] dark:text-[#CBD5E1]">' + (c.snapshot_type || '') + '</td>';
+          html += '<tr class="border-b border-line">';
+          html += '<td class="px-3 py-1.5 text-muted whitespace-nowrap">' + ts + '</td>';
+          html += '<td class="px-3 py-1.5 text-muted">' + (c.snapshot_type || '') + '</td>';
           html += '<td class="px-3 py-1.5"><span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ' + badgeCls + '">' + label + '</span></td>';
-          html += '<td class="px-3 py-1.5 font-mono text-[#6B7280] dark:text-[#CBD5E1]">' + (c.field || '') + '</td>';
-          html += '<td class="px-3 py-1.5 text-[#DC2626] dark:text-[#FCA5A5] font-mono max-w-[200px] truncate" title="' + (c.old_value || '-').replace(/"/g, '&quot;') + '">' + (c.old_value || '-') + '</td>';
-          html += '<td class="px-3 py-1.5 text-[#10B981] dark:text-[#6EE7B7] font-mono max-w-[200px] truncate" title="' + (c.new_value || '-').replace(/"/g, '&quot;') + '">' + (c.new_value || '-') + '</td>';
+          html += '<td class="px-3 py-1.5 font-mono text-muted">' + (c.field || '') + '</td>';
+          html += '<td class="px-3 py-1.5 text-critical dark:text-[#FCA5A5] font-mono max-w-[200px] truncate" title="' + (c.old_value || '-').replace(/"/g, '&quot;') + '">' + (c.old_value || '-') + '</td>';
+          html += '<td class="px-3 py-1.5 text-healthy dark:text-[#6EE7B7] font-mono max-w-[200px] truncate" title="' + (c.new_value || '-').replace(/"/g, '&quot;') + '">' + (c.new_value || '-') + '</td>';
           html += '</tr>';
         });
         html += '</tbody></table></div>';
@@ -3424,9 +3413,9 @@
           items.forEach(d => {
             const name = d[nameKey];
             const typeLabel = depTypeLabels[d.dependency_type] || d.dependency_type;
-            html += '<div class="flex items-center justify-between py-1 px-2 rounded bg-[#F9FAFB] dark:bg-[#0F172A]/50">';
-            html += '<a href="/server/' + encodeURIComponent(name) + '" class="hover:text-[#2563EB] dark:hover:text-[#3B82F6] font-medium">' + _depEsc(name) + '</a>';
-            html += '<span class="text-[10px] px-1.5 py-0.5 rounded bg-[#E5E7EB] dark:bg-[#334155]">' + _depEsc(typeLabel) + '</span>';
+            html += '<div class="flex items-center justify-between py-1 px-2 rounded bg-page dark:bg-page/50">';
+            html += '<a href="/server/' + encodeURIComponent(name) + '" class="hover:text-info font-medium">' + _depEsc(name) + '</a>';
+            html += '<span class="text-[10px] px-1.5 py-0.5 rounded bg-line">' + _depEsc(typeLabel) + '</span>';
             html += '</div>';
           });
           html += '</div>';
@@ -3457,8 +3446,8 @@
 
 <!-- Runbook Execution Output Panel (expandable, appears below updates banner) -->
 <div id="runbook-output-panel" class="hidden mb-6">
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#8B5CF6]/30 dark:border-[#8B5CF6]/30 overflow-hidden">
-    <div class="flex items-center justify-between px-4 py-3 bg-[#8B5CF6]/5 dark:bg-[#8B5CF6]/10 border-b border-[#E5E7EB] dark:border-[#334155]">
+  <div class="bg-card rounded-lg border border-brand/30 dark:border-[#8B5CF6]/30 overflow-hidden">
+    <div class="flex items-center justify-between px-4 py-3 bg-brand/5 dark:bg-[#8B5CF6]/10 border-b border-line">
       <div class="flex items-center gap-2">
         <i data-lucide="terminal" class="w-4 h-4 text-[#8B5CF6]"></i>
         <span class="text-sm font-semibold" id="runbook-output-title">{{ t.runbook_output | default('Runbook Output') }}</span>
@@ -3468,7 +3457,7 @@
         <i data-lucide="x" class="w-4 h-4"></i>
       </button>
     </div>
-    <pre id="runbook-output-content" class="px-4 py-3 text-xs font-mono text-[#1F2937] dark:text-[#E2E8F0] whitespace-pre-wrap max-h-64 overflow-y-auto bg-[#F9FAFB] dark:bg-[#0F172A]"></pre>
+    <pre id="runbook-output-content" class="px-4 py-3 text-xs font-mono text-[#1F2937] dark:text-[#E2E8F0] whitespace-pre-wrap max-h-64 overflow-y-auto bg-page"></pre>
   </div>
 </div>
 
@@ -3476,8 +3465,8 @@
 <div id="runbook-confirm-modal" class="fixed inset-0 z-[70] hidden">
   <div class="fixed inset-0 bg-black/50" data-action="closeRunbookModal"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#E5E7EB] dark:border-[#334155] w-full max-w-md relative">
-      <div class="flex items-center justify-between p-4 border-b border-[#E5E7EB] dark:border-[#334155]">
+    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-md relative">
+      <div class="flex items-center justify-between p-4 border-b border-line">
         <h3 class="text-lg font-semibold flex items-center gap-2">
           <i data-lucide="zap" class="w-5 h-5 text-[#8B5CF6]"></i>
           <span>{{ t.confirm_execution | default('Confirm Execution') }}</span>
@@ -3488,10 +3477,10 @@
       </div>
       <div class="p-4 space-y-3">
         <p class="text-sm" id="runbook-confirm-text"></p>
-        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]" id="runbook-confirm-desc"></div>
+        <div class="text-xs text-muted" id="runbook-confirm-desc"></div>
       </div>
-      <div class="flex justify-end gap-2 p-4 border-t border-[#E5E7EB] dark:border-[#334155]">
-        <button data-action="closeRunbookModal" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">
+      <div class="flex justify-end gap-2 p-4 border-t border-line">
+        <button data-action="closeRunbookModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">
           {{ t.cancel | default('Cancel') }}
         </button>
         <button data-action="confirmRunbookExec" data-args="[true]" class="px-4 py-1.5 text-sm rounded border border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#8B5CF6]/10">
@@ -3561,10 +3550,10 @@ function loadRunbooks() {
       });
       let html = '';
       for (const [cat, rbs] of Object.entries(cats)) {
-        html += '<div class="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[#9CA3AF] dark:text-[#475569]">' + cat + '</div>';
+        html += '<div class="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-faint">' + cat + '</div>';
         rbs.forEach(rb => {
           const badge = rb.is_builtin ? '<span class="ml-auto text-[9px] px-1 py-0.5 rounded bg-[#8B5CF6]/10 text-[#8B5CF6]">' + RUNBOOK_T.builtin_runbook + '</span>' : '';
-          html += '<button data-action="openRunbookConfirm" data-args="[' + rb.id + ']" class="w-full text-left px-3 py-1.5 text-xs hover:bg-[#F3F4F6] dark:hover:bg-[#334155] flex items-center gap-2 transition-colors">';
+          html += '<button data-action="openRunbookConfirm" data-args="[' + rb.id + ']" class="w-full text-left px-3 py-1.5 text-xs hover:bg-raised dark:hover:bg-[#334155] flex items-center gap-2 transition-colors">';
           html += '<i data-lucide="play-circle" class="w-3.5 h-3.5 text-[#8B5CF6] flex-shrink-0"></i>';
           html += '<span class="flex-1 truncate">' + rb.name + '</span>';
           html += badge;
