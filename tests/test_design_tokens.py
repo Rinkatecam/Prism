@@ -436,6 +436,92 @@ def test_css_and_tailwind_cover_exactly_the_same_tokens():
         assert f"'{name}': 'rgb(var(--c-{name})" in js
 
 
+# ── the guardrail ────────────────────────────────────────────────────────
+#
+# Spec §7 asked for a test that fails on any new `[#hex]`, with a short
+# allowlist of justified one-offs. That shape assumed the conversion would
+# reach zero. It reached 188 of an original 5,184 — 96.4% — and every
+# survivor has a real reason, measured:
+#
+#   100  a LIGHT utility whose colour is not a light token value. Mostly
+#        cross-theme oddities (`text-[#3B82F6]` in light mode, where #3B82F6
+#        is info's DARK value, x16) plus deliberate chrome: the workflow
+#        guide panel (#404040 x10) and inline code chips (#1A1A1A x7), which
+#        are meant to look the same in both themes.
+#    60  a DARK utility whose colour is not a dark token value —
+#        `dark:bg-[#F9FAFB]` x11, `dark:text-[#6B7280]` x9. Several are
+#        probably contrast bugs; none are conversion failures.
+#    28  outside any class scope the converter can identify. The scanner
+#        reads <script> blocks and Jinja expressions; a class string built
+#        by concatenation across statements is beyond a regex.
+#
+# An allowlist of forty-odd colours would assert nothing. A RATCHET does:
+# the count per file may fall, never rise. That is the property §7 actually
+# wanted — "without it this regrows" — and it is enforceable.
+
+LITERAL_BASELINE: dict[str, int] = {
+    "server_detail.html": 47,
+    "workflows.html": 33,
+    "dashboard.html": 16,
+    "rbac.html": 14,
+    "reports.html": 12,
+    "servers.html": 11,
+    "settings.html": 10,
+    "partials/active_actions.html": 7,
+    "monitoring.html": 6,
+    "partials/server_card.html": 6,
+    "compliance.html": 5,
+    "partials/incidents_panel.html": 5,
+    "partials/verdict_header.html": 5,
+    "operations.html": 4,
+    "partials/server_comparison.html": 4,
+    "base.html": 1,
+    "partials/critical_issues.html": 1,
+    "setup.html": 1,
+}
+
+_LITERAL = re.compile(r"-\[#[0-9A-Fa-f]{6}\]")
+
+
+def _literal_counts() -> dict[str, int]:
+    templates = PROJECT_ROOT / "templates"
+    return {p.relative_to(templates).as_posix(): n
+            for p in sorted(templates.rglob("*.html"))
+            if (n := len(_LITERAL.findall(p.read_text(encoding="utf-8"))))}
+
+
+def test_hardcoded_colour_literals_never_increase():
+    """Three colour abstractions already existed in this repository and all
+    three were referenced by nothing, because typing a hex was easier and
+    nothing ever failed. This is the thing that fails."""
+    counts = _literal_counts()
+    grew = [f"{f}: {n} literal(s), baseline {LITERAL_BASELINE.get(f, 0)}"
+            for f, n in counts.items() if n > LITERAL_BASELINE.get(f, 0)]
+    assert not grew, (
+        "hardcoded colour literals increased. Use a token from "
+        "tools/design_tokens.TOKENS, or run tools/migrate_tokens.py:\n  "
+        + "\n  ".join(grew))
+
+
+def test_the_baseline_is_not_left_behind_when_literals_are_removed():
+    """A ratchet that is never tightened is a ratchet in name only. If the
+    real count has dropped, the baseline is stale and must come down with
+    it — otherwise it silently buys back the headroom that was just won."""
+    counts = _literal_counts()
+    slack = {f: (b, counts.get(f, 0))
+             for f, b in LITERAL_BASELINE.items() if counts.get(f, 0) < b}
+    assert not slack, (
+        "these files now hold FEWER literals than the baseline; lower it:\n  "
+        + "\n  ".join(f"{f}: baseline {b} -> {n}" for f, (b, n) in slack.items()))
+
+
+def test_no_colour_literal_outside_the_templates_that_already_have_one():
+    """A brand-new template must start clean. The baseline records history;
+    it is not a licence to add the next one somewhere else."""
+    new = sorted(set(_literal_counts()) - set(LITERAL_BASELINE))
+    assert not new, f"new template(s) with hardcoded colours: {new}"
+
+
 def test_app_css_matches_the_python_table():
     """app.css says "generated from tools/design_tokens.py" and "tests assert
     these match the Python table". Until this test existed, neither the CSS
