@@ -53,18 +53,23 @@
             'info-tint': 'rgb(var(--c-info-tint) / <alpha-value>)',
             'info-strong': 'rgb(var(--c-info-strong) / <alpha-value>)'
           },
-          // Three radii, at TODAY's values. Five were in use with no rule:
-          // rounded (525), rounded-lg (209), rounded-full (139), and 11
-          // one-off uses of xl/md/sm. Overriding sm and md makes the two
-          // survivors land exactly on `rounded` (4px) and `rounded-lg` (8px),
-          // so the scale is sm / md / full and nothing else.
+          // TWO radii and a pill. Five were in use with no rule behind which
+          // went where: rounded (527), rounded-lg (211), rounded-full (140),
+          // and 12 one-off uses of xl/md/sm.
           //
-          // Softening the corners is a Phase 2 decision, not this one. Landing
-          // the tokens at current values keeps Phase 1a inert; changing the
-          // look later costs one line here.
+          // All four non-pill names are mapped, not just sm and md. Phase 1a
+          // overrode only those two, which set the scale by VALUE but left
+          // 738 of the 750 uses reading Tailwind's DEFAULT and lg — so the
+          // rule was not actually load-bearing and "one line to soften the
+          // corners" would have moved 12 elements out of 750.
+          //
+          // sm and DEFAULT are the same value, md and lg are the same value.
+          // Both spellings survive so the templates did not need touching.
           borderRadius: {
-            sm: '0.25rem',   // 4px — inputs, badges, bars, chips
-            md: '0.5rem'     // 8px — cards, panels, modals
+            DEFAULT: '0.5rem',   // 8px  — inputs, badges, bars, chips
+            sm: '0.5rem',        // 8px
+            md: '1rem',          // 16px — cards, panels, modals
+            lg: '1rem'           // 16px
           }
         }
       }
