@@ -52,10 +52,12 @@ _TOK = re.compile(
     r"(?P<variants>(?:" + dt._VARIANT + r")*)"
     r"(?P<util>text|bg|border|ring|from|to|via|divide|placeholder|fill|stroke|accent|outline)"
     r"(?P<side>-(?:t|r|b|l|x|y|top|right|bottom|left))?"
-    r"-(?P<token>" + "|".join(dt.TOKENS) + r")\b")
+    r"-(?P<token>" + "|".join(dt.TOKENS) + r")\b"
+    r"(?P<alpha>/\d{1,3})?")
 _BUILTIN = re.compile(
     r"(?P<variants>(?:" + dt._VARIANT + r")*)"
-    r"(?P<util>text|bg|border|ring)-(?P<name>white|black)\b")
+    r"(?P<util>text|bg|border|ring)-(?P<name>white|black)\b"
+    r"(?P<alpha>/\d{1,3})?")
 
 _BUILTIN_HEX = {"white": "#FFFFFF", "black": "#000000"}
 
@@ -65,7 +67,12 @@ _INTENDED = {a.upper(): dt.TOKENS[t][1].upper() for a, t in dt.ALIASES.items()}
 
 
 def effective(body: str) -> set[tuple[str, str, str]]:
-    """Every (utility-key, 'light'|'dark', hex) this class list can produce.
+    """Every (utility-key, 'light'|'dark', hex@alpha) this class list can produce.
+
+    The alpha modifier is part of the rendered colour, not decoration. Without
+    it here, `bg-[#2563EB]/10 dark:bg-[#3B82F6]/20` collapsing to `bg-info/10`
+    compared EQUAL — same hexes, same slots — while dark mode quietly went from
+    20% to 10% opacity. 43 sites had mismatched halves.
 
     A SET, not a last-wins mapping. Class attributes routinely carry several
     mutually-exclusive values for the same utility:
@@ -84,17 +91,39 @@ def effective(body: str) -> set[tuple[str, str, str]]:
         side = match.groupdict().get("side") or ""
         return is_dark, chain + match.group("util") + side
 
+    # `bg-page dark:bg-page/50` is what the converter emits when the two halves
+    # had different opacities. Both classes set the same property, and in dark
+    # mode the `dark:` one wins on specificity (`.dark .x` beats `.x`). Model
+    # that, or the shadowed value reads as a spurious extra.
+    #
+    # Scoped to the same TOKEN deliberately. A class attribute can hold several
+    # mutually-exclusive Jinja branches, and a broader rule would let one
+    # branch's `dark:` utility suppress another branch's base value.
+    shadowed: set[tuple[str, str]] = set()
+    for m in _TOK.finditer(body):
+        is_dark, k = key(m)
+        if is_dark:
+            shadowed.add((k, m.group("token")))
+
     for m in _TOK.finditer(body):
         light, dark = dt.TOKENS[m.group("token")]
-        _is_dark, k = key(m)
-        out.add((k, "light", light.upper()))
-        out.add((k, "dark", dark.upper()))
+        is_dark, k = key(m)
+        a = m.group("alpha") or ""
+        # A `dark:`-prefixed token utility states ONLY the dark slot; an
+        # unprefixed one states both, because the token carries both values.
+        if not is_dark:
+            out.add((k, "light", light.upper() + a))
+            if (k, m.group("token")) in shadowed:
+                continue
+        out.add((k, "dark", dark.upper() + a))
     for m in _BUILTIN.finditer(body):
         is_dark, k = key(m)
-        out.add((k, "dark" if is_dark else "light", _BUILTIN_HEX[m.group("name")]))
+        out.add((k, "dark" if is_dark else "light",
+                 _BUILTIN_HEX[m.group("name")] + (m.group("alpha") or "")))
     for m in _ARB.finditer(body):
         is_dark, k = key(m)
-        out.add((k, "dark" if is_dark else "light", m.group("hex").upper()))
+        out.add((k, "dark" if is_dark else "light",
+                 m.group("hex").upper() + (m.group("alpha") or "")))
 
     return out
 
@@ -122,9 +151,14 @@ def main() -> int:
                 if slot_name == "light":
                     unexpected.append(f"{rel}  {k} LIGHT lost {hexv}")
                     continue
+                # An alias collapse changes the hex and MUST leave the opacity
+                # alone; compare the two halves separately so a coincidental
+                # alias cannot license an alpha change.
+                base, _, alpha = hexv.partition("/")
                 replacement = {h for kk, s, h in gained if kk == k and s == "dark"}
-                if _INTENDED.get(hexv) in replacement:
-                    intended[f"alias  {hexv} -> {_INTENDED[hexv]}"] += 1
+                canonical = _INTENDED.get(base)
+                if canonical and f"{canonical}/{alpha}".rstrip("/") in replacement:
+                    intended[f"alias  {base} -> {canonical}"] += 1
                 else:
                     unexpected.append(f"{rel}  {k} DARK lost {hexv}")
 

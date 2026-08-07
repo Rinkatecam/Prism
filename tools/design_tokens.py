@@ -155,7 +155,12 @@ def convert(text: str, paired_only: bool = False) -> str:
     """
     def rewrite(match: re.Match) -> str:
         body = match.group(1)
-        replacements: list[tuple[str, str]] = []
+        # Edits are (start, end, text) SPANS, applied right-to-left, never
+        # `str.replace`. `bg-[#F9FAFB]` is a prefix of both `hover:bg-[#F9FAFB]`
+        # and `bg-[#F9FAFB]/50`, so a substring edit can land inside a
+        # neighbouring utility it does not own — and which utility gets
+        # corrupted depends on the order the matches happen to be in.
+        edits: list[tuple[int, int, str]] = []
         light_utilities: set[str] = set()
 
         # Which utilities have a dark half at all? Needed BEFORE pass 1 under
@@ -170,6 +175,7 @@ def convert(text: str, paired_only: bool = False) -> str:
         # Pass 1 — light arbitrary values become tokens. The KEY includes the
         # variant chain, so `hover:bg` and `bg` never pair with each other.
         light_token: dict[str, str] = {}
+        light_alpha: dict[str, str] = {}
         for m in _UTIL.finditer(body):
             is_dark, chain = _split_variants(m.group("variants"))
             if is_dark:
@@ -181,21 +187,21 @@ def convert(text: str, paired_only: bool = False) -> str:
             key = chain + utility
             if paired_only and key not in has_dark:
                 continue
+            alpha = m.group("alpha") or ""
             light_utilities.add(key)
             light_token[key] = token
-            replacements.append(
-                (m.group(0), f"{chain}{utility}-{token}{m.group('alpha') or ''}"))
+            light_alpha[key] = alpha
+            edits.append((*m.span(), f"{chain}{utility}-{token}{alpha}"))
 
         # Pass 2 — a built-in light class (bg-white) standing in for the light
         # half, where its colour genuinely equals the token's light value.
-        builtins: dict[str, tuple[str, str]] = {}
+        builtins: dict[str, tuple[int, int, str]] = {}
         for m in _BUILTIN_UTIL.finditer(body):
-            builtins[m.group("util")] = (m.group(0), _BUILTIN_LIGHT[m.group("name")])
+            builtins[m.group("util")] = (*m.span(), _BUILTIN_LIGHT[m.group("name")])
 
         # Pass 3 — the dark half. It may ONLY be dropped when something has
         # actually taken its place. Deleting an orphan is what turned cards
         # white in dark mode.
-        removable: list[str] = []
         for m in _UTIL.finditer(body):
             is_dark, chain = _split_variants(m.group("variants"))
             if not is_dark:
@@ -203,6 +209,7 @@ def convert(text: str, paired_only: bool = False) -> str:
             utility = m.group("util") + (m.group("side") or "")
             key = chain + utility
             hex_value = m.group("hex").upper()
+            alpha = m.group("alpha") or ""
 
             if key in light_utilities:
                 # Redundant ONLY when this dark value IS the dark half of the
@@ -219,25 +226,32 @@ def convert(text: str, paired_only: bool = False) -> str:
                     # darks that pair with the same light grey collapse onto
                     # the canonical one. That consolidation is the intent; it
                     # is listed in ALIASES rather than happening silently.
-                    removable.append(m.group(0))
+                    if alpha == light_alpha.get(key, ""):
+                        edits.append((*m.span(), ""))
+                    else:
+                        # Same colour, different opacity — 43 sites do this.
+                        # One class cannot carry two alphas, so the dark half
+                        # stays as its own utility. Dropping it would restate
+                        # dark mode at the light half's opacity.
+                        edits.append(
+                            (*m.span(), f"dark:{chain}{utility}-{chosen}{alpha}"))
                 continue
 
             token = token_for(hex_value, is_dark=True)
             if token is None:
                 continue
             stand_in = builtins.get(m.group("util")) if not chain else None
-            if stand_in and stand_in[1].upper() == TOKENS[token][0].upper():
-                replacements.append(
-                    (stand_in[0], f"{utility}-{token}{m.group('alpha') or ''}"))
+            if stand_in and stand_in[2].upper() == TOKENS[token][0].upper():
+                edits.append((stand_in[0], stand_in[1], f"{utility}-{token}"))
+                edits.append((*m.span(),
+                              "" if not alpha else f"dark:{utility}-{token}{alpha}"))
                 light_utilities.add(key)
                 light_token[key] = token
-                removable.append(m.group(0))
+                light_alpha[key] = ""
             # else: leave BOTH halves exactly as they are.
 
-        for original, replacement in replacements:
-            body = body.replace(original, replacement, 1)
-        for original in removable:
-            body = body.replace(original, "", 1)
+        for start, end, text in sorted(edits, reverse=True):
+            body = body[:start] + text + body[end:]
 
         return 'class="' + re.sub(r"\s{2,}", " ", body).strip() + '"'
 

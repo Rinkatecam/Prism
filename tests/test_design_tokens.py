@@ -130,6 +130,53 @@ def test_dark_hover_pairs_with_light_hover():
         '<b class="hover:text-muted">'
 
 
+# ── the alpha modifier is part of the pair, not decoration ───────────────
+#
+# 43 paired utilities in the templates carry a DIFFERENT opacity on each half.
+# Collapsing those to one class keeps the light alpha and silently restates
+# dark mode. The verifier could not see it: `effective()` compared
+# (utility, theme, hex) and dropped the modifier.
+
+def test_a_differing_dark_alpha_is_kept_not_absorbed():
+    """`bg-[#2563EB]/10 dark:bg-[#3B82F6]/20` — same colours, different
+    opacities. One class cannot express both, so the dark half becomes a
+    token utility carrying its own alpha instead of being deleted."""
+    before = '<span class="bg-[#2563EB]/10 dark:bg-[#3B82F6]/20">'
+    assert dt.convert(before) == '<span class="bg-info/10 dark:bg-info/20">'
+
+
+def test_a_dark_only_alpha_survives_a_solid_light_half():
+    """The commonest shape of it — 30 of the 43 are `bg-[#F9FAFB]` against
+    `dark:bg-[#0F172A]/50`, a solid light surface and a translucent dark one."""
+    before = '<div class="bg-[#F9FAFB] dark:bg-[#0F172A]/50">'
+    assert dt.convert(before) == '<div class="bg-page dark:bg-page/50">'
+
+
+def test_matching_alphas_still_collapse_to_one_class():
+    """The fix must not cost the collapse where the opacities do agree."""
+    before = '<div class="bg-[#DC2626]/10 dark:bg-[#EF4444]/10">'
+    assert dt.convert(before) == '<div class="bg-critical/10">'
+
+
+def test_a_builtin_light_half_keeps_a_translucent_dark_half():
+    before = '<div class="bg-white dark:bg-[#1E293B]/70">'
+    assert dt.convert(before) == '<div class="bg-card dark:bg-card/70">'
+
+
+def test_an_edit_lands_on_the_utility_it_matched_not_the_first_lookalike():
+    """`text-[#9CA3AF]` is a substring of `dark:text-[#9CA3AF]`.
+
+    #9CA3AF is the one hex that is both a light token value (`faint`) and an
+    aliased dark (`muted`), so both spellings can appear in one class list.
+    Substituting by string content rewrote whichever came first — turning
+    `dark:text-[#9CA3AF] text-[#9CA3AF]` into `dark:text-faint
+    text-[#9CA3AF]`, which tokenises the wrong theme and leaves the other
+    half a literal. Edits are applied by span for this reason.
+    """
+    before = '<p class="dark:text-[#9CA3AF] text-[#9CA3AF]">'
+    assert dt.convert(before) == '<p class="dark:text-[#9CA3AF] text-faint">'
+
+
 # ── splitting the conversion into two reviewable halves ──────────────────
 #
 # Spec §5: Phase 1a must be visually inert, and the ONE honest exception —
