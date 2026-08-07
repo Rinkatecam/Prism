@@ -41,6 +41,9 @@
   --c-info-tint: 219 234 254;
   --c-info-strong: 26 58 160;
   --c-accent-strong: 11 93 87;
+  --c-accent-tint: 204 251 241;
+  --c-brand-tint: 243 232 255;
+  --c-brand-strong: 107 33 168;
 
   --dur-fast: 120ms;
   --dur-base: 200ms;
@@ -77,6 +80,9 @@
   --c-info-tint: 20 34 77;
   --c-info-strong: 147 197 253;
   --c-accent-strong: 94 234 212;
+  --c-accent-tint: 4 47 46;
+  --c-brand-tint: 88 28 135;
+  --c-brand-strong: 196 181 253;
 
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
   --shadow-md: 0 4px 14px -2px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.04);
@@ -183,37 +189,149 @@
 
 .badge-anomaly  { background: rgb(var(--c-warning-tint)); color: rgb(var(--c-warning-strong)); }
 .badge-rate_anomaly { background: #FFF7ED; color: #9A3412; }
-.badge-correlated { background: #EDE9FE; color: #6B21A8; }
+.badge-correlated { background: #EDE9FE; color: rgb(var(--c-brand-strong)); }
 
 .dark .badge-anomaly  { background: rgb(var(--c-warning-tint)); color: rgb(var(--c-warning-strong)); }
 .dark .badge-rate_anomaly { background: #7C2D12; color: #FDBA74; }
-.dark .badge-correlated { background: #581C87; color: rgb(var(--c-brand)); }
+.dark .badge-correlated { background: rgb(var(--c-brand-tint)); color: rgb(var(--c-brand-strong)); }
 
-/* Install / restart lifecycle badges. Colours pair with the left-border
-   accent on .server-card (see partials/server_card.html ``_install_border``
-   map). Three rough buckets:
-     * queued / searching     — indigo  ("not started yet, but pending")
-     * downloading / installing — amber  ("active work in progress")
-     * restart_required / rebooting — purple ("waiting on reboot")
-     * stabilising            — green  ("came back, settling")
+/* Install / restart lifecycle badges — the owner's rule:
+     "The icon animates when the machine is working. The border animates
+      when it is waiting on you."
+   Colour is reduced to WHICH hue owns the work, motion to WHETHER the
+   machine or the human is doing something. Three buckets, not four:
+     * queued / searching / downloading — turquoise (accent), fetching
+     * installing / rebooting / restart_required — violet (brand), applying
+       the change or blocked on a human
+     * stabilising — green (healthy), settling back in
+   restart_required is the state that proves the rule: nothing is running on
+   the machine, so its icon (alert-circle, in server_card.html) stays still
+   and only the BORDER circulates — animating the icon there would claim
+   work is underway when the system is actually waiting on a person.
    The lifecycle is owned by routes/api/updates.py and the v2 aggregator;
    the dashboard tile just renders whatever ``install_state.status`` carries.
 */
-.badge-queued            { background: #EDE9FE; color: #4338CA; }
-.badge-searching         { background: #EDE9FE; color: #4338CA; }
-.badge-downloading       { background: rgb(var(--c-warning-tint)); color: rgb(var(--c-warning-strong)); }
-.badge-installing        { background: rgb(var(--c-warning-tint)); color: rgb(var(--c-warning-strong)); }
-.badge-restart_required  { background: #F3E8FF; color: #6B21A8; }
-.badge-rebooting         { background: #F3E8FF; color: #6B21A8; }
+.badge-queued            { background: rgb(var(--c-accent-tint)); color: rgb(var(--c-accent-strong)); }
+.badge-searching         { background: rgb(var(--c-accent-tint)); color: rgb(var(--c-accent-strong)); }
+.badge-downloading       { background: rgb(var(--c-accent-tint)); color: rgb(var(--c-accent-strong)); }
+.badge-installing        { background: rgb(var(--c-brand-tint));  color: rgb(var(--c-brand-strong)); }
+.badge-restart_required  { background: rgb(var(--c-brand-tint));  color: rgb(var(--c-brand-strong)); }
+.badge-rebooting         { background: rgb(var(--c-brand-tint));  color: rgb(var(--c-brand-strong)); }
 .badge-stabilising       { background: rgb(var(--c-healthy-tint)); color: rgb(var(--c-healthy-strong)); }
 
-.dark .badge-queued            { background: rgb(var(--c-info-tint)); color: #C7D2FE; }
-.dark .badge-searching         { background: rgb(var(--c-info-tint)); color: #C7D2FE; }
-.dark .badge-downloading       { background: rgb(var(--c-warning-tint)); color: rgb(var(--c-warning-strong)); }
-.dark .badge-installing        { background: rgb(var(--c-warning-tint)); color: rgb(var(--c-warning-strong)); }
-.dark .badge-restart_required  { background: #581C87; color: rgb(var(--c-brand)); }
-.dark .badge-rebooting         { background: #581C87; color: rgb(var(--c-brand)); }
+.dark .badge-queued            { background: rgb(var(--c-accent-tint)); color: rgb(var(--c-accent-strong)); }
+.dark .badge-searching         { background: rgb(var(--c-accent-tint)); color: rgb(var(--c-accent-strong)); }
+.dark .badge-downloading       { background: rgb(var(--c-accent-tint)); color: rgb(var(--c-accent-strong)); }
+.dark .badge-installing        { background: rgb(var(--c-brand-tint));  color: rgb(var(--c-brand-strong)); }
+.dark .badge-restart_required  { background: rgb(var(--c-brand-tint));  color: rgb(var(--c-brand-strong)); }
+.dark .badge-rebooting         { background: rgb(var(--c-brand-tint));  color: rgb(var(--c-brand-strong)); }
 .dark .badge-stabilising       { background: rgb(var(--c-healthy-tint)); color: rgb(var(--c-healthy-strong)); }
+
+/* ── Lifecycle motion ──────────────────────────────────────────────────────
+   Rendered by partials/server_card.html: downloading/installing get a lucide
+   "loader" icon with Tailwind's own `.animate-spin`; rebooting gets
+   "rotate-cw" with the same class; stabilising and restart_required get a
+   static icon (check-circle / alert-circle) with no spin class at all.
+
+   `searching` has NO icon element in that template today — nothing there
+   renders one for it, so the sway rule below is written and ready but has
+   no visible carrier until that template grows one. See the badge-searching
+   rule for the exact selector it will need to match. Flagged separately
+   rather than worked around here, since server_card.html is outside this
+   change's file scope.
+
+   Everything here animates `transform`/`opacity` only, never a colour or a
+   border property directly, per the composite-friendliness requirement —
+   these badges can appear 29-to-a-page. */
+
+/* downloading / installing: Tailwind's `.animate-spin` ROTATES the loader
+   glyph, which reads as "busy" — indistinguishable from rebooting. Overridden
+   to travel top-to-bottom instead. `.badge-x .animate-spin` is two classes,
+   (0,2,0), which beats Tailwind's own `.animate-spin` (0,1,0) regardless of
+   which stylesheet loads last — no !important needed. */
+.badge-downloading .animate-spin,
+.badge-installing .animate-spin {
+  animation: badge-travel 1.2s var(--ease-standard) infinite;
+}
+@keyframes badge-travel {
+  0%   { transform: translateY(-2px); opacity: 0.45; }
+  50%  { transform: translateY(1px);  opacity: 1; }
+  100% { transform: translateY(-2px); opacity: 0.45; }
+}
+
+/* searching: sways, does NOT rotate — a spin is the universal "busy" glyph
+   and would make searching read as rebooting. Targets any icon a future
+   template change adds here, not a class that exists yet (see note above). */
+.badge-searching svg,
+.badge-searching i {
+  animation: badge-sway 1.8s var(--ease-standard) infinite;
+}
+@keyframes badge-sway {
+  0%, 100% { transform: translateX(-2px); }
+  50%      { transform: translateX(2px); }
+}
+
+/* restart_required / stabilising: the BORDER circulates, the icon (where
+   there is one) is left with no animation rule at all — stillness is the
+   point for restart_required, and stabilising never had a spin class to
+   begin with.
+
+   FIRST attempt was a pseudo-element with a static conic-gradient, masked
+   to a ring and spun via `transform: rotate()`. Measured in the browser
+   before shipping it: a conic-gradient's angles are in the box's own
+   coordinate space, so on a ~7:1 pill (this badge, not a square button) the
+   "comet" stretches enormously near the flat top/bottom edges and pinches
+   near the rounded ends — a long diagonal streak bleeding past the badge,
+   not a ring. A square debug element right next to it, same rule, looked
+   perfect; only the aspect ratio was different. Screenshotted both before
+   changing approach.
+
+   Replaced with a small dot travelling the ACTUAL border outline via
+   `offset-path: border-box` + an animated `offset-distance` — motion path is
+   built for exactly this (uniform speed around whatever the real geometry
+   is, corners included) and does not care about aspect ratio. Still not a
+   colour/paint property doing the animating: only the dot's position moves,
+   the badge's own fill and label are untouched. `currentColor` ties the dot
+   to the same brand/healthy-strong colour as the label, so no new colour is
+   introduced. `linear`, not `var(--ease-standard)`: any deceleration on a
+   full-lap loop is a visible speed-up/slow-down every lap — the same reason
+   Tailwind's own `.animate-spin` ships linear. */
+.badge-restart_required,
+.badge-stabilising {
+  position: relative;
+}
+/* Gated on support, and the gate is load-bearing rather than defensive
+   boilerplate. `offset-path: border-box` is Chromium 116+ / Firefox 122+.
+   Where it is missing the declaration is simply dropped — but the rest of
+   the rule is not, so the dot keeps `position:absolute; top:0; left:0;
+   margin:-2.5px` and renders STATIC, 2px outside the badge's top-left
+   corner. Measured. That is not "the animation is unavailable", it is a
+   stray red dot that looks like a rendering fault.
+   Inside @supports, an engine without motion path draws no dot at all,
+   which is what degrading gracefully actually means here. */
+@supports (offset-path: border-box) {
+  .badge-restart_required::before,
+  .badge-stabilising::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 5px;
+    height: 5px;
+    margin: -2.5px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 4px 1px currentColor;
+    offset-path: border-box;
+    offset-distance: 0%;
+    opacity: 0.85;
+    pointer-events: none;
+    animation: badge-border-orbit 1.8s linear infinite;
+  }
+}
+@keyframes badge-border-orbit {
+  to { offset-distance: 100%; }
+}
 
 /* Progress bar */
 .metric-bar {

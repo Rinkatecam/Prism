@@ -60,6 +60,14 @@
     <span class="badge badge-{{ istatus }} flex-shrink-0 ml-2 flex items-center gap-1" title="{{ istate.message or '' }}">
       {% if istatus in ('downloading', 'installing') %}
       <i data-lucide="loader" class="w-3 h-3 animate-spin"></i>
+      {% elif istatus == 'searching' %}
+      {# The sway lives in app.css and had no carrier until this branch: the
+         icon chain covered every other lifecycle state, so `.badge-searching
+         svg, i { animation: badge-sway }` animated nothing. A magnifier
+         sweeping side to side, deliberately NOT a spinner — a rotating glyph
+         is the universal "busy" and would make searching indistinguishable
+         from rebooting, which is the one other state with a turning icon. #}
+      <i data-lucide="search" class="w-3 h-3"></i>
       {% elif istatus == 'rebooting' %}
       <i data-lucide="rotate-cw" class="w-3 h-3 animate-spin"></i>
       {% elif istatus == 'stabilising' %}

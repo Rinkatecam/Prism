@@ -76,6 +76,19 @@ TOKENS: dict[str, tuple[str, str]] = {
     # `accent` did not, which is the whole reason the primary buttons were
     # blue: there was no turquoise to move to.
     "accent-strong":   ("#0B5D57", "#5EEAD4"),
+    # The update/restart lifecycle badges — the last untokenised colours in
+    # the app. Motion carries the STAGE (see the badge rules in app.css);
+    # colour is reduced to which of the three brand hues owns the work:
+    # turquoise while the machine is fetching, violet while it is applying
+    # the change and waiting on a human, green once it is settling back in.
+    # `accent-tint` is new; `brand-tint`/`brand-strong` are the exact pair
+    # `restart_required`/`rebooting` already rendered by hand (measured, not
+    # invented) — `.badge-correlated` happens to share both values, so
+    # tokenising these also resolves its literals, which is why that badge's
+    # residue count moves too even though nobody touched its rule.
+    "accent-tint":     ("#CCFBF1", "#042F2E"),
+    "brand-tint":      ("#F3E8FF", "#581C87"),
+    "brand-strong":    ("#6B21A8", "#C4B5FD"),
 }
 
 # Values that were paired inconsistently and collapse onto a canonical token.

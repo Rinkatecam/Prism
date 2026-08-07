@@ -623,14 +623,54 @@ def test_every_text_token_clears_wcag_aa_on_its_card():
 
 def test_every_status_label_clears_aa_on_its_own_tint():
     """A badge's label sits on the tint, not on the card. Checking it against
-    the card would pass a combination nothing ever renders."""
+    the card would pass a combination nothing ever renders.
+
+    `accent` and `brand` were added tokenising the update/restart lifecycle
+    badges — the label there is `-strong` on `-tint` exactly like the four
+    status colours, so it is measured the same way rather than trusted on
+    the strength of "it looks like the others"."""
     for index, theme in ((0, "light"), (1, "dark")):
-        for status in ("critical", "warning", "healthy", "info"):
+        for status in ("critical", "warning", "healthy", "info",
+                        "accent", "brand"):
             tint = dt.TOKENS[f"{status}-tint"][index]
             strong = dt.TOKENS[f"{status}-strong"][index]
             ratio = contrast(strong, tint)
             assert ratio >= 4.5, (
                 f"{status}-strong on {status}-tint is {ratio:.2f}:1 in {theme}")
+
+
+# ── the lifecycle badges collapse seven colours to three ─────────────────
+#
+# queued/searching/downloading fetch (turquoise); installing/rebooting/
+# restart_required apply the change or wait on a human (violet);
+# stabilising settles back in (green, unchanged). Motion — which of these
+# is the machine working on versus waiting on you — is tested in
+# tests/test_design_motion.py; this only pins the colour bucket, so a
+# regression that quietly puts `installing` back on amber (which reads as a
+# warning, the exact confusion the collapse removes) fails here.
+LIFECYCLE_COLOUR_BUCKET = {
+    "queued": "accent", "searching": "accent", "downloading": "accent",
+    "installing": "brand", "rebooting": "brand", "restart_required": "brand",
+    "stabilising": "healthy",
+}
+
+
+def test_lifecycle_badges_use_their_collapsed_colour_bucket():
+    css = (PROJECT_ROOT / "static" / "css" / "app.css").read_text(encoding="utf-8")
+    for status, bucket in LIFECYCLE_COLOUR_BUCKET.items():
+        for prefix, theme in (("", "light"), (r"\.dark ", "dark")):
+            # Anchored at the START of the line: an unanchored pattern with
+            # prefix="" also matches inside ".dark .badge-x { ... }", so a
+            # broken LIGHT rule was invisible to this check as long as the
+            # (still-correct) DARK rule happened to sit later in the file —
+            # caught by mutating `.badge-installing` back to warning and
+            # watching this assertion stay green.
+            pattern = (rf"(?m)^{prefix}\.badge-{status}\s*\{{\s*"
+                       rf"background:\s*rgb\(var\(--c-{bucket}-tint\)\);\s*"
+                       rf"color:\s*rgb\(var\(--c-{bucket}-strong\)\);")
+            assert re.search(pattern, css), (
+                f".badge-{status} ({theme}) must render {bucket}-tint / "
+                f"{bucket}-strong")
 
 
 def test_the_surfaces_stay_distinguishable_from_each_other():

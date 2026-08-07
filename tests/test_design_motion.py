@@ -96,6 +96,25 @@ _DURATION = re.compile(r"(?<![\w.-])(\d*\.?\d+)(m?s)(?![\w.-])")
 # fast something idles.
 ALLOWED_DURATIONS = {"1.2s", "1.4s", "1.8s", "2.25s"}
 
+# The easing equivalent of the exemption above, kept separate and much
+# smaller on purpose: a decelerating curve (var(--ease-standard/out)) is
+# right for a tween with a start and an end, and wrong for a loop with
+# neither. Applied to a full-turn rotation that repeats forever, ANY
+# deceleration is a visible speed-up/slow-down at the same point every lap —
+# not a subtle mistake, the loop visibly stutters — which is why Tailwind's
+# own `.animate-spin` ships `linear infinite` and sits outside this file's
+# scope for the same reason (it is in the vendored runtime build, not here).
+#
+# Keyed by animation NAME, not blanket-exempted, so a plain `ease`/`ease-in`
+# landing on some other, non-looping `animation:`/`transition:` declaration
+# is still caught — only the declaration that names one of these loops gets
+# to use the keyword on the right of it.
+ALLOWED_LOOP_EASINGS: dict[str, str] = {
+    "badge-border-orbit": "linear",  # circulating border on restart_required
+                                      # / stabilising — see app.css for the
+                                      # pseudo-element this animates.
+}
+
 
 def test_no_transition_uses_a_duration_off_the_scale():
     offenders = []
@@ -114,7 +133,11 @@ def test_no_transition_uses_an_easing_off_the_scale():
     curves decelerate, which is what makes a panel look like it settled."""
     offenders = []
     for decl in _TIMED.findall(authored()):
+        exempt = next((v for k, v in ALLOWED_LOOP_EASINGS.items() if k in decl),
+                      None)
         for bad in re.findall(r"(?<![-\w])(ease|ease-in|linear)(?![-\w(])", decl):
+            if bad == exempt:
+                continue
             offenders.append(f"{bad} in `{decl.strip()[:70]}`")
     assert not offenders, (
         "use var(--ease-standard) or var(--ease-out):\n  " + "\n  ".join(offenders))
@@ -258,6 +281,32 @@ def test_the_javascript_modules_are_scanned_too():
         + "\n  ".join(offenders))
 
 
+
+def test_the_orbiting_dot_is_gated_on_motion_path_support():
+    """`offset-path: border-box` is Chromium 116+ / Firefox 122+.
+
+    An engine without it drops that one declaration and keeps the rest of
+    the rule, so the dot renders STATIC 2px outside the badge's top-left
+    corner — measured. A stray dot pinned to a corner reads as a rendering
+    fault, not as "this browser cannot animate". Inside `@supports`, such an
+    engine draws no dot at all, which is what degrading gracefully means.
+    """
+    css = authored()
+    i = css.find(".badge-restart_required::before")
+    assert i != -1, "the orbiting-dot rule is gone"
+    head = css[:i]
+    guard = head.rfind("@supports (offset-path: border-box)")
+    assert guard != -1, (
+        "no @supports (offset-path: border-box) precedes the orbiting dot — "
+        "without it an engine lacking motion path renders a STATIC dot 2px "
+        "outside the badge's top-left corner, which reads as a rendering "
+        "fault rather than as a missing animation"
+    )
+    assert head.count("{", guard) - head.count("}", guard) >= 1, (
+        "the @supports block closes before the orbiting-dot rule, so the "
+        "rule is not actually gated"
+    )
+
 def test_the_comment_blanking_does_not_hide_real_offenders():
     """The blanking above is a liability: overreach and the guardrail stops
     guarding. Prove it still sees a live offender on the same line as a
@@ -297,6 +346,157 @@ def test_the_loading_spinner_keeps_spinning_under_reduced_motion():
     assert ".animate-spin" in block
     spin = re.search(r"\.animate-spin \{(.*?)\}", block, re.S).group(1)
     assert "animation-iteration-count: infinite !important" in spin
+
+
+# ── the lifecycle badges: colour reuses the palette, motion carries the
+#    stage ("the icon animates when the machine is working, the border
+#    animates when it is waiting on you") ───────────────────────────────────
+
+def test_the_lifecycle_animations_get_no_reduced_motion_exemption():
+    """Unlike the loading spinner, these badges also say what is happening
+    through colour and through the label text (`_install_labels` in
+    server_card.html) — motion is not the only signal, so none of the three
+    new keyframes belongs in the same carve-out as `.animate-spin`. Under
+    reduced motion they must freeze on the blanket rule at the top of the
+    block, the same as everything else that is not named there.
+
+    Checks both the keyframe NAMES and the selectors that could realistically
+    carry a hand-written exemption (`::before` on restart_required /
+    stabilising, the badge classes themselves) — a first version of this
+    test checked only the keyframe names and did not notice a mutation that
+    exempted `.badge-restart_required::before` / `.badge-stabilising::before`
+    by selector without ever mentioning `badge-border-spin` by name."""
+    css = authored()
+    block = re.search(
+        r"@media \(prefers-reduced-motion: reduce\) \{(.*?)\n\}", css, re.S).group(1)
+    forbidden = (
+        "badge-sway", "badge-travel", "badge-border-orbit",
+        "badge-searching", "badge-downloading", "badge-installing",
+        "badge-restart_required", "badge-stabilising",
+    )
+    for name in forbidden:
+        assert name not in block, (
+            f"{name} must not get its own reduced-motion exemption")
+
+
+def test_downloading_and_installing_travel_instead_of_spinning():
+    """Both states render a lucide "loader" icon with Tailwind's own
+    `.animate-spin` (see partials/server_card.html) — a ROTATING icon there
+    reads as busy exactly like `rebooting`, which is the ambiguity the
+    owner's spec removes. `.badge-x .animate-spin` is two classes, (0,2,0),
+    which beats Tailwind's own single-class `.animate-spin` (0,1,0) — no
+    `!important`, and it wins regardless of which stylesheet is injected
+    last (see the trap in docs/OPS-LEARNINGS.md about Tailwind's runtime
+    sheet loading after this one)."""
+    css = authored()
+    assert re.search(
+        r"\.badge-downloading \.animate-spin,\s*\n"
+        r"\.badge-installing \.animate-spin \{\s*\n"
+        r"\s*animation: badge-travel", css), \
+        "downloading/installing must override .animate-spin with badge-travel"
+    keyframe = re.search(r"@keyframes badge-travel \{(.*?)\n\}", css, re.S)
+    assert keyframe, "badge-travel keyframes missing"
+    body = keyframe.group(1)
+    assert "transform" in body and "rotate" not in body, \
+        "badge-travel must move, not rotate"
+
+
+def test_searching_is_ready_to_sway_not_spin():
+    """`searching` has no icon element in partials/server_card.html today —
+    the `{% if %}` chain there only branches for downloading/installing/
+    rebooting/stabilising/restart_required — so this rule has no visible
+    carrier yet. Written and scoped correctly regardless, so the moment that
+    template grows an icon for this state, it sways rather than spins
+    without any further CSS change."""
+    css = authored()
+    assert re.search(
+        r"\.badge-searching svg,\s*\n\.badge-searching i \{\s*\n"
+        r"\s*animation: badge-sway", css), \
+        "searching must be wired to badge-sway, not left to inherit a spin"
+    keyframe = re.search(r"@keyframes badge-sway \{(.*?)\n\}", css, re.S)
+    assert keyframe, "badge-sway keyframes missing"
+    body = keyframe.group(1)
+    assert "translateX" in body and "rotate" not in body, \
+        "badge-sway must move side to side, not rotate"
+
+
+def test_restart_required_and_stabilising_circulate_the_border_only():
+    """The row that proves the owner's rule: restart_required is blocked on
+    a human, nothing is running on the machine, so its icon (alert-circle,
+    static already) must stay untouched by any animation rule — only the
+    border, via the ::before pseudo-element, may move. Same for stabilising,
+    whose check-circle icon never had a spin class to begin with."""
+    css = authored()
+    block = re.search(
+        # Whitespace-tolerant: the rule is nested inside
+        # `@supports (offset-path: border-box)`, so both selectors and the
+        # closing brace are indented. Keyed on column-0 formatting, this
+        # matched nothing and reported "the rule is missing" — which reads
+        # as a deleted feature rather than a moved one.
+        r"\.badge-restart_required::before,\s*"
+        r"\.badge-stabilising::before\s*\{(.*?)\n\s*\}", css, re.S)
+    assert block, "the circulating-border pseudo-element rule is missing"
+    body = block.group(1)
+    assert "animation: badge-border-orbit" in body
+    assert "position: absolute" in body
+    for base in ("badge-restart_required", "badge-stabilising"):
+        assert not re.search(rf"\.{base}\s+(svg|i|\.animate-spin)\s*\{{", css), \
+            f".{base}'s icon must carry no animation rule of its own"
+    keyframe = re.search(r"@keyframes badge-border-orbit \{(.*?)\n\s*\}", css, re.S)
+    assert keyframe, "badge-border-orbit keyframes missing"
+    assert "offset-distance" in keyframe.group(1), (
+        "the dot must travel via offset-distance — see the comment in "
+        "app.css on why a rotating conic-gradient was rejected")
+
+
+def test_the_circulating_border_does_not_distort_on_a_pill_shape():
+    """The first implementation was a rotating conic-gradient masked to a
+    ring — correct on a square debug element, and a long diagonal streak
+    bleeding past the badge on the real ~7:1 pill, because a conic-gradient's
+    angles live in the box's own coordinate space and do not account for
+    aspect ratio. Screenshotted both before switching to `offset-path:
+    border-box`, which traces the actual outline regardless of proportions.
+
+    This test pins the property that made the first attempt wrong: nothing
+    here may be sized or positioned relative to the FULL badge box in a way
+    that reintroduces the distortion — the moving part must be a small,
+    fixed-size dot on a path, not a gradient spanning the badge's own
+    (highly non-square) dimensions."""
+    css = authored()
+    before = re.search(
+        # Whitespace-tolerant: the rule is nested inside
+        # `@supports (offset-path: border-box)`, so both selectors and the
+        # closing brace are indented. Keyed on column-0 formatting, this
+        # matched nothing and reported "the rule is missing" — which reads
+        # as a deleted feature rather than a moved one.
+        r"\.badge-restart_required::before,\s*"
+        r"\.badge-stabilising::before\s*\{(.*?)\n\s*\}", css, re.S).group(1)
+    assert "conic-gradient" not in before, (
+        "a gradient spanning the badge's own box reintroduces the aspect-"
+        "ratio distortion measured in the browser — see the comment above "
+        "this rule in app.css")
+    assert "offset-path: border-box" in before
+    assert re.search(r"width:\s*\d+px", before) and re.search(r"height:\s*\d+px", before), \
+        "the moving part must be a small, fixed-size dot, not something " \
+        "sized from the badge's own box"
+
+
+def test_linear_is_exempted_only_for_the_named_circulating_loop():
+    """`ALLOWED_LOOP_EASINGS` must name the animation, not wave `linear`
+    through everywhere — mutation target: widen the key to match anything
+    and this goes red because `.animate-spin`'s own `linear` (in Tailwind's
+    vendored build, never this file) is not what the exemption is for."""
+    assert ALLOWED_LOOP_EASINGS == {"badge-border-orbit": "linear"}
+
+
+def test_queued_carries_neither_icon_nor_border_motion():
+    """queued is "accepted, nothing started" — the one lifecycle state with
+    no animation at all, machine or human. If a future edit gives it a
+    keyframe, this is the line that should make someone ask why."""
+    css = authored()
+    assert not re.search(r"\.badge-queued[^{]*\{[^}]*animation", css), \
+        "badge-queued must stay motionless"
+    assert "badge-queued::before" not in css
 
 
 def test_there_is_exactly_one_reduced_motion_block():

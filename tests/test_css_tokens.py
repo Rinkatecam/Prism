@@ -420,7 +420,20 @@ def test_no_token_reference_in_app_css_round_trips_to_a_different_token():
     # LIGHT_ALIASES also folds onto `raised`, so those sites cannot be
     # re-derived from their own colour alone. Recorded rather than waved
     # through — if it grows, a token pair has collided.
-    assert unresolved == 5, unresolved
+    #
+    # Measured 2026-08-07 again, after the lifecycle-badge tokenisation: 6.
+    # `brand-strong`'s dark half is deliberately IDENTICAL to `brand`'s
+    # (196 181 253 — the same convention every other -strong token already
+    # uses: `healthy-strong`/`healthy`, `warning-strong`/`warning` and
+    # `critical-strong`/`critical` all share their dark half too, which is
+    # why 4 of the original 5 were already this exact shape). Adding a
+    # fifth pair that collides the same way was the deliberate choice, not
+    # an accident — `.dark .pulse-panel-title--warming { color:
+    # rgb(var(--c-brand)) }` pairs with a LIGHT rule using the reserved
+    # `--brand-violet` chrome literal (#7C3AED), which matches neither
+    # candidate's light half, so the round-trip correctly declines rather
+    # than guessing between `brand` and `brand-strong`.
+    assert unresolved == 6, unresolved
 
 
 # ── the ratchet ──────────────────────────────────────────────────────────
@@ -445,8 +458,26 @@ def test_no_token_reference_in_app_css_round_trips_to_a_different_token():
 #
 # An allowlist of thirty-odd colours would assert nothing. A ratchet does:
 # the number may fall, never rise.
+#
+# Lowered 2026-08-07: 71 -> 57, tokenising the update/restart lifecycle
+# badges (`accent-tint`, `brand-tint`, `brand-strong` added to TOKENS).
+# -14 the 12 lifecycle-badge literals themselves (queued/searching/
+#     downloading -> accent-tint+accent-strong; installing/rebooting/
+#     restart_required -> brand-tint+brand-strong) plus 2 on `.badge-
+#     correlated`, which happened to already spell the exact violet pair
+#     restart_required/rebooting used by hand and so became resolvable by
+#     the same tokens without its rule being touched.
+# The circulating-border pseudo-element (badge-restart_required::before /
+# badge-stabilising::before) introduces no literal at all: a first version
+# masked a conic-gradient with two `#fff` mask layers (+2, since a mask
+# value is not a themed colour and stays ambiguous the same way card/field
+# already are), but that shape distorted badly on the badge's actual ~7:1
+# pill proportions (measured and screenshotted) and was replaced with a
+# small dot on `offset-path: border-box` coloured by `currentColor` —
+# no hex anywhere.
+# 71 - 14 = 57.
 
-CSS_LITERAL_BASELINE = 71
+CSS_LITERAL_BASELINE = 57
 
 
 def _residue() -> list:
