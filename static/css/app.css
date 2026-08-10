@@ -116,6 +116,47 @@
     animation-iteration-count: infinite !important;
   }
 
+  /* The exemption above is spelled by CLASS, not by which animation is
+     actually running on the element — and the downloading/installing icon
+     carries `.animate-spin` for the specificity trick that lets it beat
+     Tailwind's own rule (see `.badge-downloading .animate-spin` below), even
+     though what it is actually running is `badge-travel`, one of the three
+     lifecycle keyframes that deliberately gets NO reduced-motion exemption
+     (colour and the label text already carry the signal). Without this, the
+     class-based exemption leaks through and badge-travel keeps travelling —
+     at 2.25s, a duration inherited from the spinner carve-out, never chosen
+     for it. `.badge-downloading .animate-spin` is (0,2,0), which beats
+     `.animate-spin`'s (0,1,0) even though both are `!important` — importance
+     ties break on specificity, not source order. Rebooting's genuine
+     `rotate-cw.animate-spin` is untouched by this and keeps the exemption
+     above, same as any other real spinner. */
+  .badge-downloading .animate-spin,
+  .badge-installing .animate-spin {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  /* Freezing `badge-border-orbit`'s duration/iteration-count via the blanket
+     rule above stops the dot MOVING, but the pseudo-element itself still
+     renders — parked at `offset-distance: 0%`, its starting position on the
+     badge's own top-left outline: a static glowing dot, permanently, on
+     every restart_required/stabilising badge. That is exactly the artefact
+     `@supports (offset-path: border-box)` exists to keep a pre-116 engine
+     from drawing (see the comment on that block below) — a reduced-motion
+     user on a current engine is not a pre-116 engine and is owed the same
+     "no dot" outcome, not a parked one.
+     Written as `[class~="…"]` rather than the plain dot-class form used
+     everywhere else in this file, on purpose: two already-verified tests
+     locate the @supports-gated rule below by searching for that exact dot-
+     class selector text, and this rule sits ABOVE it in the file — an
+     earlier occurrence of the identical text would make both tests find
+     THIS rule instead and report the @supports gate missing. Same
+     specificity either way, (0,1,1); only the syntax differs. */
+  [class~="badge-restart_required"]::before,
+  [class~="badge-stabilising"]::before {
+    display: none;
+  }
+
   /* Decorative, and carries no information the numbers do not. */
   .pulse-canvas { display: none; }
 }
@@ -189,7 +230,7 @@
 
 .badge-anomaly  { background: rgb(var(--c-warning-tint)); color: rgb(var(--c-warning-strong)); }
 .badge-rate_anomaly { background: #FFF7ED; color: #9A3412; }
-.badge-correlated { background: #EDE9FE; color: rgb(var(--c-brand-strong)); }
+.badge-correlated { background: rgb(var(--c-brand-tint)); color: rgb(var(--c-brand-strong)); }
 
 .dark .badge-anomaly  { background: rgb(var(--c-warning-tint)); color: rgb(var(--c-warning-strong)); }
 .dark .badge-rate_anomaly { background: #7C2D12; color: #FDBA74; }
@@ -233,12 +274,11 @@
    "rotate-cw" with the same class; stabilising and restart_required get a
    static icon (check-circle / alert-circle) with no spin class at all.
 
-   `searching` has NO icon element in that template today — nothing there
-   renders one for it, so the sway rule below is written and ready but has
-   no visible carrier until that template grows one. See the badge-searching
-   rule for the exact selector it will need to match. Flagged separately
-   rather than worked around here, since server_card.html is outside this
-   change's file scope.
+   `searching` has its carrier now: a `search` magnifier icon, added in the
+   `{% elif istatus == 'searching' %}` branch of that template's icon chain.
+   `test_the_searching_icon_carrier_exists_in_server_card` (test_design_
+   motion.py) pins the branch so a future edit that deletes it fails loudly
+   instead of leaving the sway rule below matching nothing.
 
    Everything here animates `transform`/`opacity` only, never a colour or a
    border property directly, per the composite-friendliness requirement —
@@ -260,8 +300,8 @@
 }
 
 /* searching: sways, does NOT rotate — a spin is the universal "busy" glyph
-   and would make searching read as rebooting. Targets any icon a future
-   template change adds here, not a class that exists yet (see note above). */
+   and would make searching read as rebooting. Targets the `search`
+   magnifier icon rendered by server_card.html's `searching` branch. */
 .badge-searching svg,
 .badge-searching i {
   animation: badge-sway 1.8s var(--ease-standard) infinite;

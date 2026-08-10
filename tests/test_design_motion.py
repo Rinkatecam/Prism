@@ -27,6 +27,7 @@ from tools import design_tokens as dt  # noqa: E402
 
 APP_CSS = PROJECT_ROOT / "static" / "css" / "app.css"
 BASE = PROJECT_ROOT / "templates" / "base.html"
+SERVER_CARD = PROJECT_ROOT / "templates" / "partials" / "server_card.html"
 
 
 def sheet() -> str:
@@ -352,31 +353,316 @@ def test_the_loading_spinner_keeps_spinning_under_reduced_motion():
 #    stage ("the icon animates when the machine is working, the border
 #    animates when it is waiting on you") ───────────────────────────────────
 
-def test_the_lifecycle_animations_get_no_reduced_motion_exemption():
-    """Unlike the loading spinner, these badges also say what is happening
-    through colour and through the label text (`_install_labels` in
-    server_card.html) — motion is not the only signal, so none of the three
-    new keyframes belongs in the same carve-out as `.animate-spin`. Under
-    reduced motion they must freeze on the blanket rule at the top of the
-    block, the same as everything else that is not named there.
+# ── simulating the reduce cascade ─────────────────────────────────────────
+#
+# The test this section replaces asserted that three keyframe NAMES (plus a
+# short list of selectors) did not appear inside the reduced-motion block.
+# That can only ever see an exemption spelled by NAME. The real bug — see
+# docs/OPS-LEARNINGS.md §2.2, "a test written from one mental model tests one
+# shape" — was spelled by CLASS: the spinner exemption (`.animate-spin`)
+# matches the downloading/installing icon too, because that icon carries
+# `.animate-spin` for an unrelated reason (winning specificity against
+# Tailwind's own rule, see app.css). A name check has no way to see an
+# exemption inherited through a shared class it never mentions by name.
+#
+# The only test that CAN see it resolves the actual cascade: importance,
+# then specificity, then source order, exactly what a browser does. What
+# follows is a small, deliberately scoped simulator — not a general CSS
+# engine — that knows exactly the selector grammar in and around the
+# reduced-motion block: `*`, `*::before`, `*::after`, a bare class, two
+# classes joined by a descendant space, a class plus a bare type
+# (`svg`/`i`), and a class plus `::before`. That closed set is all this
+# needs to cover.
 
-    Checks both the keyframe NAMES and the selectors that could realistically
-    carry a hand-written exemption (`::before` on restart_required /
-    stabilising, the badge classes themselves) — a first version of this
-    test checked only the keyframe names and did not notice a mutation that
-    exempted `.badge-restart_required::before` / `.badge-stabilising::before`
-    by selector without ever mentioning `badge-border-spin` by name."""
-    css = authored()
-    block = re.search(
-        r"@media \(prefers-reduced-motion: reduce\) \{(.*?)\n\}", css, re.S).group(1)
-    forbidden = (
-        "badge-sway", "badge-travel", "badge-border-orbit",
-        "badge-searching", "badge-downloading", "badge-installing",
-        "badge-restart_required", "badge-stabilising",
-    )
-    for name in forbidden:
-        assert name not in block, (
-            f"{name} must not get its own reduced-motion exemption")
+_CSS_COMMENT = re.compile(r"/\*.*?\*/", re.S)
+_ANIMATION_DURATION_TOKEN = re.compile(r"^\d*\.?\d+m?s$")
+_ANIMATION_ITERATION_TOKEN = re.compile(r"^(infinite|\d+)$")
+# `[class~="x"]` carries the same specificity weight as `.x` (both count in
+# the "classes" column) and matches the same elements — app.css's reduced-
+# motion block uses this form for the orbit-dot hide rule specifically to
+# avoid an earlier, textually-identical occurrence of `.badge-restart_
+# required::before` confusing two already-verified tests that search for
+# that literal substring. This parser has to recognise both spellings.
+_ATTR_CLASS = re.compile(r'\[class~="([\w-]+)"\]')
+
+
+def _strip_css_comments(css: str) -> str:
+    return _CSS_COMMENT.sub(" ", css)
+
+
+def _specificity(selector: str) -> tuple[int, int, int]:
+    """(ids, classes, types-and-pseudo-elements) for exactly the selectors
+    this file uses. Not a general specificity calculator."""
+    ids = len(re.findall(r"#[\w-]+", selector))
+    classes = len(re.findall(r"\.[\w-]+", selector)) + len(_ATTR_CLASS.findall(selector))
+    pseudo_elems = len(re.findall(r"::(?:before|after)", selector))
+    bare = re.sub(r"\.[\w-]+", "", selector)
+    bare = _ATTR_CLASS.sub("", bare)
+    bare = re.sub(r"::(?:before|after)", "", bare)
+    types = len(re.findall(r"(?<![.\w#-])(?:svg|i)\b", bare))
+    return (ids, classes, types + pseudo_elems)
+
+
+def _parse_compound(part: str) -> dict:
+    part = part.strip()
+    pseudo = None
+    m = re.search(r"::(before|after)$", part)
+    if m:
+        pseudo = m.group(1)
+        part = part[: m.start()]
+    classes = set(re.findall(r"\.([\w-]+)", part))
+    classes |= set(_ATTR_CLASS.findall(part))
+    rest = re.sub(r"\.[\w-]+", "", part)
+    rest = _ATTR_CLASS.sub("", rest).strip()
+    typ = rest if rest and rest != "*" else None
+    return {"type": typ, "classes": classes, "pseudo": pseudo}
+
+
+def _compound_matches(compound: dict, node: dict) -> bool:
+    if compound["type"] and compound["type"] != node.get("type"):
+        return False
+    if not compound["classes"] <= node.get("classes", set()):
+        return False
+    if compound["pseudo"] != node.get("pseudo"):
+        return False
+    return True
+
+
+def _selector_matches(selector: str, chain: list[dict]) -> bool:
+    """`chain` runs outer ancestor first, target (or its pseudo-element)
+    last. Descendant combinator only — nothing this checks uses `>`, `+` or
+    `~`. A `::before` dot is modelled as its host's own node carrying
+    `pseudo="before"`; CSS has no separate DOM node for it, and neither does
+    this."""
+    compounds = [_parse_compound(p) for p in selector.split()]
+    if not compounds or not chain:
+        return False
+    if not _compound_matches(compounds[-1], chain[-1]):
+        return False
+    ancestors = chain[:-1]
+    idx = 0
+    for comp in compounds[:-1]:
+        found = False
+        while idx < len(ancestors):
+            if _compound_matches(comp, ancestors[idx]):
+                found = True
+                idx += 1
+                break
+            idx += 1
+        if not found:
+            return False
+    return True
+
+
+def _expand_animation_shorthand(value: str) -> dict:
+    """`animation: name duration timing-function iteration-count` — the only
+    shape used in this file. A longhand declared in a MORE specific rule
+    must still be able to override just that one component of a shorthand
+    set elsewhere, which is why the cascade below resolves per-longhand
+    rather than per-shorthand."""
+    tokens: list[str] = []
+    depth = 0
+    cur = ""
+    for ch in value:
+        if ch == "(":
+            depth += 1
+            cur += ch
+        elif ch == ")":
+            depth -= 1
+            cur += ch
+        elif ch.isspace() and depth == 0:
+            if cur:
+                tokens.append(cur)
+                cur = ""
+        else:
+            cur += ch
+    if cur:
+        tokens.append(cur)
+    out: dict[str, str] = {}
+    for tok in tokens:
+        if _ANIMATION_DURATION_TOKEN.match(tok):
+            out.setdefault("animation-duration", tok)
+        elif _ANIMATION_ITERATION_TOKEN.match(tok):
+            out.setdefault("animation-iteration-count", tok)
+        elif tok == "linear" or tok.startswith(("cubic-bezier", "var(--ease")):
+            out.setdefault("animation-timing-function", tok)
+        else:
+            out.setdefault("animation-name", tok)
+    return out
+
+
+def _parse_stylesheet(css: str) -> list[dict]:
+    """Every flat rule in `css` (comments already stripped) as
+    `{selectors, decls: {prop: (value, important)}, in_reduce, in_supports,
+    order}`. `@keyframes` percentage blocks parse as harmless inert rules —
+    their "selectors" (`0%`, `50%`, ...) match no real element."""
+    rules: list[dict] = []
+    stack: list[str] = []
+    i, n, order = 0, len(css), 0
+    while i < n:
+        if css[i].isspace():
+            i += 1
+            continue
+        if css[i] == "@":
+            j = css.index("{", i)
+            prelude = css[i:j]
+            if "prefers-reduced-motion" in prelude:
+                stack.append("reduce")
+            elif prelude.lstrip().startswith("@supports"):
+                stack.append("supports")
+            else:
+                stack.append("other")
+            i = j + 1
+            continue
+        if css[i] == "}":
+            if stack:
+                stack.pop()
+            i += 1
+            continue
+        j = css.index("{", i)
+        k = css.index("}", j)
+        selectors = [s.strip() for s in css[i:j].split(",") if s.strip()]
+        decls: dict[str, tuple[str, bool]] = {}
+        for part in css[j + 1 : k].split(";"):
+            part = part.strip()
+            if not part or ":" not in part:
+                continue
+            prop, val = part.split(":", 1)
+            prop, val = prop.strip(), val.strip()
+            important = val.endswith("!important")
+            if important:
+                val = val[: -len("!important")].strip()
+            decls[prop] = (val, important)
+        if "animation" in decls:
+            value, important = decls["animation"]
+            for lh, lv in _expand_animation_shorthand(value).items():
+                decls.setdefault(lh, (lv, important))
+        rules.append({
+            "selectors": selectors,
+            "decls": decls,
+            "in_reduce": "reduce" in stack,
+            "in_supports": "supports" in stack,
+            "order": order,
+        })
+        order += 1
+        i = k + 1
+    return rules
+
+
+def _cascade_value(rules: list[dict], chain: list[dict], prop: str):
+    """The winning value for `prop` on `chain`, simulating
+    `prefers-reduced-motion: reduce` TRUE and `@supports (offset-path:
+    border-box)` TRUE — the modern-engine case; the pre-116 fallback (no dot
+    at all) is covered separately by
+    test_the_orbiting_dot_is_gated_on_motion_path_support and is not this
+    test's job. Real CSS cascade order: importance beats specificity beats
+    source order — all three ascending, so the last candidate after sorting
+    is the winner."""
+    candidates = []
+    for rule in rules:
+        if prop not in rule["decls"]:
+            continue
+        value, important = rule["decls"][prop]
+        best = None
+        for sel in rule["selectors"]:
+            if _selector_matches(sel, chain):
+                spec = _specificity(sel)
+                if best is None or spec > best:
+                    best = spec
+        if best is not None:
+            candidates.append((important, best, rule["order"], value))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda c: (c[0], c[1], c[2]))
+    return candidates[-1][3]
+
+
+# Representative elements, outer ancestor first. Classes match the real
+# markup in server_card.html exactly (the `w-3 h-3` size utilities are
+# included deliberately — matching only on `animate-spin` and asserting the
+# selector logic ignores the rest would be testing a cleaner element than
+# the one the app actually renders).
+_BADGE_ELEMENTS: dict[str, list[dict]] = {
+    "searching":    [{"classes": {"badge", "badge-searching"}},
+                      {"type": "i", "classes": {"w-3", "h-3"}}],
+    "downloading":  [{"classes": {"badge", "badge-downloading"}},
+                      {"type": "i", "classes": {"w-3", "h-3", "animate-spin"}}],
+    "installing":   [{"classes": {"badge", "badge-installing"}},
+                      {"type": "i", "classes": {"w-3", "h-3", "animate-spin"}}],
+    "rebooting":    [{"classes": {"badge", "badge-rebooting"}},
+                      {"type": "i", "classes": {"w-3", "h-3", "animate-spin"}}],
+    "restart_required::before": [
+        {"classes": {"badge", "badge-restart_required"}, "pseudo": "before"}],
+    "stabilising::before": [
+        {"classes": {"badge", "badge-stabilising"}, "pseudo": "before"}],
+}
+
+
+def test_the_simulator_can_report_a_positive_before_trusting_a_negative():
+    """docs/OPS-LEARNINGS.md #21/#28: before believing a measurement that
+    says "frozen", prove the same instrument can say "running" when running
+    is the right answer — otherwise a simulator that always returns frozen
+    would pass every assertion below for the wrong reason.
+
+    `rebooting`'s icon is a genuine spinner (Tailwind's own `.animate-spin`
+    keyframe, never overridden to badge-travel) and the reduced-motion block
+    explicitly keeps spinners moving, slowed rather than stopped. This is
+    the positive control: if it fails, nothing else in this file that
+    reports "frozen" can be trusted either."""
+    rules = _parse_stylesheet(_strip_css_comments(authored()))
+    chain = _BADGE_ELEMENTS["rebooting"]
+    assert _cascade_value(rules, chain, "animation-duration") == "2.25s", (
+        "the control's own spinner should be exempted (slowed, not frozen) "
+        "— if it isn't, the simulator cannot distinguish exempted from "
+        "frozen and every 'frozen' result below is meaningless")
+    assert _cascade_value(rules, chain, "animation-iteration-count") == "infinite"
+
+
+def test_the_lifecycle_animations_get_no_reduced_motion_exemption():
+    """Rewritten after adversarial review found the original version could
+    not see the actual bug (see the module comment above this section): it
+    checked that three keyframe NAMES were absent from the reduced-motion
+    block, and `badge-travel` always was — the leak came through the shared
+    `.animate-spin` CLASS, which a name check never looks at.
+
+    This instead resolves the real cascade — importance, specificity,
+    source order — for each lifecycle badge's actual carrier and asserts
+    every one lands on the blanket freeze (0.01ms / 1 iteration), the same
+    outcome as everything else that gets no named exemption. Cross-checked
+    against the positive control above, which proves this simulator reports
+    "running" when running is correct, not "frozen" unconditionally."""
+    rules = _parse_stylesheet(_strip_css_comments(authored()))
+    frozen = ("searching", "downloading", "installing",
+              "restart_required::before", "stabilising::before")
+    for name in frozen:
+        chain = _BADGE_ELEMENTS[name]
+        duration = _cascade_value(rules, chain, "animation-duration")
+        iterations = _cascade_value(rules, chain, "animation-iteration-count")
+        assert duration == "0.01ms", (
+            f"{name}: animation-duration resolves to {duration!r} under "
+            "simulated reduced motion, not the frozen 0.01ms — it is "
+            "inheriting a reduced-motion exemption through a shared class")
+        assert iterations == "1", (
+            f"{name}: animation-iteration-count resolves to {iterations!r} "
+            "under simulated reduced motion, not the frozen 1")
+
+
+def test_the_parked_orbit_dot_is_hidden_under_reduced_motion():
+    """Freezing `badge-border-orbit`'s duration (previous test) stops the
+    dot MOVING but not EXISTING: the pseudo-element still renders, parked at
+    `offset-distance: 0%` — a static glowing dot on every
+    restart_required/stabilising badge, permanently. That is exactly the
+    artefact `@supports (offset-path: border-box)` exists to spare a
+    pre-116 engine from (see the comment on that block in app.css); a
+    reduced-motion user on a current engine is owed the same "no dot"
+    outcome, not a parked one. Asserts the dot is hidden outright."""
+    rules = _parse_stylesheet(_strip_css_comments(authored()))
+    for name in ("restart_required::before", "stabilising::before"):
+        chain = _BADGE_ELEMENTS[name]
+        display = _cascade_value(rules, chain, "display")
+        assert display == "none", (
+            f"{name}: display resolves to {display!r} under simulated "
+            "reduced motion — the dot parks instead of disappearing")
 
 
 def test_downloading_and_installing_travel_instead_of_spinning():
@@ -419,6 +705,32 @@ def test_searching_is_ready_to_sway_not_spin():
     body = keyframe.group(1)
     assert "translateX" in body and "rotate" not in body, \
         "badge-sway must move side to side, not rotate"
+
+
+def test_the_searching_icon_carrier_exists_in_server_card():
+    """`badge-searching`'s sway rule (app.css) has no visible carrier unless
+    server_card.html actually renders an icon element for the `searching`
+    install-lifecycle state — app.css said as much for a while after the
+    carrier was added, because nothing pinned it. Nothing else in the suite
+    reads this branch: deleting `{% elif istatus == 'searching' %}` from the
+    icon chain leaves every other test green, since the sway rule simply
+    matches an icon that no longer exists rather than failing to match at
+    all. This is the pin the adversarial review asked for; the reviewer
+    could not run the mutation (the write was blocked), so it is verified
+    here: deleting the branch and rerunning this test fails it."""
+    html = SERVER_CARD.read_text(encoding="utf-8")
+    m = re.search(r"\{%-?\s*elif\s+istatus\s*==\s*'searching'\s*-?%\}", html)
+    assert m, (
+        "the searching branch of the install-lifecycle icon chain is "
+        "missing from server_card.html — badge-searching's sway animation "
+        "(app.css) has nothing left to animate")
+    next_branch = re.search(r"\{%-?\s*(?:elif|else|endif)\b", html[m.end():])
+    assert next_branch, "could not find the end of the searching branch"
+    body = html[m.end():m.end() + next_branch.start()]
+    assert "data-lucide=" in body, (
+        "the searching branch renders no icon element — badge-sway "
+        "(app.css) targets `.badge-searching svg, .badge-searching i` and "
+        "needs one to exist")
 
 
 def test_restart_required_and_stabilising_circulate_the_border_only():

@@ -17,7 +17,7 @@
     <h2 class="text-sm font-semibold flex items-center gap-2">
       <i data-lucide="activity" class="w-4 h-4 text-accent"></i>
       {{ t.get('server_actions', 'Server Actions') }}
-      <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-brand/10 text-brand dark:bg-brand/20 dark:text-[#C4B5FD]">
+      <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-brand/10 text-brand dark:bg-brand/20">
         {{ items | length }}
       </span>
     </h2>
@@ -28,19 +28,30 @@
 
   <div class="space-y-2">
     {% for it in items %}
-    {#- Color + icon per status. Mirrors the badge classes in
-        partials/server_card.html so the dashboard visual language stays
-        consistent across the Actions panel and the server tiles. -#}
+    {#- Color + icon per status. Three hues, not four — mirrors the badge
+        classes in partials/server_card.html (app.css's `.badge-<state>`
+        rules) so the dashboard visual language actually stays consistent
+        across the Actions panel and the server tiles: turquoise (accent)
+        while queued/searching/downloading are fetching, violet (brand)
+        while installing/restart_required/rebooting apply the change or
+        wait on a human, green (healthy) once stabilising settles back in.
+        Amber for in-flight install work and indigo for queued/searching
+        were the exact four-hue confusion the badge collapse removed. -#}
+    {#- The second half is a CLASS, not a hex. A hex in `style="color:…"` is
+        one fixed value in both themes: #8B5CF6 is the PRE-FLIP brand light,
+        so these icons rendered a violet the palette no longer uses, and
+        rendered it identically on the near-black dark canvas where `brand`
+        is #C4B5FD. A token class follows both the palette and the theme. -#}
     {%- set _status_color = {
-      'rebooting':        ('border-brand/40 bg-brand/5', '#8B5CF6'),
-      'stabilising':      ('border-healthy/40 bg-healthy/5', '#10B981'),
-      'restart_required': ('border-brand/40 bg-brand/5', '#8B5CF6'),
-      'installing':       ('border-warning/40 bg-warning/5', '#F59E0B'),
-      'downloading':      ('border-warning/40 bg-warning/5', '#F59E0B'),
-      'searching':        ('border-[#6366F1]/40 bg-[#6366F1]/5', '#6366F1'),
-      'queued':           ('border-[#6366F1]/40 bg-[#6366F1]/5', '#6366F1'),
+      'queued':           ('border-accent/40 bg-accent/5', 'text-accent', 'bg-accent/10'),
+      'searching':        ('border-accent/40 bg-accent/5', 'text-accent', 'bg-accent/10'),
+      'downloading':      ('border-accent/40 bg-accent/5', 'text-accent', 'bg-accent/10'),
+      'installing':       ('border-brand/40 bg-brand/5', 'text-brand', 'bg-brand/10'),
+      'restart_required': ('border-brand/40 bg-brand/5', 'text-brand', 'bg-brand/10'),
+      'rebooting':        ('border-brand/40 bg-brand/5', 'text-brand', 'bg-brand/10'),
+      'stabilising':      ('border-healthy/40 bg-healthy/5', 'text-healthy', 'bg-healthy/10'),
     } -%}
-    {%- set _color = _status_color.get(it.status, ('border-faint/40 bg-faint/5', '#9CA3AF')) -%}
+    {%- set _color = _status_color.get(it.status, ('border-faint/40 bg-faint/5', 'text-faint', 'bg-faint/10')) -%}
     {%- set _label = {
       'rebooting':        t.get('action_rebooting',        'Rebooting'),
       'stabilising':      t.get('action_stabilising',      'Stabilising'),
@@ -58,24 +69,23 @@
           check-circle for stabilising. Matches the server_card.html
           icon choices so operators see the same visual cues. -#}
       {%- if it.status == 'rebooting' -%}
-      <i data-lucide="rotate-cw" class="w-5 h-5 flex-shrink-0 animate-spin" style="color: {{ _color[1] }};"></i>
+      <i data-lucide="rotate-cw" class="w-5 h-5 flex-shrink-0 animate-spin {{ _color[1] }}"></i>
       {%- elif it.status == 'stabilising' -%}
-      <i data-lucide="check-circle" class="w-5 h-5 flex-shrink-0" style="color: {{ _color[1] }};"></i>
+      <i data-lucide="check-circle" class="w-5 h-5 flex-shrink-0 {{ _color[1] }}"></i>
       {%- elif it.status == 'restart_required' -%}
-      <i data-lucide="alert-circle" class="w-5 h-5 flex-shrink-0" style="color: {{ _color[1] }};"></i>
+      <i data-lucide="alert-circle" class="w-5 h-5 flex-shrink-0 {{ _color[1] }}"></i>
       {%- elif it.status in ('installing', 'downloading') -%}
-      <i data-lucide="loader" class="w-5 h-5 flex-shrink-0 animate-spin" style="color: {{ _color[1] }};"></i>
+      <i data-lucide="loader" class="w-5 h-5 flex-shrink-0 animate-spin {{ _color[1] }}"></i>
       {%- elif it.status == 'searching' -%}
-      <i data-lucide="search" class="w-5 h-5 flex-shrink-0" style="color: {{ _color[1] }};"></i>
+      <i data-lucide="search" class="w-5 h-5 flex-shrink-0 {{ _color[1] }}"></i>
       {%- else -%}
-      <i data-lucide="clock" class="w-5 h-5 flex-shrink-0" style="color: {{ _color[1] }};"></i>
+      <i data-lucide="clock" class="w-5 h-5 flex-shrink-0 {{ _color[1] }}"></i>
       {%- endif %}
 
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-2 flex-wrap">
           <span class="text-xs font-semibold">{{ it.server_name }}</span>
-          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full"
-                style="background-color: {{ _color[1] }}1A; color: {{ _color[1] }};">
+          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full {{ _color[2] }} {{ _color[1] }}">
             {{ _label }}
           </span>
           {#- Elapsed time chip — gives the operator a quick "is this
@@ -92,7 +102,7 @@
           </span>
           {%- endif %}
           {%- if it.restart_after and it.status in ('installing', 'downloading', 'queued', 'searching') %}
-          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] rounded-full bg-info-tint dark:bg-info-tint/40 text-[#3730A3] dark:text-[#A5B4FC]"
+          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] rounded-full bg-info-tint dark:bg-info-tint/40 text-info-strong"
                 title="{{ t.get('auto_restart_armed_tip', 'Auto-restart is armed — server will reboot when install finishes.') }}">
             <i data-lucide="rotate-cw" class="w-2.5 h-2.5"></i>
             {{ t.get('auto_restart_label', 'auto-restart') }}
