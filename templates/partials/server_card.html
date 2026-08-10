@@ -27,13 +27,18 @@
     'rebooting': 'Rebooting',
     'stabilising': 'Stabilising',
 } %}
-{# Border colour conveys severity at a glance even on monochrome devices —
-   amber for in-flight install work, indigo for restart phases. #}
+{# Border colour conveys the lifecycle stage's owner at a glance, even on
+   monochrome devices — the same three-hue rule as the badge (app.css):
+   turquoise (accent) while the machine is fetching, violet (brand) while
+   it is applying the change or blocked on a human, green (healthy) once it
+   is settling back in. Not four hues — amber for in-flight install work
+   was the exact confusion the badge collapse removed; this stripe is a
+   LARGER colour area than the badge and must not reintroduce it. #}
 {% set _install_border = {
-    'queued': '!border-l-[#6366F1]',
-    'searching': '!border-l-[#6366F1]',
-    'downloading': '!border-l-warning',
-    'installing': '!border-l-warning',
+    'queued': '!border-l-accent',
+    'searching': '!border-l-accent',
+    'downloading': '!border-l-accent',
+    'installing': '!border-l-brand',
     'restart_required': '!border-l-brand',
     'rebooting': '!border-l-brand',
     'stabilising': '!border-l-healthy',
@@ -82,12 +87,77 @@
     {% endif %}
   </div>
 
+  {# Tag ink solver — Jinja port of tools/tag_ink.py's tag_pill_tokens().
+     An admin-chosen tag colour has no readability guarantee (the default
+     grey measured 4.37:1 on this card's bg-card in light, 3.47:1 in dark —
+     both under AA), and the fix cannot just replace the colour with a
+     fixed neutral: that discards the only thing distinguishing one tag
+     from another at a glance. So the hue is kept and the ink is nudged
+     toward black/white in 6% steps, capped at 24, until the composite
+     clears 4.5:1 in EACH theme — matching the JS solver in servers.html
+     and the identical macro pair in server_grid.html byte-for-byte, and
+     verified to agree with tools/tag_ink.py by tests/test_tag_ink.py.
+     Two custom properties (one per theme) are emitted rather than one,
+     because baking a single theme's ink into an inline style is exactly
+     the bug this replaced elsewhere: it goes stale the instant someone
+     flips the theme without a reload. A static `dark:` class picks the
+     right one live — see the pill's class list below. #}
+  {%- macro _tag_ink_solve(r, g, b, tint_alpha, bgr, bgg, bgb, target) -%}
+  {%- set comp_r = r * tint_alpha + bgr * (1 - tint_alpha) -%}
+  {%- set comp_g = g * tint_alpha + bgg * (1 - tint_alpha) -%}
+  {%- set comp_b = b * tint_alpha + bgb * (1 - tint_alpha) -%}
+  {%- set lin_c_r = ((comp_r / 255) / 12.92) if (comp_r / 255) <= 0.03928 else ((((comp_r / 255) + 0.055) / 1.055) ** 2.4) -%}
+  {%- set lin_c_g = ((comp_g / 255) / 12.92) if (comp_g / 255) <= 0.03928 else ((((comp_g / 255) + 0.055) / 1.055) ** 2.4) -%}
+  {%- set lin_c_b = ((comp_b / 255) / 12.92) if (comp_b / 255) <= 0.03928 else ((((comp_b / 255) + 0.055) / 1.055) ** 2.4) -%}
+  {%- set lum_bg = 0.2126 * lin_c_r + 0.7152 * lin_c_g + 0.0722 * lin_c_b -%}
+  {%- set ns = namespace(ir=r, ig=g, ib=b) -%}
+  {%- for _i in range(24) -%}
+    {%- set lin_i_r = ((ns.ir / 255) / 12.92) if (ns.ir / 255) <= 0.03928 else ((((ns.ir / 255) + 0.055) / 1.055) ** 2.4) -%}
+    {%- set lin_i_g = ((ns.ig / 255) / 12.92) if (ns.ig / 255) <= 0.03928 else ((((ns.ig / 255) + 0.055) / 1.055) ** 2.4) -%}
+    {%- set lin_i_b = ((ns.ib / 255) / 12.92) if (ns.ib / 255) <= 0.03928 else ((((ns.ib / 255) + 0.055) / 1.055) ** 2.4) -%}
+    {%- set lum_ink = 0.2126 * lin_i_r + 0.7152 * lin_i_g + 0.0722 * lin_i_b -%}
+    {%- set lighter = [lum_ink, lum_bg] | max -%}
+    {%- set darker = [lum_ink, lum_bg] | min -%}
+    {%- set ratio = (lighter + 0.05) / (darker + 0.05) -%}
+    {%- if ratio < 4.5 -%}
+      {%- set ns.ir = ((ns.ir + (target - ns.ir) * 0.06) + 0.5) | round(0, 'floor') | int -%}
+      {%- set ns.ig = ((ns.ig + (target - ns.ig) * 0.06) + 0.5) | round(0, 'floor') | int -%}
+      {%- set ns.ib = ((ns.ib + (target - ns.ib) * 0.06) + 0.5) | round(0, 'floor') | int -%}
+    {%- endif -%}
+  {%- endfor -%}
+  {{- '%02x%02x%02x' | format(ns.ir, ns.ig, ns.ib) -}}
+  {%- endmacro -%}
+  {%- macro _tag_ink_rgb(hex_color) -%}
+  {%- set raw = (hex_color or '') | trim -%}
+  {%- set raw = raw[1:] if raw[:1] == '#' else raw -%}
+  {%- if raw | length == 3 -%}
+    {%- set raw = raw[0] * 2 + raw[1] * 2 + raw[2] * 2 -%}
+  {%- endif -%}
+  {%- set _r = raw[0:2] | int(-1, 16) -%}
+  {%- set _g = raw[2:4] | int(-1, 16) -%}
+  {%- set _b = raw[4:6] | int(-1, 16) -%}
+  {%- if raw | length == 6 and _r >= 0 and _g >= 0 and _b >= 0 -%}
+    {{- '%02x%02x%02x' | format(_r, _g, _b) -}}
+  {%- else -%}
+    6b7280
+  {%- endif -%}
+  {%- endmacro -%}
+  {%- macro tag_ink_props(hex_color, tint_alpha=0.0824) -%}
+  {%- set rgbhex = _tag_ink_rgb(hex_color) -%}
+  {%- set r = rgbhex[0:2] | int(0, 16) -%}
+  {%- set g = rgbhex[2:4] | int(0, 16) -%}
+  {%- set b = rgbhex[4:6] | int(0, 16) -%}
+  {%- set light_hex = _tag_ink_solve(r, g, b, tint_alpha, 255, 255, 255, 0) -%}
+  {%- set dark_hex = _tag_ink_solve(r, g, b, tint_alpha, 15, 22, 35, 255) -%}
+  {{- '--tag-ink-l:#%s;--tag-ink-d:#%s;' | format(light_hex, dark_hex) -}}
+  {%- endmacro -%}
+
   <!-- Tag pills -->
   {% if server.tags %}
   <div class="flex flex-wrap gap-1 mt-1 mb-2">
     {% for tag in server.tags %}
-    <span class="px-1.5 py-0 text-[9px] font-medium rounded-full"
-          style="color: {{ tag.color }}; background-color: {{ tag.color }}15; border: 1px solid {{ tag.color }}30;">
+    <span class="px-1.5 py-0 text-[9px] font-medium rounded-full text-[var(--tag-ink-l)] dark:text-[var(--tag-ink-d)]"
+          style="{{ tag_ink_props(tag.color) }}background-color: {{ tag.color }}15; border: 1px solid {{ tag.color }}30;">
       {{ tag.name }}
     </span>
     {% endfor %}

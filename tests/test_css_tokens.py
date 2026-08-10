@@ -477,7 +477,7 @@ def test_no_token_reference_in_app_css_round_trips_to_a_different_token():
 # no hex anywhere.
 # 71 - 14 = 57.
 
-CSS_LITERAL_BASELINE = 57
+CSS_LITERAL_BASELINE = 56
 
 
 def _residue() -> list:

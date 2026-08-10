@@ -2371,40 +2371,117 @@ function loadServerTags() {
 // Nudged in 6% steps toward white in dark mode and toward black in light,
 // against the tint actually composited over the row — not against the raw
 // colour, which is not what the eye compares it to. Capped at 24 steps so a
-// pathological input terminates.
-function _tagReadableInk(hex, tintAlpha) {
-  const m = /^#?([\da-f]{6})$/i.exec(hex || '');
-  const base = m ? m[1] : '6B7280';
-  const rgb = [0, 2, 4].map(i => parseInt(base.slice(i, i + 2), 16));
-  const dark = document.documentElement.classList.contains('dark');
-  const surf = dark ? [15, 22, 35] : [255, 255, 255];        // --c-card
-  // The chip background is the tag colour laid over the card at tintAlpha.
-  const bg = rgb.map((c, i) => c * tintAlpha + surf[i] * (1 - tintAlpha));
+// pathological input terminates. Ported to Python as
+// tools/tag_ink.py — see tests/test_tag_ink.py for the shared corpus both
+// are checked against, and that module's docstring for why three copies of
+// one algorithm is a deliberate, tested trade-off and not drift.
+//
+// BOTH themes are solved on every render, regardless of which one is
+// active right now. The previous version read
+// `document.documentElement.classList.contains('dark')` ONCE and baked
+// that theme's ink into an inline `color:` — so flipping the theme with the
+// nav toggle (which only flips a class; it does not reload, and the state
+// persists until something does) left the OLD theme's ink on screen.
+// Measured: solved-light-shown-in-dark fell to 1.74:1, solved-dark-shown-
+// in-light to 1.89:1 — both WORSE than the 3.26:1 defect this replaced.
+// The fix is architectural, not a re-render hook: solve for both themes,
+// emit both as custom properties, and let a static `dark:` Tailwind class
+// select between them the same way `bg-[var(--tag-bg)]` already does for
+// the background below — the browser's own `.dark` selector reacts the
+// instant the class is toggled, with no JS re-render involved at all.
+//
+// The hover composite has to model what actually happens, not just the
+// card: the pill sits inside a `<tr>` carrying
+// `hover:bg-page dark:hover:bg-page/50`, so hovering the pill unavoidably
+// hovers the row, and the surface under the tint changes from the card to
+// that row-hover colour. Solving only against the card left roughly
+// three-quarters of colours failing AA in light mode the instant the row
+// was hovered (worst case measured 4.18:1 on #bd0912); dark mode was
+// unaffected because the row hover darkens there, which only helps.
+function _tagParseHex(hex) {
+  const s = (hex || '').trim();
+  let m = /^#?([0-9a-f]{6})$/i.exec(s);
+  if (m) return m[1];
+  // 3-digit CSS shorthand (#abc -> aabbcc) — the previous regex only
+  // accepted 6 digits, so a valid admin-chosen shorthand colour silently
+  // fell through to the default grey and the tag stopped being
+  // distinguishable, which is the entire point of the feature.
+  m = /^#?([0-9a-f]{3})$/i.exec(s);
+  if (m) return m[1].split('').map(ch => ch + ch).join('');
+  return '6B7280';
+}
 
-  const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
-  const lum = c => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
-  const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
-
-  // Solved against the HOVER tint, which is the denser of the two, so the
-  // label clears AA in both states. The specific failure being avoided:
-  // a hover highlight that swallows the text, which hides the one thing the
-  // tag exists to say.
-  const hoverAlpha = Math.min(1, tintAlpha + 0.18);
-  const bgHover = rgb.map((c, i) => c * hoverAlpha + surf[i] * (1 - hoverAlpha));
-
+function _tagLinearize(c) {
+  c /= 255;
+  return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
+function _tagLuminance(rgb) {
+  return 0.2126 * _tagLinearize(rgb[0]) + 0.7152 * _tagLinearize(rgb[1]) + 0.0722 * _tagLinearize(rgb[2]);
+}
+function _tagContrast(a, b) {
+  const la = _tagLuminance(a), lb = _tagLuminance(b);
+  const lighter = Math.max(la, lb), darker = Math.min(la, lb);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+function _tagBlend(fg, bg, alpha) {
+  return fg.map((c, i) => c * alpha + bg[i] * (1 - alpha));
+}
+// Nudges `rgb` toward `target` until it clears 4.5:1 against EVERY
+// [backdrop, alpha] composite in `constraints` at once, capped at 24 steps.
+// All constraints for one call share a target (black for light, white for
+// dark), so nudging toward it can only help every constraint simultaneously.
+function _tagSolveInk(rgb, target, constraints) {
+  const composites = constraints.map(([bg, a]) => _tagBlend(rgb, bg, a));
   let ink = rgb.slice();
-  const target = dark ? 255 : 0;
-  for (let i = 0; i < 24 && (ratio(ink, bg) < 4.5 || ratio(ink, bgHover) < 4.5); i++) {
-    ink = ink.map(c => Math.round(c + (target - c) * 0.06));
+  for (let i = 0; i < 24; i++) {
+    if (composites.every(c => _tagContrast(ink, c) >= 4.5)) break;
+    ink = ink.map((c, i) => Math.round(c + (target[i] - c) * 0.06));
   }
-  const hx = c => c.map(v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('');
+  return ink;
+}
+function _tagHex(rgb) {
+  return '#' + rgb.map(v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('');
+}
+
+// static/css/app.css --c-card / --c-page (:root and .dark).
+const _TAG_CARD_LIGHT = [255, 255, 255];
+const _TAG_CARD_DARK = [15, 22, 35];
+const _TAG_PAGE_LIGHT = [241, 245, 249];
+const _TAG_PAGE_DARK = [5, 7, 13];
+// `hover:bg-page` (light) is opaque, so the light row-hover backdrop IS the
+// page colour. `dark:hover:bg-page/50` is page-at-50%-alpha painted over
+// the card beneath the row.
+const _TAG_ROW_HOVER_LIGHT = _TAG_PAGE_LIGHT;
+const _TAG_ROW_HOVER_DARK = _TAG_PAGE_DARK.map((p, i) => Math.round(0.5 * p + 0.5 * _TAG_CARD_DARK[i]));
+
+function _tagReadableInk(hex, tintAlpha) {
+  const base = _tagParseHex(hex);
+  const rgb = [0, 2, 4].map(i => parseInt(base.slice(i, i + 2), 16));
+  // Solved against the HOVER tint too, which is the denser of the two, so
+  // the label clears AA in both states. The specific failure being
+  // avoided: a hover highlight that swallows the text, which hides the one
+  // thing the tag exists to say.
+  const hoverAlpha = Math.min(1, tintAlpha + 0.18);
+
+  const inkLight = _tagSolveInk(rgb, [0, 0, 0], [
+    [_TAG_CARD_LIGHT, tintAlpha],
+    [_TAG_ROW_HOVER_LIGHT, hoverAlpha],
+  ]);
+  const inkDark = _tagSolveInk(rgb, [255, 255, 255], [
+    [_TAG_CARD_DARK, tintAlpha],
+    [_TAG_ROW_HOVER_DARK, hoverAlpha],
+  ]);
+
   return {
-    ink: '#' + hx(ink),
+    inkLight: _tagHex(inkLight),
+    inkDark: _tagHex(inkDark),
     bg: 'rgba(' + rgb.join(',') + ',' + tintAlpha + ')',
     bgHover: 'rgba(' + rgb.join(',') + ',' + hoverAlpha + ')',
     border: 'rgba(' + rgb.join(',') + ',0.55)',
-    restRatio: Math.round(ratio(ink, bg) * 100) / 100,
-    hoverRatio: Math.round(ratio(ink, bgHover) * 100) / 100,
+    restRatioLight: Math.round(_tagContrast(inkLight, _tagBlend(rgb, _TAG_CARD_LIGHT, tintAlpha)) * 100) / 100,
+    restRatioDark: Math.round(_tagContrast(inkDark, _tagBlend(rgb, _TAG_CARD_DARK, tintAlpha)) * 100) / 100,
+    hoverRatioLight: Math.round(_tagContrast(inkLight, _tagBlend(rgb, _TAG_ROW_HOVER_LIGHT, hoverAlpha)) * 100) / 100,
+    hoverRatioDark: Math.round(_tagContrast(inkDark, _tagBlend(rgb, _TAG_ROW_HOVER_DARK, hoverAlpha)) * 100) / 100,
   };
 }
 
@@ -2414,12 +2491,16 @@ function renderServerTagPills(serverName, idx) {
   const tags = _serverTagMap[serverName] || [];
   container.innerHTML = tags.map(t => {
     const c = _tagReadableInk(t.color, 0.22);
-    // The hover tint is carried on a custom property and referenced by a
-    // static Tailwind class, because a `:hover` rule cannot be expressed in
-    // an inline style and app.css is not this change's to edit.
+    // The hover background is carried on a custom property and referenced
+    // by a static Tailwind class, because a `:hover` rule cannot be
+    // expressed in an inline style; the ink works the same way and for the
+    // same reason (see the comment above _tagReadableInk) — a static
+    // `dark:` variant, not a class re-render, is what reacts to the theme
+    // toggle.
     return `<span class="server-tag-pill px-1.5 py-0 text-[9px] font-medium rounded-full cursor-pointer border
-                  bg-[var(--tag-bg)] hover:bg-[var(--tag-bg-h)] transition-colors duration-fast ease-standard"
-           style="--tag-bg:${c.bg};--tag-bg-h:${c.bgHover};color:${c.ink};border-color:${c.border};"
+                  bg-[var(--tag-bg)] hover:bg-[var(--tag-bg-h)] text-[var(--tag-ink-l)] dark:text-[var(--tag-ink-d)]
+                  transition-colors duration-fast ease-standard"
+           style="--tag-bg:${c.bg};--tag-bg-h:${c.bgHover};--tag-ink-l:${c.inkLight};--tag-ink-d:${c.inkDark};border-color:${c.border};"
            data-action="_srvRemoveTag" data-args='${JSON.stringify([serverName, t.id, idx]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}'
            title="Click to remove">${t.name} ×</span>`;
   }).join('');
