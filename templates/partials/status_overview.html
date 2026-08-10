@@ -1,56 +1,56 @@
 <!-- Status Overview - 4 stat boxes + health bar -->
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
   <!-- Total -->
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155]">
+  <div class="bg-card rounded-lg p-5 border border-line">
     <div class="flex items-center gap-2 mb-1">
-      <i data-lucide="server" class="w-4 h-4 text-[#8B5CF6] dark:text-[#A78BFA]"></i>
-      <span class="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.total }}</span>
+      <i data-lucide="server" class="w-4 h-4 text-accent"></i>
+      <span class="text-xs font-semibold uppercase tracking-wider text-muted">{{ t.total }}</span>
     </div>
-    <div class="metric-value text-[#1F2937] dark:text-[#F8FAFC]">{{ summary.total }}</div>
+    <div class="metric-value text-ink">{{ summary.total }}</div>
   </div>
 
   <!-- Healthy -->
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155]">
+  <div class="bg-card rounded-lg p-5 border border-line">
     <div class="flex items-center gap-2 mb-1">
-      <i data-lucide="check-circle" class="w-4 h-4 text-[#10B981]"></i>
-      <span class="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.healthy }}</span>
+      <i data-lucide="check-circle" class="w-4 h-4 text-healthy"></i>
+      <span class="text-xs font-semibold uppercase tracking-wider text-muted">{{ t.healthy }}</span>
     </div>
-    <div class="metric-value text-[#10B981]">{{ summary.healthy }}</div>
+    <div class="metric-value text-healthy">{{ summary.healthy }}</div>
   </div>
 
   <!-- Warning -->
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155]">
+  <div class="bg-card rounded-lg p-5 border border-line">
     <div class="flex items-center gap-2 mb-1">
-      <i data-lucide="alert-triangle" class="w-4 h-4 text-[#F59E0B] dark:text-[#FBBF24]"></i>
-      <span class="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.warning }}</span>
+      <i data-lucide="alert-triangle" class="w-4 h-4 text-warning"></i>
+      <span class="text-xs font-semibold uppercase tracking-wider text-muted">{{ t.warning }}</span>
     </div>
-    <div class="metric-value text-[#F59E0B] dark:text-[#FBBF24]">{{ summary.warning }}</div>
+    <div class="metric-value text-warning">{{ summary.warning }}</div>
   </div>
 
   <!-- Critical -->
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155]">
+  <div class="bg-card rounded-lg p-5 border border-line">
     <div class="flex items-center gap-2 mb-1">
-      <i data-lucide="alert-octagon" class="w-4 h-4 text-[#DC2626] dark:text-[#EF4444]"></i>
-      <span class="text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.critical }}</span>
+      <i data-lucide="alert-octagon" class="w-4 h-4 text-critical"></i>
+      <span class="text-xs font-semibold uppercase tracking-wider text-muted">{{ t.critical }}</span>
     </div>
-    <div class="metric-value text-[#DC2626] dark:text-[#EF4444]">{{ summary.critical }}</div>
+    <div class="metric-value text-critical">{{ summary.critical }}</div>
   </div>
 </div>
 
 <!-- Health bar -->
 {% if summary.total > 0 %}
-<div class="mt-3 flex rounded-full overflow-hidden h-2 bg-[#E5E7EB] dark:bg-[#334155]">
+<div class="mt-3 flex rounded-full overflow-hidden h-2 bg-line">
   {% if summary.healthy > 0 %}
-  <div class="bg-[#10B981]" style="width: {{ (summary.healthy / summary.total * 100) | round(1) }}%"></div>
+  <div class="bg-healthy" style="width: {{ (summary.healthy / summary.total * 100) | round(1) }}%"></div>
   {% endif %}
   {% if summary.warning > 0 %}
-  <div class="bg-[#F59E0B] dark:bg-[#FBBF24]" style="width: {{ (summary.warning / summary.total * 100) | round(1) }}%"></div>
+  <div class="bg-warning" style="width: {{ (summary.warning / summary.total * 100) | round(1) }}%"></div>
   {% endif %}
   {% if summary.critical > 0 %}
-  <div class="bg-[#DC2626] dark:bg-[#EF4444]" style="width: {{ (summary.critical / summary.total * 100) | round(1) }}%"></div>
+  <div class="bg-critical" style="width: {{ (summary.critical / summary.total * 100) | round(1) }}%"></div>
   {% endif %}
   {% if summary.offline > 0 %}
-  <div class="bg-[#9CA3AF]" style="width: {{ (summary.offline / summary.total * 100) | round(1) }}%"></div>
+  <div class="bg-faint" style="width: {{ (summary.offline / summary.total * 100) | round(1) }}%"></div>
   {% endif %}
 </div>
 {% endif %}

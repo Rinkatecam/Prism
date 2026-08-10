@@ -1,4 +1,69 @@
 <!-- Server Grid - grouped by type -->
+{# Tag ink solver — Jinja port of tools/tag_ink.py's tag_pill_tokens().
+   An admin-chosen tag colour has no readability guarantee (the default
+   grey measured 4.37:1 on bg-card in light, 3.47:1 in dark — both under
+   AA), and the fix cannot just replace the colour with a fixed neutral:
+   that discards the only thing distinguishing one tag from another at a
+   glance. So the hue is kept and the ink is nudged toward black/white in
+   6% steps, capped at 24, until the composite clears 4.5:1 in EACH theme —
+   matching the JS solver in servers.html and the identical macro pair in
+   server_card.html byte-for-byte, and verified to agree with
+   tools/tag_ink.py by tests/test_tag_ink.py. Two custom properties (one
+   per theme) are emitted rather than one, because baking a single theme's
+   ink into an inline style is exactly the bug this replaced elsewhere: it
+   goes stale the instant someone flips the theme without a reload. A
+   static `dark:` class picks the right one live — see the button's class
+   list below. #}
+{%- macro _tag_ink_solve(r, g, b, tint_alpha, bgr, bgg, bgb, target) -%}
+{%- set comp_r = r * tint_alpha + bgr * (1 - tint_alpha) -%}
+{%- set comp_g = g * tint_alpha + bgg * (1 - tint_alpha) -%}
+{%- set comp_b = b * tint_alpha + bgb * (1 - tint_alpha) -%}
+{%- set lin_c_r = ((comp_r / 255) / 12.92) if (comp_r / 255) <= 0.03928 else ((((comp_r / 255) + 0.055) / 1.055) ** 2.4) -%}
+{%- set lin_c_g = ((comp_g / 255) / 12.92) if (comp_g / 255) <= 0.03928 else ((((comp_g / 255) + 0.055) / 1.055) ** 2.4) -%}
+{%- set lin_c_b = ((comp_b / 255) / 12.92) if (comp_b / 255) <= 0.03928 else ((((comp_b / 255) + 0.055) / 1.055) ** 2.4) -%}
+{%- set lum_bg = 0.2126 * lin_c_r + 0.7152 * lin_c_g + 0.0722 * lin_c_b -%}
+{%- set ns = namespace(ir=r, ig=g, ib=b) -%}
+{%- for _i in range(24) -%}
+  {%- set lin_i_r = ((ns.ir / 255) / 12.92) if (ns.ir / 255) <= 0.03928 else ((((ns.ir / 255) + 0.055) / 1.055) ** 2.4) -%}
+  {%- set lin_i_g = ((ns.ig / 255) / 12.92) if (ns.ig / 255) <= 0.03928 else ((((ns.ig / 255) + 0.055) / 1.055) ** 2.4) -%}
+  {%- set lin_i_b = ((ns.ib / 255) / 12.92) if (ns.ib / 255) <= 0.03928 else ((((ns.ib / 255) + 0.055) / 1.055) ** 2.4) -%}
+  {%- set lum_ink = 0.2126 * lin_i_r + 0.7152 * lin_i_g + 0.0722 * lin_i_b -%}
+  {%- set lighter = [lum_ink, lum_bg] | max -%}
+  {%- set darker = [lum_ink, lum_bg] | min -%}
+  {%- set ratio = (lighter + 0.05) / (darker + 0.05) -%}
+  {%- if ratio < 4.5 -%}
+    {%- set ns.ir = ((ns.ir + (target - ns.ir) * 0.06) + 0.5) | round(0, 'floor') | int -%}
+    {%- set ns.ig = ((ns.ig + (target - ns.ig) * 0.06) + 0.5) | round(0, 'floor') | int -%}
+    {%- set ns.ib = ((ns.ib + (target - ns.ib) * 0.06) + 0.5) | round(0, 'floor') | int -%}
+  {%- endif -%}
+{%- endfor -%}
+{{- '%02x%02x%02x' | format(ns.ir, ns.ig, ns.ib) -}}
+{%- endmacro -%}
+{%- macro _tag_ink_rgb(hex_color) -%}
+{%- set raw = (hex_color or '') | trim -%}
+{%- set raw = raw[1:] if raw[:1] == '#' else raw -%}
+{%- if raw | length == 3 -%}
+  {%- set raw = raw[0] * 2 + raw[1] * 2 + raw[2] * 2 -%}
+{%- endif -%}
+{%- set _r = raw[0:2] | int(-1, 16) -%}
+{%- set _g = raw[2:4] | int(-1, 16) -%}
+{%- set _b = raw[4:6] | int(-1, 16) -%}
+{%- if raw | length == 6 and _r >= 0 and _g >= 0 and _b >= 0 -%}
+  {{- '%02x%02x%02x' | format(_r, _g, _b) -}}
+{%- else -%}
+  6b7280
+{%- endif -%}
+{%- endmacro -%}
+{%- macro tag_ink_props(hex_color, tint_alpha=0.0824) -%}
+{%- set rgbhex = _tag_ink_rgb(hex_color) -%}
+{%- set r = rgbhex[0:2] | int(0, 16) -%}
+{%- set g = rgbhex[2:4] | int(0, 16) -%}
+{%- set b = rgbhex[4:6] | int(0, 16) -%}
+{%- set light_hex = _tag_ink_solve(r, g, b, tint_alpha, 255, 255, 255, 0) -%}
+{%- set dark_hex = _tag_ink_solve(r, g, b, tint_alpha, 15, 22, 35, 255) -%}
+{{- '--tag-ink-l:#%s;--tag-ink-d:#%s;' | format(light_hex, dark_hex) -}}
+{%- endmacro -%}
+
 {% set type_labels = {
   'file_server': t.file_servers,
   'app_server': t.app_servers,
@@ -14,15 +79,15 @@
 <!-- Tag filter bar -->
 {% if all_tags is defined and all_tags %}
 <div class="flex flex-wrap items-center gap-2 mb-4">
-  <span class="text-xs font-medium text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('filter_by_tag', 'Filter by tag') }}:</span>
+  <span class="text-xs font-medium text-muted">{{ t.get('filter_by_tag', 'Filter by tag') }}:</span>
   <button hx-get="/partials/server-grid" hx-target="#server-grid-container" hx-swap="innerHTML"
-          class="px-2 py-0.5 text-xs rounded-full border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] {{ 'bg-[#2563EB]/10 text-[#2563EB] border-[#2563EB]' if not active_tag else '' }}">
+          class="px-2 py-0.5 text-xs rounded-full border border-line dark:border-line hover:bg-page {{ 'bg-info/10 text-info border-info' if not active_tag else '' }}">
     {{ t.get('all_tags', 'All') }}
   </button>
   {% for tag in all_tags %}
   <button hx-get="/partials/server-grid?tag={{ tag.id }}" hx-target="#server-grid-container" hx-swap="innerHTML"
-          class="px-2 py-0.5 text-xs rounded-full border hover:opacity-80 {{ 'ring-2 ring-offset-1' if active_tag == tag.id|string else '' }}"
-          style="border-color: {{ tag.color }}; color: {{ tag.color }}; background-color: {{ tag.color }}15;">
+          class="px-2 py-0.5 text-xs rounded-full border hover:opacity-80 text-[var(--tag-ink-l)] dark:text-[var(--tag-ink-d)] {{ 'ring-2 ring-offset-1' if active_tag == tag.id|string else '' }}"
+          style="{{ tag_ink_props(tag.color) }}border-color: {{ tag.color }}; background-color: {{ tag.color }}15;">
     {{ tag.name }} <span class="text-[10px] opacity-60">({{ tag.server_count }})</span>
   </button>
   {% endfor %}
@@ -30,14 +95,14 @@
 {% endif %}
 
 {% if grouped | length == 0 %}
-<div class="bg-white dark:bg-[#1E293B] rounded-lg p-8 border border-[#E5E7EB] dark:border-[#334155] text-center">
-  <i data-lucide="server-off" class="w-10 h-10 mx-auto mb-3 text-[#6B7280] dark:text-[#CBD5E1]"></i>
-  <p class="text-[#6B7280] dark:text-[#CBD5E1] text-sm">{{ t.no_servers_settings }}</p>
+<div class="bg-card rounded-lg p-8 border border-line text-center">
+  <i data-lucide="server-off" class="w-10 h-10 mx-auto mb-3 text-muted"></i>
+  <p class="text-muted text-sm">{{ t.no_servers_settings }}</p>
 </div>
 {% else %}
   {% for type_key, servers in grouped.items() %}
   <div class="mb-6 last:mb-0">
-    <h3 class="text-sm font-semibold text-[#6B7280] dark:text-[#CBD5E1] uppercase tracking-wider mb-3">
+    <h3 class="text-sm font-semibold text-muted uppercase tracking-wider mb-3">
       {{ type_labels.get(type_key, type_key | replace('_', ' ') | title) }}
       <span class="text-xs font-normal">({{ servers | length }})</span>
     </h3>

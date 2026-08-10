@@ -1,13 +1,174 @@
 /* Prism - Custom Styles */
 
+/* ═══════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS — colour, motion and elevation. Generated from
+   tools/design_tokens.py (TOKENS / MOTION / EASING / ELEVATION).
+   Regenerate with:
+     python -c "import sys;sys.path.insert(0,'.');\
+                from tools import design_tokens as d;print(d.render_css())"
+
+   COLOURS are RGB CHANNELS, not hex, so Tailwind can compose them as
+   rgb(var(--c-x) / <alpha-value>). A bare var() holding a hex silently
+   breaks the opacity modifier, and 329 sites depend on it (bg-critical/10).
+   Durations, easings and shadows are whole values — nothing composes them.
+
+   Do not hand-edit. tests/test_design_tokens.py and
+   tests/test_design_motion.py assert this block matches the Python tables,
+   and templates/base.html maps utility names onto every one of them.
+   ═══════════════════════════════════════════════════════════════════════ */
+/* >>> generated from tools/design_tokens.py — do not edit <<< */
+:root {
+  --c-page: 241 245 249;
+  --c-card: 255 255 255;
+  --c-raised: 232 237 243;
+  --c-field: 255 255 255;
+  --c-line: 203 213 225;
+  --c-ink: 2 6 23;
+  --c-muted: 71 85 105;
+  --c-faint: 100 116 139;
+  --c-brand: 91 33 182;
+  --c-accent: 15 118 110;
+  --c-info: 30 64 175;
+  --c-healthy: 4 108 78;
+  --c-warning: 161 92 7;
+  --c-critical: 166 27 27;
+  --c-critical-tint: 254 226 226;
+  --c-critical-strong: 145 26 26;
+  --c-warning-tint: 254 243 199;
+  --c-warning-strong: 138 78 6;
+  --c-healthy-tint: 209 250 229;
+  --c-healthy-strong: 4 97 63;
+  --c-info-tint: 219 234 254;
+  --c-info-strong: 26 58 160;
+  --c-accent-strong: 11 93 87;
+  --c-accent-tint: 204 251 241;
+  --c-brand-tint: 243 232 255;
+  --c-brand-strong: 107 33 168;
+
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0.05, 0.7, 0.1, 1);
+
+  --shadow-sm: 0 1px 2px 0 rgb(2 6 23 / 0.06);
+  --shadow-md: 0 4px 12px -2px rgb(2 6 23 / 0.10), 0 2px 4px -2px rgb(2 6 23 / 0.06);
+  --shadow-lg: 0 16px 40px -8px rgb(2 6 23 / 0.18), 0 4px 12px -4px rgb(2 6 23 / 0.08);
+}
+
+.dark {
+  --c-page: 5 7 13;
+  --c-card: 15 22 35;
+  --c-raised: 21 30 46;
+  --c-field: 8 14 26;
+  --c-line: 34 49 74;
+  --c-ink: 241 245 249;
+  --c-muted: 163 178 199;
+  --c-faint: 126 141 163;
+  --c-brand: 196 181 253;
+  --c-accent: 45 212 191;
+  --c-info: 147 197 253;
+  --c-healthy: 110 231 183;
+  --c-warning: 252 211 77;
+  --c-critical: 252 165 165;
+  --c-critical-tint: 63 18 20;
+  --c-critical-strong: 252 165 165;
+  --c-warning-tint: 58 38 6;
+  --c-warning-strong: 252 211 77;
+  --c-healthy-tint: 5 48 31;
+  --c-healthy-strong: 110 231 183;
+  --c-info-tint: 20 34 77;
+  --c-info-strong: 147 197 253;
+  --c-accent-strong: 94 234 212;
+  --c-accent-tint: 4 47 46;
+  --c-brand-tint: 88 28 135;
+  --c-brand-strong: 196 181 253;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --shadow-md: 0 4px 14px -2px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.04);
+  --shadow-lg: 0 20px 48px -12px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+/* <<< end generated >>> */
+
+/* ── Reduced motion, once, for everything ─────────────────────────────────
+   There were three of these blocks, covering a canvas, a panel animation and
+   three hover transforms — five rules out of 123 transitions and 33
+   animations. Everything else kept moving for someone who had explicitly
+   asked it not to, and each new transition silently opted out again because
+   honouring the preference meant remembering to add a line.
+
+   Declared here rather than per-rule so the default is "honoured" and an
+   exemption has to be argued for. Two are. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* A spinner that stops is not reduced motion, it is a page that looks
+     broken: the only thing saying the request is still in flight has frozen
+     mid-rotation. WCAG 2.3.3 is about motion triggered by interaction; a
+     progress indicator is essential. Kept, slowed to a third of its speed. */
+  .animate-spin {
+    animation-duration: 2.25s !important;
+    animation-iteration-count: infinite !important;
+  }
+
+  /* The exemption above is spelled by CLASS, not by which animation is
+     actually running on the element — and the downloading/installing icon
+     carries `.animate-spin` for the specificity trick that lets it beat
+     Tailwind's own rule (see `.badge-downloading .animate-spin` below), even
+     though what it is actually running is `badge-travel`, one of the three
+     lifecycle keyframes that deliberately gets NO reduced-motion exemption
+     (colour and the label text already carry the signal). Without this, the
+     class-based exemption leaks through and badge-travel keeps travelling —
+     at 2.25s, a duration inherited from the spinner carve-out, never chosen
+     for it. `.badge-downloading .animate-spin` is (0,2,0), which beats
+     `.animate-spin`'s (0,1,0) even though both are `!important` — importance
+     ties break on specificity, not source order. Rebooting's genuine
+     `rotate-cw.animate-spin` is untouched by this and keeps the exemption
+     above, same as any other real spinner. */
+  .badge-downloading .animate-spin,
+  .badge-installing .animate-spin {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  /* Freezing `badge-border-orbit`'s duration/iteration-count via the blanket
+     rule above stops the dot MOVING, but the pseudo-element itself still
+     renders — parked at `offset-distance: 0%`, its starting position on the
+     badge's own top-left outline: a static glowing dot, permanently, on
+     every restart_required/stabilising badge. That is exactly the artefact
+     `@supports (offset-path: border-box)` exists to keep a pre-116 engine
+     from drawing (see the comment on that block below) — a reduced-motion
+     user on a current engine is not a pre-116 engine and is owed the same
+     "no dot" outcome, not a parked one.
+     Written as `[class~="…"]` rather than the plain dot-class form used
+     everywhere else in this file, on purpose: two already-verified tests
+     locate the @supports-gated rule below by searching for that exact dot-
+     class selector text, and this rule sits ABOVE it in the file — an
+     earlier occurrence of the identical text would make both tests find
+     THIS rule instead and report the @supports gate missing. Same
+     specificity either way, (0,1,1); only the syntax differs. */
+  [class~="badge-restart_required"]::before,
+  [class~="badge-stabilising"]::before {
+    display: none;
+  }
+
+  /* Decorative, and carries no information the numbers do not. */
+  .pulse-canvas { display: none; }
+}
+
 /* Status colors as CSS custom properties */
 :root {
-  --color-healthy: #10B981;
-  --color-warning: #F59E0B;
-  --color-critical: #DC2626;
-  --color-offline: #9CA3AF;
-  --color-info: #2563EB;
-  --color-resolved: #10B981;
+  --color-healthy: rgb(var(--c-healthy));
+  --color-warning: rgb(var(--c-warning));
+  --color-critical: rgb(var(--c-critical));
+  --color-offline: rgb(var(--c-faint));
+  --color-info: rgb(var(--c-info));
+  --color-resolved: rgb(var(--c-healthy));
 
   /* ── Brand palette ──
      Violet base + turquoise accent, mirroring the aperture-ring logo and the
@@ -24,9 +185,9 @@
 }
 
 .dark {
-  --color-warning: #FBBF24;
-  --color-critical: #EF4444;
-  --color-info: #3B82F6;
+  --color-warning: rgb(var(--c-warning));
+  --color-critical: rgb(var(--c-critical));
+  --color-info: rgb(var(--c-info));
 
   /* Brand lifts a step in dark mode for contrast against the slate canvas. */
   --brand-violet:         #A78BFA;
@@ -51,78 +212,189 @@
   letter-spacing: 0.5px;
   line-height: 1.4;
 }
-.badge-healthy  { background: #D1FAE5; color: #065F46; }
-.badge-warning  { background: #FEF3C7; color: #92400E; }
-.badge-critical { background: #FEE2E2; color: #991B1B; }
-.badge-offline  { background: #F3F4F6; color: #4B5563; }
-.badge-resolved { background: #D1FAE5; color: #065F46; }
-.badge-info     { background: #DBEAFE; color: #1E40AF; }
-.badge-unknown  { background: #F3F4F6; color: #4B5563; }
+.badge-healthy  { background: rgb(var(--c-healthy-tint)); color: rgb(var(--c-healthy-strong)); }
+.badge-warning  { background: rgb(var(--c-warning-tint)); color: rgb(var(--c-warning-strong)); }
+.badge-critical { background: rgb(var(--c-critical-tint)); color: rgb(var(--c-critical-strong)); }
+.badge-offline  { background: rgb(var(--c-raised)); color: rgb(var(--c-muted)); }
+.badge-resolved { background: rgb(var(--c-healthy-tint)); color: rgb(var(--c-healthy-strong)); }
+.badge-info     { background: rgb(var(--c-info-tint)); color: rgb(var(--c-info)); }
+.badge-unknown  { background: rgb(var(--c-raised)); color: rgb(var(--c-muted)); }
 
-.dark .badge-healthy  { background: #064E3B; color: #6EE7B7; }
-.dark .badge-warning  { background: #78350F; color: #FCD34D; }
-.dark .badge-critical { background: #7F1D1D; color: #FCA5A5; }
-.dark .badge-offline  { background: #374151; color: #9CA3AF; }
-.dark .badge-resolved { background: #064E3B; color: #6EE7B7; }
-.dark .badge-info     { background: #1E3A5F; color: #93C5FD; }
-.dark .badge-unknown  { background: #374151; color: #9CA3AF; }
+.dark .badge-healthy  { background: rgb(var(--c-healthy-tint)); color: rgb(var(--c-healthy-strong)); }
+.dark .badge-warning  { background: rgb(var(--c-warning-tint)); color: rgb(var(--c-warning-strong)); }
+.dark .badge-critical { background: rgb(var(--c-critical-tint)); color: rgb(var(--c-critical-strong)); }
+.dark .badge-offline  { background: #374151; color: rgb(var(--c-muted)); }
+.dark .badge-resolved { background: rgb(var(--c-healthy-tint)); color: rgb(var(--c-healthy-strong)); }
+.dark .badge-info     { background: #1E3A5F; color: rgb(var(--c-info)); }
+.dark .badge-unknown  { background: #374151; color: rgb(var(--c-muted)); }
 
-.badge-anomaly  { background: #FEF3C7; color: #92400E; }
+.badge-anomaly  { background: rgb(var(--c-warning-tint)); color: rgb(var(--c-warning-strong)); }
 .badge-rate_anomaly { background: #FFF7ED; color: #9A3412; }
-.badge-correlated { background: #EDE9FE; color: #6B21A8; }
+.badge-correlated { background: rgb(var(--c-brand-tint)); color: rgb(var(--c-brand-strong)); }
 
-.dark .badge-anomaly  { background: #78350F; color: #FCD34D; }
+.dark .badge-anomaly  { background: rgb(var(--c-warning-tint)); color: rgb(var(--c-warning-strong)); }
 .dark .badge-rate_anomaly { background: #7C2D12; color: #FDBA74; }
-.dark .badge-correlated { background: #581C87; color: #C4B5FD; }
+.dark .badge-correlated { background: rgb(var(--c-brand-tint)); color: rgb(var(--c-brand-strong)); }
 
-/* Install / restart lifecycle badges. Colours pair with the left-border
-   accent on .server-card (see partials/server_card.html ``_install_border``
-   map). Three rough buckets:
-     * queued / searching     — indigo  ("not started yet, but pending")
-     * downloading / installing — amber  ("active work in progress")
-     * restart_required / rebooting — purple ("waiting on reboot")
-     * stabilising            — green  ("came back, settling")
+/* Install / restart lifecycle badges — the owner's rule:
+     "The icon animates when the machine is working. The border animates
+      when it is waiting on you."
+   Colour is reduced to WHICH hue owns the work, motion to WHETHER the
+   machine or the human is doing something. Three buckets, not four:
+     * queued / searching / downloading — turquoise (accent), fetching
+     * installing / rebooting / restart_required — violet (brand), applying
+       the change or blocked on a human
+     * stabilising — green (healthy), settling back in
+   restart_required is the state that proves the rule: nothing is running on
+   the machine, so its icon (alert-circle, in server_card.html) stays still
+   and only the BORDER circulates — animating the icon there would claim
+   work is underway when the system is actually waiting on a person.
    The lifecycle is owned by routes/api/updates.py and the v2 aggregator;
    the dashboard tile just renders whatever ``install_state.status`` carries.
 */
-.badge-queued            { background: #EDE9FE; color: #4338CA; }
-.badge-searching         { background: #EDE9FE; color: #4338CA; }
-.badge-downloading       { background: #FEF3C7; color: #92400E; }
-.badge-installing        { background: #FEF3C7; color: #92400E; }
-.badge-restart_required  { background: #F3E8FF; color: #6B21A8; }
-.badge-rebooting         { background: #F3E8FF; color: #6B21A8; }
-.badge-stabilising       { background: #D1FAE5; color: #065F46; }
+.badge-queued            { background: rgb(var(--c-accent-tint)); color: rgb(var(--c-accent-strong)); }
+.badge-searching         { background: rgb(var(--c-accent-tint)); color: rgb(var(--c-accent-strong)); }
+.badge-downloading       { background: rgb(var(--c-accent-tint)); color: rgb(var(--c-accent-strong)); }
+.badge-installing        { background: rgb(var(--c-brand-tint));  color: rgb(var(--c-brand-strong)); }
+.badge-restart_required  { background: rgb(var(--c-brand-tint));  color: rgb(var(--c-brand-strong)); }
+.badge-rebooting         { background: rgb(var(--c-brand-tint));  color: rgb(var(--c-brand-strong)); }
+.badge-stabilising       { background: rgb(var(--c-healthy-tint)); color: rgb(var(--c-healthy-strong)); }
 
-.dark .badge-queued            { background: #312E81; color: #C7D2FE; }
-.dark .badge-searching         { background: #312E81; color: #C7D2FE; }
-.dark .badge-downloading       { background: #78350F; color: #FCD34D; }
-.dark .badge-installing        { background: #78350F; color: #FCD34D; }
-.dark .badge-restart_required  { background: #581C87; color: #C4B5FD; }
-.dark .badge-rebooting         { background: #581C87; color: #C4B5FD; }
-.dark .badge-stabilising       { background: #064E3B; color: #6EE7B7; }
+.dark .badge-queued            { background: rgb(var(--c-accent-tint)); color: rgb(var(--c-accent-strong)); }
+.dark .badge-searching         { background: rgb(var(--c-accent-tint)); color: rgb(var(--c-accent-strong)); }
+.dark .badge-downloading       { background: rgb(var(--c-accent-tint)); color: rgb(var(--c-accent-strong)); }
+.dark .badge-installing        { background: rgb(var(--c-brand-tint));  color: rgb(var(--c-brand-strong)); }
+.dark .badge-restart_required  { background: rgb(var(--c-brand-tint));  color: rgb(var(--c-brand-strong)); }
+.dark .badge-rebooting         { background: rgb(var(--c-brand-tint));  color: rgb(var(--c-brand-strong)); }
+.dark .badge-stabilising       { background: rgb(var(--c-healthy-tint)); color: rgb(var(--c-healthy-strong)); }
+
+/* ── Lifecycle motion ──────────────────────────────────────────────────────
+   Rendered by partials/server_card.html: downloading/installing get a lucide
+   "loader" icon with Tailwind's own `.animate-spin`; rebooting gets
+   "rotate-cw" with the same class; stabilising and restart_required get a
+   static icon (check-circle / alert-circle) with no spin class at all.
+
+   `searching` has its carrier now: a `search` magnifier icon, added in the
+   `{% elif istatus == 'searching' %}` branch of that template's icon chain.
+   `test_the_searching_icon_carrier_exists_in_server_card` (test_design_
+   motion.py) pins the branch so a future edit that deletes it fails loudly
+   instead of leaving the sway rule below matching nothing.
+
+   Everything here animates `transform`/`opacity` only, never a colour or a
+   border property directly, per the composite-friendliness requirement —
+   these badges can appear 29-to-a-page. */
+
+/* downloading / installing: Tailwind's `.animate-spin` ROTATES the loader
+   glyph, which reads as "busy" — indistinguishable from rebooting. Overridden
+   to travel top-to-bottom instead. `.badge-x .animate-spin` is two classes,
+   (0,2,0), which beats Tailwind's own `.animate-spin` (0,1,0) regardless of
+   which stylesheet loads last — no !important needed. */
+.badge-downloading .animate-spin,
+.badge-installing .animate-spin {
+  animation: badge-travel 1.2s var(--ease-standard) infinite;
+}
+@keyframes badge-travel {
+  0%   { transform: translateY(-2px); opacity: 0.45; }
+  50%  { transform: translateY(1px);  opacity: 1; }
+  100% { transform: translateY(-2px); opacity: 0.45; }
+}
+
+/* searching: sways, does NOT rotate — a spin is the universal "busy" glyph
+   and would make searching read as rebooting. Targets the `search`
+   magnifier icon rendered by server_card.html's `searching` branch. */
+.badge-searching svg,
+.badge-searching i {
+  animation: badge-sway 1.8s var(--ease-standard) infinite;
+}
+@keyframes badge-sway {
+  0%, 100% { transform: translateX(-2px); }
+  50%      { transform: translateX(2px); }
+}
+
+/* restart_required / stabilising: the BORDER circulates, the icon (where
+   there is one) is left with no animation rule at all — stillness is the
+   point for restart_required, and stabilising never had a spin class to
+   begin with.
+
+   FIRST attempt was a pseudo-element with a static conic-gradient, masked
+   to a ring and spun via `transform: rotate()`. Measured in the browser
+   before shipping it: a conic-gradient's angles are in the box's own
+   coordinate space, so on a ~7:1 pill (this badge, not a square button) the
+   "comet" stretches enormously near the flat top/bottom edges and pinches
+   near the rounded ends — a long diagonal streak bleeding past the badge,
+   not a ring. A square debug element right next to it, same rule, looked
+   perfect; only the aspect ratio was different. Screenshotted both before
+   changing approach.
+
+   Replaced with a small dot travelling the ACTUAL border outline via
+   `offset-path: border-box` + an animated `offset-distance` — motion path is
+   built for exactly this (uniform speed around whatever the real geometry
+   is, corners included) and does not care about aspect ratio. Still not a
+   colour/paint property doing the animating: only the dot's position moves,
+   the badge's own fill and label are untouched. `currentColor` ties the dot
+   to the same brand/healthy-strong colour as the label, so no new colour is
+   introduced. `linear`, not `var(--ease-standard)`: any deceleration on a
+   full-lap loop is a visible speed-up/slow-down every lap — the same reason
+   Tailwind's own `.animate-spin` ships linear. */
+.badge-restart_required,
+.badge-stabilising {
+  position: relative;
+}
+/* Gated on support, and the gate is load-bearing rather than defensive
+   boilerplate. `offset-path: border-box` is Chromium 116+ / Firefox 122+.
+   Where it is missing the declaration is simply dropped — but the rest of
+   the rule is not, so the dot keeps `position:absolute; top:0; left:0;
+   margin:-2.5px` and renders STATIC, 2px outside the badge's top-left
+   corner. Measured. That is not "the animation is unavailable", it is a
+   stray red dot that looks like a rendering fault.
+   Inside @supports, an engine without motion path draws no dot at all,
+   which is what degrading gracefully actually means here. */
+@supports (offset-path: border-box) {
+  .badge-restart_required::before,
+  .badge-stabilising::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 5px;
+    height: 5px;
+    margin: -2.5px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 4px 1px currentColor;
+    offset-path: border-box;
+    offset-distance: 0%;
+    opacity: 0.85;
+    pointer-events: none;
+    animation: badge-border-orbit 1.8s linear infinite;
+  }
+}
+@keyframes badge-border-orbit {
+  to { offset-distance: 100%; }
+}
 
 /* Progress bar */
 .metric-bar {
   height: 8px;
   border-radius: 4px;
-  background: #E5E7EB;
+  background: rgb(var(--c-line));
   overflow: hidden;
 }
 .dark .metric-bar {
-  background: #334155;
+  background: rgb(var(--c-line));
 }
 .metric-bar-fill {
   height: 100%;
   border-radius: 4px;
-  transition: width 0.6s ease;
+  transition: width var(--dur-slow) var(--ease-standard);
 }
 
 /* Server card hover */
 .server-card {
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  transition: box-shadow var(--dur-fast) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
 }
 .server-card:hover {
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-md);
   transform: translateY(-1px);
 }
 
@@ -147,7 +419,7 @@
 /* Timeline dots for new event types */
 .timeline-dot-anomaly  { background: var(--color-warning); }
 .timeline-dot-rate_anomaly { background: #F97316; }
-.timeline-dot-correlated { background: #8B5CF6; }
+.timeline-dot-correlated { background: rgb(var(--c-brand)); }
 
 /* Metric number (monospace, large) */
 .metric-value {
@@ -158,33 +430,365 @@
 }
 
 /* Smooth HTMX transitions */
-.htmx-swapping { opacity: 0; transition: opacity 0.1s ease; }
-.htmx-settling { opacity: 1; transition: opacity 0.2s ease; }
+.htmx-swapping { opacity: 0; transition: opacity var(--dur-fast) var(--ease-standard); }
+.htmx-settling { opacity: 1; transition: opacity var(--dur-base) var(--ease-standard); }
 
-/* Scrollbar styling — light mode */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: #F1F5F9; border-radius: 4px; }
-::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+/* Scrollbar — the THUMB carries the brand violet, the track stays neutral.
+   Colouring the whole gutter turns every scrollable panel into a violet
+   stripe; colouring only the part that moves reads as a control.
+   Translucent at rest so it sits under the content rather than on top of
+   it, and solid on hover so grabbing it is unambiguous.
 
-/* Scrollbar styling — dark mode */
-.dark ::-webkit-scrollbar-track { background: #1E293B; }
-.dark ::-webkit-scrollbar-thumb { background: #475569; }
-.dark ::-webkit-scrollbar-thumb:hover { background: #64748B; }
+   The track is transparent, not a fill. A filled gutter is a second
+   vertical line beside the card's own border, and at a 16px radius the two
+   disagree about where the corner is. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+/* No stepper arrows. They are two more grey marks competing with the thumb
+   for the same 10px, and the only moving part should be the one you can
+   actually grab. Chromium draws them at both ends of the PAGE scrollbar
+   once ::-webkit-scrollbar is styled at all; the in-card bars never had
+   them, which is why this is easy to miss. */
+::-webkit-scrollbar-button { display: none; }
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--c-brand) / 0.35);
+  border-radius: 999px;
+  /* Inset via a transparent border so the thumb is a floating pill rather
+     than a bar welded to the edge. background-clip keeps the border clear. */
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--c-brand) / 0.75); background-clip: content-box; }
+::-webkit-scrollbar-corner { background: transparent; }
 
-/* Firefox scrollbar */
-* { scrollbar-width: thin; scrollbar-color: #CBD5E1 #F1F5F9; }
-.dark * { scrollbar-color: #475569 #1E293B; }
+.dark ::-webkit-scrollbar-thumb { background: rgb(var(--c-brand) / 0.30); background-clip: content-box; }
+.dark ::-webkit-scrollbar-thumb:hover { background: rgb(var(--c-brand) / 0.70); background-clip: content-box; }
 
-/* Number input spinner arrows — dark mode fix */
-.dark input[type="number"]::-webkit-inner-spin-button,
-.dark input[type="number"]::-webkit-outer-spin-button {
-  filter: invert(1);
+/* Firefox: thumb then track. No pseudo-elements, so no inset pill. */
+* { scrollbar-width: thin; scrollbar-color: rgb(var(--c-brand) / 0.45) transparent; }
+.dark * { scrollbar-color: rgb(var(--c-brand) / 0.40) transparent; }
+
+/* Native widgets follow the theme, and their highlight is the brand violet.
+
+   `color-scheme` is declared once at the root instead of patched per widget.
+   It was previously set only on `select`, with number spinners separately
+   faked via `filter: invert(1)` — which inverts the whole spin-button box,
+   not the arrows in it. Declaring the scheme makes the browser draw dark
+   spinners, dropdown popups, autofill chrome and text-selection handles
+   itself, all of which the per-widget patches missed.
+
+   `accent-color` tints the 48 checkboxes. It does NOT reach the number
+   spinner: measured, the arrows stay grey with `accent-color` set. See the
+   note on the spinner below. */
+:root { color-scheme: light; accent-color: rgb(var(--c-brand)); }
+.dark { color-scheme: dark; }
+
+/* ── Every affordance the brand can own, owns the brand ──────────────────
+   Focus, caret, selection and the select chevron were four different
+   colours — or the browser's. They all answer the same question, "the
+   interface is responding to you", and answering it in violet everywhere is
+   what makes the app feel like one thing. */
+
+/* The text cursor. Free, and it is the first thing that moves when you
+   click into a field. */
+input, textarea, select, [contenteditable] {
+  caret-color: rgb(var(--c-brand));
 }
 
-/* Select dropdown arrow — dark mode fix */
+/* Selected text. The browser default is a blue nobody chose. Kept light
+   enough that the text on top stays readable — a solid brand fill on
+   #020617 ink is 4.1:1, below AA, so this is a wash rather than a fill. */
+::selection {
+  background: rgb(var(--c-brand) / 0.28);
+  color: rgb(var(--c-ink));
+}
+
+/* The select chevron. Unlike the number spinner, `appearance: none` on a
+   <select> costs nothing — the popup opens on a click anywhere in the
+   control, not on the arrow — so the arrow is ours to draw. Inlined as a
+   data URI because a strict CSP blocks nothing here but an external request
+   for a 300-byte triangle is silly.
+   `currentColor` is not available inside a data URI, so the stroke is the
+   brand hex for each theme, and a test asserts both match the token. */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' stroke='%235B21B6' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px 8px;
+}
+/* The chevron needs room, and `padding-right` here loses to Tailwind's
+   `px-2` — same specificity, and the runtime build injects its stylesheet
+   after this one. `select[class]` is (0,1,1) against a utility's (0,1,0), so
+   it wins without `!important`. Measured: every select in the app carries a
+   `px-*` utility, so the plain rule above applied to none of them and a long
+   option label would have run under the arrow. */
+select[class] { padding-right: 1.9rem; }
+select[multiple][class], select[size]:not([size="1"])[class] {
+  padding-right: 0.5rem;
+}
 .dark select {
-  color-scheme: dark;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' stroke='%23C4B5FD' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+/* A multiple/size select is a list, not a dropdown — no chevron to draw. */
+select[multiple], select[size]:not([size="1"]) {
+  background-image: none;
+  padding-right: 10px;
+}
+
+/* The time/date picker button. Chromium draws it as a grey glyph and
+   `::-webkit-calendar-picker-indicator` DOES accept a background, unlike the
+   number spinner — clicking it opens the picker rather than performing the
+   widget's own logic, so replacing the image costs nothing. 7 time fields. */
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator,
+input[type="week"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235B21B6' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E");
+  background-size: 14px 14px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.dark input[type="time"]::-webkit-calendar-picker-indicator,
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.dark input[type="month"]::-webkit-calendar-picker-indicator,
+.dark input[type="week"]::-webkit-calendar-picker-indicator {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23C4B5FD' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E");
+}
+
+/* ── Number field: a real stepper, in violet ──────────────────────────────
+   The native spinner cannot be recoloured. `accent-color` does not reach it,
+   a `filter` tints the whole spin-button box rather than the arrows in it,
+   and `appearance: none` plus a drawn background takes click-to-increment
+   with it — the widget IS the behaviour.
+
+   So the widget goes and the behaviour is rebuilt: two buttons calling
+   stepUp()/stepDown(), which also fixes what the native one never did —
+   they respect min/max/step, fire `input` and `change` so existing listeners
+   see the edit, and are reachable by keyboard.
+
+   Wired in static/js/stepper.js. This block styles what that injects. */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+input[type="number"] { -moz-appearance: textfield; }
+
+.stepper { position: relative; display: inline-flex; }
+/* Applied by stepper.js when the input it wrapped was `w-full`. */
+.stepper--block { display: flex; width: 100%; }
+.stepper--block > input { width: 100%; }
+/* Beats the `px-*` utility every one of these carries, same reason as the
+   select chevron: equal specificity, and Tailwind's sheet is injected last. */
+.stepper > input[class] { padding-right: 1.35rem; }
+.stepper-btns {
+  position: absolute;
+  right: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.stepper-btn {
+  display: block;
+  width: 13px;
+  height: 9px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgb(var(--c-brand));
+  cursor: pointer;
+  line-height: 0;
+  border-radius: 2px;
+  opacity: 0.55;
+  transition: opacity var(--dur-fast) var(--ease-standard);
+}
+.stepper:hover .stepper-btn,
+.stepper-btn:focus-visible { opacity: 1; }
+.stepper-btn:hover { opacity: 1; }
+.stepper-btn svg { width: 9px; height: 6px; display: block; margin: auto; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   INTERACTION MODEL — what hover means, what focus means, and what
+   "you cannot click this" looks like.
+
+   Three states, three different jobs, deliberately not the same treatment:
+
+     HOVER   "this responds to a click". Shape and depth only, NO colour —
+             a colour change on hover competes with the status colours,
+             which are the thing on this screen you actually have to read.
+     FOCUS   "you are here, and typing goes into this". Brand violet, and
+             the only one of the three that uses colour.
+     DISABLED "this exists but not now, and here is why". Faded, but never
+             below readable, with the reason attached.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Hover: feedback without colour ─────────────────────────────────────
+   A field says "clickable" by lifting its border a shade and warming its
+   surface a fraction. Both are within the neutral ramp, so nothing on the
+   page has to compete with it. */
+input:not([disabled]):not([readonly]),
+textarea:not([disabled]):not([readonly]),
+select:not([disabled]) {
+  transition: border-color var(--dur-fast) var(--ease-standard),
+              background-color var(--dur-fast) var(--ease-standard),
+              box-shadow var(--dur-base) var(--ease-standard);
+}
+input:not([disabled]):not([readonly]):hover,
+textarea:not([disabled]):not([readonly]):hover,
+select:not([disabled]):hover {
+  border-color: rgb(var(--c-muted) / 0.6);
+}
+
+/* ── Focus: the only place colour is spent ──────────────────────────────
+   Applied on :focus-visible so a mouse click on a BUTTON does not ring it,
+   while clicking into a text field still does — the browser treats a click
+   into an editable field as focus-visible, because typing follows.
+
+   The ring fades rather than snaps, in both directions: `box-shadow` is on
+   the base transition above, so leaving the field eases it out over
+   --dur-base instead of cutting. Requested as "fade slowly out".
+
+   NOT REMOVED WHILE THE FIELD STILL HAS FOCUS. A ring that disappears when
+   the pointer wanders off would leave a keyboard user with no idea where
+   they are, which is WCAG 2.4.7. The fade is on losing focus. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[contenteditable]:focus-visible {
+  outline: none;
+  border-color: rgb(var(--c-brand));
+  box-shadow: 0 0 0 3px rgb(var(--c-brand) / 0.25);
+}
+
+/* ── Clickable cards lift; the rest hold still ──────────────────────────
+   The distinction has to be visible BEFORE the click, or every card is an
+   invitation and most of them are a disappointment. Opt-in: a card lifts
+   only when it is marked clickable, so a plain panel stays a plain panel. */
+.card-clickable,
+a.server-card,
+button.server-card {
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-standard),
+              box-shadow var(--dur-fast) var(--ease-standard),
+              border-color var(--dur-fast) var(--ease-standard);
+}
+.card-clickable:hover,
+a.server-card:hover,
+button.server-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: rgb(var(--c-brand) / 0.35);
+}
+.card-clickable:active,
+a.server-card:active,
+button.server-card:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Disabled: faded, still readable, and it says why ───────────────────
+   `opacity: 0.5` is the reflex and it is wrong — it drags a 7.6:1 label to
+   about 3.4:1, under AA, so the one state where the user most needs to read
+   the label is the state where they cannot. 0.72 keeps `muted` on `card`
+   above 4.5:1 while still reading as unavailable.
+
+   `cursor: not-allowed` says THAT it is unavailable. The reason is a
+   `data-tip-title`/`data-tip-desc` pair on the same element — see the
+   tooltip below. A disabled control with no reason is a dead end. */
+[disabled],
+[aria-disabled="true"],
+.is-disabled {
+  opacity: 0.72;
+}
+/* Element-qualified, because Tailwind's preflight ships
+   `:disabled { cursor: default }` and its sheet is injected after this one.
+   Equal specificity means later wins, so a bare `[disabled]` rule set the
+   opacity and silently lost the cursor — the control looked unavailable and
+   still reported itself as ordinary to the pointer. (0,1,1) beats (0,1,0). */
+input[disabled], button[disabled], select[disabled], textarea[disabled],
+fieldset[disabled], optgroup[disabled], option[disabled],
+[aria-disabled="true"], .is-disabled {
+  cursor: not-allowed;
+}
+[disabled]:hover,
+[aria-disabled="true"]:hover,
+.is-disabled:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: rgb(var(--c-line));
+}
+/* A disabled control must not also claim to be focusable-and-ready. */
+[disabled]:focus-visible,
+[aria-disabled="true"]:focus-visible {
+  box-shadow: 0 0 0 3px rgb(var(--c-faint) / 0.25);
+  border-color: rgb(var(--c-faint));
+}
+
+/* ── Skeletons — a ghost of the thing, not a spinner ────────────────────
+   A spinner says "wait" and nothing else: the layout is still unknown, so
+   the page jumps when data lands. A skeleton is already the right size, so
+   the arrival is a fill rather than a reflow, and the shape tells you what
+   is coming.
+
+   The sweep is a background-position animation on a gradient, which the
+   compositor can run on its own; animating `opacity` on hundreds of these
+   would not. Honoured by the global reduced-motion rule above — it becomes
+   a flat block, which still holds the space. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm, 0.5rem);
+  background: rgb(var(--c-raised));
+  /* Nothing inside is real yet. */
+  color: transparent;
+  user-select: none;
+  pointer-events: none;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--c-line) / 0.55) 45%,
+    rgb(var(--c-line) / 0.55) 55%,
+    transparent 100%);
+  background-size: 220% 100%;
+  animation: skeleton-sweep 1.4s var(--ease-standard) infinite;
+}
+.dark .skeleton::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--c-muted) / 0.14) 45%,
+    rgb(var(--c-muted) / 0.14) 55%,
+    transparent 100%);
+  background-size: 220% 100%;
+}
+@keyframes skeleton-sweep {
+  from { background-position: 120% 0; }
+  to   { background-position: -120% 0; }
+}
+/* Text-shaped ghosts. `--lines` sets how many. */
+.skeleton-text { height: 0.75em; margin: 0.35em 0; }
+.skeleton-text:last-child { width: 60%; }
+
+/* Real content replacing a skeleton fades in rather than appearing, so the
+   swap reads as the same object resolving instead of two different frames. */
+.data-settled { animation: data-in var(--dur-slow) var(--ease-out); }
+@keyframes data-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: none; }
 }
 
 /* ── Sidebar ── */
@@ -194,24 +798,24 @@
   gap: 12px;
   padding: 8px 10px;
   border-radius: 6px;
-  color: #6B7280;
+  color: rgb(var(--c-muted));
   font-size: 14px;
   font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
   overflow: hidden;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
 }
 .sidebar-link:hover {
   background: #F1F5F9;
-  color: #1F2937;
+  color: rgb(var(--c-ink));
 }
 .dark .sidebar-link {
-  color: #CBD5E1;
+  color: rgb(var(--c-muted));
 }
 .dark .sidebar-link:hover {
-  background: #334155;
-  color: #F8FAFC;
+  background: rgb(var(--c-line));
+  color: rgb(var(--c-ink));
 }
 .sidebar-link-active {
   background: var(--brand-violet-tint);
@@ -241,7 +845,7 @@
   height: 62%;
   border-radius: 0 3px 3px 0;
   background: var(--brand-grad);
-  box-shadow: 0 0 6px rgba(139, 92, 246, 0.45);
+  box-shadow: 0 0 6px rgb(var(--c-brand) / 0.45);
 }
 /* Collapsed rail centres icons, so anchor the accent bar to the edge only. */
 .sidebar-collapsed .sidebar-link-active::before { height: 50%; }
@@ -278,17 +882,17 @@
   top: 56px; /* below the 14/h-14 topbar */
   z-index: 35;
   padding: 10px 16px;
-  background: #FEF3C7;
-  border-bottom: 1px solid #F59E0B;
-  color: #92400E;
+  background: rgb(var(--c-warning-tint));
+  border-bottom: 1px solid rgb(var(--c-warning));
+  color: rgb(var(--c-warning-strong));
   font-size: 14px;
   font-weight: 500;
   margin-left: 0;
 }
 .dark .htmx-error-banner {
-  background: #78350F;
-  border-bottom-color: #FBBF24;
-  color: #FCD34D;
+  background: rgb(var(--c-warning-tint));
+  border-bottom-color: rgb(var(--c-warning));
+  color: rgb(var(--c-warning-strong));
 }
 
 /* ── Breadcrumb ── */
@@ -297,13 +901,13 @@
   margin: 0 auto;
   padding: 12px 16px 0;
   font-size: 13px;
-  color: #6B7280;
+  color: rgb(var(--c-muted));
   display: flex;
   align-items: center;
   gap: 6px;
 }
 .dark .breadcrumb {
-  color: #9CA3AF;
+  color: rgb(var(--c-muted));
 }
 .breadcrumb a {
   color: var(--brand-violet);
@@ -316,7 +920,7 @@
   color: var(--brand-violet-lite);
 }
 .breadcrumb .breadcrumb-sep {
-  color: #9CA3AF;
+  color: rgb(var(--c-faint));
   font-size: 11px;
   user-select: none;
 }
@@ -353,13 +957,13 @@
   padding: 4px 8px;
   border-radius: 6px;
   user-select: none;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--dur-fast) var(--ease-standard);
 }
 .collector-pulse:hover {
   background-color: #F1F5F9;
 }
 .dark .collector-pulse:hover {
-  background-color: #334155;
+  background-color: rgb(var(--c-line));
 }
 
 .pulse-dot {
@@ -367,15 +971,15 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #6B7280;
+  background-color: rgb(var(--c-muted));
   flex-shrink: 0;
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  transition: background-color var(--dur-slow) var(--ease-standard), box-shadow var(--dur-slow) var(--ease-standard);
 }
-.pulse-dot--warming  { background-color: #8B5CF6; box-shadow: 0 0 6px rgba(139, 92, 246, 0.6); }
-.pulse-dot--healthy  { background-color: #10B981; box-shadow: 0 0 6px rgba(16, 185, 129, 0.6); }
-.pulse-dot--degraded { background-color: #F59E0B; box-shadow: 0 0 6px rgba(245, 158, 11, 0.7); }
-.pulse-dot--critical { background-color: #DC2626; box-shadow: 0 0 8px rgba(220, 38, 38, 0.8); animation: pulse-blink 1.2s ease-in-out infinite; }
-.pulse-dot--dead     { background-color: #6B7280; box-shadow: none; animation: pulse-blink 1.8s ease-in-out infinite; }
+.pulse-dot--warming  { background-color: rgb(var(--c-brand)); box-shadow: 0 0 6px rgb(var(--c-brand) / 0.6); }
+.pulse-dot--healthy  { background-color: rgb(var(--c-healthy)); box-shadow: 0 0 6px rgb(var(--c-healthy) / 0.6); }
+.pulse-dot--degraded { background-color: rgb(var(--c-warning)); box-shadow: 0 0 6px rgb(var(--c-warning) / 0.7); }
+.pulse-dot--critical { background-color: rgb(var(--c-critical)); box-shadow: 0 0 8px rgb(var(--c-critical) / 0.8); animation: pulse-blink 1.2s ease-in-out infinite; }
+.pulse-dot--dead     { background-color: rgb(var(--c-muted)); box-shadow: none; animation: pulse-blink 1.8s ease-in-out infinite; }
 
 @keyframes pulse-blink {
   0%, 100% { opacity: 1; }
@@ -390,12 +994,12 @@
 .pulse-counter {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
-  color: #6B7280;
+  color: rgb(var(--c-muted));
   min-width: 38px;
   text-align: right;
 }
 .dark .pulse-counter {
-  color: #CBD5E1;
+  color: rgb(var(--c-muted));
 }
 
 /* Own error indicator — sibling of #collector-pulse, owned solely by
@@ -405,7 +1009,7 @@
 .pulse-error {
   display: none;
   align-items: center;
-  color: #DC2626;
+  color: rgb(var(--c-critical));
   margin-left: 4px;
   cursor: help;
 }
@@ -416,11 +1020,6 @@
 /* Reduced-motion: hide the live canvas entirely. The dot + counter still
    convey state through colour + numbers. Per WCAG 2.3.3, users requesting
    reduced motion expect NO continuous animation. */
-@media (prefers-reduced-motion: reduce) {
-  .pulse-canvas { display: none; }
-  .pulse-dot--critical, .pulse-dot--dead { animation: none; }
-}
-
 /* ── Hover dropdown panel ───────────────────────────────────────────── */
 
 .pulse-panel {
@@ -430,40 +1029,36 @@
   width: 480px;
   max-height: calc(100vh - 80px);
   overflow-y: auto;
-  background: #FFFFFF;
-  border: 1px solid #E5E7EB;
+  background: rgb(var(--c-card));
+  border: 1px solid rgb(var(--c-line));
   border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-lg);
   padding: 12px 14px;
   z-index: 50;
   font-size: 12px;
-  color: #1F2937;
-  animation: pulse-panel-in 0.15s ease-out;
+  color: rgb(var(--c-ink));
+  animation: pulse-panel-in var(--dur-fast) var(--ease-out);
 }
 .dark .pulse-panel {
-  background: #1E293B;
-  border-color: #334155;
-  color: #F8FAFC;
+  background: rgb(var(--c-card));
+  border-color: rgb(var(--c-line));
+  color: rgb(var(--c-ink));
 }
 
 @keyframes pulse-panel-in {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-@media (prefers-reduced-motion: reduce) {
-  .pulse-panel { animation: none; }
-}
-
 .pulse-panel-head {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   padding-bottom: 8px;
   margin-bottom: 8px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid rgb(var(--c-line));
 }
 .dark .pulse-panel-head {
-  border-bottom-color: #334155;
+  border-bottom-color: rgb(var(--c-line));
 }
 
 .pulse-panel-title {
@@ -472,22 +1067,22 @@
 }
 .pulse-panel-title--healthy  { color: #059669; }
 .pulse-panel-title--degraded { color: #D97706; }
-.pulse-panel-title--critical { color: #DC2626; }
-.pulse-panel-title--dead     { color: #6B7280; }
+.pulse-panel-title--critical { color: rgb(var(--c-critical)); }
+.pulse-panel-title--dead     { color: rgb(var(--c-muted)); }
 .pulse-panel-title--warming  { color: #7C3AED; }
-.dark .pulse-panel-title--healthy  { color: #34D399; }
-.dark .pulse-panel-title--degraded { color: #FBBF24; }
+.dark .pulse-panel-title--healthy  { color: rgb(var(--c-healthy)); }
+.dark .pulse-panel-title--degraded { color: rgb(var(--c-warning)); }
 .dark .pulse-panel-title--critical { color: #F87171; }
-.dark .pulse-panel-title--dead     { color: #9CA3AF; }
-.dark .pulse-panel-title--warming  { color: #A78BFA; }
+.dark .pulse-panel-title--dead     { color: rgb(var(--c-muted)); }
+.dark .pulse-panel-title--warming  { color: rgb(var(--c-brand)); }
 
 .pulse-panel-bpm {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
-  color: #6B7280;
+  color: rgb(var(--c-muted));
 }
 .dark .pulse-panel-bpm {
-  color: #CBD5E1;
+  color: rgb(var(--c-muted));
 }
 
 .pulse-section {
@@ -499,14 +1094,14 @@
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.05em;
-  color: #6B7280;
+  color: rgb(var(--c-muted));
   margin-bottom: 4px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 .dark .pulse-section-label {
-  color: #94A3B8;
+  color: rgb(var(--c-muted));
 }
 
 .pulse-section-count {
@@ -524,19 +1119,19 @@
   line-height: 1.5;
 }
 .pulse-row:hover {
-  background-color: #F9FAFB;
+  background-color: rgb(var(--c-page));
 }
 .dark .pulse-row:hover {
-  background-color: #334155;
+  background-color: rgb(var(--c-line));
 }
 
 .pulse-row--empty {
-  color: #9CA3AF;
+  color: rgb(var(--c-faint));
   font-style: italic;
   justify-content: center;
 }
 .pulse-row--fail .pulse-meta {
-  color: #DC2626;
+  color: rgb(var(--c-critical));
 }
 .dark .pulse-row--fail .pulse-meta {
   color: #F87171;
@@ -545,7 +1140,7 @@
   color: #059669;
 }
 .dark .pulse-row--ok .pulse-meta {
-  color: #34D399;
+  color: rgb(var(--c-healthy));
 }
 
 .pulse-srv {
@@ -554,23 +1149,23 @@
 }
 
 .pulse-meta {
-  color: #6B7280;
+  color: rgb(var(--c-muted));
   font-size: 10.5px;
 }
 .dark .pulse-meta {
-  color: #CBD5E1;
+  color: rgb(var(--c-muted));
 }
 
 .pulse-section--subs {
   margin-top: 12px;
   padding-top: 10px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid rgb(var(--c-line));
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4px 12px;
 }
 .dark .pulse-section--subs {
-  border-top-color: #334155;
+  border-top-color: rgb(var(--c-line));
 }
 
 .pulse-sub {
@@ -579,15 +1174,15 @@
   font-size: 11px;
 }
 .pulse-sub--ok   { color: #059669; }
-.pulse-sub--fail { color: #DC2626; }
-.dark .pulse-sub--ok   { color: #34D399; }
+.pulse-sub--fail { color: rgb(var(--c-critical)); }
+.dark .pulse-sub--ok   { color: rgb(var(--c-healthy)); }
 .dark .pulse-sub--fail { color: #F87171; }
 
 .pulse-cta {
   display: block;
   margin-top: 12px;
   padding-top: 10px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid rgb(var(--c-line));
   text-align: center;
   font-size: 11px;
   font-weight: 500;
@@ -599,7 +1194,7 @@
   text-decoration: underline;
 }
 .dark .pulse-cta {
-  border-top-color: #334155;
+  border-top-color: rgb(var(--c-line));
   color: var(--brand-violet-lite);
 }
 .dark .pulse-cta:hover {
@@ -638,7 +1233,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
 @media (max-width: 767px) {
   #main-content { margin-left: 0 !important; }
   #sidebar { transform: translateX(-100%); }
-  #sidebar.sidebar-mobile-open { transform: translateX(0); box-shadow: 0 10px 40px rgba(0,0,0,0.45); }
+  #sidebar.sidebar-mobile-open { transform: translateX(0); box-shadow: var(--shadow-lg); }
   #sidebar-backdrop {
     position: fixed; inset: 3.5rem 0 0 0; z-index: 40;
     background: rgba(0,0,0,0.4);
@@ -670,14 +1265,14 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: #8B5CF6; /* fallback where background-clip:text is unsupported */
+  color: rgb(var(--c-brand)); /* fallback where background-clip:text is unsupported */
   background: linear-gradient(95deg, #7C3AED 0%, #8B5CF6 58%, #2DD4BF 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 .dark .prism-wordmark {
-  color: #A78BFA;
+  color: rgb(var(--c-brand));
   background: linear-gradient(95deg, #A78BFA 0%, #B79CFA 55%, #5EEAD4 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -704,11 +1299,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
    selector would override it (un-sticking the bar). `position: fixed` is itself
    a positioned ancestor, so the ::after accent anchors to it correctly. */
 #topbar {
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--shadow-sm);
 }
 .dark #topbar {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.40);
-  border-color: #334155;
+  border-color: rgb(var(--c-line));
 }
 /* Violet→turquoise accent hairline under the bar: strong violet under the logo
    on the left, sliding into turquoise, then dissolving so the right side (pulse
@@ -739,7 +1333,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   background-image: var(--brand-grad);
   color: #fff;
   border: none;
-  transition: filter 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  transition: filter var(--dur-fast) var(--ease-standard), transform var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard);
 }
 .btn-brand:hover {
   filter: brightness(1.05);
@@ -756,23 +1350,18 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
    Inactive links nudge right on hover (HUD feel). Active links hold still —
    their accent bar already marks them. */
 .sidebar-link {
-  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  transition: background var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
 }
 .sidebar-link:not(.sidebar-link-active):hover {
   transform: translateX(2px);
 }
 
-/* Scrollbar thumb picks up a faint violet on hover to match the chrome. */
-::-webkit-scrollbar-thumb:hover { background: #B4A0E8; }
-.dark ::-webkit-scrollbar-thumb:hover { background: #7E6BB0; }
+/* The scrollbar's violet hover used to live here, 600 lines after the rest
+   of the scrollbar rules, silently overriding them. It has moved up with
+   its siblings — a second copy also dropped the `background-clip`, so the
+   thumb lost its inset pill shape at exactly the moment you touched it. */
 
 /* Honour reduced-motion for every transform/lift added in this round. */
-@media (prefers-reduced-motion: reduce) {
-  .sidebar-link:not(.sidebar-link-active):hover,
-  .btn-brand:hover,
-  .btn-brand:active { transform: none; }
-}
-
 /* ── "All systems healthy" banner, once dismissed ──────────────────────────
    The banner lives in a partial swapped with hx-swap="morph:innerHTML" on
    every prismRefresh (~5s under collector v2). Hiding it from JS after the

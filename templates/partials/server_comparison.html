@@ -23,12 +23,12 @@
      SECTION 4 — Server Comparison
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-6">
+  <div class="bg-card rounded-lg border border-line p-6">
     <h2 class="text-lg font-semibold mb-1 flex items-center gap-2">
-      <i data-lucide="bar-chart-3" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+      <i data-lucide="bar-chart-3" class="w-5 h-5 text-info"></i>
       {{ t.server_comparison }}
     </h2>
-    <p class="text-xs text-[#6B7280] dark:text-[#94A3B8] mb-4">{{ t.comparison_desc }}</p>
+    <p class="text-xs text-muted mb-4">{{ t.comparison_desc }}</p>
 
     <!-- Controls -->
     <div class="flex flex-wrap items-end gap-3 mb-4">
@@ -38,66 +38,66 @@
         <div class="flex flex-wrap items-center gap-1.5 mb-2">
           <input type="search" id="compare-filter" data-input="compareFilterServers"
                  placeholder="{{ t.get('filter_servers', 'Filter servers...') }}"
-                 class="text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1 w-40"
+                 class="text-xs rounded border border-line bg-field px-2 py-1 w-40"
                  autocomplete="off">
-          <button data-action="compareSelectAll" class="text-[11px] px-2 py-1 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.get('select_all', 'All') }}</button>
-          <button data-action="compareSelectNone" class="text-[11px] px-2 py-1 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.get('select_none', 'None') }}</button>
-          <button data-action="compareInvert" class="text-[11px] px-2 py-1 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.get('select_invert', 'Invert') }}</button>
+          <button data-action="compareSelectAll" class="text-[11px] px-2 py-1 rounded border border-line hover:bg-page">{{ t.get('select_all', 'All') }}</button>
+          <button data-action="compareSelectNone" class="text-[11px] px-2 py-1 rounded border border-line hover:bg-page">{{ t.get('select_none', 'None') }}</button>
+          <button data-action="compareInvert" class="text-[11px] px-2 py-1 rounded border border-line hover:bg-page">{{ t.get('select_invert', 'Invert') }}</button>
         </div>
         <div id="compare-server-checkboxes" class="flex flex-wrap gap-2 text-xs max-h-40 overflow-y-auto"></div>
-        <div id="compare-selection-hint" class="text-[11px] text-[#6B7280] dark:text-[#94A3B8] mt-1"></div>
+        <div id="compare-selection-hint" class="text-[11px] text-muted mt-1"></div>
       </div>
       <div>
         <label class="block text-xs font-medium mb-1">{{ t.time_range }}</label>
-        <select id="compare-hours" class="text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1.5">
+        <select id="compare-hours" class="text-xs rounded border border-line bg-field px-2 py-1.5">
           <option value="24">{{ t.hours_24 }}</option>
           <option value="48">{{ t.hours_48 }}</option>
           <option value="168">{{ t.hours_168 }}</option>
           <option value="720">{{ t.hours_720 }}</option>
         </select>
       </div>
-      <button id="btn-compare" data-action="loadComparison" disabled class="text-xs font-medium px-4 py-1.5 rounded bg-[#2563EB] hover:bg-[#1D4ED8] text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#2563EB]">
+      <button id="btn-compare" data-action="loadComparison" disabled class="text-xs font-medium px-4 py-1.5 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-accent">
         {{ t.compare }} <span id="btn-compare-count"></span>
       </button>
-      <button id="btn-compare-events" data-action="loadEventComparison" disabled class="text-xs font-medium px-4 py-1.5 rounded bg-[#8B5CF6] hover:bg-[#7C3AED] text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#8B5CF6]">
+      <button id="btn-compare-events" data-action="loadEventComparison" disabled class="text-xs font-medium px-4 py-1.5 rounded bg-brand hover:bg-[#7C3AED] text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-brand">
         {{ t.compare_events | default('Compare Windows Events') }} <span id="btn-compare-events-count"></span>
       </button>
       <!-- Presets -->
       <div class="flex items-center gap-2">
-        <select id="preset-select" class="text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1.5">
+        <select id="preset-select" class="text-xs rounded border border-line bg-field px-2 py-1.5">
           <option value="">{{ t.presets }}...</option>
         </select>
-        <button data-action="loadPreset" class="text-xs px-2 py-1.5 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]" title="{{ t.load_preset }}">
+        <button data-action="loadPreset" class="text-xs px-2 py-1.5 rounded border border-line hover:bg-page" title="{{ t.load_preset }}">
           <i data-lucide="folder-open" class="w-3.5 h-3.5"></i>
         </button>
-        <button data-action="savePreset" class="text-xs px-2 py-1.5 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]" title="{{ t.save_preset }}">
+        <button data-action="savePreset" class="text-xs px-2 py-1.5 rounded border border-line hover:bg-page" title="{{ t.save_preset }}">
           <i data-lucide="save" class="w-3.5 h-3.5"></i>
         </button>
-        <button data-action="deletePreset" class="text-xs px-2 py-1.5 rounded border border-[#DC2626]/30 text-[#DC2626] hover:bg-[#FEE2E2] dark:hover:bg-[#7F1D1D]/30" title="{{ t.delete_preset }}">
+        <button data-action="deletePreset" class="text-xs px-2 py-1.5 rounded border border-critical/30 text-critical hover:bg-critical-tint dark:hover:bg-critical-tint/30" title="{{ t.delete_preset }}">
           <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
         </button>
       </div>
     </div>
 
     <!-- Comparison charts -->
-    <div id="compare-empty" class="text-center text-sm text-[#6B7280] dark:text-[#94A3B8] py-8">
+    <div id="compare-empty" class="text-center text-sm text-muted py-8">
       {{ t.select_servers }}
     </div>
     <div id="compare-charts" class="hidden space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg p-4">
+        <div class="border border-line rounded-lg p-4">
           <h3 class="text-sm font-semibold mb-2">{{ t.cpu }}</h3>
           <div class="relative h-[200px]"><canvas id="chart-cpu"></canvas></div>
         </div>
-        <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg p-4">
+        <div class="border border-line rounded-lg p-4">
           <h3 class="text-sm font-semibold mb-2">{{ t.ram }}</h3>
           <div class="relative h-[200px]"><canvas id="chart-ram"></canvas></div>
         </div>
-        <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg p-4">
+        <div class="border border-line rounded-lg p-4">
           <h3 class="text-sm font-semibold mb-2">{{ t.disk_c }}</h3>
           <div class="relative h-[200px]"><canvas id="chart-disk-c"></canvas></div>
         </div>
-        <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg p-4">
+        <div class="border border-line rounded-lg p-4">
           <h3 class="text-sm font-semibold mb-2">{{ t.disk_d }}</h3>
           <div class="relative h-[200px]"><canvas id="chart-disk-d"></canvas></div>
         </div>
@@ -105,95 +105,95 @@
 
       <!-- Chart overlay toggles -->
       <div class="flex flex-wrap items-center gap-2 mt-2">
-        <button id="btn-fleet-band" data-action="toggleFleetBand" class="text-xs px-3 py-1 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] transition-colors">
+        <button id="btn-fleet-band" data-action="toggleFleetBand" class="text-xs px-3 py-1 rounded border border-line hover:bg-page transition-colors">
           <i data-lucide="layers" class="w-3.5 h-3.5 inline mr-1"></i>
           <span id="fleet-band-label">{{ t.show_fleet_band }}</span>
         </button>
-        <button id="btn-event-markers" data-action="toggleEventMarkers" class="text-xs px-3 py-1 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] transition-colors">
+        <button id="btn-event-markers" data-action="toggleEventMarkers" class="text-xs px-3 py-1 rounded border border-line hover:bg-page transition-colors">
           <i data-lucide="git-commit" class="w-3.5 h-3.5 inline mr-1"></i>
           <span id="event-markers-label">{{ t.show_events_overlay }}</span>
         </button>
-        <button data-action="downloadComparisonPDF" class="text-xs px-3 py-1 rounded border border-[#DC2626]/30 text-[#DC2626] hover:bg-[#FEE2E2] dark:hover:bg-[#7F1D1D]/30 transition-colors">
+        <button data-action="downloadComparisonPDF" class="text-xs px-3 py-1 rounded border border-critical/30 text-critical hover:bg-critical-tint dark:hover:bg-critical-tint/30 transition-colors">
           <i data-lucide="file-text" class="w-3.5 h-3.5 inline mr-1"></i>
           {{ t.get('download_comparison_pdf', 'Download PDF') }}
         </button>
       </div>
 
       <!-- Current metrics comparison table -->
-      <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg overflow-x-auto">
+      <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
         <table class="w-full text-xs">
-          <thead>
-            <tr class="bg-[#F9FAFB] dark:bg-[#0F172A]">
-              <th class="px-3 py-2 text-left font-medium">{{ t.server }}</th>
-              <th class="px-3 py-2 text-center font-medium">{{ t.status }}</th>
-              <th class="px-3 py-2 text-center font-medium">{{ t.cpu }}</th>
-              <th class="px-3 py-2 text-center font-medium">{{ t.ram }}</th>
-              <th class="px-3 py-2 text-center font-medium">{{ t.disk_c }}</th>
-              <th class="px-3 py-2 text-center font-medium">{{ t.disk_d }}</th>
+          <thead data-sort-table="compare-live">
+            <tr class="bg-page">
+              <th class="px-3 py-2 text-left font-medium" data-sort="text">{{ t.server }}</th>
+              <th class="px-3 py-2 text-center font-medium" data-sort="status">{{ t.status }}</th>
+              <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.cpu }}</th>
+              <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.ram }}</th>
+              <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.disk_c }}</th>
+              <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.disk_d }}</th>
             </tr>
           </thead>
           <tbody id="compare-table-body"></tbody>
         </table>
-      </div>
+      </div></div>
 
       <!-- Statistics table -->
       <div id="compare-stats" class="hidden">
         <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
-          <i data-lucide="bar-chart-2" class="w-4 h-4 text-[#6B7280]"></i>
+          <i data-lucide="bar-chart-2" class="w-4 h-4 text-muted"></i>
           {{ t.statistics }}
         </h3>
-        <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg overflow-x-auto">
+        <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
           <table class="w-full text-xs">
-            <thead>
-              <tr class="bg-[#F9FAFB] dark:bg-[#0F172A]">
-                <th class="px-3 py-2 text-left font-medium">{{ t.server }}</th>
-                <th class="px-3 py-2 text-left font-medium">{{ t.get('metric', 'Metric') }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.minimum }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.maximum }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.mean }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.median }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.p95 }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.trend_slope }}</th>
+            <thead data-sort-table="compare-stats">
+              <tr class="bg-page">
+                <th class="px-3 py-2 text-left font-medium" data-sort="text">{{ t.server }}</th>
+                <th class="px-3 py-2 text-left font-medium" data-sort="text">{{ t.get('metric', 'Metric') }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.minimum }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.maximum }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.mean }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.median }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.p95 }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.trend_slope }}</th>
               </tr>
             </thead>
             <tbody id="stats-table-body"></tbody>
           </table>
-        </div>
+        </div></div>
       </div>
 
       <!-- Business-hours annotations -->
       <div id="compare-annotations" class="hidden">
         <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
-          <i data-lucide="clock" class="w-4 h-4 text-[#8B5CF6]"></i>
+          <i data-lucide="clock" class="w-4 h-4 text-accent"></i>
           {{ t.business_hours_avg }} / {{ t.off_hours_avg }}
         </h3>
-        <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg overflow-x-auto">
+        <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
           <table class="w-full text-xs">
-            <thead>
-              <tr class="bg-[#F9FAFB] dark:bg-[#0F172A]">
-                <th class="px-3 py-2 text-left font-medium">{{ t.server }}</th>
-                <th class="px-3 py-2 text-left font-medium">{{ t.get('metric', 'Metric') }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.business_hours_avg }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.off_hours_avg }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.fleet_deviation }}</th>
+            <thead data-sort-table="compare-hourly">
+              <tr class="bg-page">
+                <th class="px-3 py-2 text-left font-medium" data-sort="text">{{ t.server }}</th>
+                <th class="px-3 py-2 text-left font-medium" data-sort="text">{{ t.get('metric', 'Metric') }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.business_hours_avg }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="number">{{ t.off_hours_avg }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="status">{{ t.fleet_deviation }}</th>
               </tr>
             </thead>
             <tbody id="annotations-table-body"></tbody>
           </table>
-        </div>
+        </div></div>
       </div>
     </div>
 
     <!-- Event comparison results -->
-    <div id="compare-events-loading" class="hidden text-center text-sm text-[#6B7280] dark:text-[#94A3B8] py-8">
+    <div id="compare-events-loading" class="hidden text-center text-sm text-muted py-8">
       <i data-lucide="loader-2" class="w-5 h-5 inline-block animate-spin"></i>
     </div>
     <div id="compare-events-results" class="hidden space-y-4">
       <!-- Filters -->
       <div class="flex flex-wrap items-center gap-3 py-2">
         <div class="flex items-center gap-1.5">
-          <label class="text-[10px] font-semibold uppercase text-[#6B7280] dark:text-[#94A3B8]">{{ t.level }}:</label>
-          <select id="evt-filter-level" data-change="applyEventFilters" class="text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1">
+          <label class="text-[10px] font-semibold uppercase text-muted">{{ t.level }}:</label>
+          <select id="evt-filter-level" data-change="applyEventFilters" class="text-xs rounded border border-line bg-field px-2 py-1">
             <option value="">{{ t.all }}</option>
             <option value="Critical">{{ t.level_critical }}</option>
             <option value="Error">{{ t.level_error }}</option>
@@ -202,69 +202,69 @@
           </select>
         </div>
         <div class="flex items-center gap-1.5">
-          <label class="text-[10px] font-semibold uppercase text-[#6B7280] dark:text-[#94A3B8]">{{ t.source }}:</label>
-          <select id="evt-filter-source" data-change="applyEventFilters" class="text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1">
+          <label class="text-[10px] font-semibold uppercase text-muted">{{ t.source }}:</label>
+          <select id="evt-filter-source" data-change="applyEventFilters" class="text-xs rounded border border-line bg-field px-2 py-1">
             <option value="">{{ t.all }}</option>
           </select>
         </div>
         <div class="flex items-center gap-1.5">
-          <label class="text-[10px] font-semibold uppercase text-[#6B7280] dark:text-[#94A3B8]">{{ t.search }}:</label>
+          <label class="text-[10px] font-semibold uppercase text-muted">{{ t.search }}:</label>
           <input id="evt-filter-search" data-input="applyEventFilters" type="text" placeholder="{{ t.filter_messages }}"
-            class="text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1 w-48">
+            class="text-xs rounded border border-line bg-field px-2 py-1 w-48">
         </div>
-        <button data-action="clearEventFilters" class="text-xs text-[#6B7280] dark:text-[#94A3B8] hover:text-[#2563EB] dark:hover:text-[#3B82F6] transition-colors">
+        <button data-action="clearEventFilters" class="text-xs text-muted hover:text-info transition-colors">
           {{ t.clear_filters }}
         </button>
       </div>
       <!-- Active filter indicators -->
       <div id="active-filter-chips" class="flex flex-wrap items-center gap-2 py-1 min-h-[28px]">
-        <span id="filter-chips-empty" class="text-[10px] text-[#94A3B8] italic">{{ t.get('no_filters_applied', 'No filters applied') }}</span>
+        <span id="filter-chips-empty" class="text-[10px] text-faint italic">{{ t.get('no_filters_applied', 'No filters applied') }}</span>
       </div>
       <!-- Common events (on all servers) -->
       <div>
         <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
-          <i data-lucide="check-check" class="w-4 h-4 text-[#10B981]"></i>
+          <i data-lucide="check-check" class="w-4 h-4 text-healthy"></i>
           {{ t.common_events | default('Common Events') }}
-          <span id="common-events-count" class="text-xs font-normal text-[#6B7280] dark:text-[#94A3B8]"></span>
+          <span id="common-events-count" class="text-xs font-normal text-muted"></span>
         </h3>
-        <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg overflow-x-auto">
+        <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
           <table class="w-full text-xs">
-            <thead>
-              <tr class="bg-[#F9FAFB] dark:bg-[#0F172A]">
-                <th class="px-3 py-2 text-left font-medium">{{ t.event_id }}</th>
-                <th class="px-3 py-2 text-left font-medium">{{ t.source }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.level }}</th>
-                <th class="px-3 py-2 text-left font-medium">{{ t.message }}</th>
+            <thead data-sort-table="compare-events-common">
+              <tr class="bg-page">
+                <th class="px-3 py-2 text-left font-medium" data-sort="number">{{ t.event_id }}</th>
+                <th class="px-3 py-2 text-left font-medium" data-sort="text">{{ t.source }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="status">{{ t.level }}</th>
+                <th class="px-3 py-2 text-left font-medium" data-sort="text">{{ t.message }}</th>
                 <th class="px-3 py-2 text-center font-medium">{{ t.counts_per_server }}</th>
               </tr>
             </thead>
             <tbody id="common-events-body"></tbody>
           </table>
-        </div>
+        </div></div>
         <div id="common-pager" class="hidden flex items-center justify-center gap-3 mt-2"></div>
       </div>
       <!-- Unique events (not on all servers) -->
       <div>
         <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
-          <i data-lucide="split" class="w-4 h-4 text-[#F59E0B]"></i>
+          <i data-lucide="split" class="w-4 h-4 text-warning"></i>
           {{ t.unique_events | default('Unique Events') }}
-          <span id="unique-events-count" class="text-xs font-normal text-[#6B7280] dark:text-[#94A3B8]"></span>
+          <span id="unique-events-count" class="text-xs font-normal text-muted"></span>
         </h3>
-        <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg overflow-x-auto">
+        <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
           <table class="w-full text-xs">
-            <thead>
-              <tr class="bg-[#F9FAFB] dark:bg-[#0F172A]">
-                <th class="px-3 py-2 text-left font-medium">{{ t.event_id }}</th>
-                <th class="px-3 py-2 text-left font-medium">{{ t.source }}</th>
-                <th class="px-3 py-2 text-center font-medium">{{ t.level }}</th>
-                <th class="px-3 py-2 text-left font-medium">{{ t.message }}</th>
+            <thead data-sort-table="compare-events-unique">
+              <tr class="bg-page">
+                <th class="px-3 py-2 text-left font-medium" data-sort="number">{{ t.event_id }}</th>
+                <th class="px-3 py-2 text-left font-medium" data-sort="text">{{ t.source }}</th>
+                <th class="px-3 py-2 text-center font-medium" data-sort="status">{{ t.level }}</th>
+                <th class="px-3 py-2 text-left font-medium" data-sort="text">{{ t.message }}</th>
                 <th class="px-3 py-2 text-center font-medium">{{ t.present_on }}</th>
                 <th class="px-3 py-2 text-center font-medium">{{ t.missing_on }}</th>
               </tr>
             </thead>
             <tbody id="unique-events-body"></tbody>
           </table>
-        </div>
+        </div></div>
         <div id="unique-pager" class="hidden flex items-center justify-center gap-3 mt-2"></div>
       </div>
     </div>
@@ -317,16 +317,16 @@ function updateCompareButtonState() {
   if (hint) {
     if (checked === 0) {
       hint.textContent = '{{ t.get("select_at_least_two", "Select at least 2 servers") }}';
-      hint.className = 'text-[11px] text-[#6B7280] dark:text-[#94A3B8] mt-1';
+      hint.className = 'text-[11px] text-muted mt-1';
     } else if (checked === 1) {
       hint.textContent = '{{ t.get("select_at_least_two", "Select at least 2 servers") }}';
-      hint.className = 'text-[11px] text-[#F59E0B] dark:text-[#FBBF24] mt-1';
+      hint.className = 'text-[11px] text-warning mt-1';
     } else if (atCap) {
       hint.textContent = `${checked} / ${MAX_COMPARE} — {{ t.get("compare_cap_reached", "maximum reached") }}`;
-      hint.className = 'text-[11px] text-[#F59E0B] dark:text-[#FBBF24] mt-1';
+      hint.className = 'text-[11px] text-warning mt-1';
     } else {
       hint.textContent = `${checked} / ${MAX_COMPARE} {{ t.get("selected_lc", "selected") }}`;
-      hint.className = 'text-[11px] text-[#6B7280] dark:text-[#94A3B8] mt-1';
+      hint.className = 'text-[11px] text-muted mt-1';
     }
   }
 }
@@ -394,15 +394,15 @@ function updateFilterChips() {
 
   // Add count badge
   const countBadge = document.createElement('span');
-  countBadge.className = 'filter-count-badge inline-flex items-center gap-1 text-[10px] font-semibold text-[#2563EB] dark:text-[#3B82F6]';
+  countBadge.className = 'filter-count-badge inline-flex items-center gap-1 text-[10px] font-semibold text-info';
   countBadge.textContent = `${chips.length} {{ t.get('filters_active', 'filters active') }}`;
   container.appendChild(countBadge);
 
   // Add chips
   chips.forEach(chip => {
     const el = document.createElement('span');
-    el.className = 'filter-chip inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#3B82F6]/10 dark:text-[#3B82F6] border border-[#2563EB]/20 dark:border-[#3B82F6]/20';
-    el.innerHTML = `${chip.label} <button class="ml-0.5 hover:text-[#DC2626] transition-colors font-bold">&times;</button>`;
+    el.className = 'filter-chip inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-info/10 text-info border border-info/20';
+    el.innerHTML = `${chip.label} <button class="ml-0.5 hover:text-critical transition-colors font-bold">&times;</button>`;
     el.querySelector('button').onclick = (e) => { e.stopPropagation(); chip.clear(); };
     container.appendChild(el);
   });
@@ -553,11 +553,11 @@ function renderComparisonTable(servers, names) {
   tbody.innerHTML = '';
 
   const statusColors = {
-    healthy: 'text-[#10B981]',
-    warning: 'text-[#F59E0B]',
-    critical: 'text-[#DC2626]',
-    offline: 'text-[#6B7280]',
-    unknown: 'text-[#6B7280]',
+    healthy: 'text-healthy',
+    warning: 'text-warning',
+    critical: 'text-critical',
+    offline: 'text-muted',
+    unknown: 'text-muted',
   };
 
   names.forEach(name => {
@@ -565,7 +565,7 @@ function renderComparisonTable(servers, names) {
     const latest = srv?.latest;
     const status = latest?.status || 'unknown';
     const row = document.createElement('tr');
-    row.className = 'border-t border-[#E5E7EB] dark:border-[#334155]';
+    row.className = 'border-t border-line';
     row.innerHTML = `
       <td class="px-3 py-2 font-medium">${name}</td>
       <td class="px-3 py-2 text-center ${statusColors[status] || ''} font-medium">${status}</td>
@@ -665,12 +665,12 @@ function clearEventFilters() {
 
 function levelBadge(level) {
   const colors = {
-    Critical: 'bg-[#DC2626]/10 text-[#DC2626] border-[#DC2626]/20',
-    Error: 'bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/20',
-    Warning: 'bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/20',
+    Critical: 'bg-critical/10 text-critical border-critical/20',
+    Error: 'bg-warning/10 text-warning border-warning/20',
+    Warning: 'bg-warning/10 text-warning border-warning/20',
     Information: 'bg-[#3B82F6]/10 text-[#3B82F6] border-[#3B82F6]/20',
   };
-  const cls = colors[level] || 'bg-[#6B7280]/10 text-[#6B7280] border-[#6B7280]/20';
+  const cls = colors[level] || 'bg-muted/10 text-muted border-muted/20';
   return `<span class="inline-block px-1.5 py-0.5 rounded border text-[10px] font-medium ${cls}">${level || '—'}</span>`;
 }
 
@@ -680,7 +680,7 @@ function serverBadge(name, color) {
 
 function serverBadgeGroup(names, cls, showCounts, countsMap) {
   const MAX_INLINE = 3;
-  if (names.length === 0) return '<span class="text-[#94A3B8]">—</span>';
+  if (names.length === 0) return '<span class="text-faint">—</span>';
   if (names.length <= MAX_INLINE) {
     return names.map(n => {
       const label = showCounts && countsMap ? n + ' (' + (countsMap[n] || 0) + ')' : n;
@@ -713,10 +713,10 @@ function renderCommonPage() {
   if (!data) return;
   const tbody = document.getElementById('common-events-body');
   tbody.innerHTML = '';
-  const presentCls = 'bg-[#10B981]/10 text-[#10B981] border-[#10B981]/20 border';
+  const presentCls = 'bg-healthy/10 text-healthy border-healthy/20 border';
 
   if (data.common.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-4 text-center text-[#6B7280] dark:text-[#94A3B8]">No common events found across selected servers</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-4 text-center text-muted">No common events found across selected servers</td></tr>';
     updatePager('common', 0, 0);
     return;
   }
@@ -737,11 +737,11 @@ function renderUniquePage() {
   if (!data) return;
   const tbody = document.getElementById('unique-events-body');
   tbody.innerHTML = '';
-  const presentCls = 'bg-[#10B981]/10 text-[#10B981] border-[#10B981]/20 border';
-  const missingCls = 'bg-[#DC2626]/10 text-[#DC2626] border-[#DC2626]/20 border';
+  const presentCls = 'bg-healthy/10 text-healthy border-healthy/20 border';
+  const missingCls = 'bg-critical/10 text-critical border-critical/20 border';
 
   if (data.unique.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="px-3 py-4 text-center text-[#6B7280] dark:text-[#94A3B8]">No unique events — all events are common across selected servers</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="px-3 py-4 text-center text-muted">No unique events — all events are common across selected servers</td></tr>';
     updatePager('unique', 0, 0);
     return;
   }
@@ -774,10 +774,10 @@ function updatePager(type, total, start) {
   const currentPage = Math.floor(start / PAGE_SIZE);
   pager.innerHTML = `
     <button data-action="pagePrev" data-args='["${type}"]'
-      class="px-2 py-0.5 rounded border border-[#E5E7EB] dark:border-[#334155] text-xs hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] transition-colors ${currentPage === 0 ? 'opacity-30 pointer-events-none' : ''}">&laquo; Prev</button>
-    <span class="text-xs text-[#6B7280] dark:text-[#94A3B8]">${start + 1}–${end} of ${total}</span>
+      class="px-2 py-0.5 rounded border border-line text-xs hover:bg-page transition-colors ${currentPage === 0 ? 'opacity-30 pointer-events-none' : ''}">&laquo; Prev</button>
+    <span class="text-xs text-muted">${start + 1}–${end} of ${total}</span>
     <button data-action="pageNext" data-args='["${type}"]'
-      class="px-2 py-0.5 rounded border border-[#E5E7EB] dark:border-[#334155] text-xs hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] transition-colors ${currentPage >= totalPages - 1 ? 'opacity-30 pointer-events-none' : ''}">Next &raquo;</button>
+      class="px-2 py-0.5 rounded border border-line text-xs hover:bg-page transition-colors ${currentPage >= totalPages - 1 ? 'opacity-30 pointer-events-none' : ''}">Next &raquo;</button>
   `;
 }
 
@@ -789,7 +789,7 @@ let _rowId = 0;
 function addEventRow(tbody, evt, cols, colSpan) {
   const id = 'evt-detail-' + (_rowId++);
   const row = document.createElement('tr');
-  row.className = 'border-t border-[#E5E7EB] dark:border-[#334155] cursor-pointer hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]/50 transition-colors';
+  row.className = 'border-t border-line cursor-pointer hover:bg-page dark:hover:bg-page/50 transition-colors';
   row.onclick = () => {
     const detail = document.getElementById(id);
     const chevron = row.querySelector('.evt-chevron');
@@ -804,7 +804,7 @@ function addEventRow(tbody, evt, cols, colSpan) {
   row.innerHTML = `
     <td class="px-3 py-2 font-mono">
       <span class="inline-flex items-center gap-1">
-        <i data-lucide="chevron-right" class="w-3 h-3 evt-chevron transition-transform"></i>
+        <i data-lucide="chevron-right" class="w-3 h-3 evt-chevron transition-transform text-brand"></i>
         ${evt.event_id || '—'}
       </span>
     </td>
@@ -825,7 +825,7 @@ function addEventRow(tbody, evt, cols, colSpan) {
   for (const [name, info] of Object.entries(serverDetails)) {
     const ts = typeof formatTs === 'function' ? formatTs(info.latest) : (info.latest || '').substring(0, 16);
     serverRows += `
-      <tr class="border-t border-[#E5E7EB]/50 dark:border-[#334155]/50">
+      <tr class="border-t border-line/50">
         <td class="px-3 py-1.5 font-medium">${name}</td>
         <td class="px-3 py-1.5 text-center">${info.count}</td>
         <td class="px-3 py-1.5 text-center">${levelBadge(info.level)}</td>
@@ -836,21 +836,21 @@ function addEventRow(tbody, evt, cols, colSpan) {
   const fullMsg = (evt.message_full || evt.message_short || '—').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   detailRow.innerHTML = `
-    <td colspan="${colSpan}" class="px-4 py-3 bg-[#F9FAFB] dark:bg-[#0F172A]/60">
+    <td colspan="${colSpan}" class="px-4 py-3 bg-page dark:bg-page/60">
       <div class="space-y-3">
         <div>
-          <span class="text-[10px] font-semibold uppercase text-[#6B7280] dark:text-[#94A3B8]">Full Message</span>
-          <p class="text-xs mt-1 whitespace-pre-wrap break-words max-h-[200px] overflow-y-auto font-mono text-[#374151] dark:text-[#CBD5E1]">${fullMsg}</p>
+          <span class="text-[10px] font-semibold uppercase text-muted">Full Message</span>
+          <p class="text-xs mt-1 whitespace-pre-wrap break-words max-h-[200px] overflow-y-auto font-mono text-ink dark:text-muted">${fullMsg}</p>
         </div>
         <div>
-          <span class="text-[10px] font-semibold uppercase text-[#6B7280] dark:text-[#94A3B8]">Per-Server Breakdown</span>
+          <span class="text-[10px] font-semibold uppercase text-muted">Per-Server Breakdown</span>
           <table class="w-full text-xs mt-1">
-            <thead>
-              <tr class="text-[10px] text-[#6B7280] dark:text-[#94A3B8]">
-                <th class="px-3 py-1 text-left font-medium">Server</th>
-                <th class="px-3 py-1 text-center font-medium">Count</th>
-                <th class="px-3 py-1 text-center font-medium">Level</th>
-                <th class="px-3 py-1 text-left font-medium">Latest</th>
+            <thead data-sort-table="compare-event-servers">
+              <tr class="text-[10px] text-muted">
+                <th class="px-3 py-1 text-left font-medium" data-sort="text">Server</th>
+                <th class="px-3 py-1 text-center font-medium" data-sort="number">Count</th>
+                <th class="px-3 py-1 text-center font-medium" data-sort="status">Level</th>
+                <th class="px-3 py-1 text-left font-medium" data-sort="timestamp">Latest</th>
               </tr>
             </thead>
             <tbody>${serverRows}</tbody>
@@ -894,11 +894,11 @@ function renderStatsTable(data) {
       // own row. Pre-existing; it surfaced when a compared server had an absent
       // drive.
       if (!s) continue;
-      const trendColor = s.trend_per_day > 0.5 ? 'text-[#DC2626]' : (s.trend_per_day > 0.1 ? 'text-[#F59E0B]' : (s.trend_per_day < -0.1 ? 'text-[#2563EB]' : 'text-[#6B7280]'));
+      const trendColor = s.trend_per_day > 0.5 ? 'text-critical' : (s.trend_per_day > 0.1 ? 'text-warning' : (s.trend_per_day < -0.1 ? 'text-info' : 'text-muted'));
       const trendArrow = s.trend_per_day > 0.1 ? '↑' : (s.trend_per_day < -0.1 ? '↓' : '→');
 
       const row = document.createElement('tr');
-      row.className = 'border-t border-[#E5E7EB] dark:border-[#334155]';
+      row.className = 'border-t border-line';
       row.innerHTML = `
         <td class="px-3 py-1.5 font-medium">${name}</td>
         <td class="px-3 py-1.5">${metricLabels[mk] || mk}</td>
@@ -946,11 +946,11 @@ function renderSegmentedAnnotations(data) {
           devBadge = `<span class="badge badge-info">↓ {{ t.significantly_below }}</span>`;
         }
       } else {
-        devBadge = '<span class="text-[#6B7280]">—</span>';
+        devBadge = '<span class="text-muted">—</span>';
       }
 
       const row = document.createElement('tr');
-      row.className = 'border-t border-[#E5E7EB] dark:border-[#334155]';
+      row.className = 'border-t border-line';
       row.innerHTML = `
         <td class="px-3 py-1.5 font-medium">${name}</td>
         <td class="px-3 py-1.5">${metricLabels[mk] || mk}</td>
@@ -1173,8 +1173,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const catContainer = document.getElementById('compare-category-buttons');
     const btnBase = 'text-xs font-medium px-4 py-1.5 rounded transition-colors cursor-pointer select-none';
-    const btnOff = 'bg-[#6B7280] hover:bg-[#4B5563] text-white';
-    const btnOn = 'bg-[#2563EB] hover:bg-[#1D4ED8] text-white';
+    const btnOff = 'bg-muted hover:bg-muted text-white';
+    const btnOn = 'bg-accent hover:bg-accent-strong text-white dark:text-page';
 
     function setCategoryCheckboxes(type) {
       // Cap-aware. Checking every box for '__all__' against a smaller API limit
@@ -1214,7 +1214,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const container = document.getElementById('compare-server-checkboxes');
     names.forEach(n => {
       const label = document.createElement('label');
-      label.className = 'inline-flex items-center gap-1 px-2 py-1 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] cursor-pointer select-none';
+      label.className = 'inline-flex items-center gap-1 px-2 py-1 rounded border border-line hover:bg-page cursor-pointer select-none';
       label.innerHTML = `<input type="checkbox" value="${n}" class="compare-cb rounded"> ${n}`;
       container.appendChild(label);
     });

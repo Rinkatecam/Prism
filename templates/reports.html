@@ -4,119 +4,119 @@
 
 <div class="flex items-center justify-between mb-6">
   <h1 class="text-2xl font-bold flex items-center gap-2">
-    <i data-lucide="file-bar-chart" class="w-6 h-6 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    <i data-lucide="file-bar-chart" class="w-6 h-6 text-brand"></i>
     {{ t.reports }}
   </h1>
-  <p class="text-sm text-[#6B7280] dark:text-[#94A3B8]">{{ t.report_desc }}</p>
+  <p class="text-sm text-muted">{{ t.report_desc }}</p>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 1 — Export (CSV / PDF / JSON)
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-6">
+  <div class="bg-card rounded-lg border border-line p-6">
     <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-      <i data-lucide="download" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+      <i data-lucide="download" class="w-5 h-5 text-accent"></i>
       {{ t.export_csv }} / {{ t.export_pdf }}
     </h2>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
       <!-- CSV Metrics -->
-      <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg p-4">
+      <div class="border border-line rounded-lg p-4">
         <div class="flex items-center gap-2 mb-2">
-          <i data-lucide="table" class="w-4 h-4 text-[#10B981]"></i>
+          <i data-lucide="table" class="w-4 h-4 text-healthy"></i>
           <span class="font-medium text-sm">{{ t.download_metrics }}</span>
         </div>
-        <p class="text-xs text-[#6B7280] dark:text-[#94A3B8] mb-3">{{ t.csv_metrics_desc }}</p>
+        <p class="text-xs text-muted mb-3">{{ t.csv_metrics_desc }}</p>
         <div class="flex items-center gap-2 mb-3">
-          <select id="csv-metrics-server" class="flex-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1.5">
+          <select id="csv-metrics-server" class="flex-1 text-xs rounded border border-line bg-field px-2 py-1.5">
             <option value="">{{ t.all }} {{ t.servers | lower }}</option>
           </select>
-          <select id="csv-metrics-hours" class="text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1.5">
+          <select id="csv-metrics-hours" class="text-xs rounded border border-line bg-field px-2 py-1.5">
             <option value="24">{{ t.hours_24 }}</option>
             <option value="48">{{ t.hours_48 }}</option>
             <option value="168">{{ t.hours_168 }}</option>
             <option value="720">{{ t.hours_720 }}</option>
           </select>
         </div>
-        <button data-action="downloadCSVMetrics" class="w-full text-xs font-medium px-3 py-2 rounded bg-[#10B981] hover:bg-[#059669] text-white transition-colors">
+        <button data-action="downloadCSVMetrics" class="w-full text-xs font-medium px-3 py-2 rounded bg-healthy hover:bg-[#059669] text-white transition-colors">
           <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>
           {{ t.export_csv }}
         </button>
-        <p id="csv-metrics-preview" class="text-[10px] text-[#6B7280] dark:text-[#94A3B8] mt-1.5 leading-tight"></p>
+        <p id="csv-metrics-preview" class="text-[10px] text-muted mt-1.5 leading-tight"></p>
       </div>
 
       <!-- CSV Events -->
-      <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg p-4">
+      <div class="border border-line rounded-lg p-4">
         <div class="flex items-center gap-2 mb-2">
-          <i data-lucide="alert-triangle" class="w-4 h-4 text-[#F59E0B]"></i>
+          <i data-lucide="alert-triangle" class="w-4 h-4 text-warning"></i>
           <span class="font-medium text-sm">{{ t.download_events }}</span>
         </div>
-        <p class="text-xs text-[#6B7280] dark:text-[#94A3B8] mb-3">{{ t.csv_events_desc }}</p>
+        <p class="text-xs text-muted mb-3">{{ t.csv_events_desc }}</p>
         <div class="flex items-center gap-2 mb-3">
-          <select id="csv-events-server" class="flex-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1.5">
+          <select id="csv-events-server" class="flex-1 text-xs rounded border border-line bg-field px-2 py-1.5">
             <option value="">{{ t.all }} {{ t.servers | lower }}</option>
           </select>
         </div>
-        <button data-action="downloadCSVEvents" class="w-full text-xs font-medium px-3 py-2 rounded bg-[#F59E0B] hover:bg-[#D97706] text-white transition-colors">
+        <button data-action="downloadCSVEvents" class="w-full text-xs font-medium px-3 py-2 rounded bg-warning hover:bg-[#D97706] text-white transition-colors">
           <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>
           {{ t.export_csv }}
         </button>
-        <p id="csv-events-preview" class="text-[10px] text-[#6B7280] dark:text-[#94A3B8] mt-1.5 leading-tight"></p>
+        <p id="csv-events-preview" class="text-[10px] text-muted mt-1.5 leading-tight"></p>
       </div>
 
       <!-- PDF Report -->
-      <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg p-4">
+      <div class="border border-line rounded-lg p-4">
         <div class="flex items-center gap-2 mb-2">
-          <i data-lucide="file-text" class="w-4 h-4 text-[#DC2626]"></i>
+          <i data-lucide="file-text" class="w-4 h-4 text-critical"></i>
           <span class="font-medium text-sm">{{ t.management_report }}</span>
         </div>
-        <p class="text-xs text-[#6B7280] dark:text-[#94A3B8] mb-3">{{ t.pdf_desc }}</p>
+        <p class="text-xs text-muted mb-3">{{ t.pdf_desc }}</p>
         <div class="mb-3">&nbsp;</div>
-        <button data-action="downloadPDF" class="w-full text-xs font-medium px-3 py-2 rounded bg-[#DC2626] hover:bg-[#B91C1C] text-white transition-colors">
+        <button data-action="downloadPDF" class="w-full text-xs font-medium px-3 py-2 rounded bg-critical hover:bg-[#B91C1C] text-white transition-colors">
           <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>
           {{ t.download_pdf_report }}
         </button>
       </div>
 
       <!-- JSON Metrics -->
-      <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg p-4">
+      <div class="border border-line rounded-lg p-4">
         <div class="flex items-center gap-2 mb-2">
-          <i data-lucide="braces" class="w-4 h-4 text-[#2563EB]"></i>
+          <i data-lucide="braces" class="w-4 h-4 text-accent"></i>
           <span class="font-medium text-sm">{{ t.export_json }} — {{ t.get('metrics', 'Metrics') }}</span>
         </div>
-        <p class="text-xs text-[#6B7280] dark:text-[#94A3B8] mb-3">{{ t.json_metrics_desc }}</p>
+        <p class="text-xs text-muted mb-3">{{ t.json_metrics_desc }}</p>
         <div class="flex items-center gap-2 mb-3">
-          <select id="json-metrics-server" class="flex-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1.5">
+          <select id="json-metrics-server" class="flex-1 text-xs rounded border border-line bg-field px-2 py-1.5">
             <option value="">{{ t.all }} {{ t.servers | lower }}</option>
           </select>
-          <select id="json-metrics-hours" class="text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1.5">
+          <select id="json-metrics-hours" class="text-xs rounded border border-line bg-field px-2 py-1.5">
             <option value="24">{{ t.hours_24 }}</option>
             <option value="48">{{ t.hours_48 }}</option>
             <option value="168">{{ t.hours_168 }}</option>
             <option value="720">{{ t.hours_720 }}</option>
           </select>
         </div>
-        <button data-action="downloadJSONMetrics" class="w-full text-xs font-medium px-3 py-2 rounded bg-[#2563EB] hover:bg-[#1D4ED8] text-white transition-colors">
+        <button data-action="downloadJSONMetrics" class="w-full text-xs font-medium px-3 py-2 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors">
           <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>
           {{ t.export_json }}
         </button>
       </div>
 
       <!-- JSON Events -->
-      <div class="border border-[#E5E7EB] dark:border-[#334155] rounded-lg p-4">
+      <div class="border border-line rounded-lg p-4">
         <div class="flex items-center gap-2 mb-2">
-          <i data-lucide="braces" class="w-4 h-4 text-[#8B5CF6]"></i>
+          <i data-lucide="braces" class="w-4 h-4 text-accent"></i>
           <span class="font-medium text-sm">{{ t.export_json }} — {{ t.get('events', 'Events') }}</span>
         </div>
-        <p class="text-xs text-[#6B7280] dark:text-[#94A3B8] mb-3">{{ t.json_events_desc }}</p>
+        <p class="text-xs text-muted mb-3">{{ t.json_events_desc }}</p>
         <div class="flex items-center gap-2 mb-3">
-          <select id="json-events-server" class="flex-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1.5">
+          <select id="json-events-server" class="flex-1 text-xs rounded border border-line bg-field px-2 py-1.5">
             <option value="">{{ t.all }} {{ t.servers | lower }}</option>
           </select>
         </div>
-        <button data-action="downloadJSONEvents" class="w-full text-xs font-medium px-3 py-2 rounded bg-[#8B5CF6] hover:bg-[#7C3AED] text-white transition-colors">
+        <button data-action="downloadJSONEvents" class="w-full text-xs font-medium px-3 py-2 rounded bg-brand hover:bg-[#7C3AED] text-white transition-colors">
           <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>
           {{ t.export_json }}
         </button>
@@ -139,52 +139,52 @@
      the reader can see how little it moves.
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-6">
+  <div class="bg-card rounded-lg border border-line p-6">
     <div class="flex flex-wrap items-start justify-between gap-3 mb-1">
       <h2 class="text-lg font-semibold flex items-center gap-2">
-        <i data-lucide="activity" class="w-5 h-5 text-[#10B981]"></i>
+        <i data-lucide="activity" class="w-5 h-5 text-healthy"></i>
         {{ t.get('fleet_report', 'Fleet report') }}
       </h2>
       <div class="flex items-center gap-2">
         <select id="fleet-hours" data-change="loadFleetReport"
-                class="text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1.5">
+                class="text-xs rounded border border-line bg-field px-2 py-1.5">
           <option value="168">{{ t.hours_168 }}</option>
           <option value="720" selected>{{ t.hours_720 }}</option>
         </select>
         <button data-action="loadFleetReport"
-                class="text-xs font-medium px-3 py-1.5 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] transition-colors">
+                class="text-xs font-medium px-3 py-1.5 rounded border border-line hover:bg-page transition-colors">
           <i data-lucide="refresh-cw" class="w-3.5 h-3.5 inline mr-1"></i>
           {{ t.get('refresh', 'Refresh') }}
         </button>
         <button data-action="downloadFleetCSV"
-                class="text-xs font-medium px-3 py-1.5 rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] transition-colors">
+                class="text-xs font-medium px-3 py-1.5 rounded border border-line hover:bg-page transition-colors">
           <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>
           {{ t.export_csv }}
         </button>
       </div>
     </div>
-    <p class="text-xs text-[#6B7280] dark:text-[#94A3B8] mb-4">
+    <p class="text-xs text-muted mb-4">
       {{ t.get('fleet_report_desc', 'Servers ranked by how much of their reachable time was spent outside thresholds.') }}
     </p>
 
     <div id="fleet-loading" class="text-center py-8">
-      <i data-lucide="loader-2" class="w-5 h-5 inline-block animate-spin text-[#6B7280]"></i>
+      <i data-lucide="loader-2" class="w-5 h-5 inline-block animate-spin text-muted"></i>
     </div>
 
     <div id="fleet-content" class="hidden">
-      <div id="fleet-band" class="rounded-lg border border-[#E5E7EB] dark:border-[#334155] bg-[#F9FAFB] dark:bg-[#0F172A] p-4 mb-4"></div>
+      <div id="fleet-band" class="rounded-lg border border-line bg-page p-4 mb-4"></div>
       <div id="fleet-empty" class="hidden text-center py-8"></div>
       <div id="fleet-table-wrap" class="overflow-x-auto">
         <table class="w-full text-sm border-collapse">
-          <thead>
-            <tr class="text-[10px] uppercase tracking-wide text-[#6B7280] dark:text-[#94A3B8] border-b border-[#E5E7EB] dark:border-[#334155]">
+          <thead data-sort-table="reports-fleet">
+            <tr class="text-[10px] uppercase tracking-wide text-muted border-b border-line">
               <th class="w-6"></th>
-              <th class="text-left font-semibold py-2 pr-3">{{ t.get('server', 'Server') }}</th>
-              <th class="text-left font-semibold py-2 pr-3">{{ t.get('health', 'Health') }}</th>
-              <th class="text-right font-semibold py-2 pr-3">{{ t.get('degraded', 'Degraded') }}</th>
+              <th class="text-left font-semibold py-2 pr-3" data-sort="text">{{ t.get('server', 'Server') }}</th>
+              <th class="text-left font-semibold py-2 pr-3" data-sort="number">{{ t.get('health', 'Health') }}</th>
+              <th class="text-right font-semibold py-2 pr-3" data-sort="number">{{ t.get('degraded', 'Degraded') }}</th>
               <th class="text-left font-semibold py-2 pr-3">{{ t.get('main_driver', 'Main driver') }}</th>
               <th class="text-left font-semibold py-2 pr-3">{{ t.capacity_planning }}</th>
-              <th class="text-right font-semibold py-2 pr-3">{{ t.get('availability', 'Availability') }}</th>
+              <th class="text-right font-semibold py-2 pr-3" data-sort="number">{{ t.get('availability', 'Availability') }}</th>
               <th class="text-left font-semibold py-2 w-24">{{ t.get('trend', 'Trend') }}</th>
             </tr>
           </thead>
@@ -193,7 +193,7 @@
       </div>
       <div id="fleet-more-wrap" class="hidden pt-3 text-center">
         <button id="fleet-more-btn" data-action="toggleFleetScope"
-                class="text-xs font-medium px-4 py-1.5 rounded border border-[#E5E7EB] dark:border-[#334155] text-[#6B7280] dark:text-[#CBD5E1] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] transition-colors"></button>
+                class="text-xs font-medium px-4 py-1.5 rounded border border-line text-muted hover:bg-page transition-colors"></button>
       </div>
     </div>
   </div>
@@ -481,24 +481,24 @@ function renderFleetBand(data) {
   band.innerHTML = `
     <div class="flex flex-wrap items-end gap-x-8 gap-y-3">
       <div>
-        <div class="text-[10px] uppercase tracking-wide text-[#6B7280] dark:text-[#94A3B8]">{{ t.get('fleet_health', 'Fleet health') }}</div>
+        <div class="text-[10px] uppercase tracking-wide text-muted">{{ t.get('fleet_health', 'Fleet health') }}</div>
         <div class="font-mono text-3xl font-bold ${healthTextClass(health)}">${fmtPct(health, 2)}</div>
-        <div class="text-[10px] text-[#9CA3AF] dark:text-[#475569]">{{ t.get('within_thresholds', 'of reachable time within thresholds') }}</div>
+        <div class="text-[10px] text-faint">{{ t.get('within_thresholds', 'of reachable time within thresholds') }}</div>
       </div>
       <div>
-        <div class="text-[10px] uppercase tracking-wide text-[#6B7280] dark:text-[#94A3B8]">{{ t.get('needs_attention', 'Needs attention') }}</div>
-        <div class="font-mono text-3xl font-bold ${attention > 0 ? TXT_WARN : TXT_OK}">${attention}<span class="text-lg text-[#9CA3AF] dark:text-[#475569]">/${total}</span></div>
-        <div class="text-[10px] text-[#9CA3AF] dark:text-[#475569]">
+        <div class="text-[10px] uppercase tracking-wide text-muted">{{ t.get('needs_attention', 'Needs attention') }}</div>
+        <div class="font-mono text-3xl font-bold ${attention > 0 ? TXT_WARN : TXT_OK}">${attention}<span class="text-lg text-faint">/${total}</span></div>
+        <div class="text-[10px] text-faint">
           ${f[F.serversNoData] ? f[F.serversNoData] + ' {{ t.get("no_data_lc", "no data") }}' : '{{ t.get("all_servers_reporting", "all servers reporting") }}'}
         </div>
       </div>
-      <div class="text-[11px] text-[#6B7280] dark:text-[#94A3B8] space-y-0.5">
+      <div class="text-[11px] text-muted space-y-0.5">
         <div>
           {{ t.get('fleet_availability', 'Fleet availability') }}:
           <span class="font-mono ${availTextClass(f[F.fleetAvailability])}">${fmtPct(f[F.fleetAvailability], 2)}</span>
-          ${range !== null ? `<span class="text-[#9CA3AF] dark:text-[#475569]"> · {{ t.get('range', 'range') }} ${range.toFixed(2)} {{ t.get('points', 'pts') }}</span>` : ''}
+          ${range !== null ? `<span class="text-faint"> · {{ t.get('range', 'range') }} ${range.toFixed(2)} {{ t.get('points', 'pts') }}</span>` : ''}
         </div>
-        ${midSpread !== null ? `<div class="text-[#9CA3AF] dark:text-[#475569]">
+        ${midSpread !== null ? `<div class="text-faint">
           {{ t.get('middle_80_within', 'Middle 80% of servers within') }}
           <span class="font-mono">${midSpread.toFixed(2)} {{ t.get('points', 'pts') }}</span>
           {{ t.get('of_each_other', 'of each other') }}
@@ -519,17 +519,17 @@ function driverChip(s) {
   const nb = s[F.noBreach] || {};
   const nbPct = nb[F.noBreachPct] || 0;
 
-  if (!drivers.length && !nbPct) return '<span class="text-[#9CA3AF] dark:text-[#475569]">—</span>';
+  if (!drivers.length && !nbPct) return '<span class="text-faint">—</span>';
 
   // When most degraded time crossed no static threshold, say exactly that
   // rather than promoting a 2%-of-the-time metric to "the driver".
   if (nbPct >= 50) {
     return `<span class="${TXT_NONE}">{{ t.get('no_threshold_breach', 'no threshold breach') }}</span>`
-         + `<span class="text-[10px] text-[#9CA3AF] dark:text-[#475569]"> ${nbPct.toFixed(0)}%</span>`;
+         + `<span class="text-[10px] text-faint"> ${nbPct.toFixed(0)}%</span>`;
   }
   const d = drivers[0];
   return `<span class="font-medium">${esc(d[F.driverMetric])}</span>`
-       + `<span class="text-[10px] text-[#6B7280] dark:text-[#94A3B8]"> ${d[F.driverPct].toFixed(0)}% ·`
+       + `<span class="text-[10px] text-muted"> ${d[F.driverPct].toFixed(0)}% ·`
        + ` {{ t.get('avg', 'avg') }} ${d[F.driverAvg].toFixed(0)}% &gt; ${d[F.driverThreshold]}</span>`;
 }
 
@@ -544,7 +544,7 @@ function capacityChip(s) {
   const items = (s[F.capacity] || []).filter(c =>
     c[F.capDays] !== null && c[F.capDays] !== undefined
     && (c[F.capRisk] === 'high' || c[F.capRisk] === 'medium'));
-  if (!items.length) return '<span class="text-[#9CA3AF] dark:text-[#475569]">—</span>';
+  if (!items.length) return '<span class="text-faint">—</span>';
   const soonest = items.reduce((a, b) => (a[F.capDays] <= b[F.capDays] ? a : b));
   return `<span class="${riskTextClass(soonest[F.capRisk])}">${esc(soonest[F.capMetric])} ${fmtDays(soonest[F.capDays])}</span>`;
 }
@@ -573,7 +573,7 @@ function renderFleetDetail(s) {
         <div class="metric-bar-fill" style="width:${Math.min(100, d[F.driverPct])}%;background:#F59E0B"></div>
       </div>
       <span class="font-mono text-xs w-12 text-right">${d[F.driverPct].toFixed(0)}%</span>
-      <span class="text-[10px] text-[#6B7280] dark:text-[#94A3B8]">
+      <span class="text-[10px] text-muted">
         {{ t.get('avg', 'avg') }} ${d[F.driverAvg].toFixed(1)}% ·
         {{ t.get('threshold', 'threshold') }} ${d[F.driverThreshold]} ·
         +${d[F.driverExcess].toFixed(1)} {{ t.get('over', 'over') }}
@@ -587,16 +587,16 @@ function renderFleetDetail(s) {
         <div class="metric-bar-fill" style="width:${Math.min(100, nb[F.noBreachPct])}%;background:#9CA3AF"></div>
       </div>
       <span class="font-mono text-xs w-12 text-right">${nb[F.noBreachPct].toFixed(0)}%</span>
-      <span class="text-[10px] text-[#6B7280] dark:text-[#94A3B8]">
+      <span class="text-[10px] text-muted">
         {{ t.get('no_static_threshold_crossed', 'no static threshold crossed') }}
       </span>
     </div>` : '';
 
   const capacityRows = (s[F.capacity] || []).map(c => `
-    <div class="flex items-center justify-between py-1 border-b border-[#E5E7EB]/50 dark:border-[#334155]/50 last:border-0">
+    <div class="flex items-center justify-between py-1 border-b border-line/50 last:border-0">
       <span class="text-xs font-medium w-16">${esc(c[F.capMetric])}</span>
       <span class="text-xs font-mono w-14 text-right">${c[F.capCurrent] !== null ? c[F.capCurrent].toFixed(1) + '%' : '—'}</span>
-      <span class="text-[10px] text-[#6B7280] dark:text-[#94A3B8] w-24 text-right">
+      <span class="text-[10px] text-muted w-24 text-right">
         ${c[F.capGrowth] !== null && c[F.capGrowth] !== undefined
           ? (c[F.capGrowth] >= 0 ? '+' : '') + c[F.capGrowth].toFixed(3) + '%/d' : '—'}
       </span>
@@ -611,14 +611,14 @@ function renderFleetDetail(s) {
     </div>`).join('') || `<div class="text-[10px] ${TXT_NONE}">{{ t.get('no_outages', 'No outages in window') }}</div>`;
 
   return `
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 px-8 py-4 bg-[#F9FAFB] dark:bg-[#0F172A]">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 px-8 py-4 bg-page">
       <div>
-        <div class="text-[10px] uppercase tracking-wide text-[#6B7280] dark:text-[#94A3B8] mb-2">
+        <div class="text-[10px] uppercase tracking-wide text-muted mb-2">
           {{ t.get('degradation_breakdown', 'What the degraded time was') }}
         </div>
         ${driverRows || nbRow ? driverRows + nbRow : `<div class="text-[10px] ${TXT_NONE}">{{ t.get('no_degradation', 'No degraded time in window') }}</div>`}
         ${eventList.length ? `
-          <div class="mt-2 text-[10px] text-[#6B7280] dark:text-[#94A3B8]">
+          <div class="mt-2 text-[10px] text-muted">
             {{ t.get('events_in_window', 'Events raised in window') }}:
             ${eventList.map(([k, v]) => `${esc(k)} ${v}`).join(' · ')}
             <div class="${TXT_NONE} italic mt-0.5">
@@ -628,17 +628,17 @@ function renderFleetDetail(s) {
       </div>
 
       <div>
-        <div class="text-[10px] uppercase tracking-wide text-[#6B7280] dark:text-[#94A3B8] mb-2">
+        <div class="text-[10px] uppercase tracking-wide text-muted mb-2">
           {{ t.capacity_planning }}
         </div>
         ${capacityRows || `<div class="text-[10px] ${TXT_NONE}">—</div>`}
       </div>
 
       <div>
-        <div class="text-[10px] uppercase tracking-wide text-[#6B7280] dark:text-[#94A3B8] mb-2">
+        <div class="text-[10px] uppercase tracking-wide text-muted mb-2">
           {{ t.get('availability_detail', 'Availability') }}
         </div>
-        <div class="grid grid-cols-3 gap-2 text-[10px] text-[#6B7280] dark:text-[#94A3B8] mb-2">
+        <div class="grid grid-cols-3 gap-2 text-[10px] text-muted mb-2">
           <div><span class="block font-semibold">{{ t.outage_count }}</span>${s[F.outageCount]}</div>
           <div><span class="block font-semibold">{{ t.total_downtime }}</span>${Math.round(s[F.downtime])} {{ t.minutes }}</div>
           <div><span class="block font-semibold">{{ t.mttr }}</span>${s[F.mttr] !== null ? Math.round(s[F.mttr]) + ' {{ t.minutes }}' : '—'}</div>
@@ -672,7 +672,7 @@ function renderFleetReport(data) {
     empty.innerHTML = `
       <i data-lucide="shield-check" class="w-8 h-8 inline-block ${TXT_OK}"></i>
       <p class="text-sm font-medium mt-2 ${TXT_OK}">{{ t.get('no_attention_needed', 'No server needs attention') }}</p>
-      <p class="text-xs text-[#6B7280] dark:text-[#94A3B8] mt-1">
+      <p class="text-xs text-muted mt-1">
         ${f[F.serversTotal]} {{ t.get('servers_lc', 'servers') }} ·
         {{ t.get('fleet_health', 'Fleet health') }} ${fmtPct(f[F.fleetHealth], 2)}
       </p>`;
@@ -685,13 +685,13 @@ function renderFleetReport(data) {
       const health = s[F.health];
 
       const tr = document.createElement('tr');
-      tr.className = 'border-b border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] transition-colors';
+      tr.className = 'border-b border-line hover:bg-page transition-colors';
       tr.innerHTML = `
         <td class="py-2 align-middle">
           <button id="fleet-toggle-${id}" data-action="toggleFleetRow" data-args='${esc(JSON.stringify([s[F.name]]))}'
                   aria-expanded="${open}" aria-controls="fleet-detail-${id}"
                   aria-label="{{ t.get('toggle_details', 'Toggle details for') }} ${esc(s[F.name])}"
-                  class="p-0.5 rounded text-[#6B7280] dark:text-[#94A3B8] hover:text-[#2563EB]">
+                  class="p-0.5 rounded text-muted hover:text-brand">
             <i data-lucide="chevron-${open ? 'down' : 'right'}" class="w-4 h-4"></i>
           </button>
         </td>
@@ -706,7 +706,7 @@ function renderFleetReport(data) {
               <div class="metric-bar-fill" style="width:${health !== null && health !== undefined ? Math.min(health, 100) : 0}%;background:${healthColor(health)}"></div>
             </div>
           </div>
-          ${s[F.hasData] === false ? '<div class="text-[10px] text-[#9CA3AF] italic">{{ t.get("insufficient_data", "Insufficient data") }}</div>' : ''}
+          ${s[F.hasData] === false ? '<div class="text-[10px] text-faint italic">{{ t.get("insufficient_data", "Insufficient data") }}</div>' : ''}
         </td>
         <td class="py-2 pr-3 text-right font-mono text-xs">${fmtPct(s[F.degradedPct], 1)}</td>
         <td class="py-2 pr-3 text-xs">${driverChip(s)}</td>
@@ -718,7 +718,7 @@ function renderFleetReport(data) {
 
       const detail = document.createElement('tr');
       detail.id = 'fleet-detail-' + id;
-      detail.className = 'border-b border-[#E5E7EB] dark:border-[#334155]' + (open ? '' : ' hidden');
+      detail.className = 'border-b border-line' + (open ? '' : ' hidden');
       detail.innerHTML = `<td colspan="8" class="p-0">${renderFleetDetail(s)}</td>`;
       tbody.appendChild(detail);
     }

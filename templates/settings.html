@@ -3,7 +3,7 @@
 
 <div class="flex items-center justify-between mb-6">
   <h1 class="text-2xl font-bold flex items-center gap-2">
-    <i data-lucide="settings" class="w-6 h-6 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    <i data-lucide="settings" class="w-6 h-6 text-brand"></i>
     {{ t.settings }}
   </h1>
 </div>
@@ -16,29 +16,29 @@
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="settings-2" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    <i data-lucide="settings-2" class="w-5 h-5 text-info"></i>
     {{ t.general }}
   </h2>
-  <div id="general-card" class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155] space-y-4">
+  <div id="general-card" class="bg-card rounded-lg p-5 border border-line space-y-4">
     {# Collector cadence rows moved to the Collector section below (2026-08-03).
        General is now purely locale + retention. #}
     <div class="flex items-center justify-between">
       <div>
         <div class="text-sm font-medium">{{ t.data_retention }}</div>
-        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.data_retention_desc }}</div>
+        <div class="text-xs text-muted">{{ t.data_retention_desc }}</div>
       </div>
       <div class="flex items-center gap-1">
         <input type="number" id="retention-days" value="{{ settings.retention_days or 30 }}" min="1" max="365" required
-               class="general-input w-20 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
-        <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.days }}</span>
+               class="general-input w-20 px-2 py-1 text-sm rounded border border-line bg-field text-right">
+        <span class="text-xs text-muted">{{ t.days }}</span>
       </div>
     </div>
     <div class="flex items-center justify-between">
       <div>
         <div class="text-sm font-medium">{{ t.language }}</div>
-        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.language_desc }}</div>
+        <div class="text-xs text-muted">{{ t.language_desc }}</div>
       </div>
-      <select id="setting-language" class="general-input px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+      <select id="setting-language" class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="en" {% if settings.language == 'en' %}selected{% endif %}>{{ t.lang_en }}</option>
         <option value="de" {% if settings.language == 'de' %}selected{% endif %}>{{ t.lang_de }}</option>
         <option value="fr" {% if settings.language == 'fr' %}selected{% endif %}>{{ t.lang_fr }}</option>
@@ -49,9 +49,9 @@
     <div class="flex items-center justify-between">
       <div>
         <div class="text-sm font-medium">{{ t.timezone }}</div>
-        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.timezone_desc }}</div>
+        <div class="text-xs text-muted">{{ t.timezone_desc }}</div>
       </div>
-      <select id="setting-timezone" class="general-input px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+      <select id="setting-timezone" class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="Europe/Berlin" {% if settings.timezone == 'Europe/Berlin' %}selected{% endif %}>Europe/Berlin (CET/CEST)</option>
         <option value="Europe/London" {% if settings.timezone == 'Europe/London' %}selected{% endif %}>Europe/London (GMT/BST)</option>
         <option value="Europe/Paris" {% if settings.timezone == 'Europe/Paris' %}selected{% endif %}>Europe/Paris (CET/CEST)</option>
@@ -67,9 +67,9 @@
     <div class="flex items-center justify-between">
       <div>
         <div class="text-sm font-medium">{{ t.date_format }}</div>
-        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.date_format_desc }}</div>
+        <div class="text-xs text-muted">{{ t.date_format_desc }}</div>
       </div>
-      <select id="setting-date-format" class="general-input px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+      <select id="setting-date-format" class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="DD.MM.YYYY" {% if settings.date_format == 'DD.MM.YYYY' %}selected{% endif %}>DD.MM.YYYY (31.12.2026)</option>
         <option value="YYYY-MM-DD" {% if settings.date_format == 'YYYY-MM-DD' %}selected{% endif %}>YYYY-MM-DD (2026-12-31)</option>
         <option value="MM/DD/YYYY" {% if settings.date_format == 'MM/DD/YYYY' %}selected{% endif %}>MM/DD/YYYY (12/31/2026)</option>
@@ -79,9 +79,9 @@
     <div class="flex items-center justify-between">
       <div>
         <div class="text-sm font-medium">{{ t.time_format }}</div>
-        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.time_format_desc }}</div>
+        <div class="text-xs text-muted">{{ t.time_format_desc }}</div>
       </div>
-      <select id="setting-time-format" class="general-input px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+      <select id="setting-time-format" class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="24h" {% if settings.time_format == '24h' %}selected{% endif %}>24-hour (14:30)</option>
         <option value="12h" {% if settings.time_format == '12h' %}selected{% endif %}>12-hour (2:30 PM)</option>
       </select>
@@ -111,11 +111,11 @@
 <section class="mb-8">
   <div class="flex items-center gap-3 mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="cpu" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+      <i data-lucide="cpu" class="w-5 h-5 text-accent"></i>
       {{ t.get('collector_engine_section', 'Collector') }}
     </h2>
   </div>
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155] space-y-4">
+  <div class="bg-card rounded-lg p-5 border border-line space-y-4">
     {# All three interval rows below are *per-server* cadences. Each server
        is scheduled independently (with a small hash-derived offset so the
        fleet does not stampede on a tick boundary). Setting "60s" means
@@ -127,19 +127,19 @@
       <div>
         <div class="text-sm font-medium flex items-center gap-1.5">
           {{ t.poll_interval }}
-          <i data-lucide="info" class="w-3.5 h-3.5 text-[#9CA3AF] dark:text-[#64748B] cursor-help"
+          <i data-lucide="info" class="w-3.5 h-3.5 text-faint cursor-help"
              data-tip-title="{{ t.get('per_server_cadence_title', 'Per-server cadence') }}"
              data-tip-desc="{{ t.get('poll_interval_tip_desc', 'Every server is polled on its own schedule, offset by a hash so the fleet does not stampede on a tick boundary. Setting 60s means each server is polled every ~60s independently — not that all servers are polled together once per minute.') }}"></i>
         </div>
-        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.poll_interval_desc }}</div>
+        <div class="text-xs text-muted">{{ t.poll_interval_desc }}</div>
       </div>
       <div class="flex items-center gap-2">
-        <button type="button" data-action="syncNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-[#2563EB] hover:bg-[#1D4ED8] text-white transition-colors whitespace-nowrap">
+        <button type="button" data-action="syncNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors whitespace-nowrap">
           {{ t.sync_now | default('Sync Now') }}
         </button>
         <input type="number" id="poll-interval" value="{{ ((settings.poll_interval_seconds or 60) / 60) | round(0) | int }}" min="1" max="60" step="1" required
-               class="general-input w-20 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
-        <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.min }}</span>
+               class="general-input w-20 px-2 py-1 text-sm rounded border border-line bg-field text-right">
+        <span class="text-xs text-muted">{{ t.min }}</span>
       </div>
     </div>
     {# Log collection interval — controls how often Windows event logs and
@@ -149,19 +149,19 @@
       <div>
         <div class="text-sm font-medium flex items-center gap-1.5">
           {{ t.get('log_collection_interval', 'Log Collection Interval') }}
-          <i data-lucide="info" class="w-3.5 h-3.5 text-[#9CA3AF] dark:text-[#64748B] cursor-help"
+          <i data-lucide="info" class="w-3.5 h-3.5 text-faint cursor-help"
              data-tip-title="{{ t.get('per_server_cadence_title', 'Per-server cadence') }}"
              data-tip-desc="{{ t.get('log_collection_tip_desc', 'Event-log scrape runs on each server independently at this cadence. Higher value = lower WinRM load on the targets, but event-log warnings take longer to surface in the dashboard. Decoupled from the metrics interval — these run on their own clock.') }}"></i>
         </div>
-        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('log_collection_interval_desc', 'How often to pull Windows event logs + failed login events from each server. Higher = less load on the targets.') }}</div>
+        <div class="text-xs text-muted">{{ t.get('log_collection_interval_desc', 'How often to pull Windows event logs + failed login events from each server. Higher = less load on the targets.') }}</div>
       </div>
       <div class="flex items-center gap-2">
-        <button type="button" data-action="syncLogsNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-[#2563EB] hover:bg-[#1D4ED8] text-white transition-colors whitespace-nowrap">
+        <button type="button" data-action="syncLogsNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors whitespace-nowrap">
           {{ t.sync_now | default('Sync Now') }}
         </button>
         <input type="number" id="log-collection-interval" value="{{ settings.log_collection_interval_minutes or 5 }}" min="1" max="60" required
-               class="general-input w-20 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
-        <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.min }}</span>
+               class="general-input w-20 px-2 py-1 text-sm rounded border border-line bg-field text-right">
+        <span class="text-xs text-muted">{{ t.min }}</span>
       </div>
     </div>
     {# Windows Update check interval — how often the collector queries the
@@ -170,39 +170,39 @@
       <div>
         <div class="text-sm font-medium flex items-center gap-1.5">
           {{ t.get('update_check_interval', 'Update Check Interval') }}
-          <i data-lucide="info" class="w-3.5 h-3.5 text-[#9CA3AF] dark:text-[#64748B] cursor-help"
+          <i data-lucide="info" class="w-3.5 h-3.5 text-faint cursor-help"
              data-tip-title="{{ t.get('per_server_cadence_title', 'Per-server cadence') }}"
              data-tip-desc="{{ t.get('update_check_tip_desc', 'Windows Update queries are spread across the fleet — at any given time only a small subset of servers is hitting the WU COM API, not all of them at once. This cadence is the per-server interval; the scheduler shards calls so collector load stays flat.') }}"></i>
         </div>
-        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('update_check_interval_desc', 'How often to check each server for pending Windows Updates.') }}</div>
+        <div class="text-xs text-muted">{{ t.get('update_check_interval_desc', 'How often to check each server for pending Windows Updates.') }}</div>
       </div>
       <div class="flex items-center gap-2">
-        <button type="button" data-action="syncUpdatesNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-[#2563EB] hover:bg-[#1D4ED8] text-white transition-colors whitespace-nowrap">
+        <button type="button" data-action="syncUpdatesNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors whitespace-nowrap">
           {{ t.sync_now | default('Sync Now') }}
         </button>
         <input type="number" id="update-check-interval" value="{{ settings.get('update_check_interval_minutes', 30) }}" min="10" max="120" required
-               class="general-input w-20 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
-        <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.min }}</span>
+               class="general-input w-20 px-2 py-1 text-sm rounded border border-line bg-field text-right">
+        <span class="text-xs text-muted">{{ t.min }}</span>
       </div>
     </div>
-    <div class="border-t border-[#E5E7EB] dark:border-[#334155] pt-4"></div>
+    <div class="border-t border-line pt-4"></div>
     <div id="collector-v2-workers-row" class="flex items-center justify-between gap-4">
       <div>
         <div class="text-sm font-medium flex items-center gap-1.5 flex-wrap">
           {{ t.get('collector_v2_workers_label', 'Worker pool size') }}
           {# Restart pill lives on THIS row, not the section header — it is the
              only field in the Collector section that needs one. #}
-          <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#78350F]/30 text-[#92400E] dark:text-[#FCD34D] font-normal">{{ t.get('requires_restart', 'Requires restart') }}</span>
-          <i data-lucide="info" class="w-3.5 h-3.5 text-[#9CA3AF] dark:text-[#64748B] cursor-help"
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong font-normal">{{ t.get('requires_restart', 'Requires restart') }}</span>
+          <i data-lucide="info" class="w-3.5 h-3.5 text-faint cursor-help"
              data-tip-title="{{ t.get('collector_v2_workers_tip_title', 'Concurrent WinRM probes') }}"
              data-tip-desc="{{ t.get('collector_v2_workers_tip_desc', 'Number of worker threads pulling check items from the queue and executing WinRM probes against your servers. Default 15 handles ~150 servers with comfortable headroom (each worker can sit on a slow Windows Update query for up to 120 s). Increase for larger fleets or if the operations page shows workers active_count consistently near the pool size.') }}"></i>
         </div>
-        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1] mt-1">{{ t.get('collector_v2_workers_desc', 'Concurrent WinRM probes. Default 15 handles ~150 servers with headroom. Increase for larger fleets.') }}</div>
+        <div class="text-xs text-muted mt-1">{{ t.get('collector_v2_workers_desc', 'Concurrent WinRM probes. Default 15 handles ~150 servers with headroom. Increase for larger fleets.') }}</div>
       </div>
       <div class="flex items-center gap-1">
         <input type="number" id="collector-v2-workers" min="2" max="100" step="1"
                value="{{ settings.get('collector_v2_num_workers', 15) }}"
-               class="security-input w-20 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+               class="security-input w-20 px-2 py-1 text-sm rounded border border-line bg-field text-right">
       </div>
     </div>
   </div>
@@ -214,45 +214,45 @@
 <section class="mb-8">
   <div class="flex items-center gap-3 mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="shield-check" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+      <i data-lucide="shield-check" class="w-5 h-5 text-accent"></i>
       {{ t.security }}
     </h2>
-    <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#78350F]/30 text-[#92400E] dark:text-[#FCD34D]">{{ t.get('requires_restart', 'Requires restart') }}</span>
+    <span class="text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong">{{ t.get('requires_restart', 'Requires restart') }}</span>
   </div>
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155] space-y-5">
+  <div class="bg-card rounded-lg p-5 border border-line space-y-5">
 
     <!-- TLS / HTTPS -->
     <div>
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="shield" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6]"></i>
+        <i data-lucide="shield" class="w-4 h-4 text-accent"></i>
         {{ t.communication }}
       </div>
       <div class="space-y-3 pl-1">
         <div class="flex items-center justify-between">
           <div>
-            <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.enable_https }}</div>
+            <div class="text-xs text-muted">{{ t.enable_https }}</div>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="https-enabled" class="sr-only peer security-input"
                    {% if settings.https.enabled %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.cert_file }}</label>
+            <label class="block text-xs text-muted mb-0.5">{{ t.cert_file }}</label>
             <input type="text" id="https-cert" value="{{ settings.https.cert_file or '' }}" placeholder="C:\certs\prism.pem"
-                   class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs"
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs"
                    data-change="checkCertExpiry">
           </div>
           <div>
-            <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.key_file }}</label>
+            <label class="block text-xs text-muted mb-0.5">{{ t.key_file }}</label>
             <input type="text" id="https-key" value="{{ settings.https.key_file or '' }}" placeholder="C:\certs\prism-key.pem"
-                   class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
           </div>
         </div>
         <!-- HTTPS lockout warning -->
-        <div id="https-warning" class="hidden flex items-start gap-2 p-2.5 rounded bg-[#FEF3C7] dark:bg-[#78350F]/30 text-[#92400E] dark:text-[#FCD34D] text-xs">
+        <div id="https-warning" class="hidden flex items-start gap-2 p-2.5 rounded bg-warning-tint dark:bg-warning-tint/30 text-warning-strong text-xs">
           <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
           <span>{{ t.get('https_warning', 'Enabling HTTPS requires valid certificate and key files. Verify paths before saving.') }}</span>
         </div>
@@ -261,27 +261,27 @@
       </div>
     </div>
 
-    <hr class="border-[#E5E7EB] dark:border-[#334155]">
+    <hr class="border-line">
 
     <!-- Authentication -->
     <div>
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="lock" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6]"></i>
+        <i data-lucide="lock" class="w-4 h-4 text-accent"></i>
         {{ t.authentication }}
       </div>
       <div class="space-y-3 pl-1">
         <div class="flex items-center justify-between">
           <div>
-            <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.require_login }}</div>
+            <div class="text-xs text-muted">{{ t.require_login }}</div>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="auth-enabled" class="sr-only peer security-input"
                    {% if settings.auth.enabled %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <!-- Auth lockout warning -->
-        <div id="auth-warning" class="hidden flex items-start gap-2 p-2.5 rounded bg-[#FEE2E2] dark:bg-[#7F1D1D]/30 text-[#991B1B] dark:text-[#FCA5A5] text-xs">
+        <div id="auth-warning" class="hidden flex items-start gap-2 p-2.5 rounded bg-critical-tint dark:bg-critical-tint/30 text-critical-strong text-xs">
           <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
           <span>{{ t.get('auth_lockout_warning', 'Warning: Enable at least one login method (LDAP or Backup Admin) before enabling authentication, or you may be locked out.') }}</span>
         </div>
@@ -294,10 +294,10 @@
         {% set ba = settings.auth.get('backup_admin') or {} %}
         {% set _ba_configured = ba.get('username') and ba.get('password_hash') %}
         {% set _auth_enabled = settings.auth.get('enabled', false) %}
-        <div class="bg-[#F9FAFB] dark:bg-[#0F172A] rounded-lg p-3 border border-[#E5E7EB] dark:border-[#334155]">
+        <div class="bg-page rounded-lg p-3 border border-line">
           <div class="flex items-center justify-between mb-1">
             <div class="text-xs font-medium flex items-center gap-1.5">
-              <i data-lucide="shield" class="w-3.5 h-3.5 text-[#F59E0B]"></i>
+              <i data-lucide="shield" class="w-3.5 h-3.5 text-warning"></i>
               {{ t.admin_account }}
             </div>
             {% if _ba_configured %}
@@ -305,24 +305,24 @@
             {% elif _auth_enabled %}
             <span class="badge badge-offline text-[10px]">{{ t.get('not_configured', 'Not configured') }}</span>
             {% else %}
-            <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#F3F4F6] dark:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('not_set_up', 'Not set up') }}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-raised dark:bg-line text-muted">{{ t.get('not_set_up', 'Not set up') }}</span>
             {% endif %}
           </div>
-          <div class="text-[10px] text-[#6B7280] dark:text-[#CBD5E1]">{{ t.admin_account_desc }}</div>
+          <div class="text-[10px] text-muted">{{ t.admin_account_desc }}</div>
 
           {% if _ba_configured %}
           <div class="mt-2 flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <div class="w-7 h-7 rounded-full bg-[#2563EB]/10 dark:bg-[#3B82F6]/10 flex items-center justify-center">
-                <i data-lucide="user" class="w-3.5 h-3.5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+              <div class="w-7 h-7 rounded-full bg-info/10 flex items-center justify-center">
+                <i data-lucide="user" class="w-3.5 h-3.5 text-accent"></i>
               </div>
               <div>
                 <div class="text-xs font-medium">{{ ba.username }}</div>
-                <div class="text-[10px] text-[#9CA3AF] dark:text-[#475569]">{{ t.current_admin }}</div>
+                <div class="text-[10px] text-faint">{{ t.current_admin }}</div>
               </div>
             </div>
             <button type="button" data-action="showResetPasswordModal"
-                    class="px-2.5 py-1 text-[11px] font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-white dark:hover:bg-[#1E293B] flex items-center gap-1 transition-colors">
+                    class="px-2.5 py-1 text-[11px] font-medium rounded border border-line hover:bg-white dark:hover:bg-card flex items-center gap-1 transition-colors">
               <i data-lucide="key" class="w-3 h-3"></i>
               {{ t.reset_password }}
             </button>
@@ -330,12 +330,12 @@
           {% elif _auth_enabled %}
           {# Auth is on but no admin exists — this is the dangerous state #}
           <div class="mt-2 flex items-center justify-between gap-2">
-            <div class="flex-1 text-[10px] text-[#DC2626] dark:text-[#EF4444] flex items-start gap-1">
+            <div class="flex-1 text-[10px] text-critical flex items-start gap-1">
               <i data-lucide="alert-triangle" class="w-3 h-3 flex-shrink-0 mt-0.5"></i>
               <span>{{ t.get('no_admin_warning_auth_on', 'Authentication is enabled but no local admin account exists. You may be locked out if LDAP fails.') }}</span>
             </div>
             <a href="/setup" target="_blank"
-               class="px-2.5 py-1 text-[11px] font-medium rounded border border-[#10B981] dark:border-[#34D399] text-[#10B981] dark:text-[#34D399] hover:bg-[#10B981]/10 flex items-center gap-1 whitespace-nowrap">
+               class="px-2.5 py-1 text-[11px] font-medium rounded border border-healthy text-healthy hover:bg-healthy/10 flex items-center gap-1 whitespace-nowrap">
               <i data-lucide="user-plus" class="w-3 h-3"></i>
               {{ t.get('create_admin', 'Create Admin') }}
             </a>
@@ -343,12 +343,12 @@
           {% else %}
           {# Auth disabled + no admin — normal first-time state, no alarm #}
           <div class="mt-2 flex items-center justify-between gap-2">
-            <div class="flex-1 text-[10px] text-[#6B7280] dark:text-[#CBD5E1] flex items-start gap-1">
+            <div class="flex-1 text-[10px] text-muted flex items-start gap-1">
               <i data-lucide="info" class="w-3 h-3 flex-shrink-0 mt-0.5"></i>
               <span>{{ t.get('no_admin_info', 'Authentication is currently disabled, so no local admin is required. You can create one now to keep access if you ever enable authentication.') }}</span>
             </div>
             <a href="/setup" target="_blank"
-               class="px-2.5 py-1 text-[11px] font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-white dark:hover:bg-[#1E293B] flex items-center gap-1 whitespace-nowrap">
+               class="px-2.5 py-1 text-[11px] font-medium rounded border border-line hover:bg-white dark:hover:bg-card flex items-center gap-1 whitespace-nowrap">
               <i data-lucide="user-plus" class="w-3 h-3"></i>
               {{ t.get('create_admin', 'Create Admin') }}
             </a>
@@ -357,74 +357,74 @@
         </div>
 
         <div>
-          <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.auth_type }}</label>
+          <label class="block text-xs text-muted mb-0.5">{{ t.auth_type }}</label>
           <select id="auth-type"
-                  class="security-input w-full max-w-xs px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                  class="security-input w-full max-w-xs px-2 py-1 text-sm rounded border border-line bg-field">
             <option value="ldap" {% if settings.auth.type == 'ldap' %}selected{% endif %}>{{ t.ldap_ad }}</option>
           </select>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.ldap_server_url }}</label>
+            <label class="block text-xs text-muted mb-0.5">{{ t.ldap_server_url }}</label>
             <input type="text" id="auth-ldap-url" value="{{ settings.auth.ldap_url or '' }}" placeholder="ldap://dc01.ad.example.com:389"
-                   class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
           </div>
           <div>
-            <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.ldap_base_dn }}</label>
+            <label class="block text-xs text-muted mb-0.5">{{ t.ldap_base_dn }}</label>
             <input type="text" id="auth-ldap-basedn" value="{{ settings.auth.ldap_base_dn or '' }}" placeholder="DC=ad,DC=example,DC=com"
-                   class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
           </div>
         </div>
         <!-- LDAP Bind Account (for AD Discovery) -->
-        <div class="bg-[#F9FAFB] dark:bg-[#0F172A] rounded-lg p-3 border border-[#E5E7EB] dark:border-[#334155]">
+        <div class="bg-page rounded-lg p-3 border border-line">
           <div class="flex items-center gap-1.5 mb-2">
-            <i data-lucide="radar" class="w-3.5 h-3.5 text-[#10B981]"></i>
+            <i data-lucide="radar" class="w-3.5 h-3.5 text-healthy"></i>
             <span class="text-xs font-medium">{{ t.get('ldap_bind_account', 'LDAP Bind Account (for AD Discovery)') }}</span>
           </div>
-          <div class="text-[10px] text-[#9CA3AF] dark:text-[#475569] mb-2">{{ t.get('ldap_bind_desc', 'Credentials used to query AD for computer objects. Use UPN format: user@domain.com') }}</div>
+          <div class="text-[10px] text-faint mb-2">{{ t.get('ldap_bind_desc', 'Credentials used to query AD for computer objects. Use UPN format: user@domain.com') }}</div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.username }}</label>
+              <label class="block text-xs text-muted mb-0.5">{{ t.username }}</label>
               <input type="text" id="auth-ldap-bind-user" value="{{ settings.auth.get('ldap_bind_user', '') }}"
                      placeholder="administrator@ad.example.com"
-                     class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+                     class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
             </div>
             <div>
-              <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.password }}</label>
+              <label class="block text-xs text-muted mb-0.5">{{ t.password }}</label>
               <input type="password" id="auth-ldap-bind-pass" value="" placeholder="{{ '••••••••' if settings.auth.get('ldap_bind_password') else 'Password' }}" autocomplete="off"
-                     class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-xs">
+                     class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field text-xs">
             </div>
           </div>
         </div>
         <!-- Allowed Users / Groups -->
         <div>
           <div class="flex items-center justify-between mb-0.5">
-            <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.allowed_users }}</label>
+            <label class="block text-xs text-muted">{{ t.allowed_users }}</label>
             {# Query AD button — matches "Discover Servers" on servers.html
                (green outline + radar icon). #}
             <button type="button" data-action="openLdapPicker"
-                    class="px-3 py-1.5 text-sm font-medium rounded border border-[#10B981] dark:border-[#34D399] text-[#10B981] dark:text-[#34D399] hover:bg-[#10B981]/10 flex items-center gap-1">
+                    class="px-3 py-1.5 text-sm font-medium rounded border border-healthy text-healthy hover:bg-healthy/10 flex items-center gap-1">
               <i data-lucide="radar" class="w-4 h-4"></i>
               {{ t.get('query_ad', 'Query AD') }}
             </button>
           </div>
-          <div class="text-[10px] text-[#9CA3AF] dark:text-[#475569] mb-1">{{ t.allowed_users_desc }}</div>
+          <div class="text-[10px] text-faint mb-1">{{ t.allowed_users_desc }}</div>
           <textarea id="auth-allowed-users" rows="3"
                     placeholder="{{ t.allowed_users_placeholder }}"
                     {# `or []` not `| default([])`: Jinja's default filter only
                        substitutes for UNDEFINED, not None. A null on disk made
                        this raise TypeError and 500 the whole page. #}
-                    class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">{{ (settings.auth.allowed_users or []) | join('\n') }}</textarea>
+                    class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">{{ (settings.auth.allowed_users or []) | join('\n') }}</textarea>
         </div>
 
         <div class="flex items-center justify-between">
           <div>
-            <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.session_timeout }}</div>
+            <div class="text-xs text-muted">{{ t.session_timeout }}</div>
           </div>
           <div class="flex items-center gap-1">
             <input type="number" id="auth-timeout" value="{{ settings.auth.session_timeout_minutes or 480 }}" min="5" max="1440" required
-                   class="security-input w-20 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
-            <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.min }}</span>
+                   class="security-input w-20 px-2 py-1 text-sm rounded border border-line bg-field text-right">
+            <span class="text-xs text-muted">{{ t.min }}</span>
           </div>
         </div>
       </div>
@@ -438,102 +438,102 @@
 <section class="mb-8">
   <div class="flex items-center gap-3 mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="bell" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+      <i data-lucide="bell" class="w-5 h-5 text-accent"></i>
       {{ t.get('notifications', 'Notifications') }}
     </h2>
-    <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#78350F]/30 text-[#92400E] dark:text-[#FCD34D]">{{ t.get('requires_restart', 'Requires restart') }}</span>
+    <span class="text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong">{{ t.get('requires_restart', 'Requires restart') }}</span>
   </div>
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155] space-y-5">
+  <div class="bg-card rounded-lg p-5 border border-line space-y-5">
 
     <!-- Email Alerts -->
     <div>
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="mail" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6]"></i>
+        <i data-lucide="mail" class="w-4 h-4 text-accent"></i>
         {{ t.email_alerts }}
       </div>
       <div class="space-y-3 pl-1">
         <div class="flex items-center justify-between">
           <div>
-            <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.enable_email }}</div>
+            <div class="text-xs text-muted">{{ t.enable_email }}</div>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="email-enabled" class="sr-only peer security-input"
                    {% if settings.email.enabled %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.smtp_server }}</label>
+            <label class="block text-xs text-muted mb-0.5">{{ t.smtp_server }}</label>
             <input type="text" id="email-smtp-server" value="{{ settings.email.smtp_server or '' }}" placeholder="smtp.gmail.com"
-                   class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
           </div>
           <div>
-            <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.smtp_port }}</label>
+            <label class="block text-xs text-muted mb-0.5">{{ t.smtp_port }}</label>
             <input type="number" id="email-smtp-port" value="{{ settings.email.smtp_port or 587 }}" min="1" max="65535"
-                   class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-xs">
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field text-xs">
           </div>
         </div>
         <div class="flex items-center justify-between">
           <div>
-            <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.use_tls }}</div>
+            <div class="text-xs text-muted">{{ t.use_tls }}</div>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="email-use-tls" class="sr-only peer security-input"
                    {% if settings.email.use_tls %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.username }}</label>
+            <label class="block text-xs text-muted mb-0.5">{{ t.username }}</label>
             <input type="text" id="email-username" value="{{ settings.email.username or '' }}" placeholder="user@example.com"
-                   class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
           </div>
           <div>
-            <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.password }}</label>
+            <label class="block text-xs text-muted mb-0.5">{{ t.password }}</label>
             <input type="password" id="email-password" value="" placeholder="{{ '••••••••' if settings.email.password else 'App password' }}" autocomplete="off"
-                   class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-xs">
+                   class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field text-xs">
           </div>
         </div>
         <div>
-          <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.from_address }}</label>
+          <label class="block text-xs text-muted mb-0.5">{{ t.from_address }}</label>
           <input type="text" id="email-from" value="{{ settings.email.from_address or '' }}" placeholder="prism@example.com"
-                 class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+                 class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
         </div>
         <div>
-          <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.recipients }}</label>
+          <label class="block text-xs text-muted mb-0.5">{{ t.recipients }}</label>
           <input type="text" id="email-recipients" value="{{ settings.email.recipients | join(', ') }}" placeholder="admin@example.com, ops@example.com"
-                 class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+                 class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
         </div>
         <div class="flex items-center justify-between">
           <div>
-            <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.send_on_critical }}</div>
+            <div class="text-xs text-muted">{{ t.send_on_critical }}</div>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="email-send-critical" class="sr-only peer security-input"
                    {% if settings.email.send_on_critical %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="flex items-center justify-between">
           <div>
-            <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.send_on_warning }}</div>
+            <div class="text-xs text-muted">{{ t.send_on_warning }}</div>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="email-send-warning" class="sr-only peer security-input"
                    {% if settings.email.send_on_warning %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div>
-          <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.dashboard_url }}</label>
+          <label class="block text-xs text-muted mb-0.5">{{ t.dashboard_url }}</label>
           <input type="text" id="email-dashboard-url" value="{{ settings.email.dashboard_url or 'http://localhost:5000' }}" placeholder="http://localhost:5000"
-                 class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+                 class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
         </div>
         <div>
           <button data-action="sendTestEmail" id="test-email-btn"
-                  class="px-3 py-1.5 text-sm rounded border border-[#10B981] dark:border-[#34D399] text-[#10B981] dark:text-[#34D399] hover:bg-[#10B981]/10 flex items-center gap-1.5">
+                  class="px-3 py-1.5 text-sm rounded border border-healthy text-healthy hover:bg-healthy/10 flex items-center gap-1.5">
             <i data-lucide="send" class="w-4 h-4"></i>
             {{ t.send_test_email }}
           </button>
@@ -542,48 +542,48 @@
       </div>
     </div>
 
-    <hr class="border-[#E5E7EB] dark:border-[#334155]">
+    <hr class="border-line">
 
     <!-- Microsoft Teams Webhooks -->
     <div>
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="webhook" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6]"></i>
+        <i data-lucide="webhook" class="w-4 h-4 text-accent"></i>
         {{ t.teams_webhook }}
       </div>
       <div class="space-y-3 pl-1">
         <div class="flex items-center justify-between">
-          <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.webhook_enabled }}</div>
+          <div class="text-xs text-muted">{{ t.webhook_enabled }}</div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="webhook-enabled" class="sr-only peer security-input"
                    {% if settings.get('webhooks', {}).get('enabled') %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div>
-          <label class="block text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.webhook_url }}</label>
+          <label class="block text-xs text-muted mb-0.5">{{ t.webhook_url }}</label>
           <input type="text" id="webhook-url" value="{{ settings.get('webhooks', {}).get('teams_webhook_url', '') }}"
                  placeholder="https://outlook.office.com/webhook/..."
-                 class="security-input w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono text-xs">
+                 class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">
         </div>
         <div class="flex items-center justify-between">
-          <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.send_on_critical_webhook }}</div>
+          <div class="text-xs text-muted">{{ t.send_on_critical_webhook }}</div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="webhook-send-critical" class="sr-only peer security-input"
                    {% if settings.get('webhooks', {}).get('send_on_critical', True) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div class="flex items-center justify-between">
-          <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.send_on_warning_webhook }}</div>
+          <div class="text-xs text-muted">{{ t.send_on_warning_webhook }}</div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="webhook-send-warning" class="sr-only peer security-input"
                    {% if settings.get('webhooks', {}).get('send_on_warning', False) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
         </div>
         <div>
           <button data-action="sendTestWebhook" id="test-webhook-btn"
-                  class="px-3 py-1.5 text-sm rounded border border-[#10B981] dark:border-[#34D399] text-[#10B981] dark:text-[#34D399] hover:bg-[#10B981]/10 flex items-center gap-1.5">
+                  class="px-3 py-1.5 text-sm rounded border border-healthy text-healthy hover:bg-healthy/10 flex items-center gap-1.5">
             <i data-lucide="send" class="w-4 h-4"></i>
             {{ t.test_webhook }}
           </button>
@@ -592,52 +592,52 @@
       </div>
     </div>
 
-    <hr class="border-[#E5E7EB] dark:border-[#334155]">
+    <hr class="border-line">
 
     <!-- Scheduled Reports -->
     <div>
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="calendar-clock" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6]"></i>
+        <i data-lucide="calendar-clock" class="w-4 h-4 text-accent"></i>
         {{ t.scheduled_reports }}
       </div>
       <div class="space-y-4 pl-1">
         <!-- Enable scheduled reports -->
         <div class="flex items-center justify-between">
-          <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('enable_scheduled_reports', 'Enable scheduled reports') }}</div>
+          <div class="text-xs text-muted">{{ t.get('enable_scheduled_reports', 'Enable scheduled reports') }}</div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="sched-enabled" class="sr-only peer security-input"
                    {% if settings.get('scheduled_reports', {}).get('enabled') %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] rounded-full peer-checked:bg-[#2563EB] transition-colors"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-brand transition-colors"></div>
             <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
           </label>
         </div>
 
         <!-- Daily report -->
         <div class="flex items-center justify-between">
-          <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.daily_report }}</div>
+          <div class="text-xs text-muted">{{ t.daily_report }}</div>
           <div class="flex items-center gap-2">
             <label class="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" id="sched-daily-enabled" class="sr-only peer security-input"
                      {% if settings.get('scheduled_reports', {}).get('daily_enabled', True) %}checked{% endif %}>
-              <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] rounded-full peer-checked:bg-[#10B981] transition-colors"></div>
+              <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-healthy transition-colors"></div>
               <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
             </label>
             <input type="time" id="sched-daily-time" value="{{ settings.get('scheduled_reports', {}).get('daily_time', '07:00') }}"
-                   class="security-input text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1">
+                   class="security-input text-xs rounded border border-line bg-field px-2 py-1">
           </div>
         </div>
 
         <!-- Weekly report -->
         <div class="flex items-center justify-between">
-          <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.weekly_report }}</div>
+          <div class="text-xs text-muted">{{ t.weekly_report }}</div>
           <div class="flex items-center gap-2">
             <label class="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" id="sched-weekly-enabled" class="sr-only peer security-input"
                      {% if settings.get('scheduled_reports', {}).get('weekly_enabled', False) %}checked{% endif %}>
-              <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] rounded-full peer-checked:bg-[#10B981] transition-colors"></div>
+              <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-healthy transition-colors"></div>
               <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
             </label>
-            <select id="sched-weekly-day" class="security-input text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1">
+            <select id="sched-weekly-day" class="security-input text-xs rounded border border-line bg-field px-2 py-1">
               {% for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] %}
               <option value="{{ day }}" {% if settings.get('scheduled_reports', {}).get('weekly_day', 'monday') == day %}selected{% endif %}>
                 {{ day | capitalize }}
@@ -645,26 +645,26 @@
               {% endfor %}
             </select>
             <input type="time" id="sched-weekly-time" value="{{ settings.get('scheduled_reports', {}).get('weekly_time', '07:00') }}"
-                   class="security-input text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] px-2 py-1">
+                   class="security-input text-xs rounded border border-line bg-field px-2 py-1">
           </div>
         </div>
 
         <!-- Email report + Include PDF -->
         <div class="flex items-center justify-between">
-          <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('email_report', 'Send via email') }}</div>
+          <div class="text-xs text-muted">{{ t.get('email_report', 'Send via email') }}</div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="sched-email-report" class="sr-only peer security-input"
                    {% if settings.get('scheduled_reports', {}).get('email_report', True) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] rounded-full peer-checked:bg-[#2563EB] transition-colors"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-brand transition-colors"></div>
             <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
           </label>
         </div>
         <div class="flex items-center justify-between">
-          <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('include_pdf', 'Include PDF attachment') }}</div>
+          <div class="text-xs text-muted">{{ t.get('include_pdf', 'Include PDF attachment') }}</div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="sched-include-pdf" class="sr-only peer security-input"
                    {% if settings.get('scheduled_reports', {}).get('include_pdf', True) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] rounded-full peer-checked:bg-[#2563EB] transition-colors"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-brand transition-colors"></div>
             <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
           </label>
         </div>
@@ -678,17 +678,17 @@
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="sliders" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    <i data-lucide="sliders" class="w-5 h-5 text-accent"></i>
     {{ t.display_preferences }}
   </h2>
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155] space-y-4">
+  <div class="bg-card rounded-lg p-5 border border-line space-y-4">
     <div class="flex items-center justify-between">
       <div>
         <div class="text-sm font-medium">{{ t.default_time_range }}</div>
-        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('time_range_desc', 'Default time range for charts and reports') }}</div>
+        <div class="text-xs text-muted">{{ t.get('time_range_desc', 'Default time range for charts and reports') }}</div>
       </div>
       <select id="pref-time-range" data-change="savePreferences"
-              class="px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+              class="px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="1">1 hour</option>
         <option value="6">6 hours</option>
         <option value="12">12 hours</option>
@@ -700,10 +700,10 @@
     <div class="flex items-center justify-between">
       <div>
         <div class="text-sm font-medium">{{ t.auto_refresh_interval }}</div>
-        <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('refresh_desc', 'How often the dashboard checks for new data') }}</div>
+        <div class="text-xs text-muted">{{ t.get('refresh_desc', 'How often the dashboard checks for new data') }}</div>
       </div>
       <select id="pref-refresh-interval" data-change="savePreferences"
-              class="px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+              class="px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="5000">5 seconds</option>
         <option value="10000">10 seconds</option>
         <option value="30000">30 seconds</option>
@@ -732,29 +732,29 @@
         </label>
       </div>
     </div>
-    <div id="pref-saved-msg" class="hidden text-xs text-[#10B981] dark:text-[#34D399]">{{ t.preferences_saved }}</div>
+    <div id="pref-saved-msg" class="hidden text-xs text-healthy">{{ t.preferences_saved }}</div>
   </div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 6 — Sticky Bottom Save Bar
      ═══════════════════════════════════════════════════════════════ -->
-<div id="save-bar" class="fixed bottom-0 left-0 right-0 z-40 hidden transform translate-y-full transition-transform duration-300 ease-in-out">
-  <div class="bg-white dark:bg-[#1E293B] border-t border-[#E5E7EB] dark:border-[#334155] shadow-lg px-6 py-3">
+<div id="save-bar" class="fixed bottom-0 left-0 right-0 z-40 hidden transform translate-y-full transition-transform duration-slow ease-standard">
+  <div class="bg-card border-t border-line shadow-lg px-6 py-3">
     <div class="max-w-5xl mx-auto flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="w-2 h-2 rounded-full bg-[#F59E0B] animate-pulse"></div>
-        <span class="text-sm text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('unsaved_changes', 'You have unsaved changes') }}</span>
-        <span id="restart-badge" class="hidden text-[10px] px-2 py-0.5 rounded-full bg-[#FEF3C7] dark:bg-[#78350F]/30 text-[#92400E] dark:text-[#FCD34D] flex items-center gap-1">
+        <div class="w-2 h-2 rounded-full bg-warning animate-pulse"></div>
+        <span class="text-sm text-muted">{{ t.get('unsaved_changes', 'You have unsaved changes') }}</span>
+        <span id="restart-badge" class="hidden text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong flex items-center gap-1">
           <i data-lucide="refresh-cw" class="w-3 h-3"></i>
           {{ t.get('will_restart', 'Server will restart') }}
         </span>
       </div>
       <div class="flex items-center gap-2">
-        <button data-action="cancelAllChanges" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">
+        <button data-action="cancelAllChanges" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">
           {{ t.cancel }}
         </button>
-        <button data-action="saveAllSettings" class="px-4 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1.5">
+        <button data-action="saveAllSettings" class="px-4 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1.5">
           <i data-lucide="save" class="w-4 h-4"></i>
           {{ t.save }}
         </button>
@@ -777,13 +777,13 @@
 <div id="ldap-picker-modal" class="fixed inset-0 z-[70] hidden">
   <div class="fixed inset-0 bg-black/50" data-action="closeLdapPicker"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#E5E7EB] dark:border-[#334155] w-full max-w-2xl max-h-[80vh] flex flex-col relative">
-      <div class="flex items-center justify-between p-4 border-b border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-2xl max-h-[80vh] flex flex-col relative">
+      <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
         <h3 class="text-base font-semibold flex items-center gap-2">
-          <i data-lucide="search" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+          <i data-lucide="search" class="w-5 h-5 text-accent"></i>
           {{ t.get('ldap_picker_title', 'Query Active Directory') }}
         </h3>
-        <button data-action="closeLdapPicker" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeLdapPicker" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -791,28 +791,28 @@
       <!-- Kind toggle + search -->
       <div class="px-4 pt-3 pb-2 flex-shrink-0 space-y-2">
         <div class="flex items-center gap-2">
-          <div class="inline-flex rounded border border-[#E5E7EB] dark:border-[#334155] p-0.5 bg-[#F9FAFB] dark:bg-[#0F172A]">
+          <div class="inline-flex rounded border border-line p-0.5 bg-page">
             <button type="button" data-action="setLdapPickerKind" data-args='["users"]' id="ldap-kind-users-btn"
-                    class="px-3 py-1 text-xs font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white">
+                    class="px-3 py-1 text-xs font-medium rounded bg-accent text-white dark:text-page">
               <i data-lucide="user" class="inline w-3 h-3 mr-1"></i>
               {{ t.get('users', 'Users') }}
             </button>
             <button type="button" data-action="setLdapPickerKind" data-args='["groups"]' id="ldap-kind-groups-btn"
-                    class="px-3 py-1 text-xs font-medium rounded text-[#6B7280] dark:text-[#CBD5E1]">
+                    class="px-3 py-1 text-xs font-medium rounded text-muted">
               <i data-lucide="users" class="inline w-3 h-3 mr-1"></i>
               {{ t.get('groups', 'Groups') }}
             </button>
           </div>
           <input type="text" id="ldap-picker-search"
                  placeholder="{{ t.get('search_filter', 'Search / filter...') }}"
-                 class="flex-1 px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#2563EB] focus:border-transparent outline-none">
+                 class="flex-1 px-3 py-1.5 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-brand focus-visible:border-transparent outline-none">
           <button type="button" data-action="runLdapPickerQuery" id="ldap-picker-search-btn"
-                  class="px-3 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1">
+                  class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
             <i data-lucide="search" class="w-4 h-4"></i>
             {{ t.get('search', 'Search') }}
           </button>
         </div>
-        <div class="text-[10px] text-[#9CA3AF] dark:text-[#475569]">
+        <div class="text-[10px] text-faint">
           {{ t.get('ldap_picker_hint', 'Click a row to add it to Allowed Users. Results capped at 200.') }}
         </div>
       </div>
@@ -820,15 +820,15 @@
       <!-- Results list -->
       <div id="ldap-picker-list" class="px-4 py-2 overflow-y-auto flex-1" style="max-height: 400px;">
         <div class="py-10 text-center">
-          <i data-lucide="search" class="w-10 h-10 mx-auto mb-2 text-[#9CA3AF] opacity-50"></i>
-          <p class="text-sm text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('ldap_picker_empty', 'Press Search to query AD') }}</p>
+          <i data-lucide="search" class="w-10 h-10 mx-auto mb-2 text-faint opacity-50"></i>
+          <p class="text-sm text-muted">{{ t.get('ldap_picker_empty', 'Press Search to query AD') }}</p>
         </div>
       </div>
 
       <!-- Footer -->
-      <div class="flex justify-between items-center gap-2 p-4 border-t border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
-        <span id="ldap-picker-count" class="text-[10px] text-[#9CA3AF] dark:text-[#475569]"></span>
-        <button data-action="closeLdapPicker" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.get('close', 'Close') }}</button>
+      <div class="flex justify-between items-center gap-2 p-4 border-t border-line flex-shrink-0">
+        <span id="ldap-picker-count" class="text-[10px] text-faint"></span>
+        <button data-action="closeLdapPicker" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.get('close', 'Close') }}</button>
       </div>
     </div>
   </div>
@@ -838,33 +838,33 @@
 <div id="reset-pw-modal" class="fixed inset-0 z-[70] hidden">
   <div class="fixed inset-0 bg-black/50" data-action="closeResetPasswordModal"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#E5E7EB] dark:border-[#334155] w-full max-w-sm relative">
-      <div class="flex items-center justify-between p-4 border-b border-[#E5E7EB] dark:border-[#334155]">
+    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-sm relative">
+      <div class="flex items-center justify-between p-4 border-b border-line">
         <h3 class="text-base font-semibold flex items-center gap-2">
-          <i data-lucide="key" class="w-5 h-5 text-[#F59E0B]"></i>
+          <i data-lucide="key" class="w-5 h-5 text-warning"></i>
           {{ t.change_admin_password }}
         </h3>
-        <button data-action="closeResetPasswordModal" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeResetPasswordModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
       <div class="p-4 space-y-3">
-        <div id="reset-pw-error" class="hidden rounded-lg p-2.5 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]"></div>
-        <div id="reset-pw-success" class="hidden rounded-lg p-2.5 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]"></div>
+        <div id="reset-pw-error" class="hidden rounded-lg p-2.5 text-sm bg-critical-tint text-critical-strong"></div>
+        <div id="reset-pw-success" class="hidden rounded-lg p-2.5 text-sm bg-healthy-tint text-healthy-strong"></div>
         <div>
           <label class="block text-xs font-medium mb-1">{{ t.new_password }}</label>
           <input type="password" id="reset-pw-new" placeholder="••••••••" minlength="8"
-                 class="w-full px-3 py-2 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#2563EB] dark:focus:ring-[#3B82F6] focus:border-transparent outline-none">
+                 class="w-full px-3 py-2 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-brand focus-visible:border-transparent outline-none">
         </div>
         <div>
           <label class="block text-xs font-medium mb-1">{{ t.confirm_new_password }}</label>
           <input type="password" id="reset-pw-confirm" placeholder="••••••••" minlength="8"
-                 class="w-full px-3 py-2 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#2563EB] dark:focus:ring-[#3B82F6] focus:border-transparent outline-none">
+                 class="w-full px-3 py-2 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-brand focus-visible:border-transparent outline-none">
         </div>
       </div>
-      <div class="flex justify-end gap-2 p-4 border-t border-[#E5E7EB] dark:border-[#334155]">
-        <button data-action="closeResetPasswordModal" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.cancel }}</button>
-        <button data-action="submitResetPassword" class="px-4 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1.5">
+      <div class="flex justify-end gap-2 p-4 border-t border-line">
+        <button data-action="closeResetPasswordModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
+        <button data-action="submitResetPassword" class="px-4 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1.5">
           <i data-lucide="check" class="w-4 h-4"></i>
           {{ t.reset_password }}
         </button>
@@ -877,28 +877,28 @@
 <div id="diff-modal" class="fixed inset-0 z-[70] hidden">
   <div class="fixed inset-0 bg-black/50"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#E5E7EB] dark:border-[#334155] w-full max-w-lg max-h-[80vh] flex flex-col relative">
-      <div class="flex items-center justify-between p-4 border-b border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-lg max-h-[80vh] flex flex-col relative">
+      <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <i data-lucide="git-compare" class="w-5 h-5 text-[#F59E0B]"></i>
+          <i data-lucide="git-compare" class="w-5 h-5 text-warning"></i>
           {{ t.review_changes }}
         </h3>
-        <button data-action="closeDiffModal" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeDiffModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
       <div class="p-4 overflow-y-auto flex-1">
         <div id="diff-list" class="space-y-2"></div>
       </div>
-      <div class="flex justify-between gap-2 p-4 border-t border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+      <div class="flex justify-between gap-2 p-4 border-t border-line flex-shrink-0">
         <button data-action="undoLastChange"
-                class="px-3 py-1.5 text-sm rounded border border-[#F59E0B] dark:border-[#FBBF24] text-[#F59E0B] dark:text-[#FBBF24] hover:bg-[#F59E0B]/10 flex items-center gap-1.5">
+                class="px-3 py-1.5 text-sm rounded border border-warning text-warning hover:bg-warning/10 flex items-center gap-1.5">
           <i data-lucide="undo-2" class="w-4 h-4"></i>
           {{ t.undo_last_change }}
         </button>
         <div class="flex gap-2">
-          <button data-action="closeDiffModal" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.cancel }}</button>
-          <button data-action="confirmSecuritySave" class="px-4 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1.5">
+          <button data-action="closeDiffModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
+          <button data-action="confirmSecuritySave" class="px-4 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1.5">
             <i data-lucide="check" class="w-4 h-4"></i>
             {{ t.confirm_save }}
           </button>
@@ -1155,6 +1155,23 @@ function cancelSecuritySettings() {
 }
 
 // --- Unified change detection + sticky save bar ---
+//
+// AUDIT FIX (DEFECT 3): #save-bar's hide transition moved from duration-300
+// to duration-slow (--dur-slow, 320ms) but the cleanup timeouts below still
+// hardcoded 300. Read the live custom property instead, so a future retune
+// of --dur-slow doesn't leave these racing ahead of the transition. The
+// fallback below only covers a browser that can't resolve the custom
+// property; tests/test_perf_hotpaths.py asserts it stays numerically equal
+// to app.css's --dur-slow so the fallback can't quietly drift from the token
+// it stands in for.
+const DUR_SLOW_FALLBACK_MS = 320;
+function getDurSlowMs() {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--dur-slow').trim();
+  const num = parseFloat(raw);
+  if (!raw || isNaN(num)) return DUR_SLOW_FALLBACK_MS;
+  return raw.endsWith('ms') ? num : num * 1000;
+}
+
 function checkForChanges() {
   const generalChanged = hasGeneralChanged();
   const securityChanged = hasSecurityChanged();
@@ -1173,7 +1190,7 @@ function checkForChanges() {
     }
   } else {
     bar.classList.add('translate-y-full');
-    setTimeout(() => bar.classList.add('hidden'), 300);
+    setTimeout(() => bar.classList.add('hidden'), getDurSlowMs());
   }
 }
 
@@ -1186,7 +1203,7 @@ function cancelAllChanges() {
 function saveAllSettings() {
   if (!validateAllFields()) {
     const msg = document.getElementById('save-message');
-    msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+    msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
     msg.textContent = {{ t.validation_summary | tojson }};
     msg.classList.remove('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1291,7 +1308,7 @@ function doSaveAllSettings(needsRestart) {
     .then(ldapResult => {
       if (!ldapResult.ok) {
         const msg = document.getElementById('save-message');
-        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
         msg.textContent = 'Error: ' + (ldapResult.error || 'LDAP settings rejected');
         msg.classList.remove('hidden');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1308,11 +1325,11 @@ function doSaveAllSettings(needsRestart) {
       if (result === null) return;  // LDAP stage already reported the failure
       const msg = document.getElementById('save-message');
       if (result.ok) {
-        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-healthy-tint text-healthy-strong';
         // Hide save bar
         const bar = document.getElementById('save-bar');
         bar.classList.add('translate-y-full');
-        setTimeout(() => bar.classList.add('hidden'), 300);
+        setTimeout(() => bar.classList.add('hidden'), getDurSlowMs());
 
         if (needsRestart) {
           msg.textContent = {{ t.config_saved | tojson }} + ' Server restarting...';
@@ -1333,7 +1350,7 @@ function doSaveAllSettings(needsRestart) {
           setTimeout(() => location.reload(), 500);
         }
       } else {
-        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
         msg.textContent = 'Error: ' + (result.error || 'Unknown error');
         msg.classList.remove('hidden');
         _settingsSaving = false;  // let the user retry after a server-side error
@@ -1376,7 +1393,7 @@ function sendTestEmail() {
   var btn = document.getElementById('test-email-btn');
   var result = document.getElementById('test-email-result');
   btn.disabled = true;
-  result.className = 'mt-2 rounded p-2 text-sm bg-[#F3F4F6] dark:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1]';
+  result.className = 'mt-2 rounded p-2 text-sm bg-raised dark:bg-line text-muted';
   result.innerHTML = '<span class="inline-block animate-spin mr-2">&#9696;</span> Sending test email...';
   result.classList.remove('hidden');
 
@@ -1388,15 +1405,15 @@ function sendTestEmail() {
   .then(function(r) { return r.json(); })
   .then(function(data) {
     if (data.ok) {
-      result.className = 'mt-2 rounded p-2 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+      result.className = 'mt-2 rounded p-2 text-sm bg-healthy-tint text-healthy-strong';
       result.textContent = data.message || 'Test email sent successfully.';
     } else {
-      result.className = 'mt-2 rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      result.className = 'mt-2 rounded p-2 text-sm bg-critical-tint text-critical-strong';
       result.textContent = data.error || 'Failed to send test email.';
     }
   })
   .catch(function(err) {
-    result.className = 'mt-2 rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+    result.className = 'mt-2 rounded p-2 text-sm bg-critical-tint text-critical-strong';
     result.textContent = 'Request failed: ' + err.message;
   })
   .finally(function() { btn.disabled = false; });
@@ -1411,30 +1428,30 @@ function checkCertExpiry() {
     return;
   }
   infoDiv.classList.remove('hidden');
-  infoDiv.className = 'text-xs rounded p-2 bg-[#F3F4F6] dark:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1]';
+  infoDiv.className = 'text-xs rounded p-2 bg-raised dark:bg-line text-muted';
   infoDiv.textContent = 'Checking certificate...';
 
   fetch('/api/cert-info?path=' + encodeURIComponent(certPath))
     .then(r => r.json())
     .then(data => {
       if (!data.valid) {
-        infoDiv.className = 'text-xs rounded p-2 bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+        infoDiv.className = 'text-xs rounded p-2 bg-critical-tint text-critical-strong';
         infoDiv.textContent = data.error || 'Invalid certificate';
         return;
       }
       if (data.expired) {
-        infoDiv.className = 'text-xs rounded p-2 bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+        infoDiv.className = 'text-xs rounded p-2 bg-critical-tint text-critical-strong';
         infoDiv.textContent = '\u26A0 Certificate EXPIRED on ' + data.not_after + ' (Subject: ' + data.subject + ', Issuer: ' + data.issuer + ')';
       } else if (data.days_remaining <= 30) {
-        infoDiv.className = 'text-xs rounded p-2 bg-[#FEF3C7] dark:bg-[#78350F] text-[#92400E] dark:text-[#FDE68A]';
+        infoDiv.className = 'text-xs rounded p-2 bg-warning-tint text-warning-strong dark:text-[#FDE68A]';
         infoDiv.textContent = '\u26A0 Certificate expires in ' + data.days_remaining + ' days (' + data.not_after + ') \u2014 Subject: ' + data.subject + ', Issuer: ' + data.issuer;
       } else {
-        infoDiv.className = 'text-xs rounded p-2 bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+        infoDiv.className = 'text-xs rounded p-2 bg-healthy-tint text-healthy-strong';
         infoDiv.textContent = '\u2713 Certificate valid until ' + data.not_after + ' (' + data.days_remaining + ' days) \u2014 Subject: ' + data.subject + ', Issuer: ' + data.issuer;
       }
     })
     .catch(() => {
-      infoDiv.className = 'text-xs rounded p-2 bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      infoDiv.className = 'text-xs rounded p-2 bg-critical-tint text-critical-strong';
       infoDiv.textContent = 'Failed to check certificate';
     });
 }
@@ -1490,7 +1507,7 @@ function _validateBeforeSave() {
     const key = document.getElementById('https-key').value.trim();
     if (!cert || !key) {
       const msg = document.getElementById('save-message');
-      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
       msg.textContent = {{ t.get('https_cert_required', 'HTTPS is enabled but certificate or key file path is empty. Please provide both paths or disable HTTPS.') | tojson }};
       msg.classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1503,7 +1520,7 @@ function _validateBeforeSave() {
     const backupAdminConfigured = backupSection && backupSection.querySelector('.badge-healthy');
     if (!ldapUrl && !backupAdminConfigured) {
       const msg = document.getElementById('save-message');
-      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
       msg.textContent = {{ t.get('auth_method_required', 'Authentication is enabled but no login method is configured. Set up LDAP or create an admin account first.') | tojson }};
       msg.classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1552,13 +1569,13 @@ function sendTestWebhook() {
   const result = document.getElementById('test-webhook-result');
   const url = document.getElementById('webhook-url').value.trim();
   if (!url) {
-    result.className = 'mt-2 rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+    result.className = 'mt-2 rounded p-2 text-sm bg-critical-tint text-critical-strong';
     result.textContent = {{ t.get('webhook_url_required', 'Please enter a webhook URL first') | tojson }};
     result.classList.remove('hidden');
     return;
   }
   btn.disabled = true;
-  result.className = 'mt-2 rounded p-2 text-sm bg-[#F3F4F6] dark:bg-[#334155] text-[#6B7280]';
+  result.className = 'mt-2 rounded p-2 text-sm bg-raised dark:bg-line text-muted';
   result.innerHTML = '<span class="inline-block animate-spin mr-2">&#9696;</span> Sending test...';
   result.classList.remove('hidden');
 
@@ -1570,15 +1587,15 @@ function sendTestWebhook() {
   .then(r => r.json())
   .then(data => {
     if (data.ok) {
-      result.className = 'mt-2 rounded p-2 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+      result.className = 'mt-2 rounded p-2 text-sm bg-healthy-tint text-healthy-strong';
       result.textContent = data.message || {{ t.webhook_test_success | tojson }};
     } else {
-      result.className = 'mt-2 rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      result.className = 'mt-2 rounded p-2 text-sm bg-critical-tint text-critical-strong';
       result.textContent = data.error || {{ t.webhook_test_failed | tojson }};
     }
   })
   .catch(err => {
-    result.className = 'mt-2 rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+    result.className = 'mt-2 rounded p-2 text-sm bg-critical-tint text-critical-strong';
     result.textContent = 'Request failed: ' + err.message;
   })
   .finally(() => { btn.disabled = false; });
@@ -1607,10 +1624,10 @@ function validateField(inputId, rules) {
   }
 
   if (!valid) {
-    el.classList.add('border-[#DC2626]', 'dark:border-[#EF4444]');
+    el.classList.add('border-critical', 'dark:border-critical');
     el.title = message;
   } else {
-    el.classList.remove('border-[#DC2626]', 'dark:border-[#EF4444]');
+    el.classList.remove('border-critical', 'dark:border-critical');
     el.title = '';
   }
   return valid;
@@ -1730,15 +1747,15 @@ function buildChangeList() {
 function showDiffModal(changes) {
   const list = document.getElementById('diff-list');
   if (changes.length === 0) {
-    list.innerHTML = '<div class="text-sm text-[#6B7280] dark:text-[#CBD5E1] text-center py-4">' + {{ t.no_changes | tojson }} + '</div>';
+    list.innerHTML = '<div class="text-sm text-muted text-center py-4">' + {{ t.no_changes | tojson }} + '</div>';
   } else {
-    list.innerHTML = changes.map(c => `<div class="flex items-start gap-3 p-2 rounded bg-[#F9FAFB] dark:bg-[#0F172A]/50 border border-[#E5E7EB] dark:border-[#334155]">
+    list.innerHTML = changes.map(c => `<div class="flex items-start gap-3 p-2 rounded bg-page dark:bg-page/50 border border-line">
       <div class="flex-1 min-w-0">
         <div class="text-xs font-medium">${c.label}</div>
         <div class="flex items-center gap-2 mt-1">
-          <span class="text-xs px-1.5 py-0.5 rounded bg-[#FEE2E2] dark:bg-[#7F1D1D]/30 text-[#DC2626] dark:text-[#FCA5A5] line-through truncate max-w-[180px]">${c.oldVal}</span>
-          <i data-lucide="arrow-right" class="w-3 h-3 text-[#6B7280] flex-shrink-0"></i>
-          <span class="text-xs px-1.5 py-0.5 rounded bg-[#D1FAE5] dark:bg-[#064E3B]/30 text-[#065F46] dark:text-[#6EE7B7] truncate max-w-[180px]">${c.newVal}</span>
+          <span class="text-xs px-1.5 py-0.5 rounded bg-critical-tint dark:bg-critical-tint/30 text-critical dark:text-critical-strong line-through truncate max-w-[180px]">${c.oldVal}</span>
+          <i data-lucide="arrow-right" class="w-3 h-3 text-muted flex-shrink-0"></i>
+          <span class="text-xs px-1.5 py-0.5 rounded bg-healthy-tint dark:bg-healthy-tint/30 text-healthy-strong truncate max-w-[180px]">${c.newVal}</span>
         </div>
       </div>
     </div>`).join('');
@@ -1812,8 +1829,8 @@ function setLdapPickerKind(kind) {
   _ldapPickerKind = kind;
   const usersBtn = document.getElementById('ldap-kind-users-btn');
   const groupsBtn = document.getElementById('ldap-kind-groups-btn');
-  const active = 'bg-[#2563EB] dark:bg-[#3B82F6] text-white';
-  const inactive = 'text-[#6B7280] dark:text-[#CBD5E1]';
+  const active = 'bg-accent text-white dark:text-page';
+  const inactive = 'text-muted';
   if (kind === 'users') {
     usersBtn.className = 'px-3 py-1 text-xs font-medium rounded ' + active;
     groupsBtn.className = 'px-3 py-1 text-xs font-medium rounded ' + inactive;
@@ -1830,8 +1847,8 @@ function setLdapPickerKind(kind) {
 function _renderLdapPickerEmpty() {
   document.getElementById('ldap-picker-list').innerHTML =
     '<div class="py-10 text-center">' +
-    '<i data-lucide="search" class="w-10 h-10 mx-auto mb-2 text-[#9CA3AF] opacity-50"></i>' +
-    '<p class="text-sm text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.get('ldap_picker_empty', 'Press Search to query AD') | tojson }} + '</p>' +
+    '<i data-lucide="search" class="w-10 h-10 mx-auto mb-2 text-faint opacity-50"></i>' +
+    '<p class="text-sm text-muted">' + {{ t.get('ldap_picker_empty', 'Press Search to query AD') | tojson }} + '</p>' +
     '</div>';
   document.getElementById('ldap-picker-count').textContent = '';
   if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -1852,8 +1869,8 @@ function runLdapPickerQuery() {
   btn.disabled = true;
   list.innerHTML =
     '<div class="py-10 text-center">' +
-    '<i data-lucide="loader" class="w-8 h-8 mx-auto mb-2 text-[#9CA3AF] animate-spin"></i>' +
-    '<p class="text-sm text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.get('ldap_querying', 'Querying Active Directory...') | tojson }} + '</p>' +
+    '<i data-lucide="loader" class="w-8 h-8 mx-auto mb-2 text-faint animate-spin"></i>' +
+    '<p class="text-sm text-muted">' + {{ t.get('ldap_querying', 'Querying Active Directory...') | tojson }} + '</p>' +
     '</div>';
   countEl.textContent = '';
   if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -1879,9 +1896,9 @@ function runLdapPickerQuery() {
     if (!data.ok) {
       list.innerHTML =
         '<div class="py-10 text-center">' +
-        '<i data-lucide="alert-triangle" class="w-10 h-10 mx-auto mb-2 text-[#DC2626]"></i>' +
-        '<p class="text-sm text-[#991B1B] dark:text-[#FCA5A5] font-medium">' + {{ t.get('ldap_query_failed', 'Query failed') | tojson }} + '</p>' +
-        '<p class="text-[10px] mt-1 text-[#9CA3AF] font-mono">' + _escapeHtml(data.error || '') + '</p>' +
+        '<i data-lucide="alert-triangle" class="w-10 h-10 mx-auto mb-2 text-critical"></i>' +
+        '<p class="text-sm text-critical-strong font-medium">' + {{ t.get('ldap_query_failed', 'Query failed') | tojson }} + '</p>' +
+        '<p class="text-[10px] mt-1 text-faint font-mono">' + _escapeHtml(data.error || '') + '</p>' +
         '</div>';
       if (typeof lucide !== 'undefined') lucide.createIcons();
       return;
@@ -1890,8 +1907,8 @@ function runLdapPickerQuery() {
     if (results.length === 0) {
       list.innerHTML =
         '<div class="py-10 text-center">' +
-        '<i data-lucide="inbox" class="w-10 h-10 mx-auto mb-2 text-[#9CA3AF] opacity-50"></i>' +
-        '<p class="text-sm text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.get('ldap_no_results', 'No results') | tojson }} + '</p>' +
+        '<i data-lucide="inbox" class="w-10 h-10 mx-auto mb-2 text-faint opacity-50"></i>' +
+        '<p class="text-sm text-muted">' + {{ t.get('ldap_no_results', 'No results') | tojson }} + '</p>' +
         '</div>';
       countEl.textContent = '0';
       if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -1899,7 +1916,7 @@ function runLdapPickerQuery() {
     }
     // Render rows — clicking a row appends the sAMAccountName (or CN for groups) to the textarea.
     const icon = _ldapPickerKind === 'users' ? 'user' : 'users';
-    let html = '<div class="divide-y divide-[#E5E7EB] dark:divide-[#334155]">';
+    let html = '<div class="divide-y divide-line">';
     results.forEach(r => {
       const label = _escapeHtml(r.name || r.sam || r.dn);
       const sam = _escapeHtml(r.sam || '');
@@ -1909,15 +1926,15 @@ function runLdapPickerQuery() {
       const secondary = _ldapPickerKind === 'users'
         ? (upn || sam) + (desc ? ' — ' + desc : '')
         : sam + (desc ? ' — ' + desc : '');
-      html += '<div class="py-2 px-2 -mx-2 rounded hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] cursor-pointer flex items-start gap-2" '
+      html += '<div class="py-2 px-2 -mx-2 rounded hover:bg-page cursor-pointer flex items-start gap-2" '
            + 'data-action="pickLdapResult" data-args="' + JSON.stringify([r.sam || r.name || '']).replace(/"/g, '&quot;') + '">'
-           + '<i data-lucide="' + icon + '" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6] flex-shrink-0 mt-0.5"></i>'
+           + '<i data-lucide="' + icon + '" class="w-4 h-4 text-info flex-shrink-0 mt-0.5"></i>'
            + '<div class="flex-1 min-w-0">'
            + '<div class="text-sm font-medium truncate">' + label + '</div>'
-           + '<div class="text-[10px] text-[#6B7280] dark:text-[#CBD5E1] truncate">' + secondary + '</div>'
-           + '<div class="text-[10px] text-[#9CA3AF] dark:text-[#475569] font-mono truncate">' + dn + '</div>'
+           + '<div class="text-[10px] text-muted truncate">' + secondary + '</div>'
+           + '<div class="text-[10px] text-faint font-mono truncate">' + dn + '</div>'
            + '</div>'
-           + '<i data-lucide="plus" class="w-4 h-4 text-[#10B981] flex-shrink-0 mt-0.5"></i>'
+           + '<i data-lucide="plus" class="w-4 h-4 text-healthy flex-shrink-0 mt-0.5"></i>'
            + '</div>';
     });
     html += '</div>';
@@ -1929,9 +1946,9 @@ function runLdapPickerQuery() {
     btn.disabled = false;
     list.innerHTML =
       '<div class="py-10 text-center">' +
-      '<i data-lucide="alert-triangle" class="w-10 h-10 mx-auto mb-2 text-[#DC2626]"></i>' +
-      '<p class="text-sm text-[#991B1B] dark:text-[#FCA5A5] font-medium">' + {{ t.get('ldap_query_failed', 'Query failed') | tojson }} + '</p>' +
-      '<p class="text-[10px] mt-1 text-[#9CA3AF] font-mono">' + _escapeHtml(err.message || '') + '</p>' +
+      '<i data-lucide="alert-triangle" class="w-10 h-10 mx-auto mb-2 text-critical"></i>' +
+      '<p class="text-sm text-critical-strong font-medium">' + {{ t.get('ldap_query_failed', 'Query failed') | tojson }} + '</p>' +
+      '<p class="text-[10px] mt-1 text-faint font-mono">' + _escapeHtml(err.message || '') + '</p>' +
       '</div>';
     if (typeof lucide !== 'undefined') lucide.createIcons();
   });
@@ -1943,8 +1960,8 @@ function pickLdapResult(value) {
   const existing = ta.value.split('\n').map(l => l.trim()).filter(Boolean);
   if (existing.includes(value)) {
     // Already present — brief visual flash
-    ta.classList.add('ring-2', 'ring-[#F59E0B]');
-    setTimeout(() => ta.classList.remove('ring-2', 'ring-[#F59E0B]'), 800);
+    ta.classList.add('ring-2', 'ring-warning');
+    setTimeout(() => ta.classList.remove('ring-2', 'ring-warning'), 800);
     return;
   }
   existing.push(value);
@@ -1952,8 +1969,8 @@ function pickLdapResult(value) {
   // Trigger save bar
   ta.dispatchEvent(new Event('input', { bubbles: true }));
   // Visual confirm
-  ta.classList.add('ring-2', 'ring-[#10B981]');
-  setTimeout(() => ta.classList.remove('ring-2', 'ring-[#10B981]'), 600);
+  ta.classList.add('ring-2', 'ring-healthy');
+  setTimeout(() => ta.classList.remove('ring-2', 'ring-healthy'), 600);
 }
 
 // Enter key in search field triggers query

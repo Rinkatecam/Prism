@@ -3,7 +3,7 @@
 
 <div class="flex items-center justify-between mb-6">
   <h1 class="text-2xl font-bold flex items-center gap-2">
-    <i data-lucide="activity" class="w-6 h-6 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    <i data-lucide="activity" class="w-6 h-6 text-brand"></i>
     {{ t.get('monitoring', 'Monitoring') }}
   </h1>
 </div>
@@ -15,60 +15,60 @@
      SECTION 1 — Baseline Detection & Security Alerts
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  <div id="baseline-security-card" class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155] space-y-4">
+  <div id="baseline-security-card" class="bg-card rounded-lg p-5 border border-line space-y-4">
 
     <!-- Detection Mode (priority: baseline > anomaly > threshold) -->
     <div>
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="layers" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6]"></i>
+        <i data-lucide="layers" class="w-4 h-4 text-accent"></i>
         {{ t.get('detection_mode', 'Detection Mode') }}
       </div>
-      <p class="text-xs text-[#6B7280] dark:text-[#CBD5E1] mb-3">
+      <p class="text-xs text-muted mb-3">
         {{ t.get('detection_mode_help', 'Choose which detectors fire alerts for CPU/RAM/Disk. The smartest enabled detector wins; lower-priority warnings are suppressed to avoid duplicate alerts. CRITICAL threshold alerts always fire as a safety net.') }}
       </p>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <!-- Thresholds (simple) -->
-        <div class="rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-3 bg-[#F9FAFB] dark:bg-[#0F172A]">
+        <div class="rounded-lg border border-line p-3 bg-page">
           <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" id="thresholds-enabled" class="general-input"
                    {% if settings.get('thresholds', {}).get('enabled', true) %}checked{% endif %}>
             <span class="text-sm font-medium">{{ t.get('thresholds_simple', 'Thresholds (Simple)') }}</span>
           </label>
-          <p class="text-xs text-[#6B7280] dark:text-[#CBD5E1] mt-1">
+          <p class="text-xs text-muted mt-1">
             {{ t.get('thresholds_help', 'Hardcoded warning/critical % per server. Always-on safety net at the critical level.') }}
           </p>
           <div class="flex items-center gap-1 mt-2">
-            <label class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">Slow collection (ms):</label>
+            <label class="text-xs text-muted">Slow collection (ms):</label>
             <input type="number" id="thresholds-slow-ms" min="1000" max="60000" step="500"
                    value="{{ settings.get('thresholds', {}).get('slow_collection_ms', 10000) }}"
-                   class="general-input w-20 px-2 py-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+                   class="general-input w-20 px-2 py-1 text-xs rounded border border-line bg-field text-right">
           </div>
           {# Exhaustion floors — docs/plans/DETECTION_FUSION_PLAN.md §2, §7.
              Hard truth: at/above these %, the metric is ALWAYS critical, no
              matter what the baseline (below) thinks is normal. #}
           <div class="flex items-center gap-1 mt-2">
-            <label class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('exhaustion_ram_label', 'Exhaustion floor — RAM (%)') }}:</label>
+            <label class="text-xs text-muted">{{ t.get('exhaustion_ram_label', 'Exhaustion floor — RAM (%)') }}:</label>
             <input type="number" id="thresholds-exhaustion-ram" min="90" max="100"
                    value="{{ settings.get('thresholds', {}).get('exhaustion_ram', 98) }}"
-                   class="general-input w-14 px-2 py-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+                   class="general-input w-14 px-2 py-1 text-xs rounded border border-line bg-field text-right">
           </div>
           <div class="flex items-center gap-1 mt-1">
-            <label class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('exhaustion_disk_label', 'Exhaustion floor — Disk (%)') }}:</label>
+            <label class="text-xs text-muted">{{ t.get('exhaustion_disk_label', 'Exhaustion floor — Disk (%)') }}:</label>
             <input type="number" id="thresholds-exhaustion-disk" min="80" max="100"
                    value="{{ settings.get('thresholds', {}).get('exhaustion_disk', 95) }}"
-                   class="general-input w-14 px-2 py-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+                   class="general-input w-14 px-2 py-1 text-xs rounded border border-line bg-field text-right">
           </div>
-          <p class="text-[10px] text-[#9CA3AF] dark:text-[#475569] mt-1">{{ t.get('exhaustion_floor_help', 'At or above this value the metric is always critical — the baseline can never downgrade it.') }}</p>
+          <p class="text-[10px] text-faint mt-1">{{ t.get('exhaustion_floor_help', 'At or above this value the metric is always critical — the baseline can never downgrade it.') }}</p>
         </div>
 
         <!-- Anomaly Detection (statistical) -->
-        <div class="rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-3 bg-[#F9FAFB] dark:bg-[#0F172A]">
+        <div class="rounded-lg border border-line p-3 bg-page">
           <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" id="anomaly-enabled" class="general-input"
                    {% if settings.get('anomaly_detection', {}).get('enabled', true) %}checked{% endif %}>
             <span class="text-sm font-medium">{{ t.get('anomaly_statistical', 'Anomaly (Statistical)') }}</span>
           </label>
-          <p class="text-xs text-[#6B7280] dark:text-[#CBD5E1] mt-1">
+          <p class="text-xs text-muted mt-1">
             {{ t.get('anomaly_help', 'Rolling mean ± sigma. Catches crashes (low-side) even when baseline is on.') }}
           </p>
           {# Cadence throttle knob and the underlying check_every_cycles
@@ -76,10 +76,10 @@
              on every sample (cheap thanks to the analytics baseline
              cache) — see analytics.py module docstring. #}
           <div class="flex items-center gap-1 mt-2">
-            <label class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">Suppression (h):</label>
+            <label class="text-xs text-muted">Suppression (h):</label>
             <input type="number" id="anomaly-suppression" min="0" max="48" step="0.5"
                    value="{{ settings.get('anomaly_detection', {}).get('suppression_hours', 4) }}"
-                   class="general-input w-14 px-2 py-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+                   class="general-input w-14 px-2 py-1 text-xs rounded border border-line bg-field text-right">
           </div>
           <label class="flex items-center gap-2 cursor-pointer mt-2">
             <input type="checkbox" id="anomaly-rate-enabled" class="general-input"
@@ -87,95 +87,95 @@
             <span class="text-xs">{{ t.get('rate_detection', 'Rate-of-change detection') }}</span>
           </label>
           {# CPU N-of-M smoothing — gates noisy CPU warnings. Critical bypasses. #}
-          <div class="mt-2 pt-2 border-t border-[#E5E7EB] dark:border-[#334155]">
-            <div class="text-[10px] font-semibold text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.get('cpu_smoothing', 'CPU smoothing') }}</div>
+          <div class="mt-2 pt-2 border-t border-line">
+            <div class="text-[10px] font-semibold text-muted mb-1">{{ t.get('cpu_smoothing', 'CPU smoothing') }}</div>
             <div class="flex items-center gap-1">
               <input type="number" id="anomaly-cpu-consec" min="1" max="20"
                      value="{{ settings.get('anomaly_detection', {}).get('cpu_warning_consecutive_cycles', 3) }}"
-                     class="general-input w-12 px-1.5 py-0.5 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
-              <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('of', 'of') }}</span>
+                     class="general-input w-12 px-1.5 py-0.5 text-xs rounded border border-line bg-field text-right">
+              <span class="text-xs text-muted">{{ t.get('of', 'of') }}</span>
               <input type="number" id="anomaly-cpu-window" min="1" max="20"
                      value="{{ settings.get('anomaly_detection', {}).get('cpu_warning_window_cycles', 5) }}"
-                     class="general-input w-12 px-1.5 py-0.5 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
-              <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('cycles_must_be_warning', 'cycles must be warning') }}</span>
+                     class="general-input w-12 px-1.5 py-0.5 text-xs rounded border border-line bg-field text-right">
+              <span class="text-xs text-muted">{{ t.get('cycles_must_be_warning', 'cycles must be warning') }}</span>
             </div>
-            <p class="text-[10px] text-[#9CA3AF] dark:text-[#475569] mt-1">{{ t.get('cpu_smoothing_help', 'Legacy CPU smoothing. Since 2026-08-05 the badge is driven by the spike gate below; this now only filters which CPU anomalies appear in the event feed.') }}</p>
+            <p class="text-[10px] text-faint mt-1">{{ t.get('cpu_smoothing_help', 'Legacy CPU smoothing. Since 2026-08-05 the badge is driven by the spike gate below; this now only filters which CPU anomalies appear in the event feed.') }}</p>
           </div>
           {# Static-breach spike gate — the badge-level "is this a condition or
              just a blip?" control for CPU and RAM. Replaces the CPU-only
              smoothing above for verdict purposes. #}
-          <div class="mt-2 pt-2 border-t border-[#E5E7EB] dark:border-[#334155]">
-            <div class="text-[10px] font-semibold text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.get('spike_gate', 'Spike gate (CPU + RAM)') }}</div>
+          <div class="mt-2 pt-2 border-t border-line">
+            <div class="text-[10px] font-semibold text-muted mb-1">{{ t.get('spike_gate', 'Spike gate (CPU + RAM)') }}</div>
             <div class="flex items-center gap-1">
               <input type="number" id="spike-sustain-cycles" min="1" max="20"
                      value="{{ settings.get('anomaly_detection', {}).get('spike_sustain_cycles', 5) }}"
-                     class="general-input w-12 px-1.5 py-0.5 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
-              <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('consecutive_rounds_required', 'consecutive rounds required') }}</span>
+                     class="general-input w-12 px-1.5 py-0.5 text-xs rounded border border-line bg-field text-right">
+              <span class="text-xs text-muted">{{ t.get('consecutive_rounds_required', 'consecutive rounds required') }}</span>
             </div>
-            <p class="text-[10px] text-[#9CA3AF] dark:text-[#475569] mt-1">{{ t.get('spike_gate_help', 'A CPU or RAM breach must persist this many collector rounds before it flags — warning AND critical. One sample below the threshold resets the count. Exhaustion floors (RAM 98% / disk 95%) always fire immediately, and disk is never gated. Set to 1 to disable.') }}</p>
+            <p class="text-[10px] text-faint mt-1">{{ t.get('spike_gate_help', 'A CPU or RAM breach must persist this many collector rounds before it flags — warning AND critical. One sample below the threshold resets the count. Exhaustion floors (RAM 98% / disk 95%) always fire immediately, and disk is never gated. Set to 1 to disable.') }}</p>
           </div>
         </div>
 
         <!-- Baseline (smart) — visual indicator only; toggle is below -->
-        <div class="rounded-lg border-2 border-[#8B5CF6] p-3 bg-[#F5F3FF] dark:bg-[#1E1B4B]">
+        <div class="rounded-lg border-2 border-brand p-3 bg-[#F5F3FF] dark:bg-[#1E1B4B]">
           <div class="flex items-center gap-2">
-            <i data-lucide="brain" class="w-4 h-4 text-[#8B5CF6]"></i>
+            <i data-lucide="brain" class="w-4 h-4 text-accent"></i>
             <span class="text-sm font-medium">{{ t.get('baseline_smart', 'Baseline (Smart)') }}</span>
-            <span class="ml-auto text-[10px] font-semibold text-[#8B5CF6] uppercase">Priority 1</span>
+            <span class="ml-auto text-[10px] font-semibold text-brand uppercase">Priority 1</span>
           </div>
-          <p class="text-xs text-[#6B7280] dark:text-[#CBD5E1] mt-1">
+          <p class="text-xs text-muted mt-1">
             {{ t.get('baseline_card_help', 'Hour-of-week Z-score. The smartest detector — when on, it owns CPU/RAM/Disk warning alerts.') }}
           </p>
-          <p class="text-xs text-[#8B5CF6] mt-2 font-medium">
+          <p class="text-xs text-brand mt-2 font-medium">
             {{ t.get('baseline_configure_below', 'Configure below ↓') }}
           </p>
         </div>
       </div>
     </div>
 
-    <hr class="border-[#E5E7EB] dark:border-[#334155]">
+    <hr class="border-line">
 
     <!-- Baseline Detection Settings -->
     <div>
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="brain" class="w-4 h-4 text-[#2563EB] dark:text-[#3B82F6]"></i>
+        <i data-lucide="brain" class="w-4 h-4 text-accent"></i>
         {{ t.get('baseline_detection', 'Baseline Detection') }}
       </div>
       <div class="flex flex-wrap items-center gap-3 mb-3">
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" id="baseline-enabled" class="sr-only peer general-input"
                  {% if settings.get('baseline_detection', {}).get('enabled', true) %}checked{% endif %}>
-          <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#8B5CF6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+          <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
         </label>
         <div class="flex items-center gap-1">
-          <label class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('sigma_warning', 'Sigma Warning') }}</label>
+          <label class="text-xs text-muted">{{ t.get('sigma_warning', 'Sigma Warning') }}</label>
           <input type="number" id="baseline-sigma-warning" step="0.1" min="0.1" max="10"
                  value="{{ settings.get('baseline_detection', {}).get('sigma_warning', 2.0) }}"
-                 class="general-input w-16 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+                 class="general-input w-16 px-2 py-1 text-sm rounded border border-line bg-field text-right">
         </div>
         <div class="flex items-center gap-1">
-          <label class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('sigma_critical', 'Sigma Critical') }}</label>
+          <label class="text-xs text-muted">{{ t.get('sigma_critical', 'Sigma Critical') }}</label>
           <input type="number" id="baseline-sigma-critical" step="0.1" min="0.1" max="10"
                  value="{{ settings.get('baseline_detection', {}).get('sigma_critical', 3.0) }}"
-                 class="general-input w-16 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+                 class="general-input w-16 px-2 py-1 text-sm rounded border border-line bg-field text-right">
         </div>
         <div class="flex items-center gap-1">
-          <label class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('min_samples', 'Min Samples') }}</label>
+          <label class="text-xs text-muted">{{ t.get('min_samples', 'Min Samples') }}</label>
           <input type="number" id="baseline-min-samples" min="1" max="1000"
                  value="{{ settings.get('baseline_detection', {}).get('min_samples', 10) }}"
-                 class="general-input w-16 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+                 class="general-input w-16 px-2 py-1 text-sm rounded border border-line bg-field text-right">
         </div>
         <div class="flex items-center gap-1">
-          <label class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('history_weeks', 'History Weeks') }}</label>
+          <label class="text-xs text-muted">{{ t.get('history_weeks', 'History Weeks') }}</label>
           <input type="number" id="baseline-history-weeks" min="1" max="52"
                  value="{{ settings.get('baseline_detection', {}).get('history_weeks', 4) }}"
-                 class="general-input w-16 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+                 class="general-input w-16 px-2 py-1 text-sm rounded border border-line bg-field text-right">
         </div>
         <div class="flex items-center gap-1">
-          <label class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('recalc_time', 'Recalc Time') }}</label>
+          <label class="text-xs text-muted">{{ t.get('recalc_time', 'Recalc Time') }}</label>
           <input type="time" id="baseline-recalc-time"
                  value="{{ settings.get('baseline_detection', {}).get('recalc_hour', '02:00') }}"
-                 class="general-input px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                 class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
         </div>
       </div>
       {# Baseline downgrade authority — docs/plans/DETECTION_FUSION_PLAN.md
@@ -187,24 +187,24 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="baseline-allow-downgrade" class="sr-only peer general-input"
                    {% if settings.get('baseline_detection', {}).get('allow_downgrade', true) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#8B5CF6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
-          <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('allow_baseline_downgrade', 'Allow baseline to downgrade') }}</span>
+          <span class="text-xs text-muted">{{ t.get('allow_baseline_downgrade', 'Allow baseline to downgrade') }}</span>
         </div>
         <div class="flex items-center gap-1">
-          <label class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('baseline_warmup_weeks', 'Warm-up (weeks)') }}</label>
+          <label class="text-xs text-muted">{{ t.get('baseline_warmup_weeks', 'Warm-up (weeks)') }}</label>
           <input type="number" id="baseline-min-span-weeks" min="1" max="8"
                  value="{{ settings.get('baseline_detection', {}).get('min_span_weeks', 2) }}"
-                 class="general-input w-16 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+                 class="general-input w-16 px-2 py-1 text-sm rounded border border-line bg-field text-right">
         </div>
         <div class="flex items-center gap-1">
-          <label class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('baseline_min_coverage', 'Min slot coverage (%)') }}</label>
+          <label class="text-xs text-muted">{{ t.get('baseline_min_coverage', 'Min slot coverage (%)') }}</label>
           <input type="number" id="baseline-min-coverage-pct" min="10" max="100"
                  value="{{ settings.get('baseline_detection', {}).get('min_coverage_pct', 50) }}"
-                 class="general-input w-16 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+                 class="general-input w-16 px-2 py-1 text-sm rounded border border-line bg-field text-right">
         </div>
       </div>
-      <p class="text-[10px] text-[#9CA3AF] dark:text-[#475569] mb-3">{{ t.get('allow_baseline_downgrade_help', 'A mature baseline may mark a static warning/critical as normal-for-this-server.') }}</p>
+      <p class="text-[10px] text-faint mb-3">{{ t.get('allow_baseline_downgrade_help', 'A mature baseline may mark a static warning/critical as normal-for-this-server.') }}</p>
       {# Deviation-from-self RAISE gates — docs/plans/
          ALERT_NOISE_AND_VERDICT_UX_PLAN.md §3. The mirror image of the
          downgrade-authority block above: these decide when a deviation is
@@ -213,32 +213,32 @@
          Both / 0 / off reproduces the pre-2026-08-03 behaviour exactly. #}
       <div class="flex flex-wrap items-center gap-3 mb-3">
         <div class="flex items-center gap-1">
-          <label class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('deviation_direction', 'Deviation alarms on') }}</label>
+          <label class="text-xs text-muted">{{ t.get('deviation_direction', 'Deviation alarms on') }}</label>
           <select id="baseline-deviation-direction"
-                  class="general-input px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                  class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
             {% set _dir = settings.get('baseline_detection', {}).get('deviation_direction', 'high') %}
             <option value="high" {% if _dir == 'high' %}selected{% endif %}>{{ t.get('deviation_direction_high', 'Rising only') }}</option>
             <option value="both" {% if _dir == 'both' %}selected{% endif %}>{{ t.get('deviation_direction_both', 'Rising and falling') }}</option>
           </select>
         </div>
         <div class="flex items-center gap-1">
-          <label class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('deviation_min_pct', 'Min % of warning bar') }}</label>
+          <label class="text-xs text-muted">{{ t.get('deviation_min_pct', 'Min % of warning bar') }}</label>
           <input type="number" id="baseline-deviation-min-pct" min="0" max="100"
                  value="{{ settings.get('baseline_detection', {}).get('deviation_min_pct_of_warning', 80) }}"
-                 class="general-input w-16 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+                 class="general-input w-16 px-2 py-1 text-sm rounded border border-line bg-field text-right">
         </div>
         <div class="flex items-center gap-2">
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="baseline-deviation-requires-authority" class="sr-only peer general-input"
                    {% if settings.get('baseline_detection', {}).get('deviation_requires_authority', true) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#8B5CF6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
-          <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('deviation_requires_authority', 'Require mature baseline to alarm') }}</span>
+          <span class="text-xs text-muted">{{ t.get('deviation_requires_authority', 'Require mature baseline to alarm') }}</span>
         </div>
       </div>
-      <p class="text-[10px] text-[#9CA3AF] dark:text-[#475569] mb-3">{{ t.get('deviation_gates_help', 'Controls when "differs from its own baseline" raises a warning. Rising-only ignores a metric dropping below its normal (an emptier disk is not a fault). The percentage requires the value to actually approach its warning threshold, so a statistical blip well inside safe limits stays quiet.') }}</p>
+      <p class="text-[10px] text-faint mb-3">{{ t.get('deviation_gates_help', 'Controls when "differs from its own baseline" raises a warning. Rising-only ignores a metric dropping below its normal (an emptier disk is not a fault). The percentage requires the value to actually approach its warning threshold, so a statistical blip well inside safe limits stays quiet.') }}</p>
       <div class="flex items-center">
-        <button data-action="recalculateBaselines" class="px-3 py-1.5 text-xs font-medium rounded border border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#8B5CF6]/10 flex items-center gap-1">
+        <button data-action="recalculateBaselines" class="px-3 py-1.5 text-xs font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1">
           <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
           {{ t.get('recalculate_baselines', 'Recalculate Now') }}
         </button>
@@ -246,12 +246,12 @@
       </div>
     </div>
 
-    <hr class="border-[#E5E7EB] dark:border-[#334155]">
+    <hr class="border-line">
 
     <!-- Security Alerts Settings -->
     <div>
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="shield-alert" class="w-4 h-4 text-[#DC2626]"></i>
+        <i data-lucide="shield-alert" class="w-4 h-4 text-critical"></i>
         {{ t.get('security_alerts', 'Security Alerts') }}
       </div>
       <div class="flex flex-wrap items-center gap-3">
@@ -259,28 +259,28 @@
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="security-failed-login-tracking" class="sr-only peer general-input"
                    {% if settings.get('security_alerts', {}).get('failed_login_tracking', true) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#DC2626] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-critical rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
-          <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('failed_login_tracking', 'Failed Login Tracking') }}</span>
+          <span class="text-xs text-muted">{{ t.get('failed_login_tracking', 'Failed Login Tracking') }}</span>
         </div>
         <div class="flex items-center gap-1">
-          <label class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('failure_threshold', 'Failure Threshold') }}</label>
+          <label class="text-xs text-muted">{{ t.get('failure_threshold', 'Failure Threshold') }}</label>
           <input type="number" id="security-failure-threshold" min="1" max="1000"
                  value="{{ settings.get('security_alerts', {}).get('login_failure_threshold', 10) }}"
-                 class="general-input w-16 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
+                 class="general-input w-16 px-2 py-1 text-sm rounded border border-line bg-field text-right">
         </div>
         <div class="flex items-center gap-2">
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="security-lockout-alert" class="sr-only peer general-input"
                    {% if settings.get('security_alerts', {}).get('lockout_alert', true) %}checked{% endif %}>
-            <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#DC2626] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+            <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-critical rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
-          <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('lockout_alert', 'Lockout Alert') }}</span>
+          <span class="text-xs text-muted">{{ t.get('lockout_alert', 'Lockout Alert') }}</span>
         </div>
       </div>
 
-      <hr class="border-[#E5E7EB] dark:border-[#334155] my-3">
-      <div class="text-xs font-semibold text-[#6B7280] dark:text-[#CBD5E1] mb-2">Security Status Monitoring</div>
+      <hr class="border-line my-3">
+      <div class="text-xs font-semibold text-muted mb-2">Security Status Monitoring</div>
 
       <div class="flex flex-wrap items-center gap-3">
         <label class="flex items-center gap-2 cursor-pointer">
@@ -295,10 +295,10 @@
           <span class="text-xs">Windows Defender (real-time + signature age)</span>
         </label>
         <div class="flex items-center gap-1">
-          <label class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">Max signature age:</label>
+          <label class="text-xs text-muted">Max signature age:</label>
           <input type="number" id="sec-defender-max-age" min="1" max="90" value="{{ settings.get('security_alerts',{}).get('defender_max_sig_age_days', 7) }}"
-                 class="general-input w-16 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
-          <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">days</span>
+                 class="general-input w-16 px-2 py-1 text-sm rounded border border-line bg-field text-right">
+          <span class="text-xs text-muted">days</span>
         </div>
         <label class="flex items-center gap-2 cursor-pointer">
           <input type="checkbox" id="sec-firewall-check" class="general-input" {% if settings.get('security_alerts',{}).get('firewall_check', true) %}checked{% endif %}>
@@ -328,32 +328,32 @@
 <section class="mb-8">
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="shield-check" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+      <i data-lucide="shield-check" class="w-5 h-5 text-accent"></i>
       {{ t.get('tls_monitoring', 'TLS Monitoring') }}
     </h2>
-    <button data-action="addTlsCertRow" class="px-3 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1">
+    <button data-action="addTlsCertRow" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
       <i data-lucide="plus" class="w-4 h-4"></i>
       {{ t.get('add_certificate', 'Add Certificate') }}
     </button>
   </div>
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155] space-y-4">
+  <div class="bg-card rounded-lg p-5 border border-line space-y-4">
     <div class="flex items-center gap-3 mb-3">
       <label class="relative inline-flex items-center cursor-pointer">
         <input type="checkbox" id="tls-monitoring-enabled" class="sr-only peer security-input">
-        <div class="w-9 h-5 bg-[#D1D5DB] dark:bg-[#4B5563] peer-checked:bg-[#2563EB] dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-[#2563EB]/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+        <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
       </label>
       <div class="flex items-center gap-2">
-        <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('warning_label', 'Warning:') }}</span>
-        <input type="number" id="tls-warning-days" value="30" min="1" max="365" class="security-input w-16 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
-        <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('days', 'days') }}</span>
-        <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1] ml-2">{{ t.get('critical_label', 'Critical:') }}</span>
-        <input type="number" id="tls-critical-days" value="7" min="1" max="90" class="security-input w-16 px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right">
-        <span class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('days', 'days') }}</span>
+        <span class="text-xs text-muted">{{ t.get('warning_label', 'Warning:') }}</span>
+        <input type="number" id="tls-warning-days" value="30" min="1" max="365" class="security-input w-16 px-2 py-1 text-sm rounded border border-line bg-field text-right">
+        <span class="text-xs text-muted">{{ t.get('days', 'days') }}</span>
+        <span class="text-xs text-muted ml-2">{{ t.get('critical_label', 'Critical:') }}</span>
+        <input type="number" id="tls-critical-days" value="7" min="1" max="90" class="security-input w-16 px-2 py-1 text-sm rounded border border-line bg-field text-right">
+        <span class="text-xs text-muted">{{ t.get('days', 'days') }}</span>
       </div>
     </div>
     <!-- Certificate endpoints list -->
     <div id="tls-cert-list" class="space-y-2"></div>
-    <div id="no-tls-certs" class="text-sm text-[#9CA3AF] dark:text-[#475569] text-center py-8">
+    <div id="no-tls-certs" class="text-sm text-faint text-center py-8">
       <i data-lucide="shield-check" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
       <p>{{ t.get('no_certificates', 'No certificates configured') }}</p>
       <p class="text-[10px] mt-1 opacity-60">{{ t.get('no_certificates_hint', 'Click "Add Certificate" to monitor TLS expiration') }}</p>
@@ -366,11 +366,11 @@
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="volume-2" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    <i data-lucide="volume-2" class="w-5 h-5 text-info"></i>
     {{ t.alert_fatigue if t.alert_fatigue is defined else 'Alert Fatigue' }}
   </h2>
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155] space-y-4">
-    <p class="text-xs text-[#6B7280] dark:text-[#CBD5E1]">
+  <div class="bg-card rounded-lg p-5 border border-line space-y-4">
+    <p class="text-xs text-muted">
       {{ t.noise_digest if t.noise_digest is defined else 'Noise Digest' }} &mdash;
       {{ t.alert_scoring if t.alert_scoring is defined else 'Alert Scoring' }}
     </p>
@@ -378,19 +378,19 @@
     <!-- Noise digest table (loaded via JS) -->
     <div id="noise-digest-table" class="overflow-x-auto">
       <table class="w-full text-xs">
-        <thead>
-          <tr class="text-left text-[#6B7280] dark:text-[#94A3B8] border-b border-[#E5E7EB] dark:border-[#334155]">
-            <th class="pb-2 pr-3 font-medium">{{ t.servers if t.servers is defined else 'Server' }}</th>
-            <th class="pb-2 pr-3 font-medium">{{ t.type if t.type is defined else 'Metric' }}</th>
-            <th class="pb-2 pr-3 font-medium">{{ t.noise_score if t.noise_score is defined else 'Score' }}</th>
-            <th class="pb-2 pr-3 font-medium">{{ t.fire_count if t.fire_count is defined else 'Fires' }}</th>
-            <th class="pb-2 pr-3 font-medium">{{ t.ack_count if t.ack_count is defined else 'Acked' }}</th>
-            <th class="pb-2 font-medium">{{ t.suggested_adjustment if t.suggested_adjustment is defined else 'Suggestion' }}</th>
+        <thead data-sort-table="monitoring-noise-digest">
+          <tr class="text-left text-muted border-b border-line">
+            <th class="pb-2 pr-3 font-medium" data-sort="text">{{ t.servers if t.servers is defined else 'Server' }}</th>
+            <th class="pb-2 pr-3 font-medium" data-sort="text">{{ t.type if t.type is defined else 'Metric' }}</th>
+            <th class="pb-2 pr-3 font-medium" data-sort="number">{{ t.noise_score if t.noise_score is defined else 'Score' }}</th>
+            <th class="pb-2 pr-3 font-medium" data-sort="number">{{ t.fire_count if t.fire_count is defined else 'Fires' }}</th>
+            <th class="pb-2 pr-3 font-medium" data-sort="number">{{ t.ack_count if t.ack_count is defined else 'Acked' }}</th>
+            <th class="pb-2 font-medium" data-sort="text">{{ t.suggested_adjustment if t.suggested_adjustment is defined else 'Suggestion' }}</th>
           </tr>
         </thead>
         <tbody id="noise-digest-body">
           <tr>
-            <td colspan="6" class="py-4 text-center text-[#9CA3AF] dark:text-[#64748B]">
+            <td colspan="6" class="py-4 text-center text-faint">
               <i data-lucide="loader" class="w-4 h-4 inline-block animate-spin"></i>
             </td>
           </tr>
@@ -399,13 +399,13 @@
     </div>
 
     <!-- Reset button -->
-    <div class="flex items-center gap-3 pt-2 border-t border-[#E5E7EB] dark:border-[#334155]">
+    <div class="flex items-center gap-3 pt-2 border-t border-line">
       <button data-action="resetAlertScores"
-              class="px-4 py-2 text-xs font-medium rounded bg-[#F59E0B] dark:bg-[#FBBF24] text-white hover:opacity-90 flex items-center gap-1.5">
+              class="px-4 py-2 text-xs font-medium rounded bg-warning text-white hover:opacity-90 flex items-center gap-1.5">
         <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
         {{ t.reset_scores if t.reset_scores is defined else 'Reset Scores' }}
       </button>
-      <span id="reset-scores-result" class="text-xs text-[#6B7280] dark:text-[#CBD5E1]"></span>
+      <span id="reset-scores-result" class="text-xs text-muted"></span>
     </div>
   </div>
 </section>
@@ -416,16 +416,16 @@
 <section class="mb-8">
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="clock" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+      <i data-lucide="clock" class="w-5 h-5 text-accent"></i>
       {{ t.maintenance_windows }}
     </h2>
     <button data-action="showAddMaintenance"
-            class="px-3 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1">
+            class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
       <i data-lucide="plus" class="w-4 h-4"></i>
       {{ t.add_maintenance }}
     </button>
   </div>
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155]">
+  <div class="bg-card rounded-lg p-5 border border-line">
     <div id="maint-list" class="space-y-2"></div>
   </div>
 </section>
@@ -433,11 +433,11 @@
 <!-- ═══════════════════════════════════════════════════════════════
      Sticky Bottom Save Bar
      ═══════════════════════════════════════════════════════════════ -->
-<div id="save-bar" class="fixed bottom-0 inset-x-0 z-50 hidden translate-y-full transition-transform duration-300">
+<div id="save-bar" class="fixed bottom-0 inset-x-0 z-50 hidden translate-y-full transition-transform duration-slow">
   <div class="max-w-4xl mx-auto px-4 py-3">
-    <div class="bg-white dark:bg-[#1E293B] border border-[#E5E7EB] dark:border-[#334155] rounded-lg shadow-lg flex items-center justify-between px-4 py-2">
-      <span class="text-sm text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('unsaved_changes', 'You have unsaved changes') }}</span>
-      <button data-action="saveMonitoringSettings" class="px-4 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1.5">
+    <div class="bg-card border border-line rounded-lg shadow-lg flex items-center justify-between px-4 py-2">
+      <span class="text-sm text-muted">{{ t.get('unsaved_changes', 'You have unsaved changes') }}</span>
+      <button data-action="saveMonitoringSettings" class="px-4 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1.5">
         <i data-lucide="save" class="w-4 h-4"></i>
         {{ t.get('save_settings', 'Save Settings') }}
       </button>
@@ -449,10 +449,10 @@
 <div id="maint-modal" class="fixed inset-0 z-[60] hidden">
   <div class="fixed inset-0 bg-black/50" data-action="closeMaintModal"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#E5E7EB] dark:border-[#334155] w-full max-w-lg max-h-[90vh] flex flex-col relative">
-      <div class="flex items-center justify-between p-4 border-b border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-lg max-h-[90vh] flex flex-col relative">
+      <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
         <h3 id="maint-modal-title" class="text-lg font-semibold">{{ t.add_maintenance }}</h3>
-        <button data-action="closeMaintModal" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeMaintModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -461,11 +461,13 @@
         <div>
           <label class="block text-xs font-medium mb-1">{{ t.maint_name }} *</label>
           <input type="text" id="maint-name" placeholder="Weekend Patching"
-                 class="w-full px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                 class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
         </div>
         <div>
           <label class="block text-xs font-medium mb-1">{{ t.maint_servers }}</label>
-          <div id="maint-server-checks" class="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto border border-[#E5E7EB] dark:border-[#334155] rounded p-2">
+          {# Rounded shell clips; the grid inside scrolls. See activity_feed. #}
+          <div class="border border-line rounded overflow-hidden">
+          <div id="maint-server-checks" class="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto p-2">
             {% for s in servers %}
             <label class="flex items-center gap-1.5 text-xs cursor-pointer">
               <input type="checkbox" value="{{ s.name }}" class="maint-server-cb rounded border-gray-300">
@@ -473,12 +475,13 @@
             </label>
             {% endfor %}
           </div>
+          </div>
         </div>
         <div>
           <label class="block text-xs font-medium mb-1">{{ t.maint_days }}</label>
           <div class="flex flex-wrap gap-1.5">
             {% for day, label in [(0, 'Mon'), (1, 'Tue'), (2, 'Wed'), (3, 'Thu'), (4, 'Fri'), (5, 'Sat'), (6, 'Sun')] %}
-            <label class="flex items-center gap-1 text-xs cursor-pointer px-2 py-1 rounded border border-[#E5E7EB] dark:border-[#334155] has-[:checked]:bg-[#2563EB] has-[:checked]:text-white has-[:checked]:border-[#2563EB]">
+            <label class="flex items-center gap-1 text-xs cursor-pointer px-2 py-1 rounded border border-line dark:border-line has-[:checked]:bg-accent has-[:checked]:text-white dark:text-page has-[:checked]:border-info">
               <input type="checkbox" value="{{ day }}" class="maint-day-cb sr-only">
               {{ label }}
             </label>
@@ -489,60 +492,60 @@
           <div>
             <label class="block text-xs font-medium mb-1">{{ t.maint_start }}</label>
             <input type="time" id="maint-start" value="02:00"
-                   class="w-full px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                   class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
           </div>
           <div>
             <label class="block text-xs font-medium mb-1">{{ t.maint_end }}</label>
             <input type="time" id="maint-end" value="06:00"
-                   class="w-full px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                   class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
           </div>
         </div>
         <div>
-          <label class="flex items-center gap-2 cursor-pointer mb-3 p-2 rounded border border-[#F59E0B] bg-[#FFFBEB] dark:bg-[#451A03]">
+          <label class="flex items-center gap-2 cursor-pointer mb-3 p-2 rounded border border-warning bg-[#FFFBEB] dark:bg-[#451A03]">
             <input type="checkbox" id="maint-suppress-alerts" class="general-input">
             <div>
-              <span class="text-xs font-semibold text-[#F59E0B]">{{ t.get('suppress_all_alerts', 'Suppress ALL alerts during this window') }}</span>
-              <div class="text-[10px] text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('suppress_all_alerts_help', 'When enabled, no events, emails or webhooks fire — useful for patching nights. When off, only thresholds are loosened.') }}</div>
+              <span class="text-xs font-semibold text-warning">{{ t.get('suppress_all_alerts', 'Suppress ALL alerts during this window') }}</span>
+              <div class="text-[10px] text-muted">{{ t.get('suppress_all_alerts_help', 'When enabled, no events, emails or webhooks fire — useful for patching nights. When off, only thresholds are loosened.') }}</div>
             </div>
           </label>
           <label class="block text-xs font-medium mb-2">{{ t.maint_thresholds }}</label>
           <div class="grid grid-cols-3 gap-2">
             <div>
-              <label class="block text-[10px] text-[#6B7280] dark:text-[#CBD5E1]">CPU Warn</label>
+              <label class="block text-[10px] text-muted">CPU Warn</label>
               <input type="number" id="maint-cpu-warn" value="90" min="1" max="100"
-                     class="w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                     class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
             </div>
             <div>
-              <label class="block text-[10px] text-[#6B7280] dark:text-[#CBD5E1]">CPU Crit</label>
+              <label class="block text-[10px] text-muted">CPU Crit</label>
               <input type="number" id="maint-cpu-crit" value="98" min="1" max="100"
-                     class="w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                     class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
             </div>
             <div>
-              <label class="block text-[10px] text-[#6B7280] dark:text-[#CBD5E1]">RAM Warn</label>
+              <label class="block text-[10px] text-muted">RAM Warn</label>
               <input type="number" id="maint-ram-warn" value="95" min="1" max="100"
-                     class="w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                     class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
             </div>
             <div>
-              <label class="block text-[10px] text-[#6B7280] dark:text-[#CBD5E1]">RAM Crit</label>
+              <label class="block text-[10px] text-muted">RAM Crit</label>
               <input type="number" id="maint-ram-crit" value="99" min="1" max="100"
-                     class="w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                     class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
             </div>
             <div>
-              <label class="block text-[10px] text-[#6B7280] dark:text-[#CBD5E1]">Disk Warn</label>
+              <label class="block text-[10px] text-muted">Disk Warn</label>
               <input type="number" id="maint-disk-warn" value="90" min="1" max="100"
-                     class="w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                     class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
             </div>
             <div>
-              <label class="block text-[10px] text-[#6B7280] dark:text-[#CBD5E1]">Disk Crit</label>
+              <label class="block text-[10px] text-muted">Disk Crit</label>
               <input type="number" id="maint-disk-crit" value="98" min="1" max="100"
-                     class="w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                     class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
             </div>
           </div>
         </div>
       </div>
-      <div class="flex justify-end gap-2 p-4 border-t border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
-        <button data-action="closeMaintModal" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.cancel }}</button>
-        <button data-action="saveMaintWindow" class="px-4 py-1.5 text-sm rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90">{{ t.save }}</button>
+      <div class="flex justify-end gap-2 p-4 border-t border-line flex-shrink-0">
+        <button data-action="closeMaintModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
+        <button data-action="saveMaintWindow" class="px-4 py-1.5 text-sm rounded bg-accent text-white dark:text-page hover:opacity-90">{{ t.save }}</button>
       </div>
     </div>
   </div>
@@ -576,6 +579,22 @@ function loadConfig() {
 // ═══════════════════════════════════════════════════════════════
 // Save Monitoring Settings (baseline_detection, security_alerts, tls_monitoring)
 // ═══════════════════════════════════════════════════════════════
+
+// AUDIT FIX (DEFECT 3): #save-bar's hide transition moved from duration-300
+// to duration-slow (--dur-slow, 320ms) but the cleanup timeout below still
+// hardcoded 300. Read the live custom property instead, so a future retune
+// of --dur-slow doesn't leave this racing ahead of the transition. The
+// fallback below only covers a browser that can't resolve the custom
+// property; tests/test_perf_hotpaths.py asserts it stays numerically equal
+// to app.css's --dur-slow so the fallback can't quietly drift from the token
+// it stands in for.
+const DUR_SLOW_FALLBACK_MS = 320;
+function getDurSlowMs() {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--dur-slow').trim();
+  const num = parseFloat(raw);
+  if (!raw || isNaN(num)) return DUR_SLOW_FALLBACK_MS;
+  return raw.endsWith('ms') ? num : num * 1000;
+}
 
 function saveMonitoringSettings() {
   const data = { settings: {} };
@@ -652,17 +671,17 @@ function saveMonitoringSettings() {
   .then(result => {
     const msg = document.getElementById('save-message');
     if (result.ok) {
-      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-healthy-tint text-healthy-strong';
       msg.textContent = {{ t.get('config_saved', 'Configuration saved successfully.') | tojson }};
       msg.classList.remove('hidden');
       // Hide save bar
       const bar = document.getElementById('save-bar');
       bar.classList.add('translate-y-full');
-      setTimeout(() => bar.classList.add('hidden'), 300);
+      setTimeout(() => bar.classList.add('hidden'), getDurSlowMs());
       window.scrollTo({ top: 0, behavior: 'smooth' });
       setTimeout(() => location.reload(), 800);
     } else {
-      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
       msg.textContent = 'Error: ' + (result.error || 'Unknown error');
       msg.classList.remove('hidden');
     }
@@ -711,7 +730,7 @@ function recalculateBaselines() {
   const resultSpan = document.getElementById('baseline-result');
   btn.disabled = true;
   resultSpan.textContent = '{{ t.get("recalculating", "Recalculating...") }}';
-  resultSpan.className = 'text-xs ml-2 text-[#6B7280]';
+  resultSpan.className = 'text-xs ml-2 text-muted';
   fetch('/api/baselines/recalculate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
@@ -721,16 +740,16 @@ function recalculateBaselines() {
     btn.disabled = false;
     if (result.ok) {
       resultSpan.textContent = '{{ t.get("baselines_recalculated", "Baselines recalculated successfully.") }}';
-      resultSpan.className = 'text-xs ml-2 text-[#10B981]';
+      resultSpan.className = 'text-xs ml-2 text-healthy';
     } else {
       resultSpan.textContent = 'Error: ' + (result.error || 'Unknown error');
-      resultSpan.className = 'text-xs ml-2 text-[#DC2626]';
+      resultSpan.className = 'text-xs ml-2 text-critical';
     }
   })
   .catch(err => {
     btn.disabled = false;
     resultSpan.textContent = 'Error: ' + err.message;
-    resultSpan.className = 'text-xs ml-2 text-[#DC2626]';
+    resultSpan.className = 'text-xs ml-2 text-critical';
   });
 }
 
@@ -746,32 +765,29 @@ function loadAlertFatigueDigest() {
       if (!data.length) {
         tbody.innerHTML = '<tr><td colspan="6" class="py-8 text-center">' +
           '<i data-lucide="volume-2" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>' +
-          '<p class="text-sm text-[#9CA3AF] dark:text-[#475569]">No alert noise scores yet</p>' +
-          '<p class="text-[10px] mt-1 opacity-60 text-[#9CA3AF]">Scores accumulate as alerts fire over time</p>' +
+          '<p class="text-sm text-faint">No alert noise scores yet</p>' +
+          '<p class="text-[10px] mt-1 opacity-60 text-faint">Scores accumulate as alerts fire over time</p>' +
           '</td></tr>';
         if (typeof lucide !== 'undefined') lucide.createIcons();
         return;
       }
       tbody.innerHTML = data.map(s => `
-        <tr class="border-b border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]/50">
-          <td class="py-2 pr-3 font-medium text-[#2563EB] dark:text-[#3B82F6]">${s.server_name}</td>
+        <tr class="border-b border-line hover:bg-page dark:hover:bg-page/50">
+          <td class="py-2 pr-3 font-medium text-info">${s.server_name}</td>
           <td class="py-2 pr-3">${s.metric || '-'} / ${s.event_type}</td>
           <td class="py-2 pr-3">
-            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold
-              ${s.score > 70 ? 'bg-[#DC2626]/10 text-[#DC2626] dark:bg-[#EF4444]/10 dark:text-[#EF4444]'
-              : s.score > 40 ? 'bg-[#F59E0B]/10 text-[#F59E0B] dark:bg-[#FBBF24]/10 dark:text-[#FBBF24]'
-              : 'bg-[#6B7280]/10 text-[#6B7280] dark:bg-[#94A3B8]/10 dark:text-[#94A3B8]'}">${s.score}</span>
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold ${s.score > 70 ? 'bg-critical/10 text-critical dark:bg-critical/10 dark:text-critical' : s.score > 40 ? 'bg-warning/10 text-warning dark:bg-warning/10 dark:text-warning' : 'bg-muted/10 text-muted '}">${s.score}</span>
           </td>
           <td class="py-2 pr-3">${s.fire_count}</td>
           <td class="py-2 pr-3">${s.ack_count}</td>
-          <td class="py-2 text-[10px] ${s.suggestion ? 'text-[#F59E0B] dark:text-[#FBBF24]' : 'text-[#9CA3AF] dark:text-[#64748B]'}">${s.suggestion || '-'}</td>
+          <td class="py-2 text-[10px] ${s.suggestion ? 'text-warning dark:text-warning' : 'text-faint '}">${s.suggestion || '-'}</td>
         </tr>
       `).join('');
       if (typeof lucide !== 'undefined') lucide.createIcons();
     })
     .catch(() => {
       document.getElementById('noise-digest-body').innerHTML =
-        '<tr><td colspan="6" class="py-4 text-center text-[#DC2626]">Failed to load</td></tr>';
+        '<tr><td colspan="6" class="py-4 text-center text-critical">Failed to load</td></tr>';
     });
 }
 
@@ -787,24 +803,24 @@ async function resetAlertScores() {
       const el = document.getElementById('reset-scores-result');
       if (data.ok) {
         el.textContent = 'Scores reset successfully';
-        el.className = 'text-xs text-[#10B981]';
+        el.className = 'text-xs text-healthy';
         // Reload digest
         document.getElementById('noise-digest-body').innerHTML =
           '<tr><td colspan="6" class="py-8 text-center">' +
           '<i data-lucide="volume-2" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>' +
-          '<p class="text-sm text-[#9CA3AF] dark:text-[#475569]">No alert noise scores yet</p>' +
-          '<p class="text-[10px] mt-1 opacity-60 text-[#9CA3AF]">Scores accumulate as alerts fire over time</p>' +
+          '<p class="text-sm text-faint">No alert noise scores yet</p>' +
+          '<p class="text-[10px] mt-1 opacity-60 text-faint">Scores accumulate as alerts fire over time</p>' +
           '</td></tr>';
         if (typeof lucide !== 'undefined') lucide.createIcons();
       } else {
         el.textContent = data.error || 'Failed';
-        el.className = 'text-xs text-[#DC2626]';
+        el.className = 'text-xs text-critical';
       }
     })
     .catch(() => {
       const el = document.getElementById('reset-scores-result');
       el.textContent = 'Network error';
-      el.className = 'text-xs text-[#DC2626]';
+      el.className = 'text-xs text-critical';
     });
 }
 
@@ -832,7 +848,7 @@ function renderMaintWindows() {
     const _noMaintMsg = {{ t.no_maintenance_windows | tojson }};
     const _noMaintHint = {{ t.get('no_maintenance_hint', 'Define windows when servers are expected to be under load') | tojson }};
     container.innerHTML =
-      '<div class="text-sm text-[#9CA3AF] dark:text-[#475569] text-center py-8">' +
+      '<div class="text-sm text-faint text-center py-8">' +
         '<i data-lucide="clock" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>' +
         '<p>' + _escHtml(_noMaintMsg) + '</p>' +
         '<p class="text-[10px] mt-1 opacity-60">' + _escHtml(_noMaintHint) + '</p>' +
@@ -847,18 +863,18 @@ function renderMaintWindows() {
     const days = (w.days || []).map(d => dayNames[d] || '?').join(', ');
     const servers = (w.servers || []).join(', ');
     const timeRange = (w.start_time || '00:00') + ' – ' + (w.end_time || '23:59');
-    return `<div class="flex items-center gap-3 px-3 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#334155] bg-[#F9FAFB] dark:bg-[#0F172A]/50">
+    return `<div class="flex items-center gap-3 px-3 py-2 rounded-lg border border-line bg-page dark:bg-page/50">
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
-          <span class="text-xs font-semibold text-[#111827] dark:text-[#F9FAFB]">${_escHtml(w.name || 'Unnamed')}</span>
-          <span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#3B82F6]/20 dark:text-[#3B82F6]">${_escHtml(timeRange)}</span>
+          <span class="text-xs font-semibold text-ink dark:text-[#F9FAFB]">${_escHtml(w.name || 'Unnamed')}</span>
+          <span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-info/10 text-info dark:bg-info/20">${_escHtml(timeRange)}</span>
         </div>
-        <div class="text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mt-0.5 font-mono truncate">${_escHtml(days)} → ${_escHtml(servers || 'No servers')}</div>
+        <div class="text-[10px] text-muted mt-0.5 font-mono truncate">${_escHtml(days)} → ${_escHtml(servers || 'No servers')}</div>
       </div>
-      <button data-action="editMaintWindow" data-args="[${i}]" class="p-1.5 text-[#6B7280] hover:text-[#2563EB] rounded hover:bg-[#2563EB]/10" title="Edit">
+      <button data-action="editMaintWindow" data-args="[${i}]" class="p-1.5 text-muted hover:text-info rounded hover:bg-info/10" title="Edit">
         <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
       </button>
-      <button data-action="deleteMaintWindow" data-args="[${i}]" class="p-1.5 text-[#6B7280] hover:text-[#DC2626] rounded hover:bg-[#DC2626]/10" title="Delete">
+      <button data-action="deleteMaintWindow" data-args="[${i}]" class="p-1.5 text-muted hover:text-critical rounded hover:bg-critical/10" title="Delete">
         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
       </button>
     </div>`;
@@ -1008,21 +1024,21 @@ function addTlsCertRow(data) {
   document.getElementById('no-tls-certs').classList.add('hidden');
 
   const row = document.createElement('div');
-  row.className = 'flex items-center gap-2 px-3 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#334155] bg-[#F9FAFB] dark:bg-[#0F172A]/50 tls-cert-row';
+  row.className = 'flex items-center gap-2 px-3 py-2 rounded-lg border border-line bg-page dark:bg-page/50 tls-cert-row';
 
   const serverOpts = _serverNames.map(n => `<option value="${n}" ${(data && data.server === n) ? 'selected' : ''}>${n}</option>`).join('');
 
   row.innerHTML = `
-    <select class="tls-server px-2 py-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+    <select class="tls-server px-2 py-1 text-xs rounded border border-line bg-field">
       <option value="">-- Server --</option>
       ${serverOpts}
     </select>
-    <input type="text" class="tls-host px-2 py-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono flex-1" placeholder="hostname or IP" value="${_escHtml((data && data.host) || '')}">
-    <input type="number" class="tls-port w-16 px-2 py-1 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] text-right" placeholder="443" min="1" max="65535" value="${(data && data.port) || 443}">
-    <button data-action="testTlsCertRow" class="p-1.5 text-[#6B7280] hover:text-[#10B981] rounded hover:bg-[#10B981]/10" title="Test">
+    <input type="text" class="tls-host px-2 py-1 text-xs rounded border border-line bg-field font-mono flex-1" placeholder="hostname or IP" value="${_escHtml((data && data.host) || '')}">
+    <input type="number" class="tls-port w-16 px-2 py-1 text-xs rounded border border-line bg-field text-right" placeholder="443" min="1" max="65535" value="${(data && data.port) || 443}">
+    <button data-action="testTlsCertRow" class="p-1.5 text-muted hover:text-healthy rounded hover:bg-healthy/10" title="Test">
       <i data-lucide="zap" class="w-3.5 h-3.5"></i>
     </button>
-    <button data-action="removeTlsCertRow" class="p-1.5 text-[#6B7280] hover:text-[#DC2626] rounded hover:bg-[#DC2626]/10" title="Delete">
+    <button data-action="removeTlsCertRow" class="p-1.5 text-muted hover:text-critical rounded hover:bg-critical/10" title="Delete">
       <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
     </button>
     <div class="tls-test-result text-xs ml-1 hidden"></div>
@@ -1050,7 +1066,7 @@ function testTlsCert(row) {
   if (!host) { resultEl.textContent = 'Enter a host'; resultEl.classList.remove('hidden'); return; }
 
   resultEl.textContent = 'Checking...';
-  resultEl.className = 'tls-test-result text-xs ml-1 text-[#6B7280]';
+  resultEl.className = 'tls-test-result text-xs ml-1 text-muted';
 
   fetch('/api/tls-certificates/check', {
     method: 'POST',
@@ -1064,12 +1080,12 @@ function testTlsCert(row) {
         const color = days <= 7 ? '#DC2626' : days <= 30 ? '#F59E0B' : '#10B981';
         resultEl.innerHTML = `<span style="color:${color}">${days}d remaining</span>`;
       } else {
-        resultEl.innerHTML = `<span class="text-[#DC2626]">${_escHtml(result.error || 'Check failed')}</span>`;
+        resultEl.innerHTML = `<span class="text-critical">${_escHtml(result.error || 'Check failed')}</span>`;
       }
       resultEl.classList.remove('hidden');
     })
     .catch(err => {
-      resultEl.innerHTML = `<span class="text-[#DC2626]">${_escHtml(err.message)}</span>`;
+      resultEl.innerHTML = `<span class="text-critical">${_escHtml(err.message)}</span>`;
       resultEl.classList.remove('hidden');
     });
 }

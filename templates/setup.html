@@ -3,28 +3,28 @@
 
 <div class="flex items-center justify-center min-h-[70vh]">
   <div class="w-full max-w-sm">
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-6 shadow-sm">
+    <div class="bg-card rounded-lg border border-line p-6 shadow-sm">
 
       <!-- Logo -->
       <div class="text-center mb-6">
-        <div class="flex items-center justify-center gap-2 text-[#2563EB] dark:text-[#3B82F6] font-bold text-xl mb-1">
+        <div class="flex items-center justify-center gap-2 text-info font-bold text-xl mb-1">
           <img src="{{ url_for('static', filename='img/logo.png') }}" alt="" class="w-8 h-8" width="32" height="32">
           <span class="prism-wordmark">Prism</span>
         </div>
         <h1 class="text-base font-semibold mb-1">{{ t.welcome_to_prism }}</h1>
-        <p class="text-sm text-[#6B7280] dark:text-[#CBD5E1]">{{ t.first_run_setup_desc }}</p>
+        <p class="text-sm text-muted">{{ t.first_run_setup_desc }}</p>
       </div>
 
       <!-- Error message -->
       {% if error %}
-      <div class="mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]">
+      <div class="mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong">
         {{ error }}
       </div>
       {% endif %}
 
       <!-- S2-13 (W4): break-glass account governs all tier-0 servers when
            LDAP is unreachable, so the policy is intentionally stricter. -->
-      <div class="mb-4 rounded-lg p-3 text-xs bg-[#FEF3C7] dark:bg-[#78350F] text-[#92400E] dark:text-[#FDE68A]">
+      <div class="mb-4 rounded-lg p-3 text-xs bg-warning-tint text-warning-strong dark:text-[#FDE68A]">
         This is the <strong>break-glass admin</strong> account. It guards all tier-0
         servers when LDAP is unreachable. Required:
         <ul class="list-disc list-inside mt-1">
@@ -41,38 +41,38 @@
         <div>
           <label for="username" class="block text-xs font-medium mb-1">{{ t.admin_username }}</label>
           <div class="relative">
-            <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none text-[#6B7280] dark:text-[#CBD5E1]">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none text-muted">
               <i data-lucide="user" class="w-4 h-4"></i>
             </span>
             <input type="text" id="username" name="username" required autofocus
-                   class="w-full pl-9 pr-3 py-2 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#8B5CF6] dark:focus:ring-[#A78BFA] focus:border-transparent outline-none">
+                   class="w-full pl-9 pr-3 py-2 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-brand focus-visible:border-transparent outline-none">
           </div>
         </div>
 
         <div>
           <label for="password" class="block text-xs font-medium mb-1">{{ t.admin_password }}</label>
           <div class="relative">
-            <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none text-[#6B7280] dark:text-[#CBD5E1]">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none text-muted">
               <i data-lucide="lock" class="w-4 h-4"></i>
             </span>
             <input type="password" id="password" name="password" required minlength="12"
-                   class="w-full pl-9 pr-3 py-2 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#8B5CF6] dark:focus:ring-[#A78BFA] focus:border-transparent outline-none">
+                   class="w-full pl-9 pr-3 py-2 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-brand focus-visible:border-transparent outline-none">
           </div>
         </div>
 
         <div>
           <label for="confirm_password" class="block text-xs font-medium mb-1">{{ t.confirm_password }}</label>
           <div class="relative">
-            <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none text-[#6B7280] dark:text-[#CBD5E1]">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none text-muted">
               <i data-lucide="lock" class="w-4 h-4"></i>
             </span>
             <input type="password" id="confirm_password" name="confirm_password" required minlength="12"
-                   class="w-full pl-9 pr-3 py-2 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#8B5CF6] dark:focus:ring-[#A78BFA] focus:border-transparent outline-none">
+                   class="w-full pl-9 pr-3 py-2 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-brand focus-visible:border-transparent outline-none">
           </div>
         </div>
 
         <!-- Validation error (client-side) -->
-        <div id="validation-error" class="hidden rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]">
+        <div id="validation-error" class="hidden rounded-lg p-3 text-sm bg-critical-tint text-critical-strong">
         </div>
 
         <button type="submit" id="submit-btn"

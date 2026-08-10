@@ -3,7 +3,7 @@
 
 <div class="flex items-center justify-between mb-6">
   <h1 class="text-2xl font-bold flex items-center gap-2">
-    <i data-lucide="server" class="w-6 h-6 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    <i data-lucide="server" class="w-6 h-6 text-brand"></i>
     {{ t.servers }}
   </h1>
 </div>
@@ -19,28 +19,28 @@
     <h2 class="text-lg font-semibold">{{ t.servers }} ({{ servers | length }})</h2>
     <div class="flex items-center gap-2">
       <button data-action="showGuide"
-              class="px-3 py-1.5 text-sm font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] flex items-center gap-1">
+              class="px-3 py-1.5 text-sm font-medium rounded border border-line hover:bg-page flex items-center gap-1">
         <i data-lucide="book-open" class="w-4 h-4"></i>
         {{ t.setup_guide }}
       </button>
       <button data-action="discoverServers"
-              class="px-3 py-1.5 text-sm font-medium rounded border border-[#10B981] dark:border-[#34D399] text-[#10B981] dark:text-[#34D399] hover:bg-[#10B981]/10 flex items-center gap-1">
+              class="px-3 py-1.5 text-sm font-medium rounded border border-healthy text-healthy hover:bg-healthy/10 flex items-center gap-1">
         <i data-lucide="radar" class="w-4 h-4"></i>
         {{ t.discover_servers }}
       </button>
       <button data-action="exportServersCSV"
-              class="px-3 py-1.5 text-sm font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] flex items-center gap-1">
+              class="px-3 py-1.5 text-sm font-medium rounded border border-line hover:bg-page flex items-center gap-1">
         <i data-lucide="download" class="w-4 h-4"></i>
         {{ t.csv_export }}
       </button>
       <button data-action="_srvClickCsvImport"
-              class="px-3 py-1.5 text-sm font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] flex items-center gap-1">
+              class="px-3 py-1.5 text-sm font-medium rounded border border-line hover:bg-page flex items-center gap-1">
         <i data-lucide="upload" class="w-4 h-4"></i>
         {{ t.csv_import }}
       </button>
       <input type="file" id="csv-import-input" accept=".csv" class="hidden" data-change="_srvImportCsv">
       <button data-action="showAddForm"
-              class="px-3 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1">
+              class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
         <i data-lucide="plus" class="w-4 h-4"></i>
         {{ t.add_server }}
       </button>
@@ -48,65 +48,74 @@
   </div>
 
   {% if servers | length == 0 %}
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155]">
-    <div class="text-sm text-[#9CA3AF] dark:text-[#475569] text-center py-8">
+  <div class="bg-card rounded-lg border border-line">
+    <div class="text-sm text-faint text-center py-8">
       <i data-lucide="server" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
       <p>{{ t.no_servers }}</p>
       <p class="text-[10px] mt-1 opacity-60">Click "Add Server" or "Discover Servers" to get started</p>
     </div>
   </div>
   {% else %}
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] overflow-hidden">
+  <div class="bg-card rounded-lg border border-line overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-[#E5E7EB] dark:border-[#334155] text-left">
-            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.name }}</th>
-            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.host }}</th>
-            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">{{ t.get('status', 'Status') }}</th>
-            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1] hidden sm:table-cell">{{ t.type }}</th>
-            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1] hidden md:table-cell">{{ t.port }}</th>
-            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1] text-right">{{ t.actions }}</th>
+        <thead data-sort-table="servers-list">
+          <tr class="border-b border-line text-left">
+            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted" data-sort="text">{{ t.name }}</th>
+            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted" data-sort="text">{{ t.host }}</th>
+            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted" data-sort="status">{{ t.get('status', 'Status') }}</th>
+            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted hidden sm:table-cell" data-sort="text">{{ t.type }}</th>
+            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted hidden md:table-cell" data-sort="number">{{ t.port }}</th>
+            <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted text-right">{{ t.actions }}</th>
           </tr>
         </thead>
           {% for s in servers %}
-          <tbody class="server-group border-b border-[#E5E7EB] dark:border-[#334155]"
+          <tbody class="server-group border-b border-line"
                  data-index="{{ loop.index0 }}" data-server-name="{{ s.name }}"
                  data-mouseenter="_srvShowInfo" data-mouseleave="_srvHideInfo">
-          <tr class="hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]/50 cursor-default">
+          <tr class="hover:bg-page dark:hover:bg-page/50 cursor-default">
             <td class="px-4 py-2">
               <span class="font-medium">{{ s.name }}</span>
               <span class="server-tags-{{ loop.index0 }} inline-flex flex-wrap gap-1 ml-2"></span>
-              <button data-action="_srvAssignTagMenu" data-args='[{{ s.name | tojson }}, {{ loop.index0 }}]' class="p-0.5 text-[#9CA3AF] hover:text-[#8B5CF6] align-middle" title="Manage tags">
+              <button data-action="_srvAssignTagMenu" data-args='[{{ s.name | tojson }}, {{ loop.index0 }}]' class="p-0.5 text-faint hover:text-brand align-middle" title="Manage tags">
                 <i data-lucide="tag" class="w-3 h-3"></i>
               </button>
             </td>
-            <td class="px-4 py-2 text-[#6B7280] dark:text-[#CBD5E1] font-mono text-xs">{{ s.host }}</td>
-            <td class="px-4 py-2 whitespace-nowrap" data-server-status="{{ s.name }}"><span class="text-[10px] text-[#9CA3AF] uppercase">&mdash;</span></td>
-            <td class="px-4 py-2 text-[#6B7280] dark:text-[#CBD5E1] text-xs hidden sm:table-cell">{{ s.type | replace('_', ' ') | title }}</td>
-            <td class="px-4 py-2 text-[#6B7280] dark:text-[#CBD5E1] text-xs hidden md:table-cell">{{ s.port }}</td>
+            <td class="px-4 py-2 text-muted font-mono text-xs">{{ s.host }}</td>
+            <td class="px-4 py-2 whitespace-nowrap" data-server-status="{{ s.name }}"><span class="text-[10px] text-faint uppercase">&mdash;</span></td>
+            <td class="px-4 py-2 text-muted text-xs hidden sm:table-cell">{{ s.type | replace('_', ' ') | title }}</td>
+            <td class="px-4 py-2 text-muted text-xs hidden md:table-cell">{{ s.port }}</td>
             <td class="px-4 py-2 text-right whitespace-nowrap">
-              <button data-action="testConnection" data-args="[{{ loop.index0 }}]" class="p-1 text-[#6B7280] dark:text-[#CBD5E1] hover:text-[#10B981] dark:hover:text-[#34D399]" title="{{ t.test_connection }}" aria-label="{{ t.test_connection }}" id="test-btn-{{ loop.index0 }}">
+              <button data-action="testConnection" data-args="[{{ loop.index0 }}]" class="p-1 text-accent hover:text-accent-strong" title="{{ t.test_connection }}" aria-label="{{ t.test_connection }}" id="test-btn-{{ loop.index0 }}">
                 <i data-lucide="plug" class="w-4 h-4"></i>
               </button>
-              <button data-action="editServer" data-args="[{{ loop.index0 }}]" class="p-1 text-[#6B7280] dark:text-[#CBD5E1] hover:text-[#2563EB] dark:hover:text-[#3B82F6] ml-1" title="{{ t.edit }}" aria-label="{{ t.edit }}">
+              <button data-action="editServer" data-args="[{{ loop.index0 }}]" class="p-1 text-accent hover:text-accent-strong ml-1" title="{{ t.edit }}" aria-label="{{ t.edit }}">
                 <i data-lucide="pencil" class="w-4 h-4"></i>
               </button>
-              <button data-action="deleteServer" data-args="[{{ loop.index0 }}]" class="p-1 text-[#6B7280] dark:text-[#CBD5E1] hover:text-[#DC2626] dark:hover:text-[#EF4444] ml-1" title="{{ t.delete }}" aria-label="{{ t.delete }}">
+              <button data-action="deleteServer" data-args="[{{ loop.index0 }}]" class="p-1 text-critical hover:bg-critical/15 rounded ml-1" title="{{ t.delete }}" aria-label="{{ t.delete }}">
                 <i data-lucide="trash-2" class="w-4 h-4"></i>
               </button>
             </td>
           </tr>
           <tr id="server-info-{{ loop.index0 }}" style="display:none;">
             <td colspan="6" class="px-0 py-0 border-0">
-              <div class="server-info-panel overflow-hidden transition-all duration-300 ease-in-out" style="max-height:0;">
-                <div class="py-2 px-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-[#6B7280] dark:text-[#CBD5E1] bg-[#F9FAFB] dark:bg-[#0F172A]/50">
-                  <span class="server-info-status"></span>
+              {# The grid child must carry NO padding. A 0fr track's automatic
+                 minimum is the item's CONTENT size plus its padding, so with
+                 `py-2` on this element the panel floored at 16px instead of
+                 collapsing — it held a visible 16px band for 218ms and then
+                 snapped to nothing when display:none landed. `min-height:0`
+                 does not help; padding is not what it reaches. Measured:
+                 16px with the padding here, 0px with it one level in. #}
+              <div class="server-info-panel grid transition-[grid-template-rows] duration-slow ease-standard" style="grid-template-rows:0fr;">
+                <div class="overflow-hidden min-h-0">
+                  <div class="py-2 px-4 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted bg-page dark:bg-page/50">
+                    <span class="server-info-status"></span>
 
-                  <span class="server-info-transport"></span>
-                  <span class="server-info-auth"></span>
-                  <span class="server-info-metrics"></span>
-                  <span class="server-info-lastcheck"></span>
+                    <span class="server-info-transport"></span>
+                    <span class="server-info-auth"></span>
+                    <span class="server-info-metrics"></span>
+                    <span class="server-info-lastcheck"></span>
+                  </div>
                 </div>
               </div>
             </td>
@@ -129,22 +138,22 @@
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
   <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="tags" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+    <i data-lucide="tags" class="w-5 h-5 text-accent"></i>
     {{ t.get('tag_management', 'Tag Management') }}
   </h2>
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155] space-y-4">
+  <div class="bg-card rounded-lg p-5 border border-line space-y-4">
     <!-- Add tag form -->
     <div class="flex items-center gap-3">
-      <input type="text" id="new-tag-name" placeholder="Tag name..." class="px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
-      <input type="color" id="new-tag-color" value="#6B7280" class="w-8 h-8 rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] cursor-pointer p-0.5">
-      <button data-action="createTag" class="px-3 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1">
+      <input type="text" id="new-tag-name" placeholder="Tag name..." class="px-3 py-1.5 text-sm rounded border border-line bg-field">
+      <input type="color" id="new-tag-color" value="#6B7280" class="w-8 h-8 rounded border border-line bg-field cursor-pointer p-0.5">
+      <button data-action="createTag" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
         <i data-lucide="plus" class="w-4 h-4"></i>
         {{ t.get('add_tag', 'Add Tag') }}
       </button>
     </div>
     <!-- Tag list -->
     <div id="tag-list" class="space-y-2"></div>
-    <div id="no-tags" class="text-sm text-[#9CA3AF] dark:text-[#475569] text-center py-8">
+    <div id="no-tags" class="text-sm text-faint text-center py-8">
       <i data-lucide="tags" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
       <p>{{ t.get('no_tags', 'No tags created yet') }}</p>
       <p class="text-[10px] mt-1 opacity-60">Use the form above to create your first tag</p>
@@ -158,33 +167,33 @@
 <section class="mb-8">
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="activity" class="w-5 h-5 text-[#2563EB]"></i>
+      <i data-lucide="activity" class="w-5 h-5 text-accent"></i>
       {{ t.get('health_checks', 'Health Checks') }}
     </h2>
-    <button data-action="toggleHcForm" class="px-3 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1">
+    <button data-action="toggleHcForm" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
       <i data-lucide="plus" class="w-4 h-4"></i>
       {{ t.get('add_health_check', 'Add Health Check') }}
     </button>
   </div>
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155]">
+  <div class="bg-card rounded-lg p-5 border border-line">
 
     <!-- Add health check form (hidden by default, matches dependency design) -->
-    <div id="hc-add-form" class="hidden mb-4 p-4 rounded-lg border border-dashed border-[#E5E7EB] dark:border-[#334155] bg-[#F9FAFB] dark:bg-[#0F172A]/50">
+    <div id="hc-add-form" class="hidden mb-4 p-4 rounded-lg border border-dashed border-line bg-page dark:bg-page/50">
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
         <div>
-          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">Name</label>
-          <input type="text" id="hc-new-name" placeholder="e.g. SQL Listener" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+          <label class="block text-[10px] font-medium text-muted mb-1">Name</label>
+          <input type="text" id="hc-new-name" placeholder="e.g. SQL Listener" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
         </div>
         <div>
-          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.get('server', 'Server') }}</label>
-          <select id="hc-new-server" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+          <label class="block text-[10px] font-medium text-muted mb-1">{{ t.get('server', 'Server') }}</label>
+          <select id="hc-new-server" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
             <option value="">--</option>
             {% for s in servers %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
           </select>
         </div>
         <div>
-          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.get('check_type', 'Type') }}</label>
-          <select id="hc-new-type" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" data-change="toggleNewHcFields">
+          <label class="block text-[10px] font-medium text-muted mb-1">{{ t.get('check_type', 'Type') }}</label>
+          <select id="hc-new-type" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field" data-change="toggleNewHcFields">
             <option value="tcp">TCP</option>
             <option value="http">HTTP</option>
             <option value="https">HTTPS</option>
@@ -195,28 +204,28 @@
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
         <div>
-          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.get('target_host', 'Host') }}</label>
-          <input type="text" id="hc-new-host" placeholder="hostname or IP" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono">
+          <label class="block text-[10px] font-medium text-muted mb-1">{{ t.get('target_host', 'Host') }}</label>
+          <input type="text" id="hc-new-host" placeholder="hostname or IP" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field font-mono">
         </div>
         <div id="hc-new-port-wrap">
-          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.get('port', 'Port') }}</label>
-          <input type="number" id="hc-new-port" placeholder="443" min="1" max="65535" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+          <label class="block text-[10px] font-medium text-muted mb-1">{{ t.get('port', 'Port') }}</label>
+          <input type="number" id="hc-new-port" placeholder="443" min="1" max="65535" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
         </div>
         <div id="hc-new-path-wrap" class="hidden">
-          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">HTTP Path</label>
-          <input type="text" id="hc-new-path" placeholder="/health" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono">
+          <label class="block text-[10px] font-medium text-muted mb-1">HTTP Path</label>
+          <input type="text" id="hc-new-path" placeholder="/health" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field font-mono">
         </div>
       </div>
       <div class="flex items-center gap-2">
-        <button data-action="saveNewHealthCheck" class="px-4 py-1.5 text-sm font-medium rounded bg-[#10B981] text-white hover:opacity-90 flex items-center gap-1">
+        <button data-action="saveNewHealthCheck" class="px-4 py-1.5 text-sm font-medium rounded bg-healthy text-white hover:opacity-90 flex items-center gap-1">
           <i data-lucide="save" class="w-4 h-4"></i>
           {{ t.get('save', 'Save') }}
         </button>
-        <button data-action="toggleHcForm" class="px-4 py-1.5 text-sm font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#334155] flex items-center gap-1">
+        <button data-action="toggleHcForm" class="px-4 py-1.5 text-sm font-medium rounded border border-line hover:bg-page dark:hover:bg-line flex items-center gap-1">
           <i data-lucide="x" class="w-4 h-4"></i>
           {{ t.get('cancel', 'Cancel') }}
         </button>
-        <button data-action="testNewHealthCheck" class="px-4 py-1.5 text-sm font-medium rounded border border-[#F59E0B] text-[#F59E0B] hover:bg-[#F59E0B]/10 flex items-center gap-1 ml-auto">
+        <button data-action="testNewHealthCheck" class="px-4 py-1.5 text-sm font-medium rounded border border-warning text-warning hover:bg-warning/10 flex items-center gap-1 ml-auto">
           <i data-lucide="zap" class="w-4 h-4"></i>
           Test
         </button>
@@ -226,7 +235,7 @@
 
     <!-- Existing health checks list -->
     <div id="health-check-list" class="space-y-2"></div>
-    <div id="no-health-checks" class="text-sm text-[#9CA3AF] dark:text-[#475569] text-center py-8">
+    <div id="no-health-checks" class="text-sm text-faint text-center py-8">
       <i data-lucide="activity" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
       <p>{{ t.get('no_health_checks', 'No health checks configured') }}</p>
       <p class="text-[10px] mt-1 opacity-60">Click "Add Health Check" to monitor ports and URLs</p>
@@ -240,36 +249,36 @@
 <section class="mb-8">
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="network" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+      <i data-lucide="network" class="w-5 h-5 text-accent"></i>
       {{ t.dependencies }}
     </h2>
-    <button data-action="toggleDepForm" class="px-3 py-1.5 text-sm font-medium rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90 flex items-center gap-1">
+    <button data-action="toggleDepForm" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
       <i data-lucide="plus" class="w-4 h-4"></i>
       {{ t.add_dependency }}
     </button>
   </div>
-  <div class="bg-white dark:bg-[#1E293B] rounded-lg p-5 border border-[#E5E7EB] dark:border-[#334155]">
+  <div class="bg-card rounded-lg p-5 border border-line">
 
     <!-- Add dependency form (hidden by default) -->
-    <div id="dep-add-form" class="hidden mb-4 p-4 rounded-lg border border-dashed border-[#E5E7EB] dark:border-[#334155] bg-[#F9FAFB] dark:bg-[#0F172A]/50">
+    <div id="dep-add-form" class="hidden mb-4 p-4 rounded-lg border border-dashed border-line bg-page dark:bg-page/50">
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
         <div>
-          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.get('server', 'Server') }}</label>
-          <select id="dep-server-name" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+          <label class="block text-[10px] font-medium text-muted mb-1">{{ t.get('server', 'Server') }}</label>
+          <select id="dep-server-name" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
             <option value="">--</option>
             {% for s in servers %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
           </select>
         </div>
         <div>
-          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.depends_on }}</label>
-          <select id="dep-depends-on" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+          <label class="block text-[10px] font-medium text-muted mb-1">{{ t.depends_on }}</label>
+          <select id="dep-depends-on" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
             <option value="">--</option>
             {% for s in servers %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
           </select>
         </div>
         <div>
-          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.dependency_type }}</label>
-          <select id="dep-type" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" data-change="onDepTypeChange">
+          <label class="block text-[10px] font-medium text-muted mb-1">{{ t.dependency_type }}</label>
+          <select id="dep-type" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field" data-change="onDepTypeChange">
             <option value="service">{{ t.dep_type_service }}</option>
             <option value="database">{{ t.dep_type_database }}</option>
             <option value="auth">{{ t.dep_type_auth }}</option>
@@ -277,48 +286,48 @@
             <option value="file_share">{{ t.dep_type_file_share }}</option>
             <option value="custom">+ Custom...</option>
           </select>
-          <input type="text" id="dep-custom-type" class="hidden w-full mt-1 px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" placeholder="Custom type name...">
+          <input type="text" id="dep-custom-type" class="hidden w-full mt-1 px-2 py-1.5 text-sm rounded border border-line bg-field" placeholder="Custom type name...">
         </div>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
         <div>
-          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">Target</label>
-          <select id="dep-target-mode" class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" data-change="onDepTargetModeChange">
+          <label class="block text-[10px] font-medium text-muted mb-1">Target</label>
+          <select id="dep-target-mode" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field" data-change="onDepTargetModeChange">
             <option value="port">Port</option>
             <option value="service">Service</option>
             <option value="process">Process</option>
           </select>
         </div>
         <div>
-          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1" id="dep-target-label">Port</label>
+          <label class="block text-[10px] font-medium text-muted mb-1" id="dep-target-label">Port</label>
           <input type="number" id="dep-port" placeholder="443" min="1" max="65535"
-                 class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                 class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
           <div id="dep-service-wrap" class="hidden gap-1">
-            <input type="text" id="dep-service-name" class="flex-1 px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" placeholder="Service name">
-            <button type="button" data-action="_srvBrowseDepService" class="px-2 py-1.5 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F3F4F6] dark:hover:bg-[#334155] flex items-center gap-1" title="Browse from server">
+            <input type="text" id="dep-service-name" class="flex-1 px-2 py-1.5 text-sm rounded border border-line bg-field" placeholder="Service name">
+            <button type="button" data-action="_srvBrowseDepService" class="px-2 py-1.5 text-xs rounded border border-line hover:bg-raised dark:hover:bg-line flex items-center gap-1" title="Browse from server">
               <i data-lucide="list" class="w-3 h-3"></i> Browse
             </button>
           </div>
           <div id="dep-process-wrap" class="hidden gap-1">
-            <input type="text" id="dep-process-name" class="flex-1 px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" placeholder="Process name">
-            <button type="button" data-action="_srvBrowseDepProcess" class="px-2 py-1.5 text-xs rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F3F4F6] dark:hover:bg-[#334155] flex items-center gap-1" title="Browse from server">
+            <input type="text" id="dep-process-name" class="flex-1 px-2 py-1.5 text-sm rounded border border-line bg-field" placeholder="Process name">
+            <button type="button" data-action="_srvBrowseDepProcess" class="px-2 py-1.5 text-xs rounded border border-line hover:bg-raised dark:hover:bg-line flex items-center gap-1" title="Browse from server">
               <i data-lucide="list" class="w-3 h-3"></i> Browse
             </button>
           </div>
         </div>
         <div>
-          <label class="block text-[10px] font-medium text-[#6B7280] dark:text-[#CBD5E1] mb-1">{{ t.description }}</label>
+          <label class="block text-[10px] font-medium text-muted mb-1">{{ t.description }}</label>
           <input type="text" id="dep-description" placeholder="Optional description"
-                 class="w-full px-2 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                 class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
         </div>
       </div>
       <div class="flex items-center gap-2">
         <button data-action="addDependency"
-                class="px-4 py-1.5 text-sm font-medium rounded bg-[#10B981] text-white hover:opacity-90 flex items-center gap-1">
+                class="px-4 py-1.5 text-sm font-medium rounded bg-healthy text-white hover:opacity-90 flex items-center gap-1">
           <i data-lucide="save" class="w-4 h-4"></i>
           {{ t.get('save', 'Save') }}
         </button>
-        <button data-action="toggleDepForm" class="px-4 py-1.5 text-sm font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#334155] flex items-center gap-1">
+        <button data-action="toggleDepForm" class="px-4 py-1.5 text-sm font-medium rounded border border-line hover:bg-page dark:hover:bg-line flex items-center gap-1">
           <i data-lucide="x" class="w-4 h-4"></i>
           {{ t.get('cancel', 'Cancel') }}
         </button>
@@ -327,7 +336,7 @@
 
     <!-- Existing dependencies table -->
     <div id="deps-table-container">
-      <div class="text-sm text-[#9CA3AF] dark:text-[#475569] text-center py-8">
+      <div class="text-sm text-faint text-center py-8">
         <i data-lucide="network" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
         <p>{{ t.get('no_dependencies', 'No dependencies configured') }}</p>
         <p class="text-[10px] mt-1 opacity-60">Click "Add Dependency" to define server relationships</p>
@@ -342,10 +351,10 @@
 <div id="server-modal" class="fixed inset-0 z-50 hidden">
   <div class="fixed inset-0 bg-black/50" data-action="closeModal"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#E5E7EB] dark:border-[#334155] w-full max-w-lg max-h-[90vh] flex flex-col relative">
-      <div class="flex items-center justify-between p-4 border-b border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-lg max-h-[90vh] flex flex-col relative">
+      <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
         <h3 id="modal-title" class="text-lg font-semibold">{{ t.add_server }}</h3>
-        <button data-action="closeModal" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -356,12 +365,12 @@
           <div>
             <label class="block text-xs font-medium mb-1">{{ t.server_name }} *</label>
             <input type="text" id="srv-name" placeholder="FileServer-01" required
-                   class="w-full px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                   class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
           </div>
           <div>
             <label class="block text-xs font-medium mb-1">{{ t.host_ip }} *</label>
             <input type="text" id="srv-host" placeholder="192.168.1.50" required
-                   class="w-full px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                   class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
           </div>
         </div>
 
@@ -374,7 +383,7 @@
                Clicking cancel reverts to the dropdown. #}
             <div id="srv-type-wrap">
               <select id="srv-type" data-change="onServerTypeChange"
-                      class="w-full px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                      class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
                 <option value="file_server">{{ t.file_servers }}</option>
                 <option value="app_server">{{ t.app_servers }}</option>
                 <option value="domain_controller">{{ t.domain_controllers }}</option>
@@ -387,14 +396,14 @@
               </select>
               <div id="srv-custom-input" class="hidden relative">
                 <input type="text" id="srv-custom-type" placeholder="{{ t.get('custom_type_name', 'e.g. proxy_server') }}"
-                       class="w-full pl-3 pr-16 py-1.5 text-sm rounded border border-[#10B981] dark:border-[#10B981] bg-white dark:bg-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#10B981]">
+                       class="w-full pl-3 pr-16 py-1.5 text-sm rounded border border-healthy dark:border-[#10B981] bg-field focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
                 <div class="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5">
                   <button type="button" data-action="confirmCustomType" title="{{ t.get('save', 'Save') }}"
-                    class="p-1 rounded hover:bg-[#10B981]/20 text-[#10B981]">
+                    class="p-1 rounded hover:bg-healthy/20 text-healthy">
                     <i data-lucide="check" class="w-3.5 h-3.5"></i>
                   </button>
                   <button type="button" data-action="cancelCustomType" title="{{ t.get('cancel', 'Cancel') }}"
-                    class="p-1 rounded hover:bg-[#DC2626]/20 text-[#DC2626]">
+                    class="p-1 rounded hover:bg-critical/20 text-critical">
                     <i data-lucide="x" class="w-3.5 h-3.5"></i>
                   </button>
                 </div>
@@ -404,12 +413,12 @@
           <div>
             <label class="block text-xs font-medium mb-1">{{ t.username }}</label>
             <input type="text" id="srv-user" placeholder="administrator"
-                   class="w-full px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                   class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
           </div>
           <div>
             <label for="srv-port" class="block text-xs font-medium mb-1">{{ t.port }}</label>
             <input type="number" id="srv-port" value="5985" min="1" max="65535" required
-                   class="w-full px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                   class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
           </div>
         </div>
 
@@ -420,14 +429,14 @@
           <div class="flex items-center gap-2 pt-1">
             <input type="checkbox" id="srv-https"
                    data-change="_srvHttpsToggle"
-                   class="h-4 w-4 rounded border-[#E5E7EB] dark:border-[#334155]">
+                   class="h-4 w-4 rounded border-line">
             <label for="srv-https" class="text-xs">
               {{ t.get('use_https', 'WinRM over HTTPS') }}
-              <span class="text-[10px] text-[#6B7280] dark:text-[#94A3B8]">(5986)</span>
+              <span class="text-[10px] text-muted">(5986)</span>
             </label>
             <span id="srv-https-skip-wrap" class="hidden flex items-center gap-1 ml-2">
               <input type="checkbox" id="srv-https-skip" class="h-3.5 w-3.5">
-              <label for="srv-https-skip" class="text-[10px] text-[#F59E0B]" title="Disables certificate validation. Use only during initial cert rollout.">
+              <label for="srv-https-skip" class="text-[10px] text-warning" title="Disables certificate validation. Use only during initial cert rollout.">
                 {{ t.get('skip_cert_verify', 'Skip cert verify') }}
               </label>
             </span>
@@ -437,7 +446,7 @@
               {{ t.get('rbac_tier', 'RBAC tier') }}
             </label>
             <select id="srv-tier"
-                    class="w-full px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                    class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
               <option value="0">{{ t.get('tier_0_critical', 'Tier 0 — Critical (DC, primary DB, mail)') }}</option>
               <option value="1" selected>{{ t.get('tier_1_standard', 'Tier 1 — Standard') }}</option>
               <option value="2">{{ t.get('tier_2_dev', 'Tier 2 — Dev / Test') }}</option>
@@ -450,11 +459,11 @@
           <div class="relative">
             <input type="password" id="srv-pass" placeholder="Enter password"
                    autocomplete="new-password"
-                   class="w-full px-3 py-1.5 pr-10 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+                   class="w-full px-3 py-1.5 pr-10 text-sm rounded border border-line bg-field">
             <button type="button"
                     aria-label="Toggle password visibility"
                     data-action="_srvTogglePass"
-                    class="absolute inset-y-0 right-0 px-2 flex items-center text-[#6B7280] hover:text-[#2563EB] focus:outline-none focus:ring-2 focus:ring-[#2563EB] rounded-r"
+                    class="absolute inset-y-0 right-0 px-2 flex items-center text-muted hover:text-info focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded-r"
                     aria-pressed="false">
               <i data-lucide="eye" class="w-4 h-4" aria-hidden="true"></i>
             </button>
@@ -465,32 +474,32 @@
         <div>
           <div class="flex items-center justify-between mb-2">
             <label class="text-xs font-medium">{{ t.thresholds }}</label>
-            <button data-action="applyDefaults" class="text-xs text-[#2563EB] dark:text-[#3B82F6] hover:underline">{{ t.reset_defaults }}</button>
+            <button data-action="applyDefaults" class="text-xs text-info hover:underline">{{ t.reset_defaults }}</button>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.cpu_warning }}</label>
-              <input type="number" id="th-cpu-warn" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+              <label class="block text-[10px] text-muted mb-0.5">{{ t.cpu_warning }}</label>
+              <input type="number" id="th-cpu-warn" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
             </div>
             <div>
-              <label class="block text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.cpu_critical }}</label>
-              <input type="number" id="th-cpu-crit" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+              <label class="block text-[10px] text-muted mb-0.5">{{ t.cpu_critical }}</label>
+              <input type="number" id="th-cpu-crit" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
             </div>
             <div>
-              <label class="block text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.ram_warning }}</label>
-              <input type="number" id="th-ram-warn" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+              <label class="block text-[10px] text-muted mb-0.5">{{ t.ram_warning }}</label>
+              <input type="number" id="th-ram-warn" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
             </div>
             <div>
-              <label class="block text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.ram_critical }}</label>
-              <input type="number" id="th-ram-crit" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+              <label class="block text-[10px] text-muted mb-0.5">{{ t.ram_critical }}</label>
+              <input type="number" id="th-ram-crit" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
             </div>
             <div>
-              <label class="block text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.disk_warning }}</label>
-              <input type="number" id="th-disk-warn" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+              <label class="block text-[10px] text-muted mb-0.5">{{ t.disk_warning }}</label>
+              <input type="number" id="th-disk-warn" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
             </div>
             <div>
-              <label class="block text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mb-0.5">{{ t.disk_critical }}</label>
-              <input type="number" id="th-disk-crit" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+              <label class="block text-[10px] text-muted mb-0.5">{{ t.disk_critical }}</label>
+              <input type="number" id="th-disk-crit" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
             </div>
           </div>
         </div>
@@ -499,15 +508,15 @@
       <div id="modal-test-result" class="hidden px-4 pt-2 flex-shrink-0">
         <div class="test-result-box rounded p-2 text-sm"></div>
       </div>
-      <div class="flex justify-between gap-2 p-4 border-t border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+      <div class="flex justify-between gap-2 p-4 border-t border-line flex-shrink-0">
         <button data-action="testConnectionFromModal" id="modal-test-btn"
-                class="px-4 py-1.5 text-sm rounded border border-[#10B981] dark:border-[#34D399] text-[#10B981] dark:text-[#34D399] hover:bg-[#10B981]/10 flex items-center gap-1.5">
+                class="px-4 py-1.5 text-sm rounded border border-healthy text-healthy hover:bg-healthy/10 flex items-center gap-1.5">
           <i data-lucide="plug" class="w-4 h-4"></i>
           {{ t.test_connection }}
         </button>
         <div class="flex gap-2">
-          <button data-action="closeModal" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.cancel }}</button>
-          <button data-action="saveServer" class="px-4 py-1.5 text-sm rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90">{{ t.save }}</button>
+          <button data-action="closeModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
+          <button data-action="saveServer" class="px-4 py-1.5 text-sm rounded bg-accent text-white dark:text-page hover:opacity-90">{{ t.save }}</button>
         </div>
       </div>
     </div>
@@ -518,13 +527,13 @@
 <div id="guide-modal" class="fixed inset-0 z-50 hidden">
   <div class="fixed inset-0 bg-black/50" data-action="closeGuide"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#E5E7EB] dark:border-[#334155] w-full max-w-2xl max-h-[90vh] flex flex-col relative">
-      <div class="flex items-center justify-between p-4 border-b border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-2xl max-h-[90vh] flex flex-col relative">
+      <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <i data-lucide="book-open" class="w-5 h-5 text-[#2563EB] dark:text-[#3B82F6]"></i>
+          <i data-lucide="book-open" class="w-5 h-5 text-accent"></i>
           {{ t.server_setup_guide }}
         </h3>
-        <button data-action="closeGuide" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeGuide" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -532,55 +541,55 @@
 
         <!-- Step 1 -->
         <div class="flex gap-3">
-          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-[#2563EB] dark:bg-[#3B82F6] text-white flex items-center justify-center text-xs font-bold">1</div>
+          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-accent text-white dark:text-page flex items-center justify-center text-xs font-bold">1</div>
           <div>
             <div class="font-semibold mb-1">{{ t.step_enable_winrm }}</div>
-            <p class="text-[#6B7280] dark:text-[#CBD5E1] mb-2">RDP into the server and open an <strong>{{ t.step_elevated_ps }}</strong> (Run as Administrator):</p>
-            <pre class="bg-[#F3F4F6] dark:bg-[#0F172A] rounded p-2 text-xs font-mono overflow-x-auto">winrm quickconfig -force</pre>
-            <p class="text-[#6B7280] dark:text-[#CBD5E1] mt-1 text-xs">This enables the WinRM service and opens the firewall for port 5985 (HTTP).</p>
+            <p class="text-muted mb-2">RDP into the server and open an <strong>{{ t.step_elevated_ps }}</strong> (Run as Administrator):</p>
+            <div class="bg-raised rounded overflow-hidden"><pre class="p-2 text-xs font-mono overflow-x-auto">winrm quickconfig -force</pre></div>
+            <p class="text-muted mt-1 text-xs">This enables the WinRM service and opens the firewall for port 5985 (HTTP).</p>
           </div>
         </div>
 
         <!-- Step 2 -->
         <div class="flex gap-3">
-          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-[#2563EB] dark:bg-[#3B82F6] text-white flex items-center justify-center text-xs font-bold">2</div>
+          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-accent text-white dark:text-page flex items-center justify-center text-xs font-bold">2</div>
           <div>
             <div class="font-semibold mb-1">{{ t.step_verify_winrm }}</div>
-            <p class="text-[#6B7280] dark:text-[#CBD5E1] mb-2">Still on the target server, check the listener configuration:</p>
-            <pre class="bg-[#F3F4F6] dark:bg-[#0F172A] rounded p-2 text-xs font-mono overflow-x-auto">winrm enumerate winrm/config/listener</pre>
-            <p class="text-[#6B7280] dark:text-[#CBD5E1] mt-1 text-xs">You should see <code>Transport = HTTP</code> and <code>Port = 5985</code>.</p>
+            <p class="text-muted mb-2">Still on the target server, check the listener configuration:</p>
+            <div class="bg-raised rounded overflow-hidden"><pre class="p-2 text-xs font-mono overflow-x-auto">winrm enumerate winrm/config/listener</pre></div>
+            <p class="text-muted mt-1 text-xs">You should see <code>Transport = HTTP</code> and <code>Port = 5985</code>.</p>
           </div>
         </div>
 
         <!-- Step 3 -->
         <div class="flex gap-3">
-          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-[#2563EB] dark:bg-[#3B82F6] text-white flex items-center justify-center text-xs font-bold">3</div>
+          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-accent text-white dark:text-page flex items-center justify-center text-xs font-bold">3</div>
           <div>
             <div class="font-semibold mb-1">{{ t.step_check_auth }}</div>
-            <p class="text-[#6B7280] dark:text-[#CBD5E1] mb-2">On the target server, verify Negotiate or Kerberos is enabled:</p>
-            <pre class="bg-[#F3F4F6] dark:bg-[#0F172A] rounded p-2 text-xs font-mono overflow-x-auto">winrm get winrm/config/service/auth</pre>
-            <p class="text-[#6B7280] dark:text-[#CBD5E1] mt-1 text-xs">Ensure <code>Negotiate = true</code> or <code>Kerberos = true</code> is shown.</p>
+            <p class="text-muted mb-2">On the target server, verify Negotiate or Kerberos is enabled:</p>
+            <div class="bg-raised rounded overflow-hidden"><pre class="p-2 text-xs font-mono overflow-x-auto">winrm get winrm/config/service/auth</pre></div>
+            <p class="text-muted mt-1 text-xs">Ensure <code>Negotiate = true</code> or <code>Kerberos = true</code> is shown.</p>
           </div>
         </div>
 
         <!-- Step 4 -->
         <div class="flex gap-3">
-          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-[#2563EB] dark:bg-[#3B82F6] text-white flex items-center justify-center text-xs font-bold">4</div>
+          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-accent text-white dark:text-page flex items-center justify-center text-xs font-bold">4</div>
           <div>
             <div class="font-semibold mb-1">{{ t.step_test_connectivity }}</div>
-            <p class="text-[#6B7280] dark:text-[#CBD5E1] mb-2">On the Prism host, open PowerShell and test the connection:</p>
-            <pre class="bg-[#F3F4F6] dark:bg-[#0F172A] rounded p-2 text-xs font-mono overflow-x-auto">Test-WSMan -ComputerName SERVER.DOMAIN.COM</pre>
-            <p class="text-[#6B7280] dark:text-[#CBD5E1] mt-1 text-xs">If this fails, check firewall rules and DNS resolution. Use the FQDN, not the IP address.</p>
+            <p class="text-muted mb-2">On the Prism host, open PowerShell and test the connection:</p>
+            <div class="bg-raised rounded overflow-hidden"><pre class="p-2 text-xs font-mono overflow-x-auto">Test-WSMan -ComputerName SERVER.DOMAIN.COM</pre></div>
+            <p class="text-muted mt-1 text-xs">If this fails, check firewall rules and DNS resolution. Use the FQDN, not the IP address.</p>
           </div>
         </div>
 
         <!-- Step 5 -->
         <div class="flex gap-3">
-          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-[#2563EB] dark:bg-[#3B82F6] text-white flex items-center justify-center text-xs font-bold">5</div>
+          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-accent text-white dark:text-page flex items-center justify-center text-xs font-bold">5</div>
           <div>
             <div class="font-semibold mb-1">{{ t.step_add_server }}</div>
-            <p class="text-[#6B7280] dark:text-[#CBD5E1] mb-2">Click <strong>"Add Server"</strong> and fill in the fields:</p>
-            <ul class="text-[#6B7280] dark:text-[#CBD5E1] list-disc list-inside space-y-1">
+            <p class="text-muted mb-2">Click <strong>"Add Server"</strong> and fill in the fields:</p>
+            <ul class="text-muted list-disc list-inside space-y-1">
               <li><strong>Name</strong> — Display name (e.g. <code>FileServer-01</code>)</li>
               <li><strong>Host</strong> — Use the FQDN (e.g. <code>SERVER.AD.DOMAIN.COM</code>), not the IP</li>
               <li><strong>Username</strong> — Domain format: <code>DOMAIN\username</code> (e.g. <code>EXAMPLE\Administrator</code>)</li>
@@ -592,24 +601,24 @@
 
         <!-- Step 6 -->
         <div class="flex gap-3">
-          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-[#10B981] text-white flex items-center justify-center text-xs font-bold">6</div>
+          <div class="flex-shrink-0 w-7 h-7 rounded-full bg-healthy text-white flex items-center justify-center text-xs font-bold">6</div>
           <div>
             <div class="font-semibold mb-1">{{ t.step_test_connection }}</div>
-            <p class="text-[#6B7280] dark:text-[#CBD5E1] mb-2">Click the <strong>"Test Connection"</strong> button in the modal or the <i data-lucide="plug" class="w-3.5 h-3.5 inline"></i> icon in the server table. You should see a green success message with the server hostname.</p>
+            <p class="text-muted mb-2">Click the <strong>"Test Connection"</strong> button in the modal or the <i data-lucide="plug" class="w-3.5 h-3.5 inline"></i> icon in the server table. You should see a green success message with the server hostname.</p>
           </div>
         </div>
 
         <!-- Troubleshooting -->
-        <div class="border-t border-[#E5E7EB] dark:border-[#334155] pt-4">
+        <div class="border-t border-line pt-4">
           <div class="font-semibold mb-2 flex items-center gap-1.5">
-            <i data-lucide="alert-triangle" class="w-4 h-4 text-[#F59E0B]"></i>
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-warning"></i>
             {{ t.get('troubleshooting', 'Troubleshooting') }}
           </div>
-          <div class="space-y-2 text-[#6B7280] dark:text-[#CBD5E1]">
+          <div class="space-y-2 text-muted">
             <div><strong>{{ t.troubleshoot_timeout }}</strong> — Check that port 5985 is open in Windows Firewall on the target. Run <code>Get-NetFirewallRule -Name "WINRM*"</code> to verify.</div>
             <div><strong>{{ t.troubleshoot_auth_failed }}</strong> — Verify the username format is <code>DOMAIN\user</code>. Test with PowerShell first:
-              <pre class="bg-[#F3F4F6] dark:bg-[#0F172A] rounded p-2 text-xs font-mono overflow-x-auto mt-1">$cred = Get-Credential
-Invoke-Command -ComputerName SERVER.DOMAIN.COM -Credential $cred -ScriptBlock { $env:COMPUTERNAME }</pre>
+              <div class="bg-raised rounded overflow-hidden mt-1"><pre class="p-2 text-xs font-mono overflow-x-auto">$cred = Get-Credential
+Invoke-Command -ComputerName SERVER.DOMAIN.COM -Credential $cred -ScriptBlock { $env:COMPUTERNAME }</pre></div>
             </div>
             <div><strong>{{ t.troubleshoot_host_not_found }}</strong> — Use the FQDN instead of the IP. Kerberos authentication requires the full domain name to work properly.</div>
             <div><strong>{{ t.troubleshoot_access_denied }}</strong> — The account needs WinRM access. Add it to the <code>Remote Management Users</code> group on the target server, or use a domain admin account.</div>
@@ -617,8 +626,8 @@ Invoke-Command -ComputerName SERVER.DOMAIN.COM -Credential $cred -ScriptBlock { 
         </div>
 
       </div>
-      <div class="flex justify-end p-4 border-t border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
-        <button data-action="closeGuide" class="px-4 py-1.5 text-sm rounded bg-[#2563EB] dark:bg-[#3B82F6] text-white hover:opacity-90">OK</button>
+      <div class="flex justify-end p-4 border-t border-line flex-shrink-0">
+        <button data-action="closeGuide" class="px-4 py-1.5 text-sm rounded bg-accent text-white dark:text-page hover:opacity-90">OK</button>
       </div>
     </div>
   </div>
@@ -628,31 +637,31 @@ Invoke-Command -ComputerName SERVER.DOMAIN.COM -Credential $cred -ScriptBlock { 
 <div id="delete-modal" class="fixed inset-0 z-[60] hidden">
   <div class="fixed inset-0 bg-black/50"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#DC2626]/30 dark:border-[#EF4444]/30 w-full max-w-md relative">
-      <div class="flex items-center justify-between p-4 border-b border-[#FCA5A5] dark:border-[#7F1D1D]">
-        <h3 class="text-lg font-semibold text-[#DC2626] dark:text-[#EF4444] flex items-center gap-2">
+    <div class="bg-card rounded-lg shadow-xl border border-critical/30 w-full max-w-md relative">
+      <div class="flex items-center justify-between p-4 border-b border-[#FCA5A5] dark:border-critical-tint">
+        <h3 class="text-lg font-semibold text-critical flex items-center gap-2">
           <i data-lucide="alert-triangle" class="w-5 h-5"></i>
           <span id="delete-modal-title">{{ t.get('delete_server', 'Delete Server') }}?</span>
         </h3>
-        <button data-action="closeDeleteModal" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeDeleteModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
       <div class="p-4 space-y-4">
-        <div class="text-sm text-[#6B7280] dark:text-[#CBD5E1]">
+        <div class="text-sm text-muted">
           {{ t.get('delete_server_warning', 'This will remove the server and its monitoring configuration.') }}
         </div>
         <div>
           <label class="block text-xs font-medium mb-1">{{ t.get('type_name_to_confirm', 'Type the server name to confirm:') }}</label>
           <input type="text" id="delete-confirm-input" autocomplete="off"
-                 class="w-full px-3 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] font-mono"
+                 class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field font-mono"
                  data-input="checkDeleteConfirmation">
         </div>
       </div>
-      <div class="flex justify-end gap-2 p-4 border-t border-[#E5E7EB] dark:border-[#334155]">
-        <button data-action="closeDeleteModal" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.cancel }}</button>
+      <div class="flex justify-end gap-2 p-4 border-t border-line">
+        <button data-action="closeDeleteModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
         <button id="delete-confirm-btn" data-action="confirmDeleteServer" disabled
-                class="px-4 py-1.5 text-sm font-medium rounded bg-[#DC2626] dark:bg-[#EF4444] text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
+                class="px-4 py-1.5 text-sm font-medium rounded bg-critical text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
           <i data-lucide="trash-2" class="w-4 h-4"></i>
           {{ t.delete }}
         </button>
@@ -665,31 +674,31 @@ Invoke-Command -ComputerName SERVER.DOMAIN.COM -Credential $cred -ScriptBlock { 
 <div id="discovery-modal" class="fixed inset-0 z-[60] hidden">
   <div class="fixed inset-0 bg-black/50" data-action="closeDiscoveryModal"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg shadow-xl border border-[#E5E7EB] dark:border-[#334155] w-full max-w-2xl max-h-[80vh] flex flex-col relative">
-      <div class="flex items-center justify-between p-4 border-b border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-2xl max-h-[80vh] flex flex-col relative">
+      <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
         <h3 class="text-lg font-semibold flex items-center gap-2">
-          <i data-lucide="radar" class="w-5 h-5 text-[#10B981]"></i>
+          <i data-lucide="radar" class="w-5 h-5 text-healthy"></i>
           {{ t.discovered_servers }}
         </h3>
-        <button data-action="closeDiscoveryModal" class="p-1 text-[#6B7280] hover:text-[#1F2937] dark:hover:text-white">
+        <button data-action="closeDiscoveryModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
       <div class="p-4 overflow-y-auto flex-1">
-        <div id="discovery-status" class="text-sm text-[#6B7280] dark:text-[#CBD5E1] mb-3"></div>
+        <div id="discovery-status" class="text-sm text-muted mb-3"></div>
         <div id="discovery-list" class="space-y-1"></div>
       </div>
-      <div class="flex justify-between items-center gap-2 p-4 border-t border-[#E5E7EB] dark:border-[#334155] flex-shrink-0">
+      <div class="flex justify-between items-center gap-2 p-4 border-t border-line flex-shrink-0">
         <div class="flex items-center gap-3">
-          <button data-action="selectAllDiscovered" class="px-3 py-1 text-xs font-medium rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">
+          <button data-action="selectAllDiscovered" class="px-3 py-1 text-xs font-medium rounded border border-line hover:bg-page">
             {{ t.get('select_all', 'Select All') }}
           </button>
-          <span id="discovery-selected-count" class="text-xs text-[#6B7280] dark:text-[#CBD5E1]"></span>
+          <span id="discovery-selected-count" class="text-xs text-muted"></span>
         </div>
         <div class="flex gap-2">
-          <button data-action="closeDiscoveryModal" class="px-4 py-1.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]">{{ t.cancel }}</button>
+          <button data-action="closeDiscoveryModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
           <button data-action="addDiscoveredServers" id="add-discovered-btn"
-                  class="px-4 py-1.5 text-sm rounded bg-[#10B981] text-white hover:opacity-90 flex items-center gap-1">
+                  class="px-4 py-1.5 text-sm rounded bg-healthy text-white hover:opacity-90 flex items-center gap-1">
             <i data-lucide="plus" class="w-4 h-4"></i>
             {{ t.add_selected }}
           </button>
@@ -1014,13 +1023,13 @@ function saveServerConfig(data) {
   .then(result => {
     const msg = document.getElementById('save-message');
     if (result.ok) {
-      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-healthy-tint text-healthy-strong';
       msg.textContent = {{ t.config_saved | tojson }};
       msg.classList.remove('hidden');
       closeModal(true);
       setTimeout(() => location.reload(), 500);
     } else {
-      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
       msg.textContent = 'Error: ' + (result.error || 'Unknown error');
       msg.classList.remove('hidden');
     }
@@ -1035,11 +1044,11 @@ function saveServerConfig(data) {
 function showTestResult(container, result) {
   const box = container.querySelector('.test-result-box');
   if (result.ok) {
-    box.className = 'test-result-box rounded p-2 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+    box.className = 'test-result-box rounded p-2 text-sm bg-healthy-tint text-healthy-strong';
     box.innerHTML = '<strong>&#10003; <span class="test-msg"></span></strong>';
     box.querySelector('.test-msg').textContent = result.message || 'Connected';
   } else {
-    box.className = 'test-result-box rounded p-2 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+    box.className = 'test-result-box rounded p-2 text-sm bg-critical-tint text-critical-strong';
     box.innerHTML = '<strong>&#10007; <span class="test-msg"></span></strong>'
       + (result.detail ? '<br><span class="test-detail text-xs opacity-80"></span>' : '');
     box.querySelector('.test-msg').textContent = result.error || 'Failed';
@@ -1052,7 +1061,7 @@ function showTestResult(container, result) {
 
 function setTestLoading(container, btn) {
   const box = container.querySelector('.test-result-box');
-  box.className = 'test-result-box rounded p-2 text-sm bg-[#F3F4F6] dark:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1]';
+  box.className = 'test-result-box rounded p-2 text-sm bg-raised dark:bg-line text-muted';
   box.innerHTML = '<span class="inline-block animate-spin mr-2">&#9696;</span> Testing connection...';
   container.classList.remove('hidden');
   if (btn) btn.disabled = true;
@@ -1101,17 +1110,117 @@ function testConnectionFromModal() {
 }
 
 // ── Server Info Hover Accordion ──
+//
+// Root cause of "hangs sometimes when I scroll" (measured, not guessed):
+// mouseenter/mouseleave are real DOM events fired by the browser whenever
+// the element under a STATIONARY pointer changes — which includes when the
+// page scrolls the row out from under the cursor, not just when the mouse
+// itself moves. Confirmed live: a single scripted 10-tick wheel scroll over
+// a fixed cursor position fired 21 mouseenter + 8 mouseleave events on
+// these <tbody data-mouseenter> rows. Each dwell that survives past the
+// 150ms hover-intent delay below used to run the full open path
+// unconditionally: an /api/servers fetch, a synchronous forced-layout read
+// (`panel.scrollHeight`, measured ~1.9ms per call), and a 300ms transition
+// on `max-height` (a layout-triggering property, not transform/opacity) —
+// for potentially several rows in the same scroll gesture whenever a
+// trackpad/wheel scroll decelerates and briefly pauses over more than one
+// row. That is the "hang": several rows' worth of forced layout + animated
+// layout-property transitions landing inside one scroll gesture. It is not
+// the event binding itself — base.html attaches one real (non-delegated,
+// necessarily so for mouseenter/mouseleave) listener per row, which is
+// cheap on its own; measured at 29 rows there is no listener-count cost
+// worth chasing.
+//
+// Fix (JS-only for the timer defect below; the panel's height mechanism was
+// also changed — see the DEFECT 2 note further down):
+//   1. Gate the expensive open path behind an `isScrolling` flag, re-checked
+//      at the moment the hover-intent timer actually fires (not just at
+//      schedule time), so a dwell that only *looks* real because the timer
+//      was already in flight when scrolling started is still caught.
+//   2. On scroll-settle, do ONE `elementFromPoint` hit-test against the
+//      last known cursor position and open that row if it's still under
+//      the mouse — this preserves "scroll until the row I want is under my
+//      pointer, then it expands" without re-running the expensive path on
+//      every row that scrolled past on the way there.
+//
+// AUDIT FIX (stuck-open panel): this scroll-settle path calls showServerInfo()
+// directly, as a SECOND independent scheduler alongside the mouseenter one.
+// mouseenter/mouseleave can never alias hoverTimers[index] on their own (the
+// browser never fires two mouseenter without an intervening mouseleave), but
+// this second caller can — it can run while a mouseenter timer for the same
+// row is still pending, and showServerInfo() used to overwrite
+// hoverTimers[index] with the new timer's id with no clearTimeout first,
+// orphaning the first one. hideServerInfo() only ever clears the survivor,
+// so the orphaned timer fires later, on a row nothing is pointing at, and
+// nothing left to fire is left to close it (mouseleave already ran). Fixed
+// at the source: showServerInfo() now clears any pending timer for the row
+// before scheduling a new one, so no caller can alias it.
+//
+// AUDIT FIX (stale pointer): lastPointerX/Y used to survive the pointer
+// leaving the document entirely. A wheel, keyboard or scrollbar scroll fired
+// while the mouse was off-window (or never on the page at all) would then
+// hit-test against a stale, unrelated position. Invalidated on `mouseleave`
+// on the document, matching the "pointer-inside" flag suggested in review.
+let isScrolling = false;
+let scrollEndTimer = null;
+const SCROLL_SETTLE_MS = 150; // matches the hover-intent delay below
+let lastPointerX = -1, lastPointerY = -1;
+
+document.addEventListener('mousemove', function (e) {
+  lastPointerX = e.clientX;
+  lastPointerY = e.clientY;
+}, { passive: true });
+
+document.addEventListener('mouseleave', function () {
+  lastPointerX = -1;
+  lastPointerY = -1;
+}, { passive: true });
+
+window.addEventListener('scroll', function () {
+  isScrolling = true;
+  clearTimeout(scrollEndTimer);
+  scrollEndTimer = setTimeout(function () {
+    isScrolling = false;
+    // Scroll settled — if the pointer is now resting over a row (the
+    // common "scroll until the row I want is under the mouse" gesture),
+    // open it. One hit-test, not one per scrolled-past row.
+    if (lastPointerX < 0) return;
+    const el = document.elementFromPoint(lastPointerX, lastPointerY);
+    const row = el && el.closest && el.closest('.server-group');
+    if (row) showServerInfo(Number(row.dataset.index), row.dataset.serverName);
+  }, SCROLL_SETTLE_MS);
+}, { passive: true });
+
+// AUDIT FIX (DEFECT 3 — hardcoded 300ms against a 320ms token): the panel's
+// close-then-hide cleanup timeout used to hardcode 300, one migration commit
+// after `.server-info-panel` moved from `duration-300` to `duration-slow`
+// (--dur-slow, 320ms in app.css). Invisible today because 300/320 of a
+// hard-decelerating curve is ~99% done, but the whole point of the token is
+// that it can be retuned centrally — the first retune to something further
+// out cuts this cleanup off early, leaving the row's display toggled early
+// while the transition is still visibly running. Read the live value instead
+// of hardcoding it. DUR_SLOW_FALLBACK_MS only covers a browser that can't
+// resolve the custom property; tests/test_perf_hotpaths.py asserts it stays
+// numerically equal to app.css's --dur-slow so the fallback itself can't
+// quietly drift from the token it stands in for.
+const DUR_SLOW_FALLBACK_MS = 320;
+function getDurSlowMs() {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--dur-slow').trim();
+  const num = parseFloat(raw);
+  if (!raw || isNaN(num)) return DUR_SLOW_FALLBACK_MS;
+  return raw.endsWith('ms') ? num : num * 1000;
+}
 
 let serverStatusCache = null;
 let serverStatusFetchTime = 0;
 let hoverTimers = {};
 
 const STATUS_COLORS = {
-  healthy:  'bg-[#10B981] text-white',
-  warning:  'bg-[#F59E0B] text-white',
-  critical: 'bg-[#DC2626] text-white',
-  offline:  'bg-[#6B7280] text-white',
-  unknown:  'bg-[#9CA3AF] text-white',
+  healthy:  'bg-healthy text-white',
+  warning:  'bg-warning text-white',
+  critical: 'bg-critical text-white',
+  offline:  'bg-muted text-white',
+  unknown:  'bg-faint text-white',
 };
 
 function fetchServerStatus() {
@@ -1135,12 +1244,12 @@ function populateStatusColumn() {
   fetchServerStatus().then(cache => {
     cells.forEach(cell => {
       const s = cache[cell.getAttribute('data-server-status')];
-      if (!s) { cell.innerHTML = '<span class="text-[10px] text-[#9CA3AF] uppercase">unknown</span>'; return; }
+      if (!s) { cell.innerHTML = '<span class="text-[10px] text-faint uppercase">unknown</span>'; return; }
       const cls = STATUS_COLORS[s.status] || STATUS_COLORS.unknown;
       const age = s.last_check ? formatAge(s.last_check) : 'never';
       cell.innerHTML =
         '<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase ' + cls + '">' + s.status + '</span>' +
-        '<span class="text-[10px] text-[#9CA3AF] ml-2">' + age + '</span>';
+        '<span class="text-[10px] text-faint ml-2">' + age + '</span>';
     });
   }).catch(() => {});
 }
@@ -1158,7 +1267,20 @@ function formatAge(isoStr) {
 }
 
 function showServerInfo(index, name) {
+  // AUDIT FIX (DEFECT 1 — stuck-open panel): this is the second caller of
+  // showServerInfo() (the scroll-settle hit-test above is the first) and the
+  // two can race — a mouseenter timer can still be pending when scroll-settle
+  // fires for the same row. Without clearing it first, the second call used
+  // to overwrite hoverTimers[index] and orphan the first timer, which then
+  // fired ~750ms later (150ms delay, minus whatever had already elapsed)
+  // with no mouseleave left to come and close it. Clearing unconditionally
+  // here means no caller, present or future, can alias this timer slot.
+  clearTimeout(hoverTimers[index]);
   hoverTimers[index] = setTimeout(() => {
+    // Re-check at fire time, not just at schedule time: a timer that was
+    // already in flight when a scroll began must not be allowed to open a
+    // panel mid-scroll either (audit: scroll-hang).
+    if (isScrolling) return;
     const infoRow = document.getElementById('server-info-' + index);
     infoRow.style.display = '';
 
@@ -1191,7 +1313,28 @@ function showServerInfo(index, name) {
         panel.querySelector('.server-info-lastcheck').textContent = '';
       }
 
-      requestAnimationFrame(() => { panel.style.maxHeight = panel.scrollHeight + 'px'; });
+      // AUDIT FIX (DEFECT 2 — stale height cache): this used to measure
+      // `panel.scrollHeight` once per row and cache it, invalidated only on
+      // `resize`. The panel's content comes from /api/servers and changes
+      // independently of viewport width — a server that starts reporting
+      // metrics after its first hover, a `Disk D:` clause that only appears
+      // conditionally, a status word of a different length — every one of
+      // those grows the real content height while the cached max-height stays
+      // put, clipping the new line for the rest of the tab's life. Also,
+      // nothing ever fired a resize event for the one thing that DOES change
+      // viewport width from JS: toggleSidebar() in base.html sets
+      // sidebar.style.width directly, no event dispatched, so that path could
+      // never have invalidated the cache either even with a fix.
+      //
+      // Fixed by deleting the measurement instead of patching the
+      // invalidation: `.server-info-panel` is now `display:grid` and opens
+      // by animating `grid-template-rows` 0fr -> 1fr (declared on the
+      // element in the markup above), which sizes itself to whatever the
+      // content actually is on every frame. No scrollHeight read, no cache,
+      // no staleness class is reachable anymore.
+      requestAnimationFrame(() => {
+        panel.style.gridTemplateRows = '1fr';
+      });
     });
   }, 150);
 }
@@ -1200,12 +1343,16 @@ function hideServerInfo(index) {
   clearTimeout(hoverTimers[index]);
   const infoRow = document.getElementById('server-info-' + index);
   const panel = infoRow.querySelector('.server-info-panel');
-  panel.style.maxHeight = '0';
+  panel.style.gridTemplateRows = '0fr';
+  // AUDIT FIX (DEFECT 3): was a hardcoded 300 against duration-slow's 320ms
+  // transition — read the live custom property instead so a future retune of
+  // --dur-slow doesn't leave this cleanup racing ahead of the transition it
+  // is meant to wait out.
   setTimeout(() => {
-    if (panel.style.maxHeight === '0' || panel.style.maxHeight === '0px') {
+    if (panel.style.gridTemplateRows === '0fr') {
       infoRow.style.display = 'none';
     }
-  }, 300);
+  }, getDurSlowMs());
 }
 
 // ── Setup Guide ──
@@ -1308,12 +1455,12 @@ function importServersCSV(input) {
         let text = data.imported + ' ' + {{ t.import_success | tojson }};
         if (data.skipped > 0) text += ', ' + data.skipped + ' ' + {{ t.import_skipped | tojson }};
         if (data.errors && data.errors.length > 0) text += '. Errors: ' + data.errors.join('; ');
-        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#D1FAE5] dark:bg-[#064E3B] text-[#065F46] dark:text-[#6EE7B7]';
+        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-healthy-tint text-healthy-strong';
         msg.textContent = text;
         msg.classList.remove('hidden');
         if (data.imported > 0) setTimeout(() => location.reload(), 1500);
       } else {
-        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-[#FEE2E2] dark:bg-[#7F1D1D] text-[#991B1B] dark:text-[#FCA5A5]';
+        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
         msg.textContent = 'Error: ' + (data.error || 'Import failed');
         msg.classList.remove('hidden');
       }
@@ -1350,27 +1497,27 @@ function discoverServers() {
   .then(data => {
     if (!data.ok) {
       status.textContent = 'Error: ' + (data.error || 'Discovery failed');
-      status.className = 'text-sm text-[#DC2626] dark:text-[#EF4444] mb-3';
+      status.className = 'text-sm text-critical mb-3';
       return;
     }
     discoveredServers = data.servers || [];
     status.textContent = data.total + ' computers found, ' + data.new + ' new';
-    status.className = 'text-sm text-[#10B981] dark:text-[#34D399] mb-3';
+    status.className = 'text-sm text-healthy mb-3';
 
     if (discoveredServers.length === 0) {
-      list.innerHTML = '<div class="text-sm text-[#6B7280] dark:text-[#CBD5E1] py-4 text-center">' + {{ t.no_servers_found | tojson }} + '</div>';
+      list.innerHTML = '<div class="text-sm text-muted py-4 text-center">' + {{ t.no_servers_found | tojson }} + '</div>';
       return;
     }
 
     list.innerHTML = discoveredServers.map((s, i) => {
       const disabled = s.already_monitored ? 'disabled' : '';
       const opacity = s.already_monitored ? 'opacity-50' : '';
-      const badge = s.already_monitored ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-[#F1F5F9] dark:bg-[#334155] text-[#6B7280]">Monitored</span>' : '';
-      return `<label class="flex items-center gap-3 p-2 rounded hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A]/50 cursor-pointer ${opacity}">
+      const badge = s.already_monitored ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-raised dark:bg-line text-muted">Monitored</span>' : '';
+      return `<label class="flex items-center gap-3 p-2 rounded hover:bg-page dark:hover:bg-page/50 cursor-pointer ${opacity}">
         <input type="checkbox" class="discovery-cb rounded border-gray-300" data-index="${i}" ${disabled}>
         <div class="flex-1 min-w-0">
           <div class="text-sm font-medium truncate">${s.name} ${badge}</div>
-          <div class="text-xs text-[#6B7280] dark:text-[#CBD5E1] truncate">${s.host} ${s.os ? '\u2014 ' + s.os : ''}</div>
+          <div class="text-xs text-muted truncate">${s.host} ${s.os ? '\u2014 ' + s.os : ''}</div>
         </div>
       </label>`;
     }).join('');
@@ -1382,7 +1529,7 @@ function discoverServers() {
   })
   .catch(err => {
     status.textContent = 'Error: ' + err.message;
-    status.className = 'text-sm text-[#DC2626] dark:text-[#EF4444] mb-3';
+    status.className = 'text-sm text-critical mb-3';
   });
 }
 
@@ -1444,19 +1591,19 @@ function loadTags() {
       }
       noTags.classList.add('hidden');
       list.innerHTML = tags.map(tag => `
-        <div class="flex items-center justify-between p-2 rounded border border-[#E5E7EB] dark:border-[#334155] bg-[#F9FAFB] dark:bg-[#0F172A]" data-tag-id="${tag.id}">
+        <div class="flex items-center justify-between p-2 rounded border border-line bg-page" data-tag-id="${tag.id}">
           <div class="flex items-center gap-2">
             <span class="w-4 h-4 rounded-full flex-shrink-0" style="background-color: ${_escHtml(tag.color || '#6B7280')}"></span>
             <span class="text-sm font-medium tag-name-display">${_escHtml(tag.name)}</span>
-            <span class="text-[10px] text-[#9CA3AF] dark:text-[#475569]">${tag.server_count || 0} server${(tag.server_count || 0) !== 1 ? 's' : ''}</span>
+            <span class="text-[10px] text-faint">${tag.server_count || 0} server${(tag.server_count || 0) !== 1 ? 's' : ''}</span>
           </div>
           <div class="flex items-center gap-1">
             <button data-action="editTag" data-args='${JSON.stringify([tag.id, tag.name, tag.color || '#6B7280']).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}'
-                    class="p-1 text-[#6B7280] dark:text-[#CBD5E1] hover:text-[#2563EB] dark:hover:text-[#3B82F6]" title="Edit">
+                    class="p-1 text-accent hover:text-accent-strong" title="Edit">
               <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
             </button>
             <button data-action="deleteTag" data-args="[${tag.id}]"
-                    class="p-1 text-[#6B7280] dark:text-[#CBD5E1] hover:text-[#DC2626] dark:hover:text-[#EF4444]" title="Delete">
+                    class="p-1 text-critical hover:bg-critical/15 rounded" title="Delete">
               <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
             </button>
           </div>
@@ -1513,14 +1660,14 @@ function editTag(id, currentName, currentColor) {
 
   // Replace name display with inline edit
   row.querySelector('.flex.items-center.gap-2').innerHTML = `
-    <input type="color" class="edit-tag-color w-6 h-6 rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] cursor-pointer p-0.5" value="${currentColor}">
-    <input type="text" class="edit-tag-name px-2 py-0.5 text-sm rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" value="${_escHtml(existingName)}">
+    <input type="color" class="edit-tag-color w-6 h-6 rounded border border-line bg-field cursor-pointer p-0.5" value="${currentColor}">
+    <input type="text" class="edit-tag-name px-2 py-0.5 text-sm rounded border border-line bg-field" value="${_escHtml(existingName)}">
   `;
   row.querySelector('.flex.items-center.gap-1').innerHTML = `
-    <button data-action="saveEditTag" data-args="[${id}]" class="p-1 text-[#10B981] hover:text-[#059669]" title="Save">
+    <button data-action="saveEditTag" data-args="[${id}]" class="p-1 text-healthy hover:text-[#059669]" title="Save">
       <i data-lucide="check" class="w-3.5 h-3.5"></i>
     </button>
-    <button data-action="loadTags" class="p-1 text-[#6B7280] hover:text-[#DC2626]" title="Cancel">
+    <button data-action="loadTags" class="p-1 text-muted hover:text-critical" title="Cancel">
       <i data-lucide="x" class="w-3.5 h-3.5"></i>
     </button>
   `;
@@ -1673,7 +1820,7 @@ function testNewHealthCheck() {
   if (!host) { pAlert('Host is required to test'); return; }
 
   resultEl.textContent = 'Testing...';
-  resultEl.className = 'text-xs text-[#6B7280]';
+  resultEl.className = 'text-xs text-muted';
 
   fetch('/api/health-checks/probe', {
     method: 'POST',
@@ -1686,17 +1833,17 @@ function testNewHealthCheck() {
       const r = data.result;
       if (r.status === 'up') {
         resultEl.textContent = '✓ Up (' + (r.response_time_ms || 0).toFixed(0) + 'ms)';
-        resultEl.className = 'text-xs text-[#10B981] font-medium';
+        resultEl.className = 'text-xs text-healthy font-medium';
       } else {
         resultEl.textContent = '✗ Down: ' + (r.error || 'unreachable');
-        resultEl.className = 'text-xs text-[#DC2626] font-medium';
+        resultEl.className = 'text-xs text-critical font-medium';
       }
     } else {
       resultEl.textContent = '✗ ' + (data.error || 'Probe failed');
-      resultEl.className = 'text-xs text-[#DC2626]';
+      resultEl.className = 'text-xs text-critical';
     }
   })
-  .catch(err => { resultEl.textContent = '✗ ' + err.message; resultEl.className = 'text-xs text-[#DC2626]'; });
+  .catch(err => { resultEl.textContent = '✗ ' + err.message; resultEl.className = 'text-xs text-critical'; });
 }
 
 function addHealthCheckRow(data) {
@@ -1707,7 +1854,7 @@ function addHealthCheckRow(data) {
   if (!data || !data.id) return; // Only render saved items
 
   const row = document.createElement('div');
-  row.className = 'flex items-center gap-3 px-3 py-2 rounded-lg border border-[#E5E7EB] dark:border-[#334155] bg-[#F9FAFB] dark:bg-[#0F172A]/50 hc-row';
+  row.className = 'flex items-center gap-3 px-3 py-2 rounded-lg border border-line bg-page dark:bg-page/50 hc-row';
   row.dataset.hcId = data.id;
 
   const name = data.name || data.check_type.toUpperCase();
@@ -1722,15 +1869,15 @@ function addHealthCheckRow(data) {
   row.innerHTML = `
     <div class="flex-1 min-w-0">
       <div class="flex items-center gap-2">
-        <span class="text-xs font-semibold text-[#111827] dark:text-[#F9FAFB]">${_escHtml(name)}</span>
-        <span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-[#2563EB]/10 text-[#2563EB] dark:bg-[#3B82F6]/20 dark:text-[#3B82F6]">${type}</span>
+        <span class="text-xs font-semibold text-ink dark:text-[#F9FAFB]">${_escHtml(name)}</span>
+        <span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-info/10 text-info dark:bg-info/20">${type}</span>
       </div>
-      <div class="text-[10px] text-[#6B7280] dark:text-[#CBD5E1] mt-0.5 font-mono">${_escHtml(server)} → ${_escHtml(host)}${portDisplay}${pathDisplay ? ' ' + _escHtml(pathDisplay) : ''}</div>
+      <div class="text-[10px] text-muted mt-0.5 font-mono">${_escHtml(server)} → ${_escHtml(host)}${portDisplay}${pathDisplay ? ' ' + _escHtml(pathDisplay) : ''}</div>
     </div>
-    <button data-action="_srvEditHc" class="p-1.5 text-[#6B7280] hover:text-[#2563EB] rounded hover:bg-[#2563EB]/10" title="Edit">
+    <button data-action="_srvEditHc" class="p-1.5 text-muted hover:text-info rounded hover:bg-info/10" title="Edit">
       <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
     </button>
-    <button data-action="_srvDeleteHc" class="p-1.5 text-[#6B7280] hover:text-[#DC2626] rounded hover:bg-[#DC2626]/10" title="Delete">
+    <button data-action="_srvDeleteHc" class="p-1.5 text-muted hover:text-critical rounded hover:bg-critical/10" title="Delete">
       <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
     </button>
   `;
@@ -1776,7 +1923,7 @@ function saveHealthCheck(row) {
       if (result.ok) {
         if (result.id) row.dataset.hcId = result.id;
         const res = row.querySelector('.hc-result');
-        res.innerHTML = '<span class="text-[#10B981]">Saved</span>';
+        res.innerHTML = '<span class="text-healthy">Saved</span>';
         res.classList.remove('hidden');
         setTimeout(() => res.classList.add('hidden'), 2000);
       } else {
@@ -1830,7 +1977,7 @@ function testHealthCheck(row) {
 
   const resultEl = row.querySelector('.hc-result');
   resultEl.textContent = 'Probing...';
-  resultEl.className = 'hc-result text-xs ml-1 text-[#6B7280]';
+  resultEl.className = 'hc-result text-xs ml-1 text-muted';
 
   fetch('/api/health-checks/probe', {
     method: 'POST',
@@ -1840,16 +1987,16 @@ function testHealthCheck(row) {
     .then(r => r.json())
     .then(result => {
       if (result.ok && result.status === 'healthy') {
-        resultEl.innerHTML = `<span class="text-[#10B981]">Healthy (${result.response_ms || 0}ms)</span>`;
+        resultEl.innerHTML = `<span class="text-healthy">Healthy (${result.response_ms || 0}ms)</span>`;
       } else if (result.ok) {
-        resultEl.innerHTML = `<span class="text-[#F59E0B]">${_escHtml(result.status || 'Unknown')}</span>`;
+        resultEl.innerHTML = `<span class="text-warning">${_escHtml(result.status || 'Unknown')}</span>`;
       } else {
-        resultEl.innerHTML = `<span class="text-[#DC2626]">${_escHtml(result.error || 'Probe failed')}</span>`;
+        resultEl.innerHTML = `<span class="text-critical">${_escHtml(result.error || 'Probe failed')}</span>`;
       }
       resultEl.classList.remove('hidden');
     })
     .catch(err => {
-      resultEl.innerHTML = `<span class="text-[#DC2626]">${_escHtml(err.message)}</span>`;
+      resultEl.innerHTML = `<span class="text-critical">${_escHtml(err.message)}</span>`;
       resultEl.classList.remove('hidden');
     });
 }
@@ -1944,7 +2091,7 @@ function showDepBrowsePopup(items, inputId, type, btnEl) {
     'min-width:240px;max-height:300px;overflow:hidden;display:flex;flex-direction:column;';
 
   const searchHtml = '<input type="text" placeholder="Search..." data-input="_srvFilterDepBrowse"' +
-    ' class="w-full px-3 py-1.5 text-xs border-b border-[#334155] bg-transparent text-[#CBD5E1] outline-none">';
+    ' class="w-full px-3 py-1.5 text-xs border-b border-line bg-transparent text-muted outline-none focus-visible:ring-2 focus-visible:ring-brand">';
 
   const listHtml = items.sort(function(a, b) {
     const aRun = (a.status||'').toLowerCase() === 'running' ? 0 : 1;
@@ -1954,7 +2101,7 @@ function showDepBrowsePopup(items, inputId, type, btnEl) {
     const name = item.name || item.Name || '';
     const display = item.display_name || item.DisplayName || '';
     const status = (item.status || '').toLowerCase();
-    const dot = status === 'running' ? '<span class="w-1.5 h-1.5 rounded-full bg-[#10B981] flex-shrink-0"></span>' : '';
+    const dot = status === 'running' ? '<span class="w-1.5 h-1.5 rounded-full bg-healthy flex-shrink-0"></span>' : '';
     return '<div class="dep-browse-item flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-[#334155] text-xs text-[#CBD5E1]"' +
       ' data-name="' + name + '" data-action="selectDepBrowseItem" data-args=\'' + JSON.stringify([name, inputId]).replace(/&/g, "&amp;").replace(/'/g, "&#39;") + '\'>' +
       dot + '<span class="font-medium">' + name + '</span>' +
@@ -1994,7 +2141,7 @@ function loadDepsTable() {
       if (!data.ok || !data.dependencies || data.dependencies.length === 0) {
         const _noDepsMsg = {{ t.get('no_dependencies', 'No dependencies configured') | tojson }};
         container.innerHTML = `
-          <div class="text-sm text-[#9CA3AF] dark:text-[#475569] text-center py-8">
+          <div class="text-sm text-faint text-center py-8">
             <i data-lucide="network" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
             <p>${_noDepsMsg}</p>
             <p class="text-[10px] mt-1 opacity-60">Click "Add Dependency" to define server relationships</p>
@@ -2020,12 +2167,12 @@ function loadDepsTable() {
       }
 
       let html = '<div class="overflow-x-auto"><table class="w-full text-sm">';
-      html += '<thead><tr class="border-b border-[#E5E7EB] dark:border-[#334155] text-left">';
-      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.get('server', 'Server') | tojson }} + '</th>';
-      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.depends_on | tojson }} + '</th>';
-      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.dependency_type | tojson }} + '</th>';
-      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">Target</th>';
-      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280] dark:text-[#CBD5E1]">' + {{ t.description | tojson }} + '</th>';
+      html += '<thead data-sort-table="servers-dependencies"><tr class="border-b border-line text-left">';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="text">' + {{ t.get('server', 'Server') | tojson }} + '</th>';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="text">' + {{ t.depends_on | tojson }} + '</th>';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="status">' + {{ t.dependency_type | tojson }} + '</th>';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="text">Target</th>';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="text">' + {{ t.description | tojson }} + '</th>';
       html += '<th class="px-3 py-2"></th>';
       html += '</tr></thead><tbody>';
       deps.forEach(d => {
@@ -2038,15 +2185,15 @@ function loadDepsTable() {
         else if (mode === 'process' && d.process_name) targetInfo = 'Process: ' + d.process_name;
         else if (d.port) targetInfo = 'Port: ' + d.port;
 
-        html += '<tr class="border-b border-[#E5E7EB] dark:border-[#334155]">';
+        html += '<tr class="border-b border-line">';
         html += '<td class="px-3 py-2">' + d.server_name + '</td>';
         html += '<td class="px-3 py-2">' + d.depends_on + '</td>';
-        html += '<td class="px-3 py-2"><span class="text-[10px] px-1.5 py-0.5 rounded bg-[#E5E7EB] dark:bg-[#334155]">' + typeLabel + '</span></td>';
-        html += '<td class="px-3 py-2 text-[#6B7280] dark:text-[#CBD5E1]">' + targetInfo + '</td>';
-        html += '<td class="px-3 py-2 text-[#6B7280] dark:text-[#CBD5E1]">' + (d.description || '-') + '</td>';
+        html += '<td class="px-3 py-2"><span class="text-[10px] px-1.5 py-0.5 rounded bg-line">' + typeLabel + '</span></td>';
+        html += '<td class="px-3 py-2 text-muted">' + targetInfo + '</td>';
+        html += '<td class="px-3 py-2 text-muted">' + (d.description || '-') + '</td>';
         html += '<td class="px-3 py-2 text-right whitespace-nowrap">';
-        html += '<button data-action="editDependency" data-args="[' + d.id + ']" class="text-[#6B7280] hover:text-[#2563EB] p-1" title="Edit"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>';
-        html += '<button data-action="removeDependency" data-args="[' + d.id + ']" class="text-[#6B7280] hover:text-[#DC2626] p-1 ml-1" title="' + {{ t.remove_dependency | tojson }} + '"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>';
+        html += '<button data-action="editDependency" data-args="[' + d.id + ']" class="text-accent hover:text-accent-strong p-1" title="Edit"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>';
+        html += '<button data-action="removeDependency" data-args="[' + d.id + ']" class="text-critical hover:bg-critical/15 rounded p-1 ml-1" title="' + {{ t.remove_dependency | tojson }} + '"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>';
         html += '</td>';
         html += '</tr>';
       });
@@ -2056,7 +2203,7 @@ function loadDepsTable() {
     })
     .catch(() => {
       document.getElementById('deps-table-container').innerHTML =
-        '<div class="text-xs text-[#DC2626] text-center py-4">Failed to load dependencies</div>';
+        '<div class="text-xs text-critical text-center py-4">Failed to load dependencies</div>';
     });
 }
 
@@ -2214,16 +2361,149 @@ function loadServerTags() {
   {% endfor %}
 }
 
+// A tag's colour is chosen by the admin in the tag manager, so it cannot be
+// replaced with a neutral — that discards the only thing distinguishing one
+// tag from another at a glance. But an arbitrary user colour has no
+// readability guarantee: the DEFAULT #6B7280 measured 3.26:1 on the dark
+// row, under AA, which is what "the tags are too soft" meant.
+//
+// So the hue is kept and the LIGHTNESS is moved until the label is legible.
+// Nudged in 6% steps toward white in dark mode and toward black in light,
+// against the tint actually composited over the row — not against the raw
+// colour, which is not what the eye compares it to. Capped at 24 steps so a
+// pathological input terminates. Ported to Python as
+// tools/tag_ink.py — see tests/test_tag_ink.py for the shared corpus both
+// are checked against, and that module's docstring for why three copies of
+// one algorithm is a deliberate, tested trade-off and not drift.
+//
+// BOTH themes are solved on every render, regardless of which one is
+// active right now. The previous version read
+// `document.documentElement.classList.contains('dark')` ONCE and baked
+// that theme's ink into an inline `color:` — so flipping the theme with the
+// nav toggle (which only flips a class; it does not reload, and the state
+// persists until something does) left the OLD theme's ink on screen.
+// Measured: solved-light-shown-in-dark fell to 1.74:1, solved-dark-shown-
+// in-light to 1.89:1 — both WORSE than the 3.26:1 defect this replaced.
+// The fix is architectural, not a re-render hook: solve for both themes,
+// emit both as custom properties, and let a static `dark:` Tailwind class
+// select between them the same way `bg-[var(--tag-bg)]` already does for
+// the background below — the browser's own `.dark` selector reacts the
+// instant the class is toggled, with no JS re-render involved at all.
+//
+// The hover composite has to model what actually happens, not just the
+// card: the pill sits inside a `<tr>` carrying
+// `hover:bg-page dark:hover:bg-page/50`, so hovering the pill unavoidably
+// hovers the row, and the surface under the tint changes from the card to
+// that row-hover colour. Solving only against the card left roughly
+// three-quarters of colours failing AA in light mode the instant the row
+// was hovered (worst case measured 4.18:1 on #bd0912); dark mode was
+// unaffected because the row hover darkens there, which only helps.
+function _tagParseHex(hex) {
+  const s = (hex || '').trim();
+  let m = /^#?([0-9a-f]{6})$/i.exec(s);
+  if (m) return m[1];
+  // 3-digit CSS shorthand (#abc -> aabbcc) — the previous regex only
+  // accepted 6 digits, so a valid admin-chosen shorthand colour silently
+  // fell through to the default grey and the tag stopped being
+  // distinguishable, which is the entire point of the feature.
+  m = /^#?([0-9a-f]{3})$/i.exec(s);
+  if (m) return m[1].split('').map(ch => ch + ch).join('');
+  return '6B7280';
+}
+
+function _tagLinearize(c) {
+  c /= 255;
+  return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
+function _tagLuminance(rgb) {
+  return 0.2126 * _tagLinearize(rgb[0]) + 0.7152 * _tagLinearize(rgb[1]) + 0.0722 * _tagLinearize(rgb[2]);
+}
+function _tagContrast(a, b) {
+  const la = _tagLuminance(a), lb = _tagLuminance(b);
+  const lighter = Math.max(la, lb), darker = Math.min(la, lb);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+function _tagBlend(fg, bg, alpha) {
+  return fg.map((c, i) => c * alpha + bg[i] * (1 - alpha));
+}
+// Nudges `rgb` toward `target` until it clears 4.5:1 against EVERY
+// [backdrop, alpha] composite in `constraints` at once, capped at 24 steps.
+// All constraints for one call share a target (black for light, white for
+// dark), so nudging toward it can only help every constraint simultaneously.
+function _tagSolveInk(rgb, target, constraints) {
+  const composites = constraints.map(([bg, a]) => _tagBlend(rgb, bg, a));
+  let ink = rgb.slice();
+  for (let i = 0; i < 24; i++) {
+    if (composites.every(c => _tagContrast(ink, c) >= 4.5)) break;
+    ink = ink.map((c, i) => Math.round(c + (target[i] - c) * 0.06));
+  }
+  return ink;
+}
+function _tagHex(rgb) {
+  return '#' + rgb.map(v => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('');
+}
+
+// static/css/app.css --c-card / --c-page (:root and .dark).
+const _TAG_CARD_LIGHT = [255, 255, 255];
+const _TAG_CARD_DARK = [15, 22, 35];
+const _TAG_PAGE_LIGHT = [241, 245, 249];
+const _TAG_PAGE_DARK = [5, 7, 13];
+// `hover:bg-page` (light) is opaque, so the light row-hover backdrop IS the
+// page colour. `dark:hover:bg-page/50` is page-at-50%-alpha painted over
+// the card beneath the row.
+const _TAG_ROW_HOVER_LIGHT = _TAG_PAGE_LIGHT;
+const _TAG_ROW_HOVER_DARK = _TAG_PAGE_DARK.map((p, i) => Math.round(0.5 * p + 0.5 * _TAG_CARD_DARK[i]));
+
+function _tagReadableInk(hex, tintAlpha) {
+  const base = _tagParseHex(hex);
+  const rgb = [0, 2, 4].map(i => parseInt(base.slice(i, i + 2), 16));
+  // Solved against the HOVER tint too, which is the denser of the two, so
+  // the label clears AA in both states. The specific failure being
+  // avoided: a hover highlight that swallows the text, which hides the one
+  // thing the tag exists to say.
+  const hoverAlpha = Math.min(1, tintAlpha + 0.18);
+
+  const inkLight = _tagSolveInk(rgb, [0, 0, 0], [
+    [_TAG_CARD_LIGHT, tintAlpha],
+    [_TAG_ROW_HOVER_LIGHT, hoverAlpha],
+  ]);
+  const inkDark = _tagSolveInk(rgb, [255, 255, 255], [
+    [_TAG_CARD_DARK, tintAlpha],
+    [_TAG_ROW_HOVER_DARK, hoverAlpha],
+  ]);
+
+  return {
+    inkLight: _tagHex(inkLight),
+    inkDark: _tagHex(inkDark),
+    bg: 'rgba(' + rgb.join(',') + ',' + tintAlpha + ')',
+    bgHover: 'rgba(' + rgb.join(',') + ',' + hoverAlpha + ')',
+    border: 'rgba(' + rgb.join(',') + ',0.55)',
+    restRatioLight: Math.round(_tagContrast(inkLight, _tagBlend(rgb, _TAG_CARD_LIGHT, tintAlpha)) * 100) / 100,
+    restRatioDark: Math.round(_tagContrast(inkDark, _tagBlend(rgb, _TAG_CARD_DARK, tintAlpha)) * 100) / 100,
+    hoverRatioLight: Math.round(_tagContrast(inkLight, _tagBlend(rgb, _TAG_ROW_HOVER_LIGHT, hoverAlpha)) * 100) / 100,
+    hoverRatioDark: Math.round(_tagContrast(inkDark, _tagBlend(rgb, _TAG_ROW_HOVER_DARK, hoverAlpha)) * 100) / 100,
+  };
+}
+
 function renderServerTagPills(serverName, idx) {
   const container = document.querySelector('.server-tags-' + idx);
   if (!container) return;
   const tags = _serverTagMap[serverName] || [];
-  container.innerHTML = tags.map(t =>
-    `<span class="px-1.5 py-0 text-[9px] font-medium rounded-full cursor-pointer hover:opacity-70"
-           style="color:${t.color};background:${t.color}15;border:1px solid ${t.color}30;"
+  container.innerHTML = tags.map(t => {
+    const c = _tagReadableInk(t.color, 0.22);
+    // The hover background is carried on a custom property and referenced
+    // by a static Tailwind class, because a `:hover` rule cannot be
+    // expressed in an inline style; the ink works the same way and for the
+    // same reason (see the comment above _tagReadableInk) — a static
+    // `dark:` variant, not a class re-render, is what reacts to the theme
+    // toggle.
+    return `<span class="server-tag-pill px-1.5 py-0 text-[9px] font-medium rounded-full cursor-pointer border
+                  bg-[var(--tag-bg)] hover:bg-[var(--tag-bg-h)] text-[var(--tag-ink-l)] dark:text-[var(--tag-ink-d)]
+                  transition-colors duration-fast ease-standard"
+           style="--tag-bg:${c.bg};--tag-bg-h:${c.bgHover};--tag-ink-l:${c.inkLight};--tag-ink-d:${c.inkDark};border-color:${c.border};"
            data-action="_srvRemoveTag" data-args='${JSON.stringify([serverName, t.id, idx]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}'
-           title="Click to remove">${t.name} ×</span>`
-  ).join('');
+           title="Click to remove">${t.name} ×</span>`;
+  }).join('');
 }
 
 // ── data-action bridges (CSP: no inline on* handlers) ──
@@ -2274,7 +2554,7 @@ function showTagAssign(serverName, idx, btnEl) {
     padding:6px;min-width:160px;max-height:200px;overflow-y:auto;`;
 
   if (available.length === 0) {
-    popup.innerHTML = '<div class="text-[10px] text-[#9CA3AF] p-2 text-center">All tags assigned</div>';
+    popup.innerHTML = '<div class="text-[10px] text-faint p-2 text-center">All tags assigned</div>';
   } else {
     popup.innerHTML = available.map(t =>
       `<div data-action="assignTagToServer" data-args='${JSON.stringify([serverName, t.id, idx]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}'

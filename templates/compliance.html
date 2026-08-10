@@ -7,18 +7,18 @@
   <!-- Header -->
   <div class="flex items-start justify-between">
     <div>
-      <h1 class="text-2xl font-bold text-[#111827] dark:text-[#F9FAFB] flex items-center gap-2">
-        <i data-lucide="clipboard-check" class="w-6 h-6 text-[#8B5CF6]"></i>
+      <h1 class="text-2xl font-bold text-ink dark:text-[#F9FAFB] flex items-center gap-2">
+        <i data-lucide="clipboard-check" class="w-6 h-6 text-brand"></i>
         {{ t.get('compliance_dashboard', 'Compliance Dashboard') }}
       </h1>
-      <p class="text-sm text-[#6B7280] dark:text-[#CBD5E1] mt-1">
+      <p class="text-sm text-muted mt-1">
         {{ t.get('compliance_subtitle', 'GAMP 5 CSV operational status — SOPs, audit chain, findings.') }}
       </p>
     </div>
     <div class="flex gap-2">
-      <span class="text-xs text-[#6B7280] dark:text-[#9CA3AF]">
+      <span class="text-xs text-muted">
         {{ t.get('csv_docs_at', 'CSV docs at') }}
-        <code class="bg-[#F3F4F6] dark:bg-[#0F172A] px-1.5 py-0.5 rounded">docs/csv/</code>
+        <code class="bg-raised px-1.5 py-0.5 rounded">docs/csv/</code>
       </span>
     </div>
   </div>
@@ -27,11 +27,11 @@
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
     <!-- Readiness card -->
-    <div id="readiness-card" class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4">
-      <div class="text-xs font-semibold uppercase tracking-wide text-[#6B7280] dark:text-[#9CA3AF] mb-2">
+    <div id="readiness-card" class="bg-card rounded-lg border border-line p-4">
+      <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2">
         {{ t.get('overall_readiness', 'Overall readiness') }}
       </div>
-      <div id="readiness-status" class="text-2xl font-bold text-[#10B981]">
+      <div id="readiness-status" class="text-2xl font-bold text-healthy">
         <span class="opacity-50">{{ t.get('loading', 'Loading…') }}</span>
       </div>
       <div id="readiness-breakdown" class="mt-3 grid grid-cols-4 gap-2 text-xs">
@@ -40,26 +40,26 @@
     </div>
 
     <!-- Audit telemetry card -->
-    <div id="audit-card" class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4">
-      <div class="text-xs font-semibold uppercase tracking-wide text-[#6B7280] dark:text-[#9CA3AF] mb-2">
+    <div id="audit-card" class="bg-card rounded-lg border border-line p-4">
+      <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2">
         {{ t.get('audit_telemetry', 'Audit telemetry') }}
       </div>
       <div id="audit-blind" class="text-sm font-medium">
         <span class="opacity-50">{{ t.get('loading', 'Loading…') }}</span>
       </div>
-      <div id="audit-chain" class="text-xs text-[#6B7280] dark:text-[#9CA3AF] mt-2">
+      <div id="audit-chain" class="text-xs text-muted mt-2">
         <!-- chain status -->
       </div>
     </div>
 
     <!-- Findings tile -->
     <a id="findings-card" href="/compliance/doc/CSV-17"
-       class="block bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4 hover:border-[#8B5CF6] transition-colors">
-      <div class="text-xs font-semibold uppercase tracking-wide text-[#6B7280] dark:text-[#9CA3AF] mb-2 flex items-center justify-between">
+       class="block bg-card rounded-lg border border-line p-4 hover:border-brand transition-colors">
+      <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2 flex items-center justify-between">
         <span>{{ t.get('findings_register', 'Findings register') }}</span>
         <i data-lucide="external-link" class="w-3 h-3"></i>
       </div>
-      <div id="findings-status" class="text-2xl font-bold text-[#10B981]">
+      <div id="findings-status" class="text-2xl font-bold text-healthy">
         <span class="opacity-50">{{ t.get('loading', 'Loading…') }}</span>
       </div>
       <div id="findings-breakdown" class="mt-3 grid grid-cols-3 gap-2 text-xs"></div>
@@ -68,22 +68,22 @@
 
   <!-- SOP cards -->
   <div>
-    <h2 class="text-sm font-semibold text-[#111827] dark:text-[#F9FAFB] uppercase tracking-wide mb-3">
+    <h2 class="text-sm font-semibold text-ink dark:text-[#F9FAFB] uppercase tracking-wide mb-3">
       {{ t.get('standard_operating_procedures', 'Standard Operating Procedures') }}
     </h2>
     <div id="sop-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
       <!-- filled by JS -->
-      <div class="text-sm text-[#6B7280] dark:text-[#9CA3AF]">{{ t.get('loading', 'Loading…') }}</div>
+      <div class="text-sm text-muted">{{ t.get('loading', 'Loading…') }}</div>
     </div>
   </div>
 
   <!-- CSV documentation index -->
   <div>
-    <h2 class="text-sm font-semibold text-[#111827] dark:text-[#F9FAFB] uppercase tracking-wide mb-3">
+    <h2 class="text-sm font-semibold text-ink dark:text-[#F9FAFB] uppercase tracking-wide mb-3">
       {{ t.get('csv_documentation', 'CSV Documentation') }}
     </h2>
     <div id="csv-doc-index" class="space-y-4">
-      <div class="text-sm text-[#6B7280] dark:text-[#9CA3AF]">{{ t.get('loading', 'Loading…') }}</div>
+      <div class="text-sm text-muted">{{ t.get('loading', 'Loading…') }}</div>
     </div>
   </div>
 
@@ -147,7 +147,7 @@
       paintDocIndex(data.by_category || {});
     } catch (e) {
       document.getElementById('csv-doc-index').innerHTML =
-        '<div class="text-sm text-[#DC2626]">Failed to load docs</div>';
+        '<div class="text-sm text-critical">Failed to load docs</div>';
     }
   }
 
@@ -159,22 +159,22 @@
     statusEl.textContent = ok
       ? `OK — ${rd.current} of ${rd.total} SOPs current`
       : `Attention — ${rd.overdue} overdue, ${rd.never} never run`;
-    statusEl.className = 'text-2xl font-bold ' + (ok ? 'text-[#10B981]' : 'text-[#DC2626]');
+    statusEl.className = 'text-2xl font-bold ' + (ok ? 'text-healthy' : 'text-critical');
 
     const br = document.getElementById('readiness-breakdown');
     br.innerHTML = `
-      <div class="text-center"><div class="text-lg font-semibold text-[#10B981]">${rd.current}</div><div class="text-[#6B7280]">${T.status_current}</div></div>
-      <div class="text-center"><div class="text-lg font-semibold text-[#F59E0B]">${rd.due_soon}</div><div class="text-[#6B7280]">${T.status_due_soon}</div></div>
-      <div class="text-center"><div class="text-lg font-semibold text-[#DC2626]">${rd.overdue}</div><div class="text-[#6B7280]">${T.status_overdue}</div></div>
-      <div class="text-center"><div class="text-lg font-semibold text-[#6B7280]">${rd.n_a}</div><div class="text-[#6B7280]">${T.status_n_a}</div></div>`;
+      <div class="text-center"><div class="text-lg font-semibold text-healthy">${rd.current}</div><div class="text-muted">${T.status_current}</div></div>
+      <div class="text-center"><div class="text-lg font-semibold text-warning">${rd.due_soon}</div><div class="text-muted">${T.status_due_soon}</div></div>
+      <div class="text-center"><div class="text-lg font-semibold text-critical">${rd.overdue}</div><div class="text-muted">${T.status_overdue}</div></div>
+      <div class="text-center"><div class="text-lg font-semibold text-muted">${rd.n_a}</div><div class="text-muted">${T.status_n_a}</div></div>`;
 
     // Audit telemetry
     const a = data.audit || {};
     const blindEl = document.getElementById('audit-blind');
     if (a.audit_blind) {
-      blindEl.innerHTML = `<span class="text-[#DC2626] font-bold">⚠ AUDIT BLIND — ${a.insert_failures} insert / ${a.mirror_failures} mirror failures</span>`;
+      blindEl.innerHTML = `<span class="text-critical font-bold">⚠ AUDIT BLIND — ${a.insert_failures} insert / ${a.mirror_failures} mirror failures</span>`;
     } else {
-      blindEl.innerHTML = '<span class="text-[#10B981] font-medium">✓ Audit subsystem healthy (0 failures)</span>';
+      blindEl.innerHTML = '<span class="text-healthy font-medium">✓ Audit subsystem healthy (0 failures)</span>';
     }
     const chainEl = document.getElementById('audit-chain');
     if (a.last_chain_check) {
@@ -194,14 +194,14 @@
       fs.textContent = (open === 0)
         ? `OK — ${f.closed}+${f.risk_accepted} of ${f.total} disposed`
         : `Open: ${open} of ${f.total}`;
-      fs.className = 'text-2xl font-bold ' + (open === 0 ? 'text-[#10B981]' : 'text-[#DC2626]');
+      fs.className = 'text-2xl font-bold ' + (open === 0 ? 'text-healthy' : 'text-critical');
       document.getElementById('findings-breakdown').innerHTML = `
-        <div class="text-center"><div class="text-lg font-semibold text-[#10B981]">${f.closed}</div><div class="text-[#6B7280]">Closed</div></div>
-        <div class="text-center"><div class="text-lg font-semibold text-[#F59E0B]">${f.risk_accepted}</div><div class="text-[#6B7280]">Accepted</div></div>
-        <div class="text-center"><div class="text-lg font-semibold text-[#DC2626]">${f.open}</div><div class="text-[#6B7280]">Open</div></div>`;
+        <div class="text-center"><div class="text-lg font-semibold text-healthy">${f.closed}</div><div class="text-muted">Closed</div></div>
+        <div class="text-center"><div class="text-lg font-semibold text-warning">${f.risk_accepted}</div><div class="text-muted">Accepted</div></div>
+        <div class="text-center"><div class="text-lg font-semibold text-critical">${f.open}</div><div class="text-muted">Open</div></div>`;
     } else {
       fs.textContent = '(see CSV-17)';
-      fs.className = 'text-sm font-medium text-[#6B7280]';
+      fs.className = 'text-sm font-medium text-muted';
     }
 
     // SOP cards
@@ -209,23 +209,23 @@
     grid.innerHTML = '';
     for (const s of data.sops) {
       const card = document.createElement('div');
-      card.className = 'bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-3 flex flex-col gap-2';
+      card.className = 'bg-card rounded-lg border border-line p-3 flex flex-col gap-2';
       const cadence = s.cadence_days ? `${s.cadence_days} d cadence` : T.cadence_none;
-      const overdueMsg = s.days_overdue > 0 ? `<span class="text-[#DC2626] text-xs">${s.days_overdue} ${T.days_overdue}</span>` : '';
+      const overdueMsg = s.days_overdue > 0 ? `<span class="text-critical text-xs">${s.days_overdue} ${T.days_overdue}</span>` : '';
       card.innerHTML = `
         <div class="flex items-start justify-between gap-2">
-          <div class="font-semibold text-sm text-[#111827] dark:text-[#F9FAFB]">${s.id} — ${s.title}</div>
+          <div class="font-semibold text-sm text-ink dark:text-[#F9FAFB]">${s.id} — ${s.title}</div>
           ${statusBadge(s.status)}
         </div>
-        <div class="text-xs text-[#6B7280] dark:text-[#9CA3AF]">${s.purpose}</div>
-        <div class="text-xs text-[#6B7280] dark:text-[#9CA3AF]">${cadence} · Owner: ${s.owner_role}</div>
-        <div class="text-xs text-[#6B7280] dark:text-[#9CA3AF]">
+        <div class="text-xs text-muted">${s.purpose}</div>
+        <div class="text-xs text-muted">${cadence} · Owner: ${s.owner_role}</div>
+        <div class="text-xs text-muted">
           ${T.last_run}: ${fmtTs(s.last_executed_at)}
           ${s.next_due_at ? ` · ${T.next_due}: ${fmtTs(s.next_due_at)}` : ''}
           ${overdueMsg ? '· ' + overdueMsg : ''}
         </div>
         <div class="flex gap-2 mt-1">
-          <a href="/compliance/sop/${s.id}" class="text-xs px-2 py-1 rounded bg-[#8B5CF6] text-white hover:opacity-90 inline-flex items-center gap-1">
+          <a href="/compliance/sop/${s.id}" class="text-xs px-2 py-1 rounded bg-brand text-white hover:opacity-90 inline-flex items-center gap-1">
             <i data-lucide="external-link" class="w-3 h-3"></i> ${T.open}
           </a>
         </div>`;
@@ -250,21 +250,21 @@
     for (const [cat, docs] of Object.entries(byCategory)) {
       if (!docs.length) continue;
       const section = document.createElement('div');
-      section.className = 'bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] overflow-hidden';
+      section.className = 'bg-card rounded-lg border border-line overflow-hidden';
       section.innerHTML = `
-        <div class="px-4 py-2 border-b border-[#E5E7EB] dark:border-[#334155] text-xs font-semibold uppercase tracking-wide text-[#6B7280] dark:text-[#9CA3AF]">${categoryTitles[cat] || cat}</div>
-        <ul class="divide-y divide-[#E5E7EB] dark:divide-[#334155]">
+        <div class="px-4 py-2 border-b border-line text-xs font-semibold uppercase tracking-wide text-muted">${categoryTitles[cat] || cat}</div>
+        <ul class="divide-y divide-line">
           ${docs.map(d => `
             <li>
-              <a href="/compliance/doc/${d.id}" class="flex items-start justify-between gap-3 px-4 py-2.5 hover:bg-[#F9FAFB] dark:hover:bg-[#0F172A] transition-colors">
+              <a href="/compliance/doc/${d.id}" class="flex items-start justify-between gap-3 px-4 py-2.5 hover:bg-page transition-colors">
                 <div class="flex-1 min-w-0">
-                  <div class="text-sm font-medium text-[#111827] dark:text-[#F9FAFB]">
-                    <span class="font-mono text-xs text-[#6B7280] dark:text-[#9CA3AF]">${d.id}</span>
+                  <div class="text-sm font-medium text-ink dark:text-[#F9FAFB]">
+                    <span class="font-mono text-xs text-muted">${d.id}</span>
                     &nbsp;${d.title}
                   </div>
-                  <div class="text-xs text-[#6B7280] dark:text-[#9CA3AF] truncate">${d.short_desc}</div>
+                  <div class="text-xs text-muted truncate">${d.short_desc}</div>
                 </div>
-                <i data-lucide="chevron-right" class="w-4 h-4 text-[#9CA3AF] flex-shrink-0 mt-0.5"></i>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-faint flex-shrink-0 mt-0.5"></i>
               </a>
             </li>`).join('')}
         </ul>`;

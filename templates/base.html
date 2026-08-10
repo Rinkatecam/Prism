@@ -16,9 +16,84 @@
       darkMode: 'class',
       theme: {
         extend: {
+          // Semantic colours, resolved from the CSS custom properties in
+          // static/css/app.css. Generated — regenerate with:
+          //   python -c "import sys;sys.path.insert(0,'.');\
+          //     from tools import design_tokens as d;print(d.render_tailwind_colors())"
+          //
+          // One class covers BOTH themes: `text-muted` reads --c-muted, which
+          // .dark overrides. That is why a `dark:` variant is no longer needed
+          // and, more importantly, can no longer be forgotten — 34% of coloured
+          // utilities used to have none and leaked their light colour into dark
+          // mode.
+          //
+          // Replaces the previous `surface` / `bg` entries, which were defined
+          // here and referenced by exactly 0 templates.
           colors: {
-            surface: { light: '#FFFFFF', dark: '#1E293B' },
-            bg: { light: '#F9FAFB', dark: '#0F172A' },
+            'page': 'rgb(var(--c-page) / <alpha-value>)',
+            'card': 'rgb(var(--c-card) / <alpha-value>)',
+            'raised': 'rgb(var(--c-raised) / <alpha-value>)',
+            'field': 'rgb(var(--c-field) / <alpha-value>)',
+            'line': 'rgb(var(--c-line) / <alpha-value>)',
+            'ink': 'rgb(var(--c-ink) / <alpha-value>)',
+            'muted': 'rgb(var(--c-muted) / <alpha-value>)',
+            'faint': 'rgb(var(--c-faint) / <alpha-value>)',
+            'brand': 'rgb(var(--c-brand) / <alpha-value>)',
+            'accent': 'rgb(var(--c-accent) / <alpha-value>)',
+            'info': 'rgb(var(--c-info) / <alpha-value>)',
+            'healthy': 'rgb(var(--c-healthy) / <alpha-value>)',
+            'warning': 'rgb(var(--c-warning) / <alpha-value>)',
+            'critical': 'rgb(var(--c-critical) / <alpha-value>)',
+            'critical-tint': 'rgb(var(--c-critical-tint) / <alpha-value>)',
+            'critical-strong': 'rgb(var(--c-critical-strong) / <alpha-value>)',
+            'warning-tint': 'rgb(var(--c-warning-tint) / <alpha-value>)',
+            'warning-strong': 'rgb(var(--c-warning-strong) / <alpha-value>)',
+            'healthy-tint': 'rgb(var(--c-healthy-tint) / <alpha-value>)',
+            'healthy-strong': 'rgb(var(--c-healthy-strong) / <alpha-value>)',
+            'info-tint': 'rgb(var(--c-info-tint) / <alpha-value>)',
+            'info-strong': 'rgb(var(--c-info-strong) / <alpha-value>)',
+            'accent-strong': 'rgb(var(--c-accent-strong) / <alpha-value>)',
+            'accent-tint': 'rgb(var(--c-accent-tint) / <alpha-value>)',
+            'brand-tint': 'rgb(var(--c-brand-tint) / <alpha-value>)',
+            'brand-strong': 'rgb(var(--c-brand-strong) / <alpha-value>)'
+          },
+          // TWO radii and a pill. Five were in use with no rule behind which
+          // went where: rounded (527), rounded-lg (211), rounded-full (140),
+          // and 12 one-off uses of xl/md/sm.
+          //
+          // All four non-pill names are mapped, not just sm and md. Phase 1a
+          // overrode only those two, which set the scale by VALUE but left
+          // 738 of the 750 uses reading Tailwind's DEFAULT and lg — so the
+          // rule was not actually load-bearing and "one line to soften the
+          // corners" would have moved 12 elements out of 750.
+          //
+          // sm and DEFAULT are the same value, md and lg are the same value.
+          // Both spellings survive so the templates did not need touching.
+          borderRadius: {
+            DEFAULT: '0.5rem',   // 8px  — inputs, badges, bars, chips
+            sm: '0.5rem',        // 8px
+            md: '1rem',          // 16px — cards, panels, modals
+            lg: '1rem'           // 16px
+          },
+          // Motion and elevation, pointed at the same custom properties
+          // app.css uses. Measured before this: SIX durations across the two
+          // layers and TWO easing systems, none of them chosen — a template's
+          // `duration-200` and a stylesheet's `0.2s` were independent numbers
+          // that happened to agree. Generated; regenerate with
+          //   d.render_tailwind_motion() / d.render_tailwind_shadows()
+          transitionDuration: {
+            'fast': 'var(--dur-fast)',
+            'base': 'var(--dur-base)',
+            'slow': 'var(--dur-slow)'
+          },
+          transitionTimingFunction: {
+            'standard': 'var(--ease-standard)',
+            'out': 'var(--ease-out)'
+          },
+          boxShadow: {
+            'sm': 'var(--shadow-sm)',
+            'md': 'var(--shadow-md)',
+            'lg': 'var(--shadow-lg)'
           }
         }
       }
@@ -61,32 +136,57 @@
      instead of the native browser title= tooltip. Page-local scripts can
      call window.__prismBindTooltips() after injecting new tip elements. #}
   <style>
+    /* An overlay panel with a turquoise edge. Turquoise, not violet: the
+       tooltip is the interface OFFERING something, which is the same role
+       as a button or a card icon — violet is reserved for where you are.
+
+       It follows the theme through the tokens now; it used to be four
+       hardcoded slate values, so on the light theme it was a dark panel
+       that belonged to a different application. */
     #ps-tooltip {
       position: fixed; z-index: 9999; pointer-events: none;
       max-width: 360px; padding: 10px 12px;
-      background: #1E293B; border: 1px solid #334155; border-radius: 10px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      background: rgb(var(--c-card));
+      border: 1px solid rgb(var(--c-accent) / 0.55);
+      border-radius: 0.75rem;
+      box-shadow: var(--shadow-lg);
       opacity: 0; transform: translateY(4px);
-      transition: opacity 0.15s, transform 0.15s;
-      font-size: 11px; color: #CBD5E1;
+      transition: opacity var(--dur-fast) var(--ease-out),
+                  transform var(--dur-fast) var(--ease-out);
+      font-size: 11px; color: rgb(var(--c-muted));
     }
     #ps-tooltip.visible { opacity: 1; transform: translateY(0); }
-    #ps-tooltip .tip-title { font-weight: 700; font-size: 12px; color: #F9FAFB; margin-bottom: 4px; }
-    #ps-tooltip .tip-desc { line-height: 1.5; color: #94A3B8; white-space: pre-wrap; }
+    #ps-tooltip .tip-title { font-weight: 700; font-size: 12px; color: rgb(var(--c-ink)); margin-bottom: 4px; }
+    #ps-tooltip .tip-desc { line-height: 1.5; color: rgb(var(--c-muted)); white-space: pre-wrap; }
+
+    /* The trigger answers back. Anything carrying a tip gets a turquoise
+       edge on hover, so "there is more to read here" is discoverable
+       without hovering everything to find out. */
+    [data-tip-title] {
+      border-radius: 0.35rem;
+      box-shadow: 0 0 0 0 rgb(var(--c-accent) / 0);
+      transition: box-shadow var(--dur-fast) var(--ease-standard);
+    }
+    [data-tip-title]:hover,
+    [data-tip-title]:focus-visible {
+      box-shadow: 0 0 0 2px rgb(var(--c-accent) / 0.45);
+    }
 
     /* Values that change during morph (numbers, bar widths, colors) get a
        smooth CSS transition instead of snapping. */
-    .metric-value, .metric-bar-fill, .badge { transition: all 250ms ease-out; }
+    .metric-value, .metric-bar-fill, .badge {
+      transition: all var(--dur-base) var(--ease-out);
+    }
   </style>
 </head>
-<body class="bg-[#F9FAFB] dark:bg-[#0F172A] text-[#1F2937] dark:text-[#F8FAFC] min-h-screen transition-colors duration-200"
+<body class="bg-page text-ink min-h-screen transition-colors duration-base"
       hx-ext="morph">
 
   <!-- Global custom tooltip (one per page) -->
   <div id="ps-tooltip"></div>
 
   <!-- Sidebar (collapsible nav area below the top bar) -->
-  <aside id="sidebar" class="fixed top-14 left-0 z-50 flex flex-col bg-white dark:bg-[#1E293B] border-r border-[#E5E7EB] dark:border-[#334155] transition-all duration-200 w-56 sidebar-expanded overflow-hidden" style="bottom:0">
+  <aside id="sidebar" class="fixed top-14 left-0 z-50 flex flex-col bg-card border-r border-line transition-all duration-base w-56 sidebar-expanded overflow-hidden" style="bottom:0">
 
     <!-- Navigation -->
     <nav class="flex-1 py-3 px-2 space-y-1 overflow-y-auto overflow-x-hidden">
@@ -104,7 +204,7 @@
       </a>
 
       <!-- Divider -->
-      <div class="border-t border-[#E5E7EB] dark:border-[#334155] my-2 mx-1"></div>
+      <div class="border-t border-line my-2 mx-1"></div>
 
       <a href="/servers" class="sidebar-link {% if request.path == '/servers' or request.path.startswith('/server/') %}sidebar-link-active{% endif %}" aria-label="Servers">
         <i data-lucide="server" class="w-5 h-5 flex-shrink-0"></i>
@@ -139,21 +239,21 @@
     </nav>
 
     <!-- Bottom: user + collapse toggle + logout -->
-    <div class="border-t border-[#E5E7EB] dark:border-[#334155] px-2 py-3 overflow-hidden space-y-1">
+    <div class="border-t border-line px-2 py-3 overflow-hidden space-y-1">
       <div class="user-row flex items-center gap-1">
         <div class="sidebar-link cursor-default flex-1 min-w-0">
-          <i data-lucide="user" class="w-5 h-5 flex-shrink-0 text-[#6B7280] dark:text-[#CBD5E1]"></i>
-          <span class="sidebar-label text-sm text-[#6B7280] dark:text-[#CBD5E1] truncate">
+          <i data-lucide="user" class="w-5 h-5 flex-shrink-0 text-muted"></i>
+          <span class="sidebar-label text-sm text-muted truncate">
             {% if session.get('username') %}{{ session.username }}{% else %}dev{% endif %}
           </span>
         </div>
         <!-- Desktop collapse toggle (mobile uses the header menu button instead). -->
-        <button data-action="toggle-sidebar" class="sidebar-collapse-btn hidden md:flex items-center justify-center p-1.5 rounded-md hover:bg-[#F1F5F9] dark:hover:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1] flex-shrink-0" title="Toggle sidebar" aria-label="Collapse sidebar">
+        <button data-action="toggle-sidebar" class="sidebar-collapse-btn hidden md:flex items-center justify-center p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted flex-shrink-0" title="Toggle sidebar" aria-label="Collapse sidebar">
           <i data-lucide="panel-left" class="w-5 h-5"></i>
         </button>
       </div>
       {% if session.get('username') %}
-      <a href="/logout" class="sidebar-link text-[#DC2626] dark:text-[#EF4444] hover:bg-[#FEE2E2] dark:hover:bg-[#7F1D1D]/30" title="{{ t.sign_out }}">
+      <a href="/logout" class="sidebar-link text-critical hover:bg-critical-tint dark:hover:bg-critical-tint/30" title="{{ t.sign_out }}">
         <i data-lucide="log-out" class="w-5 h-5 flex-shrink-0"></i>
         <span class="sidebar-label text-sm">{{ t.sign_out }}</span>
       </a>
@@ -164,14 +264,14 @@
   <!-- Unified top bar: brand on the left, live controls on the right. One
        full-width strip, so the logo shares the same bar as the pulse widget
        and the theme toggle; the sidebar nav starts below it. -->
-  <header id="topbar" class="fixed top-0 left-0 right-0 z-[51] h-14 bg-white dark:bg-[#1E293B] border-b border-[#E5E7EB] dark:border-[#334155] flex items-center gap-3 px-3 transition-colors duration-200">
+  <header id="topbar" class="fixed top-0 left-0 right-0 z-[51] h-14 bg-card border-b border-line flex items-center gap-3 px-3 transition-colors duration-base">
     <!-- Mobile-only menu toggle (opens the off-canvas nav). Desktop uses the
          collapse control in the sidebar footer, next to the username. -->
-    <button data-action="toggle-sidebar" class="md:hidden p-1.5 rounded-md hover:bg-[#F1F5F9] dark:hover:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1] flex-shrink-0" title="Toggle sidebar" aria-label="Toggle sidebar">
+    <button data-action="toggle-sidebar" class="md:hidden p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted flex-shrink-0" title="Toggle sidebar" aria-label="Toggle sidebar">
       <i data-lucide="panel-left" class="w-5 h-5"></i>
     </button>
     <!-- Brand -->
-    <a href="/" class="flex items-center gap-2 text-[#2563EB] dark:text-[#3B82F6] font-bold text-lg whitespace-nowrap">
+    <a href="/" class="flex items-center gap-2 text-info font-bold text-lg whitespace-nowrap">
       <img src="{{ url_for('static', filename='img/logo.png') }}" alt="" class="w-7 h-7 flex-shrink-0" width="28" height="28">
       <span class="prism-wordmark">Prism</span>
     </a>
@@ -195,7 +295,7 @@
     <div id="pulse-panel" class="pulse-panel" role="region"
          aria-label="{{ t.get('pulse_aria_panel', 'Collector activity detail') }}"
          style="display:none"></div>
-    <button data-action="toggle-theme" class="p-1.5 rounded-md hover:bg-[#F1F5F9] dark:hover:bg-[#334155] text-[#6B7280] dark:text-[#CBD5E1]" title="Toggle theme" aria-label="Toggle dark mode">
+    <button data-action="toggle-theme" class="p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted" title="Toggle theme" aria-label="Toggle dark mode">
       <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
       <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
     </button>
@@ -211,7 +311,7 @@
   <div id="sidebar-backdrop" data-action="close-mobile-sidebar" aria-hidden="true"></div>
 
   <!-- Main content -->
-  <main id="main-content" class="transition-all duration-200 pt-14 min-h-screen" style="margin-left:14rem">
+  <main id="main-content" class="transition-all duration-base pt-14 min-h-screen" style="margin-left:14rem">
     {% block breadcrumb %}{% endblock %}
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     {% block content %}{% endblock %}
@@ -457,14 +557,14 @@
 
   <!-- Global Modal System -->
   <div id="prism-modal-overlay" class="fixed inset-0 z-[9998] hidden bg-black/50 backdrop-blur-sm" data-action="modal-backdrop"></div>
-  <div id="prism-modal" class="fixed z-[9999] hidden top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-[#1E293B] rounded-xl shadow-2xl border border-[#E5E7EB] dark:border-[#334155] w-[380px] overflow-hidden">
+  <div id="prism-modal" class="fixed z-[9999] hidden top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md shadow-2xl border border-line w-[380px] overflow-hidden">
     <div class="px-5 pt-5 pb-3">
       <div class="flex items-center gap-3 mb-3">
         <div id="prism-modal-icon" class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"></div>
-        <h3 id="prism-modal-title" class="font-semibold text-sm text-[#111827] dark:text-[#F9FAFB]"></h3>
+        <h3 id="prism-modal-title" class="font-semibold text-sm text-ink dark:text-[#F9FAFB]"></h3>
       </div>
-      <p id="prism-modal-message" class="text-xs text-[#6B7280] dark:text-[#CBD5E1] leading-relaxed"></p>
-      <input type="text" id="prism-modal-input" class="hidden w-full mt-3 px-3 py-1.5 text-sm rounded-lg border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A] focus:ring-2 focus:ring-[#8B5CF6] outline-none">
+      <p id="prism-modal-message" class="text-xs text-muted leading-relaxed"></p>
+      <input type="text" id="prism-modal-input" class="hidden w-full mt-3 px-3 py-1.5 text-sm rounded-lg border border-line bg-field focus-visible:ring-2 focus-visible:ring-brand outline-none">
     </div>
     <div id="prism-modal-buttons" class="flex justify-end gap-2 px-5 pb-4"></div>
   </div>
@@ -485,13 +585,13 @@
         _prismModalResolve = resolve;
         const modal = document.getElementById('prism-modal');
         const overlay = document.getElementById('prism-modal-overlay');
-        document.getElementById('prism-modal-icon').innerHTML = '<i data-lucide="info" class="w-5 h-5 text-[#2563EB]"></i>';
-        document.getElementById('prism-modal-icon').className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-[#2563EB]/10';
+        document.getElementById('prism-modal-icon').innerHTML = '<i data-lucide="info" class="w-5 h-5 text-info"></i>';
+        document.getElementById('prism-modal-icon').className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-info/10';
         document.getElementById('prism-modal-title').textContent = title || 'Info';
         document.getElementById('prism-modal-message').innerHTML = message;
         document.getElementById('prism-modal-input').classList.add('hidden');
         document.getElementById('prism-modal-buttons').innerHTML = `
-          <button data-action="modal-ok" class="px-4 py-1.5 text-sm font-medium rounded-lg bg-[#2563EB] text-white hover:opacity-90">OK</button>`;
+          <button data-action="modal-ok" class="px-4 py-1.5 text-sm font-medium rounded-lg bg-accent text-white dark:text-page hover:opacity-90">OK</button>`;
         overlay.classList.remove('hidden');
         modal.classList.remove('hidden');
         if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -518,7 +618,7 @@
       };
       const c = colors[type] || colors.info;
       const toast = document.createElement('div');
-      toast.style.cssText = `pointer-events:auto;display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:8px;border:1px solid ${c.border};background:${c.bg};color:${c.text};font-size:13px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.1);opacity:0;transform:translateX(20px);transition:all 0.3s;max-width:380px;`;
+      toast.style.cssText = `pointer-events:auto;display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:8px;border:1px solid ${c.border};background:${c.bg};color:${c.text};font-size:13px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.1);opacity:0;transform:translateX(20px);transition:all var(--dur-slow);max-width:380px;`;
       const icon = document.createElement('i'); icon.setAttribute('data-lucide', c.icon);
       icon.style.cssText = 'width:16px;height:16px;flex-shrink:0;';
       const span = document.createElement('span'); span.textContent = msg;  // textContent — no HTML injection
@@ -527,8 +627,21 @@
       if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [toast] });
       requestAnimationFrame(() => { toast.style.opacity = '1'; toast.style.transform = 'translateX(0)'; });
       setTimeout(() => {
+  // Read the fade length from the token rather than restating it. These
+  // used to be a matching pair of 300s; the transition moved onto
+  // --dur-slow and the timeout did not, so the node was removed 20ms
+  // before it finished fading. Invisible at 320ms, and exactly the
+  // breakage the central scale was supposed to make impossible.
+  const DUR_SLOW_FALLBACK_MS = 320;
+  function _durSlowMs() {
+    const raw = getComputedStyle(document.documentElement)
+      .getPropertyValue('--dur-slow').trim();
+    const n = parseFloat(raw);
+    if (!raw || isNaN(n)) return DUR_SLOW_FALLBACK_MS;
+    return raw.endsWith('ms') ? n : n * 1000;
+  }
         toast.style.opacity = '0'; toast.style.transform = 'translateX(20px)';
-        setTimeout(() => toast.remove(), 300);
+        setTimeout(() => toast.remove(), _durSlowMs());
       }, 4000);
     };
 
@@ -572,14 +685,14 @@
         _prismModalResolve = resolve;
         const modal = document.getElementById('prism-modal');
         const overlay = document.getElementById('prism-modal-overlay');
-        document.getElementById('prism-modal-icon').innerHTML = '<i data-lucide="alert-triangle" class="w-5 h-5 text-[#F59E0B]"></i>';
-        document.getElementById('prism-modal-icon').className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-[#F59E0B]/10';
+        document.getElementById('prism-modal-icon').innerHTML = '<i data-lucide="alert-triangle" class="w-5 h-5 text-warning"></i>';
+        document.getElementById('prism-modal-icon').className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-warning/10';
         document.getElementById('prism-modal-title').textContent = title || 'Confirm';
         document.getElementById('prism-modal-message').innerHTML = message;
         document.getElementById('prism-modal-input').classList.add('hidden');
         document.getElementById('prism-modal-buttons').innerHTML = `
-          <button data-action="modal-cancel" class="px-4 py-1.5 text-sm font-medium rounded-lg border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#334155]">Cancel</button>
-          <button data-action="modal-ok" class="px-4 py-1.5 text-sm font-medium rounded-lg bg-[#DC2626] text-white hover:opacity-90">Confirm</button>`;
+          <button data-action="modal-cancel" class="px-4 py-1.5 text-sm font-medium rounded-lg border border-line hover:bg-page dark:hover:bg-line">Cancel</button>
+          <button data-action="modal-ok" class="px-4 py-1.5 text-sm font-medium rounded-lg bg-critical text-white hover:opacity-90">Confirm</button>`;
         overlay.classList.remove('hidden');
         modal.classList.remove('hidden');
         if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -592,22 +705,22 @@
         _prismModalResolve = function(val) { resolve(val); };
         const modal = document.getElementById('prism-modal');
         const overlay = document.getElementById('prism-modal-overlay');
-        document.getElementById('prism-modal-icon').innerHTML = '<i data-lucide="alert-triangle" class="w-5 h-5 text-[#F59E0B]"></i>';
-        document.getElementById('prism-modal-icon').className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-[#F59E0B]/10';
+        document.getElementById('prism-modal-icon').innerHTML = '<i data-lucide="alert-triangle" class="w-5 h-5 text-warning"></i>';
+        document.getElementById('prism-modal-icon').className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-warning/10';
         document.getElementById('prism-modal-title').textContent = title || 'Confirm';
         const msgEl = document.getElementById('prism-modal-message');
         msgEl.innerHTML = message +
           '<label class="flex items-center gap-2 mt-4 cursor-pointer select-none text-sm">' +
             '<input id="prism-modal-option-cb" type="checkbox" ' + (optionDefault ? 'checked' : '') +
-              ' class="w-4 h-4 rounded border-[#E5E7EB] dark:border-[#334155] text-[#DC2626] focus:ring-[#DC2626]">' +
+              ' class="w-4 h-4 rounded border-line text-critical focus-visible:ring-brand">' +
             '<span>' + optionLabel + '</span>' +
           '</label>';
         document.getElementById('prism-modal-input').classList.add('hidden');
         document.getElementById('prism-modal-buttons').innerHTML =
           '<button data-action="modal-opt-cancel" ' +
-            'class="px-4 py-1.5 text-sm font-medium rounded-lg border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#334155]">Cancel</button>' +
+            'class="px-4 py-1.5 text-sm font-medium rounded-lg border border-line hover:bg-page dark:hover:bg-line">Cancel</button>' +
           '<button data-action="modal-opt-ok" ' +
-            'class="px-4 py-1.5 text-sm font-medium rounded-lg bg-[#DC2626] text-white hover:opacity-90">Confirm</button>';
+            'class="px-4 py-1.5 text-sm font-medium rounded-lg bg-critical text-white hover:opacity-90">Confirm</button>';
         overlay.classList.remove('hidden');
         modal.classList.remove('hidden');
         if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -620,8 +733,8 @@
         _prismModalResolve = resolve;
         const modal = document.getElementById('prism-modal');
         const overlay = document.getElementById('prism-modal-overlay');
-        document.getElementById('prism-modal-icon').innerHTML = '<i data-lucide="edit-3" class="w-5 h-5 text-[#8B5CF6]"></i>';
-        document.getElementById('prism-modal-icon').className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-[#8B5CF6]/10';
+        document.getElementById('prism-modal-icon').innerHTML = '<i data-lucide="edit-3" class="w-5 h-5 text-brand"></i>';
+        document.getElementById('prism-modal-icon').className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-brand/10';
         document.getElementById('prism-modal-title').textContent = title || 'Input';
         document.getElementById('prism-modal-message').innerHTML = message;
         const input = document.getElementById('prism-modal-input');
@@ -629,8 +742,8 @@
         input.value = defaultValue || '';
         input.focus();
         document.getElementById('prism-modal-buttons').innerHTML = `
-          <button data-action="modal-prompt-cancel" class="px-4 py-1.5 text-sm font-medium rounded-lg border border-[#E5E7EB] dark:border-[#334155] hover:bg-[#F9FAFB] dark:hover:bg-[#334155]">Cancel</button>
-          <button data-action="modal-prompt-ok" class="px-4 py-1.5 text-sm font-medium rounded-lg bg-[#8B5CF6] text-white hover:opacity-90">OK</button>`;
+          <button data-action="modal-prompt-cancel" class="px-4 py-1.5 text-sm font-medium rounded-lg border border-line hover:bg-page dark:hover:bg-line">Cancel</button>
+          <button data-action="modal-prompt-ok" class="px-4 py-1.5 text-sm font-medium rounded-lg bg-brand text-white hover:opacity-90">OK</button>`;
         overlay.classList.remove('hidden');
         modal.classList.remove('hidden');
         if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -830,5 +943,16 @@
 
   <!-- Collector pulse monitor (ECG-style topbar widget) -->
   <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/pulse-monitor.js') }}"></script>
+
+  <!-- Violet stepper buttons for number fields. The native spin button
+       cannot be recoloured, so it is hidden in app.css and rebuilt here —
+       see the module docstring for what that also fixes. -->
+  <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/stepper.js') }}"></script>
+
+  <!-- Sortable table columns. Opt-in per <th data-sort="…"> in each
+       template's <thead> — see the module docstring for the content types,
+       the sessionStorage persistence contract, and why a MutationObserver
+       is needed alongside the htmx hooks. -->
+  <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/table-sort.js') }}"></script>
 </body>
 </html>

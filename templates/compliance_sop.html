@@ -5,7 +5,7 @@
 <div class="p-6 max-w-7xl mx-auto">
 
   <!-- Breadcrumb -->
-  <nav class="text-xs text-[#6B7280] dark:text-[#9CA3AF] mb-3 flex items-center gap-1">
+  <nav class="text-xs text-muted mb-3 flex items-center gap-1">
     <a href="/compliance" class="hover:underline">{{ t.get('compliance', 'Compliance') }}</a>
     <i data-lucide="chevron-right" class="w-3 h-3"></i>
     <span class="font-medium">{{ sop.id }}</span>
@@ -18,73 +18,73 @@
 
     <!-- LEFT: table of contents (populated from the API response) -->
     <aside class="hidden lg:block">
-      <div id="toc-card" class="sticky top-4 bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4">
-        <div class="text-xs font-semibold uppercase tracking-wide text-[#6B7280] dark:text-[#9CA3AF] mb-2">
+      <div id="toc-card" class="sticky top-4 bg-card rounded-lg border border-line p-4">
+        <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2">
           {{ t.get('on_this_page', 'On this page') }}
         </div>
         <nav id="toc" class="text-xs space-y-1">
-          <div class="text-[#9CA3AF]">{{ t.get('loading', 'Loading…') }}</div>
+          <div class="text-faint">{{ t.get('loading', 'Loading…') }}</div>
         </nav>
       </div>
     </aside>
 
     <!-- CENTER: rendered SOP content -->
-    <div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-6 lg:p-8">
+    <div class="bg-card rounded-lg border border-line p-6 lg:p-8">
       <article id="sop-body" class="doc-prose">
-        <div class="text-sm text-[#6B7280] dark:text-[#9CA3AF]">{{ t.get('loading', 'Loading…') }}</div>
+        <div class="text-sm text-muted">{{ t.get('loading', 'Loading…') }}</div>
       </article>
     </div>
 
     <!-- RIGHT: status + record execution + history -->
     <aside class="space-y-4">
 
-      <div id="status-card" class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4 sticky top-4">
-        <div class="text-xs font-semibold uppercase tracking-wide text-[#6B7280] dark:text-[#9CA3AF] mb-2">
+      <div id="status-card" class="bg-card rounded-lg border border-line p-4 sticky top-4">
+        <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2">
           {{ t.get('status', 'Status') }}
         </div>
         <div id="status-badge" class="mb-3"><span class="opacity-50">{{ t.get('loading', 'Loading…') }}</span></div>
-        <dl id="status-meta" class="text-xs text-[#6B7280] dark:text-[#9CA3AF] space-y-1"></dl>
+        <dl id="status-meta" class="text-xs text-muted space-y-1"></dl>
 
-        <hr class="my-4 border-[#E5E7EB] dark:border-[#334155]">
+        <hr class="my-4 border-line">
 
-        <div class="text-xs font-semibold uppercase tracking-wide text-[#6B7280] dark:text-[#9CA3AF] mb-2">
+        <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2">
           {{ t.get('record_execution', 'Record execution') }}
         </div>
         <form id="exec-form" class="space-y-2">
           <div>
-            <label class="text-xs text-[#6B7280] dark:text-[#9CA3AF] block mb-1">{{ t.get('result', 'Result') }}</label>
-            <select id="exec-result" class="w-full text-xs px-2 py-1.5 rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]">
+            <label class="text-xs text-muted block mb-1">{{ t.get('result', 'Result') }}</label>
+            <select id="exec-result" class="w-full text-xs px-2 py-1.5 rounded border border-line bg-field">
               <option value="pass">{{ t.get('result_pass', 'Pass') }}</option>
               <option value="partial">{{ t.get('result_partial', 'Partial') }}</option>
               <option value="fail">{{ t.get('result_fail', 'Fail') }}</option>
             </select>
           </div>
           <div>
-            <label class="text-xs text-[#6B7280] dark:text-[#9CA3AF] block mb-1">{{ t.get('notes', 'Notes') }}</label>
-            <textarea id="exec-notes" rows="4" maxlength="2000" class="w-full text-xs px-2 py-1.5 rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" placeholder="{{ t.get('notes_placeholder', 'Brief description of what was verified...') }}"></textarea>
+            <label class="text-xs text-muted block mb-1">{{ t.get('notes', 'Notes') }}</label>
+            <textarea id="exec-notes" rows="4" maxlength="2000" class="w-full text-xs px-2 py-1.5 rounded border border-line bg-field" placeholder="{{ t.get('notes_placeholder', 'Brief description of what was verified...') }}"></textarea>
           </div>
           <div>
-            <label class="text-xs text-[#6B7280] dark:text-[#9CA3AF] block mb-1">{{ t.get('evidence_ref', 'Evidence reference (optional)') }}</label>
-            <input id="exec-evidence" type="text" maxlength="500" class="w-full text-xs px-2 py-1.5 rounded border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#0F172A]" placeholder="e.g., data/sop_records/acl_review_2026Q2.csv">
+            <label class="text-xs text-muted block mb-1">{{ t.get('evidence_ref', 'Evidence reference (optional)') }}</label>
+            <input id="exec-evidence" type="text" maxlength="500" class="w-full text-xs px-2 py-1.5 rounded border border-line bg-field" placeholder="e.g., data/sop_records/acl_review_2026Q2.csv">
           </div>
-          <button type="submit" class="w-full mt-2 px-3 py-2 text-xs font-medium rounded bg-[#8B5CF6] text-white hover:opacity-90">
+          <button type="submit" class="w-full mt-2 px-3 py-2 text-xs font-medium rounded bg-brand text-white hover:opacity-90">
             {{ t.get('record', 'Record') }}
           </button>
           <div id="exec-feedback" class="text-xs mt-1"></div>
         </form>
 
-        <hr class="my-4 border-[#E5E7EB] dark:border-[#334155]">
+        <hr class="my-4 border-line">
 
         <a id="raw-link" href="/api/sop/{{ sop.id }}/raw" target="_blank"
-           class="text-xs text-[#6B7280] dark:text-[#9CA3AF] hover:underline inline-flex items-center gap-1">
+           class="text-xs text-muted hover:underline inline-flex items-center gap-1">
           <i data-lucide="file-code-2" class="w-3 h-3"></i>
           {{ t.get('view_raw_markdown', 'View raw markdown') }}
         </a>
       </div>
 
       <!-- History card -->
-      <div class="bg-white dark:bg-[#1E293B] rounded-lg border border-[#E5E7EB] dark:border-[#334155] p-4">
-        <div class="text-xs font-semibold uppercase tracking-wide text-[#6B7280] dark:text-[#9CA3AF] mb-2">
+      <div class="bg-card rounded-lg border border-line p-4">
+        <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2">
           {{ t.get('execution_history', 'Execution history') }}
         </div>
         <div id="history" class="text-xs space-y-2"></div>
@@ -94,7 +94,7 @@
 
   <!-- Floating scroll-to-top button (appears once the doc has scrolled) -->
   <button id="scroll-top" type="button"
-          class="hidden fixed bottom-6 right-6 w-10 h-10 rounded-full bg-[#8B5CF6] text-white shadow-lg hover:opacity-90 z-50"
+          class="hidden fixed bottom-6 right-6 w-10 h-10 rounded-full bg-brand text-white shadow-lg hover:opacity-90 z-50"
           aria-label="{{ t.get('scroll_to_top', 'Scroll to top') }}">
     <i data-lucide="arrow-up" class="w-4 h-4 mx-auto"></i>
   </button>
@@ -131,14 +131,14 @@
       decorateStatusBadges('#sop-body');
       wrapTablesForScroll('#sop-body');
     } catch (e) {
-      document.getElementById('sop-body').innerHTML = '<p class="text-[#DC2626]">Failed to load: ' + e + '</p>';
+      document.getElementById('sop-body').innerHTML = '<p class="text-critical">Failed to load: ' + e + '</p>';
     }
   }
 
   function paintToc(toc) {
     const navEl = document.getElementById('toc');
     if (!toc || toc.length === 0) {
-      navEl.innerHTML = '<div class="text-[#9CA3AF]">{{ t.get('no_sections', 'No sections') }}</div>';
+      navEl.innerHTML = '<div class="text-faint">{{ t.get('no_sections', 'No sections') }}</div>';
       return;
     }
     navEl.innerHTML = '';
@@ -150,7 +150,7 @@
       // _compliance_doc_styles.html. Truncate so a long finding title
       // ("F-075 — No static-analysis enforcement of universal RBAC")
       // doesn't wrap and break the sidebar grid.
-      a.className = 'block py-0.5 truncate text-[#374151] dark:text-[#D1D5DB] toc-l' + item.level;
+      a.className = 'block py-0.5 truncate text-ink dark:text-line toc-l' + item.level;
       a.title = item.text;  // hover-tooltip when truncated
       a.dataset.targetId = item.id;
       navEl.appendChild(a);
@@ -294,7 +294,7 @@
       const data = await r.json();
       paintStatus(data);
     } catch (e) {
-      document.getElementById('status-badge').innerHTML = '<span class="text-[#DC2626]">Error</span>';
+      document.getElementById('status-badge').innerHTML = '<span class="text-critical">Error</span>';
     }
   }
 
@@ -327,7 +327,7 @@
       const data = await r.json();
       const div = document.getElementById('history');
       if (!data.history || data.history.length === 0) {
-        div.innerHTML = '<div class="text-[#9CA3AF]">No executions recorded yet.</div>';
+        div.innerHTML = '<div class="text-faint">No executions recorded yet.</div>';
         return;
       }
       // F-PHD-3 (XSS defence): build DOM with createElement + textContent so
@@ -346,7 +346,7 @@
         card.appendChild(tsRow);
 
         const userRow = document.createElement('div');
-        userRow.className = 'text-[#6B7280]';
+        userRow.className = 'text-muted';
         const userSpan = document.createElement('span');
         userSpan.textContent = h.executed_by + ' — ';
         userRow.appendChild(userSpan);
@@ -358,7 +358,7 @@
 
         if (h.notes) {
           const notesRow = document.createElement('div');
-          notesRow.className = 'text-[#9CA3AF] mt-1 text-xs';
+          notesRow.className = 'text-faint mt-1 text-xs';
           const noteText = h.notes.length > 200
             ? h.notes.substring(0, 200) + '…'
             : h.notes;
@@ -369,7 +369,7 @@
         div.appendChild(card);
       }
     } catch (e) {
-      document.getElementById('history').innerHTML = '<div class="text-[#DC2626]">Error loading history</div>';
+      document.getElementById('history').innerHTML = '<div class="text-critical">Error loading history</div>';
     }
   }
 
@@ -382,7 +382,7 @@
     };
     const fb = document.getElementById('exec-feedback');
     fb.textContent = 'Saving...';
-    fb.className = 'text-xs mt-1 text-[#6B7280]';
+    fb.className = 'text-xs mt-1 text-muted';
     try {
       const r = await fetch(`/api/sop/${SOP_ID}/execute`, {
         method: 'POST',
@@ -393,14 +393,14 @@
       const data = await r.json();
       if (!r.ok || !data.ok) throw new Error(data.error || ('http ' + r.status));
       fb.textContent = '✓ Recorded';
-      fb.className = 'text-xs mt-1 text-[#10B981]';
+      fb.className = 'text-xs mt-1 text-healthy';
       document.getElementById('exec-notes').value = '';
       document.getElementById('exec-evidence').value = '';
       // Refresh everything so [[csv:KEY]] live data + history reflect the new row.
       await loadAll();
     } catch (err) {
       fb.textContent = '✗ ' + err.message;
-      fb.className = 'text-xs mt-1 text-[#DC2626]';
+      fb.className = 'text-xs mt-1 text-critical';
     }
   });
 
