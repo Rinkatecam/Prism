@@ -3,8 +3,16 @@
 {% else %}
 <div class="divide-y divide-line">
   {% for inc in incidents %}
+  {# tabindex + role make this reachable and operable from a keyboard via the
+     bridge in base.html; `aria-controls` lets that bridge keep
+     `aria-expanded` honest by re-reading the panel it names. `loop.index0`
+     rather than the incident id, because the id is not guaranteed present on
+     every row and a duplicate DOM id would silently point two triggers at
+     one panel. #}
   <div class="p-4 hover:bg-page dark:hover:bg-page/50 transition-colors cursor-pointer"
-       data-action="toggle-detail">
+       data-action="toggle-detail"
+       tabindex="0" role="button"
+       aria-expanded="false" aria-controls="incident-detail-{{ loop.index0 }}">
     <div class="flex items-start justify-between gap-2">
       <div class="flex items-center gap-2 min-w-0">
         {% if inc.severity == 'critical' %}
@@ -32,7 +40,8 @@
     </div>
 
     <!-- Expandable detail -->
-    <div class="incident-detail hidden mt-3 pt-3 border-t border-line" data-action="stop-prop">
+    <div id="incident-detail-{{ loop.index0 }}"
+         class="incident-detail hidden mt-3 pt-3 border-t border-line" data-action="stop-prop">
       {% if inc.description %}
       <p class="text-xs text-muted mb-2">{{ inc.description }}</p>
       {% endif %}

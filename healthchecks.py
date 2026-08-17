@@ -63,8 +63,16 @@ def _run_health_checks(db, settings: dict) -> None:
             result = http_check(host, port, path=cfg.get("http_path", "/"),
                                 use_ssl=False, timeout=10)
         elif check_type == "https":
+            # ABSENT OR NULL MEANS VERIFY. `bool(cfg.get("verify_tls", 1))`
+            # reads the same and is wrong: a dict default only applies when the
+            # KEY IS MISSING, so a present-but-None value becomes False and the
+            # check silently stops validating certificates. Same guard, and the
+            # same reason, as routes/api/health.py:_verify_tls_from_payload —
+            # the two must not drift, because the failure is invisible in both.
+            _vt = cfg.get("verify_tls")
             result = http_check(host, port, path=cfg.get("http_path", "/"),
-                                use_ssl=True, timeout=10)
+                                use_ssl=True, timeout=10,
+                                verify_tls=True if _vt is None else bool(_vt))
         elif check_type == "udp":
             result = udp_probe(host, port, timeout=5)
         elif check_type == "icmp":

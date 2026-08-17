@@ -15,6 +15,7 @@ verifier that agrees with the converter instead of checking it.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -433,7 +434,19 @@ def test_no_token_reference_in_app_css_round_trips_to_a_different_token():
     # `--brand-violet` chrome literal (#7C3AED), which matches neither
     # candidate's light half, so the round-trip correctly declines rather
     # than guessing between `brand` and `brand-strong`.
-    assert unresolved == 6, unresolved
+    #
+    # Measured 2026-08-14 after the vitals quadrant: 8. The two new ones are
+    # `.vitals-card { background }` and
+    # `.servers-view-btn[aria-pressed="true"] { color }`, both
+    # `rgb(var(--c-card))`, and both are the ALREADY-DOCUMENTED `card`/`field`
+    # collision rather than a new one: the two tokens are the same #FFFFFF in
+    # light, so a site painted from `card` cannot be re-derived from its own
+    # colour. `.vitals-core`'s background was a third until it moved from
+    # `card` to `raised` for elevation reasons, which incidentally made it
+    # re-derivable — #E8EDF3 belongs to one token. Confirmed by enumerating
+    # the unresolved sites, not inferred from the delta; the other six are
+    # unchanged and are the same six described above.
+    assert unresolved == 8, unresolved
 
 
 # ── the ratchet ──────────────────────────────────────────────────────────
@@ -476,8 +489,128 @@ def test_no_token_reference_in_app_css_round_trips_to_a_different_token():
 # small dot on `offset-path: border-box` coloured by `currentColor` —
 # no hex anywhere.
 # 71 - 14 = 57.
+#
+# Lowered 2026-08-17: 56 -> 44, retiring the `--brand-*` ramp. The six flat
+# ramp tokens ran in parallel with `--c-brand`/`--c-accent` and were the last
+# half-migrated corner of the palette: the global focus ring read the ramp
+# while every per-component ring read the token, so a focused input painted
+# two rings in two violets.
+# -12 the ramp's own definitions across :root and .dark — two violets, two
+#     turquoises and two violet tints per theme (6 x 2). Their 16 consumers
+#     (.sidebar-link-active, .breadcrumb a, .pulse-cta, :focus-visible) now
+#     read `rgb(var(--c-brand))` / `rgb(var(--c-accent))` and contribute no
+#     literal, so the consumer sites are worth 0 either way.
+# `--brand-grad` and its three stops STAY, in both themes. A gradient needs
+# literal stops in a fixed order and `rgb(var(--c-brand))` cannot express the
+# 55% midpoint; that is an exception with a reason, not residue.
+# 56 - 12 = 44.
+#
+# Lowered 2026-08-17: 44 -> 43, deleting the dead `.breadcrumb` block. Seven
+# rules styled markup no template produced — `{% block breadcrumb %}` in
+# base.html was never overridden, so the page carried 0 such elements. The one
+# literal was `#6B7280` on `.dark .breadcrumb .breadcrumb-sep`, which had
+# survived every tokenisation pass precisely because nothing rendered it and so
+# nothing ever looked wrong.
+# 44 - 1 = 43.
 
-CSS_LITERAL_BASELINE = 56
+CSS_LITERAL_BASELINE = 43
+
+
+def test_the_brand_ramp_is_gone_apart_from_the_gradient():
+    """The `--brand-*` ramp may not regrow a flat colour.
+
+    It ran for a round in parallel with `--c-brand`/`--c-accent`, holding a
+    second violet at a second value, and the damage was invisible: the global
+    focus ring read the ramp while every per-component ring read the token, so
+    a focused input painted two rings in two violets and nothing looked
+    broken. Half-migrated was the worst of the three available states, and a
+    single re-added `--brand-violet` puts it back there.
+
+    `--brand-grad` is the one survivor and it is exempt for a reason rather
+    than by grandfathering: a gradient needs literal stops in a fixed order
+    and no `rgb(var(--token))` form can express the 55% midpoint.
+
+    COMMENTS ARE STRIPPED FIRST. The note in app.css explaining the retirement
+    names every token it retired, so a check reading raw source would fire on
+    its own documentation — and the cheapest way to make it pass would be to
+    delete the explanation. That has happened four times in this repository
+    (see the conventions in docs/plans/NEXT_SESSION.md §3).
+    """
+    code = mct.strip_comments(sheet())
+    names = sorted(set(re.findall(r"--brand-[A-Za-z0-9-]+", code)))
+    assert names == ["--brand-grad"], (
+        "the --brand-* ramp is back: " + ", ".join(names) + ". Chrome colour "
+        "belongs to --c-brand / --c-accent; only the logo gradient is exempt")
+
+
+def test_the_active_nav_link_restates_its_colour_for_dark():
+    """A `.dark` colour rule that looks redundant and is not.
+
+    `.dark .sidebar-link { color: rgb(var(--c-muted)) }` is (0,2,0).
+    `.sidebar-link-active { color: rgb(var(--c-brand)) }` is (0,1,0). The
+    muted rule wins on specificity no matter which comes first, so in dark
+    mode the ACTIVE nav link renders identically to its inactive neighbours
+    and the only thing marking the current page is the 3px accent bar.
+
+    This is a regression test in the literal sense: retiring the `--brand-*`
+    ramp deleted `.dark .sidebar-link-active`'s colour as a "second source of
+    truth for one value", on the correct observation that `--c-brand` is
+    already theme-aware — and shipped rgb(163,178,199) where rgb(196,181,253)
+    was intended. Nothing caught it, because the contrast figures written up
+    alongside the change were computed from the token table instead of read
+    off the running page. §2.2 of docs/OPS-LEARNINGS.md, again.
+
+    Asserts the SHAPE (a colour is declared) rather than the value, which the
+    palette guards above already pin.
+    """
+    code = mct.strip_comments(sheet())
+
+    muted = re.search(r"\.dark \.sidebar-link\s*\{([^}]*)\}", code)
+    assert muted and re.search(r"\bcolor\s*:", muted.group(1)), (
+        "`.dark .sidebar-link` no longer sets a colour. If that is deliberate "
+        "this test has lost its subject — check whether the active link still "
+        "needs its own dark rule before deleting this")
+
+    for selector in (r"\.dark \.sidebar-link-active\s*\{",
+                     r"\.dark \.sidebar-link-active:hover\s*\{"):
+        m = re.search(selector + r"([^}]*)\}", code)
+        assert m, f"no rule matching `{selector}`"
+        assert re.search(r"\bcolor\s*:", m.group(1)), (
+            f"the rule at `{selector}` sets no colour, so `.dark "
+            ".sidebar-link` outranks it and the active link renders muted — "
+            "the current page becomes unmarked in dark mode")
+
+
+def test_the_global_focus_ring_reads_the_brand_token():
+    """The specific defect the ramp's retirement closed.
+
+    This block is last in the file and matches `a`, `button`,
+    `[role="button"]`, `[tabindex]` and every form control, so it wins over
+    the tokenised per-component focus styles above it. While it read
+    `--brand-violet` that made it the one rule able to put a non-brand violet
+    on every focusable thing in the app — and it survived a round that
+    unified 25 rings on brand precisely because two violets look fine until
+    you measure them.
+
+    Asserts on the outline DECLARATION rather than the rule body, for the
+    reason recorded in test_design_states.py: a body-level `"--c-brand" in
+    body` passes while the thing being drawn is hardcoded, as long as some
+    neighbouring property mentions the token.
+    """
+    code = mct.strip_comments(sheet())
+    blocks = re.findall(r"(^|\})\s*([^{}]*:focus-visible[^{}]*)\{([^}]*)\}",
+                        code, re.MULTILINE)
+    rings = [(sel.strip(), body) for _, sel, body in blocks
+             if re.search(r"outline\s*:\s*2px solid", body)]
+    assert rings, "no global :focus-visible outline rule found at all"
+
+    for selector, body in rings:
+        outline = re.search(r"outline\s*:\s*([^;]*);", body)
+        assert outline, f"no outline declaration in `{selector}`"
+        assert "var(--c-brand)" in outline.group(1), (
+            f"the focus ring on `{selector}` draws "
+            f"`{outline.group(1).strip()}` — not the brand token. Two rings "
+            "in two violets is exactly what retiring the ramp fixed")
 
 
 def _residue() -> list:

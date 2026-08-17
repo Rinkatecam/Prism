@@ -509,6 +509,8 @@
       <div class="flex justify-end gap-2 p-4 border-t border-line">
         <button data-action="closeDataActionModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
         <button id="data-action-confirm-btn" disabled data-action="executeDataAction"
+                data-tip-title="{{ t.get('disabled_type_keyword_title', 'Type the confirmation word first') }}"
+                data-tip-desc="{{ t.get('disabled_type_keyword_desc', 'This action cannot be undone. Type the word shown above to confirm.') }}"
                 class="px-4 py-1.5 text-sm font-medium rounded bg-critical text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
           <i data-lucide="check" class="w-4 h-4"></i>
           {{ t.confirm_action }}
@@ -1674,7 +1676,9 @@ function showDataActionModal(action) {
   document.getElementById('data-action-desc').textContent = _dataActionDescs[action] || '';
   document.getElementById('data-action-keyword').textContent = _dataActionKeywords[action] || '';
   document.getElementById('data-action-confirm-input').value = '';
-  document.getElementById('data-action-confirm-btn').disabled = true;
+  prismSetDisabled(document.getElementById('data-action-confirm-btn'),
+    '{{ t.get("disabled_type_keyword_title", "Type the confirmation word first") }}',
+    '{{ t.get("disabled_type_keyword_desc", "This action cannot be undone. Type the word shown above to confirm.") }}');
   document.getElementById('data-action-result').classList.add('hidden');
   document.getElementById('data-action-modal').classList.remove('hidden');
   lucide.createIcons();
@@ -1690,7 +1694,9 @@ function checkDataActionConfirm() {
   // Case-insensitive comparison so the user doesn't have to perfectly match capitalization.
   const input = document.getElementById('data-action-confirm-input').value.trim().toLowerCase();
   const keyword = (_dataActionKeywords[_dataActionType] || '').toLowerCase();
-  document.getElementById('data-action-confirm-btn').disabled = (input !== keyword);
+  prismSetDisabled(document.getElementById('data-action-confirm-btn'),
+    input !== keyword && '{{ t.get("disabled_type_keyword_title", "Type the confirmation word first") }}',
+    '{{ t.get("disabled_type_keyword_desc", "This action cannot be undone. Type the word shown above to confirm.") }}');
 }
 
 function executeDataAction() {

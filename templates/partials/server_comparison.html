@@ -56,10 +56,16 @@
           <option value="720">{{ t.hours_720 }}</option>
         </select>
       </div>
-      <button id="btn-compare" data-action="loadComparison" disabled class="text-xs font-medium px-4 py-1.5 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-accent">
+      <button id="btn-compare" data-action="loadComparison" disabled
+              data-tip-title="{{ t.get('disabled_pick_two_title', 'Pick at least two servers') }}"
+              data-tip-desc="{{ t.get('disabled_pick_two_desc', 'A comparison needs something to compare against — tick two or more servers in the list below.') }}"
+              class="text-xs font-medium px-4 py-1.5 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-accent">
         {{ t.compare }} <span id="btn-compare-count"></span>
       </button>
-      <button id="btn-compare-events" data-action="loadEventComparison" disabled class="text-xs font-medium px-4 py-1.5 rounded bg-brand hover:bg-[#7C3AED] text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-brand">
+      <button id="btn-compare-events" data-action="loadEventComparison" disabled
+              data-tip-title="{{ t.get('disabled_pick_two_title', 'Pick at least two servers') }}"
+              data-tip-desc="{{ t.get('disabled_pick_two_events_desc', 'Event comparison looks for what these servers share — tick two or more in the list below.') }}"
+              class="text-xs font-medium px-4 py-1.5 rounded bg-brand hover:bg-[#7C3AED] text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-brand">
         {{ t.compare_events | default('Compare Windows Events') }} <span id="btn-compare-events-count"></span>
       </button>
       <!-- Presets -->
@@ -303,14 +309,22 @@ function updateCompareButtonState() {
   const atCap = checked >= MAX_COMPARE;
   boxes.forEach(cb => {
     const lock = atCap && !cb.checked;
-    cb.disabled = lock;
+    // Hitting the cap is the least self-evident disable in the app: the box
+    // simply stops responding and nothing on screen says a limit exists.
+    prismSetDisabled(cb, lock && `Comparison limit reached (${MAX_COMPARE})`,
+      `Untick a server to choose a different one — ${MAX_COMPARE} is the most that can be compared at once.`);
     cb.closest('label').classList.toggle('opacity-40', lock);
     cb.closest('label').classList.toggle('cursor-not-allowed', lock);
   });
 
   const enabled = checked >= 2 && checked <= MAX_COMPARE;
-  btnCompare.disabled = !enabled;
-  btnCompareEvents.disabled = !enabled;
+  // Below two the reason is "pick more"; above the cap it is "pick fewer".
+  // One message for both would be wrong half the time.
+  const why = checked < 2
+    ? ['Pick at least two servers', 'A comparison needs something to compare against — tick two or more in the list below.']
+    : ['Too many servers selected', `Untick some — ${MAX_COMPARE} is the most that can be compared at once.`];
+  prismSetDisabled(btnCompare, !enabled && why[0], why[1]);
+  prismSetDisabled(btnCompareEvents, !enabled && why[0], why[1]);
   countSpan.textContent = checked > 0 ? `(${checked})` : '';
   countSpanEvents.textContent = checked > 0 ? `(${checked})` : '';
 
@@ -716,7 +730,9 @@ function renderCommonPage() {
   const presentCls = 'bg-healthy/10 text-healthy border-healthy/20 border';
 
   if (data.common.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-4 text-center text-muted">No common events found across selected servers</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5">' + window.prismEmptyState(
+      'git-compare', 'No common events across these servers',
+      'They share no event type in this window — widen the range or compare different servers') + '</td></tr>';
     updatePager('common', 0, 0);
     return;
   }
@@ -741,7 +757,9 @@ function renderUniquePage() {
   const missingCls = 'bg-critical/10 text-critical border-critical/20 border';
 
   if (data.unique.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="px-3 py-4 text-center text-muted">No unique events — all events are common across selected servers</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6">' + window.prismEmptyState(
+      'copy-check', 'No unique events',
+      'Every event appears on all the selected servers — the Common tab has the full list') + '</td></tr>';
     updatePager('unique', 0, 0);
     return;
   }

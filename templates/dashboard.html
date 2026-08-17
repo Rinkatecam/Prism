@@ -1,9 +1,29 @@
 {% extends "base.html" %}
+{% from "partials/_skeletons.html" import vitals_cards, banner, feed_rows %}
+
+{# 1280 -> 2560 is the design's range, and the top end is the requirement that
+   does not survive being ignored: a wall-screen dashboard must not be a
+   fixed-width island. See `.page-dashboard` in app.css for the measured
+   number and why it is capped rather than unbounded. #}
+{% block content_width %}page-dashboard{% endblock %}
+
 {% block content %}
 
-{# Verdict header — "is anything wrong right now?". Rendered server-side on
-   first paint via {% include %}, AND refreshed on every prismRefresh (same
-   trigger as the stat cards / grid) so it never freezes at page-load values. #}
+{# The page's only <h1>, and it is deliberately invisible.
+
+   It used to live inside the verdict banner — which now renders ONLY when
+   something is wrong, so a healthy dashboard would have had no h1 at all.
+   A visible "Dashboard" title is not worth the vertical space on a wall
+   screen (the nav already says where you are), and the alternative of
+   promoting the hero banner's heading back to h1 would mean the document's
+   outline changed depending on whether the fleet was healthy. #}
+<h1 class="sr-only">{{ t.dashboard }}</h1>
+
+{# Hero banner — CONDITIONAL: renders only when something is wrong. Painted
+   server-side on first paint via {% include %}, AND refreshed on every
+   prismRefresh (same trigger as the quadrant) so it never freezes at
+   page-load values. All-healthy is expressed by the vitals circle beating
+   slowly, not by a green banner — see the partial's header. #}
 <section class="mb-6" aria-live="polite"
          hx-get="/partials/verdict-header" hx-trigger="prismRefresh from:body"
          hx-swap="morph:innerHTML">
@@ -69,26 +89,71 @@
   </div>
 </section>
 
-<!-- Status Overview Section -->
-<section class="mb-8">
-  <div hx-get="/partials/status-overview" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML">
-    <div class="animate-pulse grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="bg-card rounded-lg p-6 border border-line h-24"></div>
-      <div class="bg-card rounded-lg p-6 border border-line h-24"></div>
-      <div class="bg-card rounded-lg p-6 border border-line h-24"></div>
-      <div class="bg-card rounded-lg p-6 border border-line h-24"></div>
-    </div>
+{# ── The vitals quadrant ─────────────────────────────────────────────────
+
+   Four cards in a 2x2 with the estate circle overlapping their inner
+   corners. Replaces the four flat stat boxes that used to sit here (and
+   `/partials/status-overview` with them, which had no other caller).
+
+   TWO PARTS, and the split is not cosmetic:
+
+   * The CARDS are a swapped partial, so their numbers stay live.
+   * The CIRCLE is static markup that no swap touches, because it owns a
+     <canvas>. `morph:innerHTML` replaces the elements it swaps, so a canvas
+     in the fragment would be discarded and rebuilt on every prismRefresh
+     — roughly every 5s — and the beat would never get past its first
+     cycle. static/js/vitals-monitor.js bridges the two: it reads the
+     fragment's `data-vitals-*` after each settle, so the counts and the
+     tempo always come from the same render and cannot disagree.
+
+   The circle's readout is rendered server-side here as well as being
+   updated by JS. Without that it would be three dashes until the first
+   swap lands, on the one element the whole page is arranged around. #}
+{% set vitals_labels = {
+     'calm':     t.get('vitals_state_calm', 'Stable'),
+     'elevated': t.get('vitals_state_elevated', 'Elevated'),
+     'urgent':   t.get('vitals_state_urgent', 'Critical'),
+     'flat':     t.get('vitals_state_flat', 'No signal'),
+     'idle':     t.get('vitals_state_idle', 'Nothing monitored'),
+     'unmeasured': t.get('vitals_state_unmeasured', 'Awaiting data')
+   } %}
+<section id="vitals-section" class="vitals-quadrant mb-8">
+  <div hx-get="/partials/vitals" hx-trigger="load, prismRefresh from:body"
+       hx-swap="morph:innerHTML">
+    {{ vitals_cards() }}
+  </div>
+  {# One definition of the severity->word map, consumed twice: by Jinja for
+     first paint and by the JS for every refresh after it. Two copies is how
+     the two drift, and a state word that lags the tempo it labels is worse
+     than no word. #}
+  <div id="estate-vitals" class="vitals-core vitals-core--{{ vitals.severity }}"
+       data-severity="{{ vitals.severity }}" data-bpm="{{ vitals.bpm }}"
+       data-vitals-labels='{{ vitals_labels | tojson }}'>
+    <span class="vitals-core-label">{{ t.get('vitals_estate', 'Estate') }}</span>
+    <span class="vitals-core-percent" data-vitals-percent-out="">{% if vitals.percent is not none %}{{ vitals.percent }}%{% else %}&mdash;{% endif %}</span>
+    <span class="vitals-core-count" data-vitals-count-out="">{{ vitals.ok }}/{{ vitals.monitored }}</span>
+    <span class="vitals-core-state" data-vitals-state-out="">{{ vitals_labels[vitals.severity] }}</span>
+    {# Decorative: everything it encodes is stated as text above it. That is
+       also the reduced-motion argument — see app.css. #}
+    <canvas class="vitals-canvas" aria-hidden="true"></canvas>
   </div>
 </section>
 
 <!-- Critical Issues Section -->
-<section class="mb-8">
+<section id="critical-issues-section" class="mb-8">
   <div id="htmx-critical" hx-get="/partials/critical-issues" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML">
-    <div class="animate-pulse bg-card rounded-lg p-6 border border-line">
-      <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48"></div>
-    </div>
+    {{ banner() }}
   </div>
 </section>
+
+{# The four `data-toggle-empty` regions below — TLS, active actions, updates,
+   incidents — deliberately carry NO skeleton, and that is not an oversight.
+   Each sits in a section that starts `hidden` and is only unhidden once its
+   partial comes back non-empty (base.html's htmx:afterSwap handler). A ghost
+   inside a hidden section is invisible, so it would buy nothing; unhiding the
+   section to show one would promise a panel that most of the time resolves to
+   nothing and vanishes again. A skeleton is a claim that content is coming.
+   Only make it where content is actually coming. #}
 
 <!-- TLS Certificate Alerts (only shown when certs are expiring/expired/error) -->
 <section id="tls-alerts-section" class="mb-6 hidden">
@@ -128,127 +193,25 @@
   </div>
 </section>
 
-<!-- Server Grid + Activity Feed 2-column layout -->
-<div class="lg:grid lg:grid-cols-3 lg:gap-6">
-
-  <!-- Server Grid Section -->
-  <section class="mb-8 lg:col-span-2 lg:mb-0">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-      <div class="flex items-center gap-3 flex-wrap">
-        <h2 class="text-xl font-semibold flex items-center gap-2">
-          <i data-lucide="monitor" class="w-5 h-5 text-accent"></i>
-          {{ t.servers }}
-        </h2>
-        <div id="status-filter" class="flex items-center gap-1 flex-wrap">
-          <button type="button" data-action="setStatusFilter" data-args='["all"]' data-filter="all"
-            class="status-filter-btn active px-2.5 py-1 text-xs font-medium rounded-full transition-colors bg-brand text-white">
-            All
-          </button>
-          <button type="button" data-action="setStatusFilter" data-args='["critical"]' data-filter="critical"
-            class="status-filter-btn px-2.5 py-1 text-xs font-medium rounded-full transition-colors border border-critical text-critical hover:bg-critical hover:text-white">
-            Critical
-          </button>
-          <button type="button" data-action="setStatusFilter" data-args='["warning"]' data-filter="warning"
-            class="status-filter-btn px-2.5 py-1 text-xs font-medium rounded-full transition-colors border border-warning text-warning hover:bg-warning hover:text-white">
-            Warning
-          </button>
-          <button type="button" data-action="setStatusFilter" data-args='["healthy"]' data-filter="healthy"
-            class="status-filter-btn px-2.5 py-1 text-xs font-medium rounded-full transition-colors border border-healthy text-healthy hover:bg-healthy hover:text-white">
-            Healthy
-          </button>
-          <button type="button" data-action="setStatusFilter" data-args='["offline"]' data-filter="offline"
-            class="status-filter-btn px-2.5 py-1 text-xs font-medium rounded-full transition-colors border border-faint text-faint dark:border-[#6B7280] dark:text-[#6B7280] hover:bg-faint hover:text-white dark:hover:bg-[#6B7280]">
-            Offline
-          </button>
-        </div>
-      </div>
-      <div class="relative flex-shrink-0">
-        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted"></i>
-        <input type="text" id="server-search" placeholder="{{ t.search_servers }}"
-          data-input="applyFilters"
-          class="pl-9 pr-4 py-1.5 text-sm rounded border border-line bg-card text-ink placeholder-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand w-48 sm:w-64">
-      </div>
-    </div>
-    <div id="server-grid-container" hx-get="/partials/server-grid" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML">
-      <div class="animate-pulse grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {% for _ in range(8) %}
-        <div class="bg-card rounded-lg p-6 border border-line h-48"></div>
-        {% endfor %}
-      </div>
-    </div>
-  </section>
-
-  <!-- Activity Feed Section (sidebar on desktop) -->
-  <section class="lg:col-span-1">
-    <h2 class="text-xl font-semibold flex items-center gap-2 mb-4">
-      <i data-lucide="activity" class="w-5 h-5 text-accent"></i>
-      {{ t.activity_feed }}
-    </h2>
-    <div hx-get="/partials/activity-feed" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML">
-      <div class="animate-pulse bg-card rounded-lg p-6 border border-line">
-        <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-64 mb-3"></div>
-        <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-3"></div>
-        <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-56"></div>
-      </div>
-    </div>
-  </section>
-
-</div>
+{# Activity feed. Full width now that the server grid has moved to /servers,
+   where it is one of two view modes rather than a third of the dashboard.
+   The alert sections above it stay — they are already conditional, so they
+   cost nothing on a healthy fleet. #}
+<section id="activity-section">
+  <h2 class="text-xl font-semibold flex items-center gap-2 mb-4">
+    <i data-lucide="activity" class="w-5 h-5 text-accent"></i>
+    {{ t.activity_feed }}
+  </h2>
+  <div hx-get="/partials/activity-feed" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML">
+    {{ feed_rows() }}
+  </div>
+</section>
 
 <script nonce="{{ csp_nonce }}">
-let activeStatusFilter = 'all';
-
-function setStatusFilter(status) {
-  activeStatusFilter = status;
-  // Update button styles
-  document.querySelectorAll('.status-filter-btn').forEach(btn => {
-    const filter = btn.getAttribute('data-filter');
-    if (filter === status) {
-      btn.classList.add('active', 'bg-info', 'text-white');
-      btn.classList.remove('border', 'hover:bg-critical', 'hover:bg-warning', 'hover:bg-healthy', 'hover:bg-faint',
-        'hover:bg-[#EF4444]', 'hover:bg-[#FBBF24]', 'hover:bg-[#34D399]', 'hover:bg-muted',
-        'text-critical', 'text-warning', 'text-healthy', 'text-faint',
-        'dark:text-critical', 'dark:text-warning', 'dark:text-healthy', 'dark:text-[#6B7280]',
-        'border-critical', 'border-warning', 'border-healthy', 'border-faint',
-        'dark:border-critical', 'dark:border-warning', 'dark:border-healthy', 'dark:border-[#6B7280]');
-    } else {
-      btn.classList.remove('active', 'bg-info', 'text-white');
-      // Restore original border/text classes based on filter type
-      const styles = {
-        all: ['border', 'border-line', 'text-muted', 'dark:border-line', 'dark:text-muted'],
-        critical: ['border', 'border-critical', 'text-critical', 'dark:border-critical', 'dark:text-critical', 'hover:bg-critical', 'hover:text-white', 'dark:hover:bg-critical'],
-        warning: ['border', 'border-warning', 'text-warning', 'dark:border-warning', 'dark:text-warning', 'hover:bg-warning', 'hover:text-white', 'dark:hover:bg-warning'],
-        healthy: ['border', 'border-healthy', 'text-healthy', 'dark:border-healthy', 'dark:text-healthy', 'hover:bg-healthy', 'hover:text-white', 'dark:hover:bg-healthy'],
-        offline: ['border', 'border-faint', 'text-faint', 'dark:border-[#6B7280]', 'dark:text-[#6B7280]', 'hover:bg-faint', 'hover:text-white', 'dark:hover:bg-[#6B7280]']
-      };
-      (styles[filter] || styles.all).forEach(c => btn.classList.add(c));
-    }
-  });
-  applyFilters();
-}
-
-function applyFilters() {
-  const search = document.getElementById('server-search');
-  const q = (search ? search.value : '').toLowerCase().trim();
-  document.querySelectorAll('[data-server-card]').forEach(card => {
-    const name = (card.getAttribute('data-server-name') || '').toLowerCase();
-    const host = (card.getAttribute('data-server-host') || '').toLowerCase();
-    const status = (card.getAttribute('data-status') || '').toLowerCase();
-    const matchesSearch = !q || name.includes(q) || host.includes(q);
-    const matchesStatus = activeStatusFilter === 'all' || status === activeStatusFilter;
-    card.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
-  });
-}
-
-// Keep backward compat for any external callers
-function filterServers(query) { applyFilters(); }
-
-// Re-apply filters after HTMX swap refreshes the grid
+// Auto-hide alert sections when their partial returned empty content.
+// The hx-on::after-swap inline handler was unreliable on some browsers —
+// do it here instead so TLS / Windows Updates reliably appear/disappear.
 document.body.addEventListener('htmx:afterSwap', function(e) {
-  applyFilters();
-  // Auto-hide alert sections when their partial returned empty content.
-  // The hx-on::after-swap inline handler was unreliable on some browsers —
-  // do it here instead so TLS / Windows Updates reliably appear/disappear.
   ['tls-alerts-section', 'updates-alerts-section'].forEach(function(id) {
     const section = document.getElementById(id);
     if (!section) return;
@@ -283,26 +246,28 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
 </script>
 
 <script nonce="{{ csp_nonce }}">
-// Apply dashboard display preferences
+// Apply dashboard display preferences.
+//
+// Every section is now addressed BY ID. The previous version reached the
+// status region with `document.querySelectorAll('section.mb-8')[1]` and the
+// server grid with a class selector on the grid's column span — both of
+// which point at whatever happens to be in that position, so restructuring
+// the page silently repointed a user's preference at an unrelated section
+// rather than failing. This restructure would have done exactly that.
+//
+// The `showServers` preference is gone with the grid it hid: the server
+// cards live on /servers now, and a checkbox that toggles nothing is worse
+// than no checkbox. Its control has been removed from Settings too.
 (function() {
   try {
     const prefs = JSON.parse(localStorage.getItem('prism-dashboard-prefs') || '{}');
-    if (prefs.showCritical === false) {
-      const el = document.getElementById('htmx-critical');
-      if (el && el.parentElement) el.parentElement.style.display = 'none';
-    }
-    if (prefs.showStatus === false) {
-      const sections = document.querySelectorAll('section.mb-8');
-      if (sections[1]) sections[1].style.display = 'none';
-    }
-    if (prefs.showServers === false) {
-      const el = document.querySelector('section.mb-8.lg\\:col-span-2');
+    const hide = function(id) {
+      const el = document.getElementById(id);
       if (el) el.style.display = 'none';
-    }
-    if (prefs.showActivity === false) {
-      const el = document.querySelector('section.lg\\:col-span-1');
-      if (el) el.style.display = 'none';
-    }
+    };
+    if (prefs.showCritical === false) hide('critical-issues-section');
+    if (prefs.showStatus === false) hide('vitals-section');
+    if (prefs.showActivity === false) hide('activity-section');
   } catch(e) {}
 })();
 </script>
@@ -343,8 +308,8 @@ function loadRestartStatus() {
       const icon = document.getElementById('restart-banner-icon');
       inner.className = 'rounded-lg border p-4 flex items-start gap-3 relative ' +
         (allOk
-          ? 'bg-[#ECFDF5] dark:bg-healthy-tint/30 border-healthy dark:border-healthy/50 text-healthy-strong dark:text-[#A7F3D0]'
-          : 'bg-warning-tint dark:bg-warning-tint/30 border-warning dark:border-warning/50 text-warning-strong dark:text-[#FDE68A]');
+          ? 'bg-healthy-tint dark:bg-healthy-tint/30 border-healthy dark:border-healthy/50 text-healthy-strong'
+          : 'bg-warning-tint dark:bg-warning-tint/30 border-warning dark:border-warning/50 text-warning-strong');
 
       // Title and summary
       document.getElementById('restart-banner-title').textContent =
@@ -352,7 +317,7 @@ function loadRestartStatus() {
       document.getElementById('restart-banner-time').textContent =
         latestRun && latestRun.timestamp ? 'Last run: ' + formatTs(latestRun.timestamp) : '';
       document.getElementById('restart-banner-summary').textContent =
-        total + ' server' + (total !== 1 ? 's' : '') + ' processed \u2014 ' +
+        total + ' server' + (total !== 1 ? 's' : '') + ' processed — ' +
         succeeded + ' succeeded' + (failed > 0 ? ', ' + failed + ' failed' : '');
 
       // Build details table
@@ -365,11 +330,11 @@ function loadRestartStatus() {
         tr.innerHTML =
           '<td class="px-3 py-2 font-medium text-ink">' + escapeHtml(r.server || r.name || 'Unknown') + '</td>' +
           '<td class="px-3 py-2">' +
-            '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ' + (isOk ? 'bg-healthy-tint dark:bg-[#065F46] text-healthy-strong dark:text-[#A7F3D0]' : 'bg-critical-tint text-critical-strong ') + '">' +
+            '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ' + (isOk ? 'bg-healthy-tint text-healthy-strong' : 'bg-critical-tint text-critical-strong ') + '">' +
               (isOk ? 'Success' : 'Failed') +
             '</span>' +
           '</td>' +
-          '<td class="px-3 py-2 text-muted">' + escapeHtml(r.message || r.error || '\u2014') + '</td>';
+          '<td class="px-3 py-2 text-muted">' + escapeHtml(r.message || r.error || '—') + '</td>';
         tbody.appendChild(tr);
       });
 

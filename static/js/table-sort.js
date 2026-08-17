@@ -513,6 +513,25 @@
     var reorderTarget = table.tBodies.length > 1 ? table : table.tBodies[0];
     _ownMutationTargets.add(reorderTarget);
     decorated.forEach(function (d) { d.u.place(); });
+
+    // "The order changed." Anything layered on top of the sorted order has
+    // to be recomputed from it, and the only such consumer today is
+    // servers.html's pagination — which MUST run after this, never instead
+    // of it. Paginating first and sorting the visible page would put the
+    // worst row on page 1 rather than the worst row in the fleet, and it
+    // would look exactly like it worked.
+    //
+    // Deliberately not dispatched on the two early returns above: a table
+    // with fewer than two units cannot change order, and `alreadyInOrder`
+    // means it did not. The event means the order MOVED, so a listener can
+    // treat it as "redo whatever you derived from the order" without having
+    // to diff anything itself. It follows that the event is not a
+    // substitute for a listener's own initial run — nothing fires it on a
+    // table that loads already correctly sorted.
+    table.dispatchEvent(new CustomEvent('prism:tablesorted', {
+      bubbles: true,
+      detail: { col: colIndex, dir: dir, type: type }
+    }));
   }
 
   // ── header UI: arrow affordance + aria-sort + keyboard ──────────────────

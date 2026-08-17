@@ -164,7 +164,14 @@
       const div = document.getElementById('rbac-acl-list');
       if (!div) return;
       if (!data.ok) { div.textContent = data.error || 'Failed'; return; }
-      if (!data.acl.length) { div.innerHTML = '<i>No ACLs yet — system is in permissive mode.</i>'; return; }
+      if (!data.acl.length) {
+        // "Permissive mode" is the consequence, not the instruction. The
+        // hint has to say what to do, because this empty state is the one
+        // place an admin learns the fleet is currently unrestricted.
+        div.innerHTML = window.prismEmptyState('shield-off', 'No ACLs yet',
+          'Every user can reach every server until you add a rule — use the form above to scope access');
+        return;
+      }
       const rows = data.acl.map(r => {
         return `<tr class="border-t border-line">
           <td class="py-1.5 pr-3 font-mono">${esc(r.username)}</td>
@@ -214,7 +221,11 @@
       const div = document.getElementById('rbac-approvals-list');
       if (!div) return;
       if (!data.ok) { div.textContent = data.error || 'Failed'; return; }
-      if (!data.approvals.length) { div.innerHTML = '<i>No pending approvals.</i>'; return; }
+      if (!data.approvals.length) {
+        div.innerHTML = window.prismEmptyState('check-circle', 'No pending approvals',
+          'Nothing is waiting on you — requests needing sign-off will appear here');
+        return;
+      }
       div.innerHTML = data.approvals.map(a => `
         <div class="flex items-center justify-between gap-3 py-2 border-b border-line last:border-0">
           <div>

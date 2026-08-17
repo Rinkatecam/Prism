@@ -327,7 +327,8 @@
       const data = await r.json();
       const div = document.getElementById('history');
       if (!data.history || data.history.length === 0) {
-        div.innerHTML = '<div class="text-faint">No executions recorded yet.</div>';
+        div.innerHTML = window.prismEmptyState('history', 'No executions recorded yet',
+          'Runs of this SOP will be listed here with who ran them and when');
         return;
       }
       // F-PHD-3 (XSS defence): build DOM with createElement + textContent so

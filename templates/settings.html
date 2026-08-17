@@ -722,10 +722,11 @@
           <input type="checkbox" id="pref-show-status" checked data-change="savePreferences" class="rounded border-gray-300">
           {{ t.get('status_overview', 'Status Overview') }}
         </label>
-        <label class="flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" id="pref-show-servers" checked data-change="savePreferences" class="rounded border-gray-300">
-          {{ t.servers }}
-        </label>
+        {# The "Servers" toggle used to be here. It hid the dashboard's server
+           grid, which has moved to /servers as one of two view modes, so the
+           checkbox had nothing left to toggle — and a preference control that
+           silently does nothing is worse than its absence, because the user
+           blames themselves for the setting not taking. #}
         <label class="flex items-center gap-2 text-sm cursor-pointer">
           <input type="checkbox" id="pref-show-activity" checked data-change="savePreferences" class="rounded border-gray-300">
           {{ t.activity_feed }}
@@ -1667,7 +1668,6 @@ function loadPreferences() {
     if (prefs.refreshInterval !== undefined) document.getElementById('pref-refresh-interval').value = prefs.refreshInterval;
     if (prefs.showCritical !== undefined) document.getElementById('pref-show-critical').checked = prefs.showCritical;
     if (prefs.showStatus !== undefined) document.getElementById('pref-show-status').checked = prefs.showStatus;
-    if (prefs.showServers !== undefined) document.getElementById('pref-show-servers').checked = prefs.showServers;
     if (prefs.showActivity !== undefined) document.getElementById('pref-show-activity').checked = prefs.showActivity;
   } catch(e) {}
 }
@@ -1678,7 +1678,6 @@ function savePreferences() {
     refreshInterval: document.getElementById('pref-refresh-interval').value,
     showCritical: document.getElementById('pref-show-critical').checked,
     showStatus: document.getElementById('pref-show-status').checked,
-    showServers: document.getElementById('pref-show-servers').checked,
     showActivity: document.getElementById('pref-show-activity').checked,
   };
   localStorage.setItem('prism-dashboard-prefs', JSON.stringify(prefs));
@@ -1927,7 +1926,7 @@ function runLdapPickerQuery() {
         ? (upn || sam) + (desc ? ' — ' + desc : '')
         : sam + (desc ? ' — ' + desc : '');
       html += '<div class="py-2 px-2 -mx-2 rounded hover:bg-page cursor-pointer flex items-start gap-2" '
-           + 'data-action="pickLdapResult" data-args="' + JSON.stringify([r.sam || r.name || '']).replace(/"/g, '&quot;') + '">'
+           + 'data-action="pickLdapResult" tabindex="0" role="button" data-args="' + JSON.stringify([r.sam || r.name || '']).replace(/"/g, '&quot;') + '">'
            + '<i data-lucide="' + icon + '" class="w-4 h-4 text-info flex-shrink-0 mt-0.5"></i>'
            + '<div class="flex-1 min-w-0">'
            + '<div class="text-sm font-medium truncate">' + label + '</div>'

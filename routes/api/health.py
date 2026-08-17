@@ -439,6 +439,25 @@ def get_health_check_config():
     return jsonify({"ok": True, "config": _shared._db.get_health_check_config(server)})
 
 
+def _verify_tls_from_payload(data: dict) -> bool:
+    """Whether an HTTPS health check should validate its certificate.
+
+    ABSENT MEANS VERIFY. Only an explicit false turns validation off, so a
+    client that predates this field — or one that simply does not send it —
+    cannot weaken a check by omission. `bool(data.get("verify_tls"))` reads
+    identically and does the opposite: a missing key becomes `None` becomes
+    `False`, and every check created by an older client silently stops
+    checking certificates. That is the exact defect this setting was added to
+    remove, reintroduced one layer up.
+
+    A free function rather than inline in the route so it can be tested
+    without importing `app`, which starts the collector against the real
+    configuration.
+    """
+    value = data.get("verify_tls")
+    return True if value is None else bool(value)
+
+
 @api_bp.route("/health-checks/config", methods=["POST"])
 def save_health_check_config():
     """Create or update a health check configuration."""
@@ -456,6 +475,7 @@ def save_health_check_config():
     http_path = data.get("http_path")
     expected_status = data.get("expected_status")
     name = (data.get("name") or "").strip()
+    verify_tls = _verify_tls_from_payload(data)
     try:
         new_id = _shared._db.save_health_check_config(
             server_name=server_name,
@@ -465,6 +485,7 @@ def save_health_check_config():
             http_path=http_path,
             expected_status=expected_status,
             name=name,
+            verify_tls=verify_tls,
         )
         username = flask_session.get("username", "system")
         _shared._db.log_audit(username, "save_health_check_config", "health_checks", f"Saved health check config for '{server_name}' ({check_type} -> {target_host}:{target_port})")

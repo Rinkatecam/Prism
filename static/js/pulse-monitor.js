@@ -55,6 +55,11 @@
   // ── State ───────────────────────────────────────────────────────────
   let canvas = null, ctx = null;
   let dotEl = null, counterEl = null, panelEl = null, errorEl = null;
+  // The panel's SHELL and the element inside it that scrolls. Two references
+  // rather than one because they have different lifetimes: the shell persists
+  // and carries the hover handlers, the scroller persists and holds the
+  // scroll position, and only the scroller's CHILDREN are rewritten.
+  let panelScrollEl = null;
   let lastEventTs = 0;       // server-side timestamp watermark
   let consecutiveErrors = 0;
   let pollTimer = null;
@@ -142,9 +147,37 @@
     themeObserver.observe(document.documentElement,
       { attributes: true, attributeFilter: ['class'] });
 
+    // The panel is a clipping shell around a scrolling child, and the child
+    // is created HERE, once, for the length of the page's life.
+    //
+    // Why it cannot be part of the markup or part of the render: the shell
+    // needs `overflow: hidden` so its 8px radius clips the scrollbar
+    // (Chromium paints the bar in the padding box and does not round it), so
+    // something inside it has to scroll — and `renderPanel()` replaces the
+    // panel's content on every poll, 1.5s apart while it is open. A scroller
+    // recreated by each render would reset `scrollTop` every time, which is
+    // worse than the artefact being fixed: the reader is thrown back to the
+    // top of a list they were halfway down. So the scroller is built once and
+    // only its children are rewritten.
+    //
+    // `if absent` rather than unconditionally, because init() is reachable
+    // more than once in principle (DOMContentLoaded plus a manual call) and a
+    // second scroller would silently orphan the first along with its
+    // position.
+    if (panelEl) {
+      panelScrollEl = panelEl.querySelector('.pulse-panel-scroll');
+      if (!panelScrollEl) {
+        panelScrollEl = document.createElement('div');
+        panelScrollEl.className = 'pulse-panel-scroll';
+        panelEl.appendChild(panelScrollEl);
+      }
+    }
+
     // Hover panel wiring. Show on enter, hide on leave with 200ms grace so
     // the user can move the cursor INTO the panel to click the CTA without
-    // it snapping shut.
+    // it snapping shut. Bound to the SHELL, not the scroller: the grace
+    // period exists so the cursor can travel into the panel, and a listener
+    // on the inner element would miss the padding it has to cross first.
     root.addEventListener('mouseenter', showPanel);
     root.addEventListener('mouseleave', queuePanelHide);
     if (panelEl) {
@@ -409,7 +442,13 @@
     if (!panelEl) return;
     if (panelHideTimer) { clearTimeout(panelHideTimer); panelHideTimer = null; }
     panelOpen = true;
-    panelEl.style.display = 'block';
+    // CLEARING the inline display rather than setting `block`. The panel is a
+    // flex column now — the shell has to be a flex container for its scrolling
+    // child to be constrained by its max-height — and `display: block` from
+    // here would silently override that, leaving the child unconstrained and
+    // the panel growing past the bottom of the viewport. Clearing it lets
+    // app.css decide, so the layout mode has one owner.
+    panelEl.style.display = '';
     renderPanel();
   }
 
@@ -436,7 +475,10 @@
   }
 
   function renderPanel() {
-    if (!panelEl || !lastSnapshot) return;
+    // Guards on the SCROLLER, not the shell: it is what gets written to, and
+    // an absent scroller with a present shell would throw on the assignment
+    // at the end of this function.
+    if (!panelScrollEl || !lastSnapshot) return;
     const data = lastSnapshot;
     const i18n = window.PULSE_I18N || {};
     const titles = {
@@ -497,7 +539,10 @@
              `<span>${mark} ${esc(label)}</span><span>${age}</span></div>`;
     };
 
-    panelEl.innerHTML = `
+    // Into the persistent scroller, NOT into the panel. Writing to the panel
+    // would destroy the scroller — and with it the reader's scroll position —
+    // on every poll.
+    panelScrollEl.innerHTML = `
       <div class="pulse-panel-head">
         <div class="pulse-panel-title pulse-panel-title--${state}">
           ${esc(titles[state] || titles.warming)}

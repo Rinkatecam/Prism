@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/_skeletons.html" import server_band %}
 {% block content %}
 
 <div class="flex items-center justify-between mb-6">
@@ -18,6 +19,30 @@
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-semibold">{{ t.servers }} ({{ servers | length }})</h2>
     <div class="flex items-center gap-2">
+      {# ── Cards / table toggle. Remembered per session, keyed per view, the
+         same mechanism and the same storage prefix as the column sort in
+         static/js/table-sort.js — sessionStorage, not localStorage, so it
+         holds for the tab and is forgotten when the tab closes.
+
+         The pressed state is carried ONLY by `aria-pressed`, which is also
+         what app.css styles off. A second `.active` class would be a second
+         source of truth for one state, and the half a sighted reviewer
+         checks is not the half a screen reader reads. #}
+      <div class="inline-flex rounded border border-line overflow-hidden" role="group"
+           aria-label="{{ t.get('servers_view_label', 'View') }}">
+        <button type="button" id="servers-view-table-btn" data-action="_srvSetView" data-args='["table"]'
+                aria-pressed="true"
+                class="servers-view-btn px-3 py-1.5 text-sm font-medium flex items-center gap-1">
+          <i data-lucide="table-2" class="w-4 h-4"></i>
+          {{ t.get('servers_view_table', 'Table') }}
+        </button>
+        <button type="button" id="servers-view-cards-btn" data-action="_srvSetView" data-args='["cards"]'
+                aria-pressed="false"
+                class="servers-view-btn px-3 py-1.5 text-sm font-medium flex items-center gap-1 border-l border-line">
+          <i data-lucide="layout-grid" class="w-4 h-4"></i>
+          {{ t.get('servers_view_cards', 'Cards') }}
+        </button>
+      </div>
       <button data-action="showGuide"
               class="px-3 py-1.5 text-sm font-medium rounded border border-line hover:bg-page flex items-center gap-1">
         <i data-lucide="book-open" class="w-4 h-4"></i>
@@ -56,9 +81,10 @@
     </div>
   </div>
   {% else %}
+  <div id="servers-table-view">
   <div class="bg-card rounded-lg border border-line overflow-hidden">
     <div class="overflow-x-auto">
-      <table class="w-full text-sm">
+      <table id="servers-table" class="w-full text-sm">
         <thead data-sort-table="servers-list">
           <tr class="border-b border-line text-left">
             <th class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted" data-sort="text">{{ t.name }}</th>
@@ -128,6 +154,85 @@
           </tbody>
           {% endfor %}
       </table>
+    </div>
+  </div>
+
+  {# ── Pagination. Applied AFTER the sort, always ────────────────────────
+     `_srvPaginate` reads the tbodies in DOM ORDER, which is the order
+     table-sort.js has just put them in, and hides the ones outside the
+     current page with `display`. Nothing is removed from the DOM and nothing
+     is sorted per-page: sorting a page instead of the fleet would put the
+     worst row on page 1 rather than the worst row in the fleet, and it would
+     look exactly like it worked. That ordering is enforced by listening for
+     `prism:tablesorted` (dispatched by applySort) rather than by hoping the
+     two happen in a convenient order.
+
+     The prev/next buttons carry no `disabled` attribute in markup — they are
+     disabled through `prismSetDisabled`, which sets the state and the reason
+     in one call so a re-enabled button cannot keep a stale explanation. #}
+  <div id="servers-pagination" class="hidden mt-3 flex items-center justify-between gap-3">
+    <p class="text-xs text-muted" data-srv-page-count=""></p>
+    <div class="flex items-center gap-2">
+      <button type="button" id="servers-page-prev" data-action="_srvPageStep" data-args="[-1]"
+              class="px-2.5 py-1 text-sm rounded border border-line hover:bg-page flex items-center gap-1">
+        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+        {{ t.get('pagination_prev', 'Previous') }}
+      </button>
+      <p class="text-xs text-muted tabular-nums" data-srv-page-of=""></p>
+      <button type="button" id="servers-page-next" data-action="_srvPageStep" data-args="[1]"
+              class="px-2.5 py-1 text-sm rounded border border-line hover:bg-page flex items-center gap-1">
+        {{ t.get('pagination_next', 'Next') }}
+        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </div>
+  </div>{# /#servers-table-view #}
+
+  {# ── Card view — the sliding band that used to be the dashboard's grid ──
+     Hidden by default, and its fetch is NOT `hx-trigger="load"`: a hidden
+     region that fetches on load and then on every prismRefresh would pull
+     the whole fleet's cards every ~5s for a reader who is looking at the
+     table. `_srvSetView` triggers the first load when the view is opened,
+     and the prismRefresh bridge below only forwards the event while the
+     view is actually visible.
+
+     An inline htmx trigger filter — `prismRefresh from:body [expr]` — would
+     have been shorter and is not available: htmx compiles those with the
+     Function constructor, and this app's CSP carries no `unsafe-eval`. #}
+  <div id="servers-cards-view" class="hidden">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+      <div id="status-filter" class="flex items-center gap-1 flex-wrap">
+        <button type="button" data-action="setStatusFilter" data-args='["all"]' data-filter="all"
+          class="status-filter-btn active px-2.5 py-1 text-xs font-medium rounded-full transition-colors bg-brand text-white dark:text-page">
+          {{ t.get('all_tags', 'All') }}
+        </button>
+        <button type="button" data-action="setStatusFilter" data-args='["critical"]' data-filter="critical"
+          class="status-filter-btn px-2.5 py-1 text-xs font-medium rounded-full transition-colors border border-critical text-critical hover:bg-critical hover:text-white">
+          {{ t.critical }}
+        </button>
+        <button type="button" data-action="setStatusFilter" data-args='["warning"]' data-filter="warning"
+          class="status-filter-btn px-2.5 py-1 text-xs font-medium rounded-full transition-colors border border-warning text-warning hover:bg-warning hover:text-white">
+          {{ t.warning }}
+        </button>
+        <button type="button" data-action="setStatusFilter" data-args='["healthy"]' data-filter="healthy"
+          class="status-filter-btn px-2.5 py-1 text-xs font-medium rounded-full transition-colors border border-healthy text-healthy hover:bg-healthy hover:text-white">
+          {{ t.healthy }}
+        </button>
+        <button type="button" data-action="setStatusFilter" data-args='["offline"]' data-filter="offline"
+          class="status-filter-btn px-2.5 py-1 text-xs font-medium rounded-full transition-colors border border-faint text-faint hover:bg-faint hover:text-white">
+          {{ t.offline }}
+        </button>
+      </div>
+      <div class="relative flex-shrink-0">
+        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted"></i>
+        <input type="text" id="server-search" placeholder="{{ t.search_servers }}"
+          data-input="applyFilters"
+          class="pl-9 pr-4 py-1.5 text-sm rounded border border-line bg-card text-ink placeholder-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand w-48 sm:w-64">
+      </div>
+    </div>
+    <div id="server-grid-container" hx-get="/partials/server-grid" hx-trigger="prismBandLoad"
+         hx-swap="morph:innerHTML">
+      {{ server_band([servers | length, 6] | min) }}
     </div>
   </div>
   {% endif %}
@@ -661,6 +766,8 @@ Invoke-Command -ComputerName SERVER.DOMAIN.COM -Credential $cred -ScriptBlock { 
       <div class="flex justify-end gap-2 p-4 border-t border-line">
         <button data-action="closeDeleteModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
         <button id="delete-confirm-btn" data-action="confirmDeleteServer" disabled
+                data-tip-title="{{ t.get('disabled_type_name_title', 'Type the server name first') }}"
+                data-tip-desc="{{ t.get('disabled_type_name_desc', 'Deleting a server removes its history. Type the name exactly as shown above to confirm.') }}"
                 class="px-4 py-1.5 text-sm font-medium rounded bg-critical text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
           <i data-lucide="trash-2" class="w-4 h-4"></i>
           {{ t.delete }}
@@ -936,7 +1043,13 @@ function deleteServer(index) {
     deleteServerName = s.name;
     document.getElementById('delete-modal-title').textContent = {{ t.get('delete_server', 'Delete Server') | tojson }} + ' \u2014 ' + s.name + '?';
     document.getElementById('delete-confirm-input').value = '';
-    document.getElementById('delete-confirm-btn').disabled = true;
+    // Re-opening the modal resets the button, so it has to restore the
+    // reason too — a bare `.disabled = true` here left the control disabled
+    // and silent on every open after the first, because the previous close
+    // had cleared the attributes.
+    prismSetDisabled(document.getElementById('delete-confirm-btn'),
+      '{{ t.get("disabled_type_name_title", "Type the server name first") }}',
+      '{{ t.get("disabled_type_name_desc", "Deleting a server removes its history. Type the name exactly as shown above to confirm.") }}');
     document.getElementById('delete-modal').classList.remove('hidden');
     lucide.createIcons();
     document.getElementById('delete-confirm-input').focus();
@@ -945,7 +1058,13 @@ function deleteServer(index) {
 
 function checkDeleteConfirmation() {
   const input = document.getElementById('delete-confirm-input').value.trim();
-  document.getElementById('delete-confirm-btn').disabled = (input !== deleteServerName);
+  // prismSetDisabled, not `.disabled =`: the reason has to disappear when the
+  // control is enabled. The markup carries the same reason for first paint,
+  // and a plain assignment would leave "Type the server name first" hovering
+  // over a button that is now perfectly clickable.
+  prismSetDisabled(document.getElementById('delete-confirm-btn'),
+    input !== deleteServerName && '{{ t.get("disabled_type_name_title", "Type the server name first") }}',
+    '{{ t.get("disabled_type_name_desc", "Deleting a server removes its history. Type the name exactly as shown above to confirm.") }}');
 }
 
 function confirmDeleteServer() {
@@ -1510,11 +1629,15 @@ function discoverServers() {
     }
 
     list.innerHTML = discoveredServers.map((s, i) => {
-      const disabled = s.already_monitored ? 'disabled' : '';
+      // `disabled` and its reason are written into the tag together rather
+      // than hidden behind one interpolated variable. Both forms behave the
+      // same; only this one can be checked without running the page, and a
+      // guard that cannot see the attribute cannot enforce it.
+      const monitored = !!s.already_monitored;
       const opacity = s.already_monitored ? 'opacity-50' : '';
       const badge = s.already_monitored ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-raised dark:bg-line text-muted">Monitored</span>' : '';
       return `<label class="flex items-center gap-3 p-2 rounded hover:bg-page dark:hover:bg-page/50 cursor-pointer ${opacity}">
-        <input type="checkbox" class="discovery-cb rounded border-gray-300" data-index="${i}" ${disabled}>
+        <input type="checkbox" class="discovery-cb rounded border-gray-300" data-index="${i}" ${monitored ? 'disabled' : ''} ${monitored ? 'data-tip-title="Already monitored" data-tip-desc="This host is already in Prism — remove it from the Servers list first if you want to re-add it."' : ''}>
         <div class="flex-1 min-w-0">
           <div class="text-sm font-medium truncate">${s.name} ${badge}</div>
           <div class="text-xs text-muted truncate">${s.host} ${s.os ? '\u2014 ' + s.os : ''}</div>
@@ -2103,7 +2226,7 @@ function showDepBrowsePopup(items, inputId, type, btnEl) {
     const status = (item.status || '').toLowerCase();
     const dot = status === 'running' ? '<span class="w-1.5 h-1.5 rounded-full bg-healthy flex-shrink-0"></span>' : '';
     return '<div class="dep-browse-item flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-[#334155] text-xs text-[#CBD5E1]"' +
-      ' data-name="' + name + '" data-action="selectDepBrowseItem" data-args=\'' + JSON.stringify([name, inputId]).replace(/&/g, "&amp;").replace(/'/g, "&#39;") + '\'>' +
+      ' data-name="' + name + '" data-action="selectDepBrowseItem" tabindex="0" role="button" data-args=\'' + JSON.stringify([name, inputId]).replace(/&/g, "&amp;").replace(/'/g, "&#39;") + '\'>' +
       dot + '<span class="font-medium">' + name + '</span>' +
       '<span class="text-[10px] text-[#64748B] truncate ml-auto">' + display + '</span></div>';
   }).join('');
@@ -2501,7 +2624,8 @@ function renderServerTagPills(serverName, idx) {
                   bg-[var(--tag-bg)] hover:bg-[var(--tag-bg-h)] text-[var(--tag-ink-l)] dark:text-[var(--tag-ink-d)]
                   transition-colors duration-fast ease-standard"
            style="--tag-bg:${c.bg};--tag-bg-h:${c.bgHover};--tag-ink-l:${c.inkLight};--tag-ink-d:${c.inkDark};border-color:${c.border};"
-           data-action="_srvRemoveTag" data-args='${JSON.stringify([serverName, t.id, idx]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}'
+           data-action="_srvRemoveTag" tabindex="0" role="button" data-args='${JSON.stringify([serverName, t.id, idx]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}'
+           aria-label="Remove tag ${t.name}"
            title="Click to remove">${t.name} ×</span>`;
   }).join('');
 }
@@ -2557,7 +2681,7 @@ function showTagAssign(serverName, idx, btnEl) {
     popup.innerHTML = '<div class="text-[10px] text-faint p-2 text-center">All tags assigned</div>';
   } else {
     popup.innerHTML = available.map(t =>
-      `<div data-action="assignTagToServer" data-args='${JSON.stringify([serverName, t.id, idx]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}'
+      `<div data-action="assignTagToServer" tabindex="0" role="button" data-args='${JSON.stringify([serverName, t.id, idx]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}'
             class="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-[#334155] text-xs text-[#CBD5E1]">
         <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:${t.color}"></span>
         ${t.name}
@@ -2620,6 +2744,225 @@ document.addEventListener('DOMContentLoaded', () => {
   loadDepsTable();
   loadServerTags();
 });
+</script>
+
+<script nonce="{{ csp_nonce }}">
+// ══════════════════════════════════════════════════════════════════════
+// View modes, filters and pagination for the server list.
+//
+// The card view arrived here from the dashboard, where it was a third of
+// the page; it is now one of two modes, and the table gained pagination.
+// ══════════════════════════════════════════════════════════════════════
+(function () {
+  'use strict';
+
+  // Same prefix and same storage as table-sort.js's column state, for the
+  // same reason: this is a per-tab working preference, not a setting. It
+  // should follow you while you are looking at the page and be forgotten
+  // when the tab closes.
+  const VIEW_KEY = 'prism-servers-view';
+  const PAGE_SIZE = 25;
+
+  let bandLoaded = false;
+  let page = 1;
+  let activeStatusFilter = 'all';
+
+  const el = (id) => document.getElementById(id);
+
+  // ── view mode ───────────────────────────────────────────────────────
+
+  function currentView() {
+    try {
+      return sessionStorage.getItem(VIEW_KEY) === 'cards' ? 'cards' : 'table';
+    } catch (e) {
+      return 'table';   // storage disabled — the default, not a crash
+    }
+  }
+
+  window._srvSetView = function (view) {
+    const cards = view === 'cards';
+    const tableView = el('servers-table-view');
+    const cardsView = el('servers-cards-view');
+    if (!tableView || !cardsView) return;   // fleet is empty; neither exists
+
+    tableView.classList.toggle('hidden', cards);
+    cardsView.classList.toggle('hidden', !cards);
+    // aria-pressed is the ONLY carrier of the pressed state — app.css styles
+    // off it. Setting a class as well would be two sources of truth for one
+    // fact, and the one a screen reader reads is not the one a reviewer looks
+    // at.
+    const tb = el('servers-view-table-btn'), cb = el('servers-view-cards-btn');
+    if (tb) tb.setAttribute('aria-pressed', String(!cards));
+    if (cb) cb.setAttribute('aria-pressed', String(cards));
+
+    try { sessionStorage.setItem(VIEW_KEY, cards ? 'cards' : 'table'); } catch (e) { /* ignore */ }
+
+    // First open pays for the fetch; after that prismRefresh keeps it live
+    // (only while visible — see the bridge at the bottom).
+    if (cards && !bandLoaded) {
+      const container = el('server-grid-container');
+      if (container && window.htmx) {
+        bandLoaded = true;
+        htmx.trigger(container, 'prismBandLoad');
+      }
+    }
+  };
+
+  // ── card filters (status pills + search) ────────────────────────────
+  //
+  // Moved here from dashboard.html with the grid. The class lists lost their
+  // `dark:` hex halves on the way: `border-faint` / `text-faint` already
+  // resolve per theme, so `dark:border-[#6B7280]` was a pre-token leftover
+  // restating the same colour, and the long `classList.remove` list of
+  // `hover:bg-[#EF4444]`-style classes was removing classes nothing had
+  // added since the token migration.
+
+  const FILTER_STYLES = {
+    all:      ['border', 'border-line', 'text-muted'],
+    critical: ['border', 'border-critical', 'text-critical', 'hover:bg-critical', 'hover:text-white'],
+    warning:  ['border', 'border-warning', 'text-warning', 'hover:bg-warning', 'hover:text-white'],
+    healthy:  ['border', 'border-healthy', 'text-healthy', 'hover:bg-healthy', 'hover:text-white'],
+    offline:  ['border', 'border-faint', 'text-faint', 'hover:bg-faint', 'hover:text-white']
+  };
+
+  window.setStatusFilter = function (status) {
+    activeStatusFilter = status;
+    document.querySelectorAll('.status-filter-btn').forEach(function (btn) {
+      const filter = btn.getAttribute('data-filter');
+      const on = filter === status;
+      // Every class this function can add, removed first. Deriving the
+      // removal list from FILTER_STYLES rather than writing it out is what
+      // stops the two drifting — the previous version listed them by hand
+      // and the list still named colours from before the token migration.
+      Object.keys(FILTER_STYLES).forEach(function (k) {
+        FILTER_STYLES[k].forEach(function (c) { btn.classList.remove(c); });
+      });
+      btn.classList.remove('active', 'bg-brand', 'text-white', 'dark:text-page');
+      if (on) {
+        btn.classList.add('active', 'bg-brand', 'text-white', 'dark:text-page');
+      } else {
+        (FILTER_STYLES[filter] || FILTER_STYLES.all).forEach(function (c) { btn.classList.add(c); });
+      }
+    });
+    applyFilters();
+  };
+
+  window.applyFilters = function () {
+    const search = el('server-search');
+    const q = (search ? search.value : '').toLowerCase().trim();
+    document.querySelectorAll('[data-server-card]').forEach(function (card) {
+      const name = (card.getAttribute('data-server-name') || '').toLowerCase();
+      const host = (card.getAttribute('data-server-host') || '').toLowerCase();
+      const status = (card.getAttribute('data-status') || '').toLowerCase();
+      const matchesSearch = !q || name.indexOf(q) !== -1 || host.indexOf(q) !== -1;
+      const matchesStatus = activeStatusFilter === 'all' || status === activeStatusFilter;
+      // The band wraps each card in a sizing element, so hiding the card
+      // itself would leave its slot behind — a run of gaps where the filtered
+      // servers were. Hide the wrapper when there is one.
+      const slot = card.closest('.server-band-item') || card;
+      slot.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
+    });
+  };
+
+  // ── pagination, applied AFTER the sort ──────────────────────────────
+  //
+  // The one ordering that matters, and the reason this reads the DOM rather
+  // than a model: table-sort.js reorders the <tbody> elements themselves, so
+  // DOM order IS sorted order. Slicing that order gives page 1 the worst
+  // rows in the FLEET. Sorting inside a page would give page 1 the worst rows
+  // ON PAGE 1 and look identical on a fleet small enough to fit one page.
+
+  function groups() {
+    const table = el('servers-table');
+    if (!table) return [];
+    return Array.prototype.filter.call(table.tBodies, function (tb) {
+      return tb.classList.contains('server-group');
+    });
+  }
+
+  function paginate() {
+    const all = groups();
+    const bar = el('servers-pagination');
+    if (!all.length) { if (bar) bar.classList.add('hidden'); return; }
+
+    const pages = Math.max(1, Math.ceil(all.length / PAGE_SIZE));
+    if (page > pages) page = pages;
+    if (page < 1) page = 1;
+
+    const first = (page - 1) * PAGE_SIZE;
+    const last = Math.min(first + PAGE_SIZE, all.length);
+    all.forEach(function (tb, i) {
+      // display, never removal: a detached row is invisible to the sort as
+      // well as to the reader, which would silently turn "sort the fleet"
+      // into "sort this page".
+      tb.style.display = (i >= first && i < last) ? '' : 'none';
+    });
+
+    if (!bar) return;
+    // A single page needs no controls. It also must not be a dead bar that
+    // implies more exists.
+    bar.classList.toggle('hidden', pages < 2);
+
+    const countEl = bar.querySelector('[data-srv-page-count]');
+    if (countEl) {
+      countEl.textContent = {{ t.get('pagination_rows_of', '{shown} of {total} servers') | tojson }}
+        .replace('{shown}', String(last - first)).replace('{total}', String(all.length));
+    }
+    const ofEl = bar.querySelector('[data-srv-page-of]');
+    if (ofEl) {
+      ofEl.textContent = {{ t.get('pagination_page_of', 'Page {page} of {pages}') | tojson }}
+        .replace('{page}', String(page)).replace('{pages}', String(pages));
+    }
+    // Disabled WITH a reason, in one call, so an enabled button cannot keep
+    // a stale explanation of why it was not.
+    prismSetDisabled(el('servers-page-prev'),
+      page <= 1 && {{ t.get('pagination_at_first_title', 'You are on the first page') | tojson }},
+      {{ t.get('pagination_at_first_desc', 'There is nothing before this page.') | tojson }});
+    prismSetDisabled(el('servers-page-next'),
+      page >= pages && {{ t.get('pagination_at_last_title', 'You are on the last page') | tojson }},
+      {{ t.get('pagination_at_last_desc', 'There is nothing after this page.') | tojson }});
+  }
+
+  window._srvPageStep = function (delta) {
+    page += Number(delta) || 0;
+    paginate();
+  };
+
+  // ── wiring ──────────────────────────────────────────────────────────
+
+  // The order changed, so the page slice has to be recomputed from it. This
+  // listener is what makes "sort, then paginate" a fact rather than a hope
+  // about which handler happens to run first.
+  document.body.addEventListener('prism:tablesorted', function (e) {
+    if (e.target && e.target.id === 'servers-table') {
+      page = 1;   // a new order means page 1 holds different rows; staying on
+                  // page 3 of a re-sorted fleet is a position with no meaning
+      paginate();
+    }
+  });
+
+  // Keep the band live while it is on screen, and only then.
+  document.body.addEventListener('prismRefresh', function () {
+    const view = el('servers-cards-view');
+    if (!view || view.classList.contains('hidden')) return;
+    const container = el('server-grid-container');
+    if (container && window.htmx) htmx.trigger(container, 'prismBandLoad');
+  });
+
+  // Re-apply the card filters after every band swap — the swap brings in
+  // fresh cards that know nothing about the active filter.
+  document.body.addEventListener('htmx:afterSettle', function (e) {
+    if (e.target && e.target.id === 'server-grid-container') applyFilters();
+  });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    // Restore the remembered view first, then paginate: the table may be
+    // hidden, and paginating a hidden table is still correct (it sets
+    // `display` on rows, which holds when the table is shown again).
+    _srvSetView(currentView());
+    paginate();
+  });
+})();
 </script>
 
 {% endblock %}

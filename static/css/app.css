@@ -159,6 +159,44 @@
 
   /* Decorative, and carries no information the numbers do not. */
   .pulse-canvas { display: none; }
+
+  /* ── The estate vitals trace: EXEMPTION CONSIDERED AND DECLINED ──
+     Recorded here, with the two that were granted, because this is where
+     the next person will look for it.
+
+     The trace in the middle of the dashboard's quadrant beats faster and
+     harder the worse the estate is. That tempo is real information, which
+     is the strongest argument for an exemption anyone has made in this
+     file — and it still does not carry, for two reasons:
+
+       * The information is not carried ONLY by the motion. The same state
+         is stated three more times within the same circle: as a
+         percentage, as a healthy/monitored count, and as a word
+         ("Stable" / "Elevated" / "Critical" / "No signal"). The spinner's
+         carve-out exists because a frozen spinner is the ONLY thing
+         saying a request is in flight; nothing here is the only thing
+         saying anything.
+       * A progress indicator and a status display fail differently. A
+         frozen spinner asserts something false — that work is still
+         happening. A still trace asserts nothing; it is a monitor with
+         the sweep turned off, and the numbers beside it are as true as
+         they were a moment ago.
+
+     So a reduced-motion user gets the trace drawn ONCE, as a static
+     waveform at the current severity's amplitude, and it never moves.
+     Note this differs from `.pulse-canvas` above, which is removed
+     outright: that one is a 140x28 strip of topbar chrome, while this is
+     the focal point of the page, and a hole in the middle of the quadrant
+     is a worse outcome than a still line.
+
+     There is no rule to write. The trace is a <canvas> painted from
+     requestAnimationFrame, so nothing in this block can reach it —
+     `animation-duration` has no bearing on a JS render loop, and that is
+     exactly the trap worth naming: a canvas animation is silently exempt
+     from every reduced-motion rule a stylesheet can express, and looks
+     compliant because the rest of the page is. Enforcement lives in
+     static/js/vitals-monitor.js, which reads the media query itself, and
+     in tests/test_design_vitals.py, which fails if it stops. */
 }
 
 /* Status colors as CSS custom properties */
@@ -170,18 +208,22 @@
   --color-info: rgb(var(--c-info));
   --color-resolved: rgb(var(--c-healthy));
 
-  /* ── Brand palette ──
-     Violet base + turquoise accent, mirroring the aperture-ring logo and the
-     PRISM wordmark. These drive the app *chrome* (nav, focus, links, buttons,
-     top-strip) — the semantic status colours above are deliberately left alone
-     so healthy/warning/critical/info stay instantly legible. */
-  --brand-violet:         #7C3AED;
-  --brand-violet-lite:    #8B5CF6;
-  --brand-turquoise:      #2DD4BF;
-  --brand-turquoise-lite: #5EEAD4;
+  /* ── Brand gradient ──
+     The aperture-ring logo and the PRISM wordmark, violet -> turquoise.
+
+     This is all that remains of the `--brand-*` ramp. The six flat colours
+     that sat here — two violets, two turquoises and two violet tints — drove
+     the app chrome (nav, focus, links) in parallel with `--c-brand` and
+     `--c-accent`, which is how the focus ring ended up painting two rings in
+     two different violets. Every one of their 16 consumers now reads the
+     token, and the contrast rose at each of them.
+
+     A GRADIENT IS THE ONE REAL EXCEPTION, not a leftover: it needs three
+     literal stops in a fixed order, and `rgb(var(--c-brand))` cannot express
+     the 55% midpoint. Deriving the stops from the tokens would leave the
+     midpoint arbitrary anyway. Kept per-theme because the light-mode ramp is
+     invisible against the dark sidebar. */
   --brand-grad: linear-gradient(95deg, #7C3AED 0%, #8B5CF6 55%, #2DD4BF 100%);
-  --brand-violet-tint:    rgba(124, 58, 237, 0.08);
-  --brand-violet-tint-hover: rgba(124, 58, 237, 0.14);
 }
 
 .dark {
@@ -189,14 +231,9 @@
   --color-critical: rgb(var(--c-critical));
   --color-info: rgb(var(--c-info));
 
-  /* Brand lifts a step in dark mode for contrast against the slate canvas. */
-  --brand-violet:         #A78BFA;
-  --brand-violet-lite:    #C4B5FD;
-  --brand-turquoise:      #5EEAD4;
-  --brand-turquoise-lite: #99F6E4;
+  /* The gradient lifts a step in dark mode for contrast against the slate
+     canvas. Its flat siblings are gone — see the note in :root. */
   --brand-grad: linear-gradient(95deg, #A78BFA 0%, #B79CFA 55%, #5EEAD4 100%);
-  --brand-violet-tint:    rgba(167, 139, 250, 0.14);
-  --brand-violet-tint-hover: rgba(167, 139, 250, 0.22);
 }
 
 /* Status badge pill */
@@ -694,6 +731,45 @@ button.server-card:active {
   transform: translateY(0);
   box-shadow: var(--shadow-sm);
 }
+/* A keyboard gets the same answer the pointer gets. The lift above is a
+   HOVER state, and hover is unreachable from a keyboard — so tabbing across
+   a grid of 29 cards moved an invisible cursor, and the first visible focus
+   was on some control INSIDE a card, with no indication of which one. WCAG
+   2.4.7.
+
+   The ring is the same 3px brand halo that inputs use, so "where am I" reads
+   the same everywhere; the lift is repeated so focus and hover agree about
+   what a clickable card does. `:focus-visible`, not `:focus` — a mouse click
+   on a card should not leave a ring behind it. */
+/* No `outline: none` here, deliberately. The global ring at the end of this
+   file matches `a:focus-visible`, `[role="button"]:focus-visible` and
+   `[tabindex]:focus-visible` — every card is one of those — and it is both
+   later and no less specific, so an `outline: none` written here loses and
+   the card draws the outline anyway. It was written that way first; the
+   measured result was a 2px outline in `--brand-violet` (#7C3AED) sitting
+   outside a 3px halo in `--c-brand` (#5B21B6): two rings, two violets.
+   Suppressing the outline would need a specificity bump to beat a rule
+   whose entire purpose is not being suppressed, so the card adds its halo
+   and lift ON TOP of the shared ring instead, which is what inputs already
+   do. The real fix is one focus idiom and one violet — see the note on the
+   global block. */
+.card-clickable:focus-visible,
+a.server-card:focus-visible,
+button.server-card:focus-visible {
+  border-color: rgb(var(--c-brand));
+  box-shadow: 0 0 0 3px rgb(var(--c-brand) / 0.25), var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+/* No rule here for the elements that gained a `tabindex` this round — table
+   rows, list pickers, tag pills. One was written and then removed: the
+   global ring near the end of this file already carries
+   `[tabindex]:focus-visible`, so every one of them was ringed the moment it
+   became focusable, and a second declaration would have been a second
+   source of truth for one thing. Measured before removing it, not assumed.
+
+   That global block is also why the rule above no longer says
+   `outline: none`. See the note there. */
 
 /* ── Disabled: faded, still readable, and it says why ───────────────────
    `opacity: 0.5` is the reflex and it is wrong — it drags a 7.6:1 label to
@@ -746,7 +822,15 @@ fieldset[disabled], optgroup[disabled], option[disabled],
 .skeleton {
   position: relative;
   overflow: hidden;
-  border-radius: var(--radius-sm, 0.5rem);
+  /* 8px, matching `borderRadius.sm` in base.html's Tailwind config — the
+     corner scale lives there as class names, not as custom properties.
+     This was `var(--radius-sm, 0.5rem)`, and `--radius-sm` is defined
+     nowhere: the fallback was doing all the work and the reference implied
+     a token that a reader would go looking for. It rendered correctly by
+     coincidence, which is the same trap Phase 2 removed from motion, where
+     a template's `duration-200` and a stylesheet's `0.2s` were independent
+     numbers that happened to agree. */
+  border-radius: 0.5rem;
   background: rgb(var(--c-raised));
   /* Nothing inside is real yet. */
   color: transparent;
@@ -818,20 +902,38 @@ fieldset[disabled], optgroup[disabled], option[disabled],
   color: rgb(var(--c-ink));
 }
 .sidebar-link-active {
-  background: var(--brand-violet-tint);
-  color: var(--brand-violet);
+  background: rgb(var(--c-brand) / 0.08);
+  color: rgb(var(--c-brand));
 }
 .sidebar-link-active:hover {
-  background: var(--brand-violet-tint-hover);
-  color: var(--brand-violet);
+  background: rgb(var(--c-brand) / 0.14);
+  color: rgb(var(--c-brand));
 }
+/* Dark restates BOTH the wash and the ink, and neither is redundant.
+
+   The ALPHA genuinely differs: 0.08 of a deep violet on white is a legible
+   tint; 0.08 of a pale violet on a near-black page is nothing at all.
+
+   The COLOUR looks redundant and is not, which cost a real defect. `brand` is
+   theme-aware, so `.sidebar-link-active { color: rgb(var(--c-brand)) }` above
+   does resolve to the pale violet in dark — but it is (0,1,0) and
+   `.dark .sidebar-link { color: rgb(var(--c-muted)) }` at the top of this
+   block is (0,2,0), so the muted rule wins and the ACTIVE link renders
+   identically to its inactive neighbours. Measured, not reasoned: dropping
+   this declaration as a "second source of truth" rendered rgb(163,178,199)
+   where rgb(196,181,253) was intended, and no test saw it because the
+   contrast figures had been computed from the token table rather than read
+   off the running page.
+
+   Measured on the rendered link: 7.81:1 light, 7.44:1 dark; hover 7.02:1 and
+   6.07:1 — up from 5.06/5.40 and 4.61/4.62 under the retired ramp. */
 .dark .sidebar-link-active {
-  background: var(--brand-violet-tint);
-  color: var(--brand-violet-lite);
+  background: rgb(var(--c-brand) / 0.14);
+  color: rgb(var(--c-brand));
 }
 .dark .sidebar-link-active:hover {
-  background: var(--brand-violet-tint-hover);
-  color: var(--brand-violet-lite);
+  background: rgb(var(--c-brand) / 0.22);
+  color: rgb(var(--c-brand));
 }
 /* Left accent bar — violet→turquoise, HUD-style, grows in on activation. */
 .sidebar-link { position: relative; }
@@ -895,38 +997,16 @@ fieldset[disabled], optgroup[disabled], option[disabled],
   color: rgb(var(--c-warning-strong));
 }
 
-/* ── Breadcrumb ── */
-.breadcrumb {
-  max-width: 80rem; /* matches max-w-7xl */
-  margin: 0 auto;
-  padding: 12px 16px 0;
-  font-size: 13px;
-  color: rgb(var(--c-muted));
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.dark .breadcrumb {
-  color: rgb(var(--c-muted));
-}
-.breadcrumb a {
-  color: var(--brand-violet);
-  text-decoration: none;
-}
-.breadcrumb a:hover {
-  text-decoration: underline;
-}
-.dark .breadcrumb a {
-  color: var(--brand-violet-lite);
-}
-.breadcrumb .breadcrumb-sep {
-  color: rgb(var(--c-faint));
-  font-size: 11px;
-  user-select: none;
-}
-.dark .breadcrumb .breadcrumb-sep {
-  color: #6B7280;
-}
+/* The breadcrumb block that stood here is GONE, with its `{% block breadcrumb %}`
+   in base.html. Seven rules styled markup no template ever produced: the Jinja
+   block was never overridden, so `document.querySelectorAll('.breadcrumb')`
+   returned 0 on every page. Measured, not assumed.
+
+   Removed together rather than separately on purpose. Deleting the CSS and
+   keeping the extension point would leave the next person a hook that renders
+   unstyled, which is the half-existing state this sheet has been paying for
+   all round. If breadcrumbs are wanted, they come back as a decision with
+   markup, not as a stub someone finds. */
 
 .sidebar-collapsed nav {
   padding-left: 6px;
@@ -1022,22 +1102,53 @@ fieldset[disabled], optgroup[disabled], option[disabled],
    reduced motion expect NO continuous animation. */
 /* ── Hover dropdown panel ───────────────────────────────────────────── */
 
+/* The SHELL: rounds, borders, clips — and does not scroll.
+   It used to do both. Chromium paints `::-webkit-scrollbar` in the padding
+   box and does not clip it to `border-radius`, so a rounded element that
+   scrolls itself gets a straight 10px bar running past its own corners. This
+   panel is capped at the viewport height precisely so that it scrolls on a
+   short screen, which is when the artefact shows.
+
+   `display: flex` with the child at `min-height: 0` rather than a percentage
+   or an inherited `max-height` on the child: that is the pattern that works
+   without depending on how a percentage height resolves against a parent
+   whose own height is auto. It also means the display TYPE lives here rather
+   than in pulse-monitor.js, which now shows the panel by clearing its inline
+   `display` instead of setting `block` — one place decides how the panel
+   lays out, and it is this one. */
 .pulse-panel {
   position: fixed;
   top: 56px;           /* directly under the 56px (h-14) topbar */
   right: 12px;
   width: 480px;
   max-height: calc(100vh - 80px);
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: rgb(var(--c-card));
   border: 1px solid rgb(var(--c-line));
   border-radius: 8px;
   box-shadow: var(--shadow-lg);
-  padding: 12px 14px;
   z-index: 50;
   font-size: 12px;
   color: rgb(var(--c-ink));
   animation: pulse-panel-in var(--dur-fast) var(--ease-out);
+}
+
+/* The element that scrolls, and the element `renderPanel()` writes into.
+   It has to be created ONCE and survive every rewrite, which is the whole
+   reason this repair is not two lines of CSS: the panel's content is
+   replaced wholesale on every poll — 1.5s in steady state while it is open —
+   and a scroll container that gets replaced resets `scrollTop` each time,
+   throwing the reader back to the top mid-read. Before this split the panel
+   itself was the scroller and the rewrite never touched it, so scroll
+   position survived by accident of structure; now it survives on purpose.
+   pulse-monitor.js creates it in init(). The padding lives here so the
+   scrollbar is drawn at the shell's inner edge, where the radius clips it. */
+.pulse-panel-scroll {
+  overflow-y: auto;
+  min-height: 0;
+  padding: 12px 14px;
 }
 .dark .pulse-panel {
   background: rgb(var(--c-card));
@@ -1186,26 +1297,50 @@ fieldset[disabled], optgroup[disabled], option[disabled],
   text-align: center;
   font-size: 11px;
   font-weight: 500;
-  color: var(--brand-violet);
+  color: rgb(var(--c-brand));
   text-decoration: none;
 }
+/* Hover moves violet -> accent in BOTH themes. It only did so in dark before,
+   because the ramp had a lighter violet to reach for in light and turquoise
+   was the only step available on the dark side — an inconsistency that came
+   from the palette's shape rather than from a decision. Unifying it also
+   fixes a real failure: the old light hover (#8B5CF6 on white) measured
+   4.23:1 on 11px text, under AA. Now 5.47:1 light and 9.73:1 dark.
+
+   The dark hover does drop, 14.37:1 -> 9.73:1. Still comfortably past AAA,
+   and worth it for one hover colour instead of two. */
 .pulse-cta:hover {
-  color: var(--brand-violet-lite);
+  color: rgb(var(--c-accent));
   text-decoration: underline;
 }
-.dark .pulse-cta {
-  border-top-color: rgb(var(--c-line));
-  color: var(--brand-violet-lite);
-}
-.dark .pulse-cta:hover {
-  color: var(--brand-turquoise-lite);
-}
+/* The `.dark .pulse-cta` rule that stood here is gone. Its border-top-color
+   restated `--c-line`, which the base rule above already sets to the same
+   token, and its colour reached the ramp's lighter violet — which `brand`
+   now supplies per theme on its own. */
 
 /* ── Accessibility: a single global keyboard-focus ring ──
    The app had zero :focus styles, so keyboard users had no idea where they
-   were. :focus-visible only shows the ring for keyboard (not mouse) focus. */
+   were. :focus-visible only shows the ring for keyboard (not mouse) focus.
+
+   RESOLVED, and this is the note that used to say OPEN. This block spent a
+   round on `--brand-violet` (#7C3AED light / #A78BFA dark) rather than the
+   `--c-brand` token, as the last live consumer of the half-migrated
+   `--brand-*` ramp. Because it is last in the file and matches `a`,
+   `button`, `[role="button"]`, `[tabindex]` and every form control, it won
+   over the tokenised per-component focus styles above — so inputs and cards
+   each painted TWO rings in TWO different violets. Nothing looked broken,
+   which is why it survived a round that unified 25 rings on brand.
+
+   The ramp is gone and both rings are now `brand`. They still compose — a
+   2px outline outside a 3px halo — but in ONE colour, which reads as a
+   single thicker ring rather than as two. That is deliberate: suppressing
+   the outline here would need a specificity bump to beat a rule whose whole
+   purpose is not being suppressed (see the note on .card-clickable).
+
+   Contrast, measured rather than assumed: 8.20:1 on the light page and
+   10.91:1 on the dark one, against 5.20 and 7.40 for the retired ramp. */
 :focus-visible {
-  outline: 2px solid var(--brand-violet);
+  outline: 2px solid rgb(var(--c-brand));
   outline-offset: 2px;
   border-radius: 3px;
 }
@@ -1213,7 +1348,7 @@ fieldset[disabled], optgroup[disabled], option[disabled],
 a:focus-visible, button:focus-visible, [role="button"]:focus-visible,
 input:focus-visible, select:focus-visible, textarea:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid var(--brand-violet);
+  outline: 2px solid rgb(var(--c-brand));
   outline-offset: 2px;
 }
 
@@ -1375,3 +1510,413 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
    containers. Style resolution runs before paint, so a newly-inserted banner
    is hidden the instant it lands, with no timing dependency at all. */
 body.healthy-dismissed #healthy-banner { display: none !important; }
+
+/* The dashboard's content column. 120rem rather than the default 80rem: the
+   quadrant is built to be read at 2560 and the default left 1056px of empty
+   grey either side of it at that width — measured, not estimated. Capped
+   rather than unbounded so the activity feed's rows do not run the full width
+   of a wall screen, where a 2200px line of text is harder to scan than a
+   1900px one, not easier. Below ~2000px viewports this changes nothing: the
+   column is already narrower than the cap. */
+.page-dashboard { max-width: 120rem; }
+
+/* ── The vitals quadrant: four cards, one circle, overlapping ──────────────
+
+   Owner's sketch: a 2x2 of rounded cards with a large circle in the centre
+   that sits ABOVE them in z-order and visually intrudes into all four. The
+   circle is the focal point; the cards frame it.
+
+   TARGET VIEWPORTS ARE DESKTOP ONLY, 1280 -> 2560. No mobile layout is
+   wanted, and the requirement that does not survive being ignored is the
+   TOP end: a wall screen must not show a fixed-width island of content in a
+   sea of grey. So every size here is a `clamp()` on `vw`, not a breakpoint
+   ladder — the quadrant and the circle grow continuously with the viewport
+   and the cards stay the same shape at both ends.
+
+   WHY THE CIRCLE DOES NOT COVER ANYTHING, which is the whole problem with
+   an overlapping centrepiece: each card aligns its content toward its OUTER
+   corner, away from the middle. `--tl` keeps its content top-left, `--br`
+   bottom-right, and so on, so the circle always intrudes on the one corner
+   of each card that is deliberately empty. Padding alone cannot do this —
+   the reach of the circle into a card grows with the viewport, so a padding
+   that clears it at 1280 wastes a third of the card at 2560, and one that
+   fits at 2560 is overlapped at 1280. Alignment scales for free.
+
+   BELOW 1280 the geometry is abandoned rather than adapted: the grid
+   becomes one column, the circle stops being positioned and takes its turn
+   in the flow. That is the "it may simply stack" the brief asks for, and it
+   is one media query rather than a second layout to maintain. */
+
+.vitals-quadrant {
+  position: relative;
+  /* The circle's diameter. Everything else in this block is derived from
+     it, so there is exactly one number to change. 22vw tracks the viewport
+     between the two clamp ends: it is the max at 1893px and wider, so a 2K
+     wall screen gets the biggest circle the design allows and then stops
+     growing — past that the cards take the extra width, which is the right
+     trade for a screen you read from three metres away. */
+  --vitals-dia: clamp(14rem, 22vw, 25rem);
+  --vitals-gap: clamp(0.75rem, 1.2vw, 1.5rem);
+  /* Row height floor. `auto` in the grid's minmax lets a card with several
+     status chips grow past this; nothing shrinks below it, so the circle
+     always has a full quadrant to sit in. */
+  --vitals-row: clamp(9rem, 11vw, 13rem);
+}
+
+.vitals-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  /* `1fr` rather than `auto` as the max, and this is the difference between
+     the sketch and something near it. In an auto-height grid, equal `fr`
+     tracks all resolve to the LARGEST row's content height, so both rows
+     match; with `auto` each row sizes itself, and measured at 1280 that gave
+     150px and 212px — a 62px difference, which put the cards' junction 26px
+     above the quadrant's midpoint. The circle is centred on the quadrant, so
+     it intruded noticeably further into the bottom two cards than the top
+     two, and the asymmetry moved every time a card's content changed height.
+     Equal rows put the junction and the centre in the same place by
+     construction. */
+  grid-auto-rows: minmax(var(--vitals-row), 1fr);
+  gap: var(--vitals-gap);
+}
+
+.vitals-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 1rem;
+  border: 1px solid rgb(var(--c-line));
+  background: rgb(var(--c-card));
+  padding: clamp(1rem, 1.4vw, 1.75rem);
+  /* The inner-corner clearance. Half the circle minus half the gap is how
+     far it reaches past the grid's centre lines and into each card; 0.62 of
+     that is enough to clear the arc where content actually sits, since the
+     arc curves away from the corner it is nearest. A full 1.0 would reserve
+     the circle's bounding box and waste the two thirds of it that is
+     outside the arc. */
+  --vitals-clear: calc((var(--vitals-dia) - var(--vitals-gap)) / 2 * 0.62);
+}
+
+/* Content pinned to the outer corner. `justify-content` runs the block
+   axis here because .vitals-card is a column flexbox. */
+.vitals-card--tl { align-items: flex-start; justify-content: flex-start; text-align: left; padding-right: var(--vitals-clear); }
+.vitals-card--tr { align-items: flex-end;   justify-content: flex-start; text-align: right; padding-left:  var(--vitals-clear); }
+.vitals-card--bl { align-items: flex-start; justify-content: flex-end;   text-align: left; padding-right: var(--vitals-clear); }
+.vitals-card--br { align-items: flex-end;   justify-content: flex-end;   text-align: right; padding-left:  var(--vitals-clear); }
+
+.vitals-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgb(var(--c-muted));
+  margin-bottom: 0.5rem;
+}
+
+/* The `--tr` / `--br` cards read right-to-left, so their icon belongs on
+   the right of the label rather than orphaned at the far edge. */
+.vitals-card--tr .vitals-card-head,
+.vitals-card--br .vitals-card-head { flex-direction: row-reverse; }
+
+.vitals-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  line-height: 1.05;
+}
+
+.vitals-figure-value {
+  font-size: clamp(1.75rem, 2.4vw, 2.75rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.vitals-figure-total {
+  font-size: clamp(1rem, 1.2vw, 1.35rem);
+  font-weight: 600;
+  color: rgb(var(--c-faint));
+  font-variant-numeric: tabular-nums;
+}
+
+.vitals-figure-label {
+  font-size: 0.8125rem;
+  color: rgb(var(--c-muted));
+  margin-top: 0.125rem;
+}
+
+.vitals-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.625rem;
+}
+
+/* A chip is a tinted surface with a `-strong` label on it — the same pairing
+   as .badge, and the same reason: `test_every_status_label_clears_aa_on_its_own_tint`
+   measures that pair in both themes. */
+.vitals-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 0.5rem;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.vitals-chip--critical { background: rgb(var(--c-critical-tint)); color: rgb(var(--c-critical-strong)); }
+.vitals-chip--warning  { background: rgb(var(--c-warning-tint));  color: rgb(var(--c-warning-strong)); }
+/* Offline and never-measured are both "no signal", and neither is an alarm.
+   They differ in what the operator can do about it, which is why they are
+   separate chips rather than one, but they share the neutral surface. */
+.vitals-chip--dead     { background: rgb(var(--c-raised)); color: rgb(var(--c-muted)); }
+.vitals-chip--unknown  { background: rgb(var(--c-raised)); color: rgb(var(--c-faint)); }
+
+/* The two unbuilt cards. `aria-disabled="true"` already dims them to 0.72
+   via the global disabled rule, so nothing here repeats that. */
+.vitals-soon {
+  font-size: clamp(1rem, 1.1vw, 1.25rem);
+  font-weight: 600;
+  color: rgb(var(--c-muted));
+}
+
+.vitals-soon-desc {
+  font-size: 0.8125rem;
+  color: rgb(var(--c-faint));
+  margin-top: 0.25rem;
+  max-width: 22ch;
+}
+
+/* ── The circle ──
+   Absolutely positioned against .vitals-quadrant, dead centre, above the
+   cards. `pointer-events: none` on purpose: it carries no control, and
+   leaving it hit-testable would steal hover from whichever card corner it
+   covers — including the two that show their reason on hover. */
+.vitals-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: var(--vitals-dia);
+  height: var(--vitals-dia);
+  z-index: 2;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border-radius: 50%;
+  /* `raised`, not `card`. Measured on screen: a disc filled with `card` is
+     the same colour as the cards it overlaps, so the overlap reads as a ring
+     drawn ON them rather than as a circle sitting ABOVE them, and the shadow
+     cannot rescue it — a dark-mode shadow works by darkening what is behind
+     it, and there is nothing left to darken on a near-black page. One step up
+     the elevation scale says "in front" in the vocabulary the rest of the app
+     already uses. */
+  background: rgb(var(--c-raised));
+  /* Two rings: a hairline at the edge of the disc and a wider tinted halo
+     outside it, so the circle reads as sitting ON the cards rather than
+     being a hole cut in them. The halo colour is the severity's, set by the
+     modifiers below. */
+  border: 1px solid rgb(var(--c-line));
+  box-shadow: 0 0 0 clamp(6px, 0.55vw, 12px) rgb(var(--vitals-halo) / 0.14),
+              var(--shadow-lg);
+  --vitals-halo: var(--c-accent);
+}
+
+.vitals-core--calm     { --vitals-halo: var(--c-healthy); }
+.vitals-core--elevated { --vitals-halo: var(--c-warning); }
+.vitals-core--urgent   { --vitals-halo: var(--c-critical); }
+/* Three states mean "no beat", and they are three different pieces of news:
+   `flat` is an estate that has gone dark, `idle` one that was never
+   configured, `unmeasured` one that is configured and has not reported yet.
+   The ring has no way to carry that distinction — a halo can say "not well",
+   not "not yet" — so it stays neutral for all three and the readout's label
+   says which. Deliberately NOT three shades of faint: a colour difference
+   nobody can name is a colour difference nobody can read. */
+.vitals-core--flat,
+.vitals-core--idle,
+.vitals-core--unmeasured { --vitals-halo: var(--c-faint); }
+
+.vitals-core-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(var(--c-faint));
+}
+
+.vitals-core-percent {
+  font-size: clamp(2.5rem, 3.6vw, 4rem);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: rgb(var(--c-ink));
+}
+
+.vitals-core-count {
+  font-size: clamp(0.75rem, 0.85vw, 0.9375rem);
+  color: rgb(var(--c-muted));
+  font-variant-numeric: tabular-nums;
+}
+
+.vitals-core-state {
+  font-size: clamp(0.75rem, 0.8vw, 0.875rem);
+  font-weight: 600;
+  color: rgb(var(--vitals-halo));
+}
+
+/* The trace. Sized in CSS pixels here; vitals-monitor.js multiplies by
+   devicePixelRatio for the backing store. A block display stops the inline
+   baseline gap from pushing the readout off centre. */
+.vitals-canvas {
+  display: block;
+  width: 62%;
+  height: clamp(1.75rem, 2.4vw, 2.75rem);
+  margin-top: 0.25rem;
+  /* The trace's ink, and the ONLY place the severity colour is expressed for
+     the canvas. vitals-monitor.js reads `getComputedStyle(canvas).color`
+     rather than mapping severity to a token itself, so there is one mapping
+     (the .vitals-core--* modifiers above) instead of two that can drift.
+     It has to be a real property, not a custom one: a real property's
+     computed value is always a resolved `rgb(...)`, whereas reading a custom
+     property back gives you whatever token stream was written into it. */
+  color: rgb(var(--vitals-halo));
+}
+
+/* ── /servers: the card view as a horizontally sliding band ────────────────
+
+   The server cards moved off the dashboard and became one of two view modes
+   here. Owner's decision: a horizontal band, not a vertical grid, and the
+   TYPE GROUPING IS KEPT — the segment headings the old grid stacked are laid
+   ALONG the band instead, so you slide past headed runs of cards and
+   alphabetical ordering applies within each run.
+
+   The scroller carries no `border-radius`, and that is a rule rather than an
+   accident: Chromium paints `::-webkit-scrollbar` in the padding box and does
+   NOT clip it to the radius, so a rounded scroll container gets a straight
+   bar running past its own corners. tests/test_design_scroll.py fails any
+   element that is both. The cards inside are rounded; the thing that scrolls
+   is not. */
+
+.server-band {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Room for the focus ring on the first and last card, which a scroll
+     container clips against its own edge. Measured with a real Tab key and
+     :focus-visible confirmed: the card rings at a 3px box-shadow spread, and
+     4px of padding leaves it 4px of room.
+     `scroll-snap-type: x proximity` was here, with `scroll-snap-align: start`
+     on the segment, and it CANCELLED this padding: snapping aligns the
+     segment's start edge to the scrollport's start, which pulled scrollLeft to
+     4 and left the first card flush with the clip edge — ring spread 3px
+     against 0px of room. `scroll-padding-inline`, which exists to inset the
+     snapport for exactly this, was measured and did not help (scrollLeft
+     stayed 4). Removing the snap did: scrollLeft 0, gap 4px, ring intact.
+     No loss — the brief asked for a sliding band, and free scrolling is that;
+     snapping was an unrequested embellishment that cost a focus ring. */
+  padding: 0.25rem 0.25rem 0.75rem;
+}
+
+.server-band-segment {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+}
+
+/* `.server-band-segment > h3 { position: sticky; left: 0.25rem }` was here,
+   and it did NOTHING. Measured: scrolling the band 250px moved the segment
+   -246px and the heading -246px — it computed as `sticky` and reached
+   nothing, because the heading fills its containing block (3,200px, the
+   segment's full width) and a sticky element with no room inside its
+   containing block has nowhere to slide.
+   Removed rather than repaired. A rule that is installed and governs nothing
+   is the failure this repository keeps producing (OPS-LEARNINGS §2.1 #1), and
+   the comment beside it claimed an outcome — "sliding never leaves a run of
+   cards under the wrong label" — that was false for exactly the segments
+   long enough to matter.
+   THE UNDERLYING GAP IS REAL AND UNFIXED: scroll into the middle of a
+   12-card segment and its heading has left the viewport, so you are looking
+   at cards with no visible label. Fixing it properly means a heading narrow
+   enough to slide (max-content or absolutely positioned) which then overlaps
+   the cards it labels — a design decision about a floating label, not a
+   CSS repair. */
+
+.server-band-cards {
+  display: flex;
+  gap: 1rem;
+}
+
+.server-band-item {
+  flex: 0 0 auto;
+  width: clamp(15rem, 18vw, 20rem);
+}
+
+/* ── The cards / table toggle ──
+   Styled off `aria-pressed`, not off a separate `.active` class. Two state
+   carriers is how the announced state and the visible state drift apart, and
+   the one a sighted reviewer checks is not the one a screen reader reads.
+
+   EVERY SELECTOR HERE IS ELEMENT-QUALIFIED, and that is not decoration.
+   `.servers-view-btn[aria-pressed="true"]` is (0,2,0) and so is Tailwind's
+   `.hover\:bg-page:hover`; at equal specificity the later sheet wins, and
+   Tailwind's is injected after this one. The markup carried `hover:bg-page`,
+   so hovering the PRESSED button replaced its violet fill with the near-black
+   page colour while this block's `color` — also near-black, for contrast
+   against the violet — stayed put. Near-black on near-black: the label
+   vanished and the segment read as an empty box. `button.servers-view-btn…`
+   is (0,3,1) and wins without `!important`.
+   Third time this trap has landed in this file: `padding-right` on `select`
+   lost to `px-2`, `[disabled]`'s cursor lost to preflight, and now this. Note
+   the shape each time — a rule that applies PARTIALLY is far harder to see
+   than one that does not apply at all, because the half that works tells you
+   it is working. The utility has been removed from the markup as well, so
+   there is nothing left to fight: this block owns the toggle's appearance. */
+button.servers-view-btn {
+  /* Colour only. `transition: all` would sweep in the layout properties too,
+     and this control's width changes when its label does. */
+  transition: background-color var(--dur-fast) var(--ease-standard),
+              color var(--dur-fast) var(--ease-standard);
+}
+
+/* Hover belongs to the button you are NOT on. The pressed one is the current
+   view — hovering it promises a change that clicking it will not deliver, and
+   `raised` under a violet fill would be invisible anyway. `raised` is one step
+   up the elevation scale from both `card` and `page`, so it reads as a hover
+   in either theme; `bg-page` did not, because in dark mode the page and the
+   hover fill were the same colour. */
+button.servers-view-btn:not([aria-pressed="true"]):hover {
+  background: rgb(var(--c-raised));
+}
+
+button.servers-view-btn[aria-pressed="true"] {
+  background: rgb(var(--c-brand));
+  color: rgb(var(--c-card));
+}
+
+.dark button.servers-view-btn[aria-pressed="true"] {
+  /* The brand lifts to a pale violet in dark mode, so white-on-brand inverts
+     to unreadable — the same trap the filled turquoise button hit. Near-black
+     ink on the pale fill instead. */
+  color: rgb(var(--c-page));
+}
+
+/* Below the design's lower bound the overlap is abandoned, not adapted. */
+@media (max-width: 1279px) {
+  .vitals-grid { grid-template-columns: 1fr; }
+  .vitals-card { padding-left: clamp(1rem, 1.4vw, 1.75rem); padding-right: clamp(1rem, 1.4vw, 1.75rem); }
+  .vitals-card--tr, .vitals-card--br { align-items: flex-start; text-align: left; }
+  .vitals-card--tr .vitals-card-head,
+  .vitals-card--br .vitals-card-head { flex-direction: row; }
+  .vitals-core {
+    position: static;
+    transform: none;
+    margin: 0 auto var(--vitals-gap);
+  }
+}

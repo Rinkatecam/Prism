@@ -1,9 +1,16 @@
 <!-- Activity Feed - consolidated events timeline -->
+{% from "partials/_empty_state.html" import empty_state %}
 {% if events | length == 0 %}
-<div class="bg-card rounded-lg p-6 border border-line text-center">
-  <i data-lucide="clock" class="w-8 h-8 mx-auto mb-2 text-muted"></i>
-  <p class="text-sm text-muted">{{ t.no_events }}</p>
-</div>
+{# This is the empty state DESIGN_PHASE_3_SCOPE.md §4 names as the one that
+   fails review: it said "no events" and stopped. An empty feed on a healthy
+   fleet is good news, and without the second line it reads as a data
+   failure — the operator cannot tell "nothing has gone wrong" from "the
+   collector is not reporting". #}
+{{ empty_state(
+     'clock',
+     t.no_events,
+     t.get('no_events_hint', 'Nothing has needed attention recently — alerts and status changes will appear here as they happen'),
+     card=true) }}
 {% else %}
 {# The scroller is the INNER div. A rounded element that scrolls has its
    scrollbar painted straight across its own corners — Chromium does not clip

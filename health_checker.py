@@ -48,7 +48,59 @@ def tcp_probe(host, port, timeout=5):
         return {"status": "down", "response_time_ms": round(elapsed_ms, 2), "error": msg}
 
 
-def http_check(host, port, path="/", use_ssl=False, expected_status=200, timeout=10):
+def _ssl_context(verify_tls: bool = True) -> ssl.SSLContext:
+    """The TLS context for an HTTPS health check.
+
+    `verify_tls=True` is the default and validates the chain AND the hostname.
+    Anything less proves that something answered on the port, not that it was
+    the service you meant: a mis-issued or expired certificate, or a
+    machine-in-the-middle, all read as a clean "up".
+
+    `verify_tls=False` exists because internal endpoints with self-signed
+    certificates are ordinary, and a monitor that turns a wave of them red is
+    a monitor people switch off. It is set per check, in a row, by an operator
+    who knows which endpoint it is — which is the difference between this and
+    the unconditional `CERT_NONE` it replaces.
+
+    ORDER MATTERS on the disable path: `check_hostname` must be cleared BEFORE
+    `verify_mode` is lowered. Python raises `ValueError` if a context still
+    requires hostname checking when verification is switched off, and the two
+    lines look independent.
+    """
+    ctx = ssl.create_default_context()
+    if not verify_tls:
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+    return ctx
+
+
+def http_check(host, port, path="/", use_ssl=False, expected_status=200,
+               timeout=10, verify_tls=True):
+    """Probe an HTTP(S) endpoint. Wrapper — see `_http_check` for the body.
+
+    `tls_verified` is stamped onto the result HERE, in one place, rather than
+    into each of the six return dicts in `_http_check`. Adding a key to five of
+    six returns is precisely the "the rule was updated, the carriers were not"
+    failure this repository keeps producing, and the one that would go
+    unnoticed is an error path — which is exactly where a caller most wants to
+    know whether the certificate was checked.
+
+    `None` rather than `False` for a plain HTTP check: there was no certificate
+    to verify, which is a different statement from "there was one and we did
+    not look at it". This line is the only place that distinction is made —
+    an earlier version also computed it inside `_http_check`, where nothing
+    read it, so the comment explaining the rule sat on dead code while the
+    live rule was here.
+    """
+    result = _http_check(host, port, path=path, use_ssl=use_ssl,
+                         expected_status=expected_status, timeout=timeout,
+                         verify_tls=verify_tls)
+    result["tls_verified"] = bool(verify_tls) if use_ssl else None
+    return result
+
+
+def _http_check(host, port, path="/", use_ssl=False, expected_status=200,
+                timeout=10, verify_tls=True):
     """Perform an HTTP health check and return status details.
 
     Args:
@@ -65,11 +117,7 @@ def http_check(host, port, path="/", use_ssl=False, expected_status=200, timeout
     scheme = "https" if use_ssl else "http"
     url = f"{scheme}://{host}:{port}{path}"
 
-    ctx = None
-    if use_ssl:
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
+    ctx = _ssl_context(verify_tls) if use_ssl else None
 
     start = time.perf_counter()
     try:

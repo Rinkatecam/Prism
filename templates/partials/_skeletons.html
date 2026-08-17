@@ -1,0 +1,255 @@
+{# ── Skeleton shapes — the ghost of what is coming ──────────────────────
+
+   `.skeleton` / `.skeleton-text` / `.data-settled` landed in app.css last
+   round with ZERO carriers in any template. This file is the carrier. It
+   exists as macros rather than inline blobs so that a region's ghost and
+   its real markup can be compared side by side, and so there is ONE place
+   to change when a partial's layout moves.
+
+   Two things about the CSS that are easy to get wrong:
+
+   1. `.skeleton-text` sets ONLY `height`/`margin`. The background and the
+      sweep live on `.skeleton`. A bare `class="skeleton-text"` is an
+      invisible 0.75em box — always pair them.
+   2. `.skeleton-text:last-child { width: 60% }` is (0,2,0) and beats a
+      Tailwind `w-*` utility (0,1,0), so the ragged last line cannot be
+      overridden from the markup. Where an exact width is wanted, use
+      `.skeleton` with `h-*`/`w-*` and leave `.skeleton-text` out — those
+      utilities are (0,1,0) against `.skeleton`'s own (0,1,0) and Tailwind's
+      sheet is injected later, so they win. Mixing the two fights itself.
+
+   Sizes below are MEASURED off the rendered partial, not read off the
+   source. Reading the source got two of them wrong: `.metric-value` is
+   declared `font-size: 32px` but renders 24px high, and the server card
+   carries a sparkline strip and a timestamp row that are easy to miss in a
+   300-line template — together 55px, or 22% of the card.
+
+     stat card    p-5(40) + icon row 16 + mb-1 4 + metric 24 + border 2 = 86
+     server card  p-4(32) + header 20 + mb-3 12 + metrics 128
+                  + sparkline 24 + mt-2 8 + stamp 16 + mt-2 8         = 248
+     feed card    scroller capped at max-h-[400px] + border 2         = 402
+     feed row     py-3(24) + content 57                               =  81
+
+   The old placeholders were `h-24` and `h-48` — the stat box was 10px too
+   tall and the server card 57px too short. They also used `animate-pulse`
+   on raw `bg-gray-200 dark:bg-gray-700`: outside the token system, and an
+   opacity pulse on up to eight cards where a single background sweep
+   composites.
+
+   Every macro's root carries `aria-hidden="true"`. A ghost has nothing to
+   say to a screen reader, and it is removed wholesale by the swap. #}
+
+{# `stat_cards()` used to be here — the ghost for the four flat stat boxes at
+   the top of the dashboard, measured at 86px against a real 86px. The
+   quadrant replaced that region, and `/partials/status-overview` went with
+   it, so the macro was deleted rather than kept for a caller that no longer
+   exists. A skeleton with no carrier is the exact thing this file was
+   written to fix. #}
+
+{# The dashboard's vitals quadrant — four cards in a 2x2 with the estate
+   circle overlapping their inner corners.
+
+   The one region in the app whose ghost gets the total height right for
+   free, and it is worth saying why rather than leaving it as luck: the
+   quadrant's height is set by `.vitals-grid`'s own
+   `grid-auto-rows: minmax(var(--vitals-row), auto)` in app.css, not by its
+   content, so the shell reserves the full height as long as the ghost cards
+   are the grid's children. The `auto` half of that minmax is what a taller
+   real card grows into — a fleet with four status chips wrapping to two
+   lines — so the ghost is a floor, not a promise of the exact pixel.
+
+   The corner classes are carried through. They are not decoration: they
+   set which way each card's content is aligned, so a ghost without them
+   fills the corners the circle is about to cover, and the fill visibly
+   moves when the real cards land.
+
+     card    p-5(40) + head 20 + figure 30 + label 16 + chips 20 = 126
+             floored at --vitals-row (11rem = 176px) #}
+{% macro vitals_cards() %}
+<div class="vitals-grid" aria-hidden="true">
+  {% for corner in ['tl', 'tr', 'bl', 'br'] %}
+  <div class="vitals-card vitals-card--{{ corner }}">
+    <div class="vitals-card-head">
+      <div class="skeleton w-4 h-4"></div>
+      <div class="skeleton h-3 w-16"></div>
+    </div>
+    {# h-8 for the figure: `.vitals-figure-value` is 30px of line box at the
+       1280px end of the clamp, not the 36px its font-size suggests. #}
+    <div class="skeleton h-8 w-20"></div>
+    <div class="skeleton h-4 w-14 mt-1"></div>
+    <div class="skeleton h-5 w-24 mt-2"></div>
+  </div>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{# Critical issues. Shape-matched to the ALL-HEALTHY banner rather than to
+   the issue grid, deliberately: the banner is both the common case and the
+   smaller one, so the region grows into its content instead of collapsing.
+   A tall ghost that resolves to a one-line banner is a worse jump than a
+   short ghost that resolves to a grid. #}
+{% macro banner() %}
+<div class="bg-card rounded-lg p-4 border border-line flex items-center gap-3" aria-hidden="true">
+  <div class="skeleton w-5 h-5 flex-shrink-0"></div>
+  <div class="skeleton h-4 w-48"></div>
+</div>
+{% endmacro %}
+
+{# Server band — /servers' card view. Header row (name + badge), four metric
+   rows each a label/value line over an 8px bar, then the sparkline strip and
+   the timestamp: the same rhythm as server_card.html, so the fill lands on
+   the lines the eye is already tracking.
+
+   This was `server_cards(n)`, a 4-column grid ghost for the dashboard, until
+   the cards moved here and became a horizontally sliding band. It was
+   RESHAPED rather than joined by a second macro, because the grid ghost lost
+   its only caller in the same change and a skeleton with no carrier is
+   precisely what this file exists to prevent.
+
+   The card sizing survives the move unchanged and stays measured:
+
+     server card  p-4(32) + header 20 + mb-3 12 + metrics 128
+                  + sparkline 24 + mt-2 8 + stamp 16 + mt-2 8         = 248
+
+   THE BAND'S HEIGHT IS STILL NOT THE RIGHT HEIGHT, and an earlier version of
+   this comment claimed it was — that "a horizontal band is exactly one
+   segment tall whatever the fleet holds, so the ghost matches the real
+   region's height rather than approximating it". Measured on the real fleet:
+   ghost 304px, real 339px, +35px.
+
+   Where the 35px goes, because the reason is the interesting part: the band
+   is as tall as its TALLEST segment, and a segment is as tall as its tallest
+   CARD. Measured, same fleet: a plain card is 249px and the tallest segment
+   is 281px (a 20px heading + 12px margin + a 249px card), but some cards run
+   taller — a tag pill row, a stale badge, an install-state line. So the
+   height depends on per-server content, which is the same thing that made the
+   grid's height unknowable. Plus 10px of horizontal scrollbar the ghost does
+   not always get, since six ghost cards may not overflow where 29 real ones
+   do.
+
+   The honest position, which is what this file said before it was edited: the
+   ghost sizes the CARD exactly and the region still grows when the real band
+   lands. 35px of growth, once, below the fold on this page. Matching it would
+   mean knowing the tallest card, which needs the query the ghost exists to
+   wait for. #}
+{% macro server_band(n=6) %}
+<div aria-hidden="true">
+  <div class="skeleton h-4 w-32 mb-3"></div>
+  <div class="server-band">
+    <div class="server-band-cards">
+      {% for _ in range(n) %}
+      <div class="server-band-item bg-card rounded-lg p-4 border border-line">
+        <div class="flex items-center justify-between mb-3">
+          <div class="skeleton h-4 w-28"></div>
+          <div class="skeleton h-5 w-16 flex-shrink-0"></div>
+        </div>
+        <div class="space-y-2">
+          {% for _m in range(4) %}
+          <div>
+            {# h-4: the real label/value line is `text-xs`, whose line box is
+               16px. h-3 made each of the four rows 4px short — 16px on the
+               card, which is most of the 15px that was still missing after
+               the sparkline and stamp were added. #}
+            <div class="flex justify-between mb-0.5">
+              <div class="skeleton h-4 w-12"></div>
+              <div class="skeleton h-4 w-10"></div>
+            </div>
+            <div class="skeleton h-2 w-full"></div>
+          </div>
+          {% endfor %}
+        </div>
+        {# The sparkline strip and the timestamp. Both were missing from the
+           first cut of this macro, which is how the card came out 57px
+           short. #}
+        <div class="skeleton mt-2 h-6"></div>
+        <div class="flex justify-end mt-2">
+          <div class="skeleton h-4 w-16"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{# Anomalies & forecasts on /server/<name>.
+
+   The COLUMN COUNT is matched exactly, because it is the one thing the shell
+   can know: it comes from which disks the host reports, and `metrics` is
+   already in the page's context (0.01 ms to read — it is `analytics` that
+   costs 31.77 ms and got deferred). Pass the same `forecast_count` the
+   partial computes and the ghost lands on the same grid.
+
+   The HEIGHT tracks well at the widths this app is used at, and badly when
+   the content column is narrow. Measured, same host, both ends:
+
+     content 1216px (1440px viewport)   ghost 253px  real 311px   +58px
+     content  ~500px ( 775px viewport)  ghost 535px  real 1694px  +1159px
+
+   The difference is wrapping. The card bodies are prose — a stationary range
+   plus a leak/climb note — and below the `sm:` breakpoint each line wraps to
+   three or four, while a ghost made of empty boxes cannot wrap. The card
+   heights also depend on which forecast kind each metric gets (a disk gets a
+   short linear projection, RAM and CPU a longer stationary one), and that is
+   decided by the analytics output, which is the thing being deferred.
+
+   An earlier version of this note claimed the height simply could not be
+   matched. That was measured only at the narrow width and was wrong at the
+   width that matters. Reserving the grid is enough. #}
+{% macro forecast_cards(forecast_count=4) %}
+<div aria-hidden="true">
+  {# The anomalies slot. On a healthy fleet this resolves to a single
+     empty-state card, which is the common case worth reserving; on a host
+     with anomalies it becomes a grid and grows further. #}
+  <div class="bg-card rounded-lg p-6 border border-line mb-4">
+    <div class="skeleton w-8 h-8 mx-auto"></div>
+    <div class="skeleton skeleton-text mx-auto mt-2" style="width:11rem"></div>
+  </div>
+  {# Same column expression as partials/server_analytics.html. If that one
+     changes, this has to change with it — they are two halves of one layout. #}
+  <div class="grid grid-cols-1 sm:grid-cols-2 {{ 'lg:grid-cols-4' if forecast_count >= 4 else ('lg:grid-cols-3' if forecast_count == 3 else ('lg:grid-cols-2' if forecast_count == 2 else '')) }} gap-3">
+    {% for _ in range(forecast_count) %}
+    <div class="bg-card rounded-lg p-4 border border-line">
+      <div class="flex items-center gap-2 mb-2">
+        <div class="skeleton w-4 h-4"></div>
+        <div class="skeleton h-5 w-20"></div>
+      </div>
+      <div class="skeleton h-7 w-32"></div>
+      <div class="skeleton skeleton-text mt-1"></div>
+      <div class="skeleton skeleton-text"></div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endmacro %}
+
+{# Activity feed — one scrolling card, rows of dot + badge + message + time.
+   `.skeleton-text` earns its place on the message line because that line is
+   a real text run and its height should scale with the font, not with a
+   pixel utility. Note its `:last-child { width: 60% }` does NOT fire here —
+   the timestamp ghost follows it — and that is correct: the real message is
+   a full-width truncating <p>, not a ragged final line. #}
+{% macro feed_rows(n=6) %}
+<div class="bg-card rounded-lg border border-line overflow-hidden" aria-hidden="true">
+{# The real feed is a 400px-capped scroller, so on any fleet with events it
+   is exactly 402px tall regardless of how many rows it holds. Capping the
+   ghost the same way makes this the one region that matches to the pixel —
+   six 81px rows overflow 400px, so the cap does the work and the row count
+   stops mattering. Without it the ghost was 372px and the card grew 30px. #}
+<div class="max-h-[400px] overflow-hidden">
+  {% for _ in range(n) %}
+  <div class="flex items-start gap-3 px-4 py-3 {% if not loop.last %}border-b border-line{% endif %}">
+    <div class="skeleton w-2 h-2 rounded-full mt-1.5 flex-shrink-0"></div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 mb-1">
+        <div class="skeleton h-4 w-14"></div>
+        <div class="skeleton h-3 w-24"></div>
+      </div>
+      <div class="skeleton skeleton-text"></div>
+      <div class="skeleton h-2.5 w-20 mt-1"></div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+</div>
+{% endmacro %}

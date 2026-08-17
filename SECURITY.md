@@ -72,6 +72,16 @@ verify before installing — see
 This project takes security seriously and treats it as ongoing engineering
 rather than a checkbox:
 
+- [`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md) — **start here if you
+  are reviewing Prism as a vendor.** Assembles the evidence behind every claim
+  in one place, including where data is stored, what a host administrator can
+  read, and the findings this audit fixed.
+- [`docs/DATA_FLOWS.md`](docs/DATA_FLOWS.md) — every outbound connection Prism
+  can make, with the destination of each. No vendor endpoint; no hardcoded
+  destinations.
+- [`docs/LAN_ONLY_VERIFICATION.md`](docs/LAN_ONLY_VERIFICATION.md) — the
+  procedure for proving LAN-only operation on your own hardware, rather than
+  taking our word for it.
 - [`docs/csv/`](docs/csv/) — the computerised-system-validation (CSV)
   package: user requirements, risk assessment, the security-controls
   catalogue, and a findings/gaps register tracking remediation status.

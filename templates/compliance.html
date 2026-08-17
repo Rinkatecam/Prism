@@ -54,7 +54,10 @@
 
     <!-- Findings tile -->
     <a id="findings-card" href="/compliance/doc/CSV-17"
-       class="block bg-card rounded-lg border border-line p-4 hover:border-brand transition-colors">
+       {# `card-clickable` supersedes `hover:border-brand transition-colors`:
+          same brand border on hover, plus the lift and the focus ring every
+          other clickable card in the app now has. #}
+       class="card-clickable block bg-card rounded-lg border border-line p-4">
       <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2 flex items-center justify-between">
         <span>{{ t.get('findings_register', 'Findings register') }}</span>
         <i data-lucide="external-link" class="w-3 h-3"></i>

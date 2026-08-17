@@ -316,19 +316,36 @@ def set_security_headers(response):
     #   * dashboard's hx-on::after-swap handlers became data-toggle-empty,
     #     dispatched from a single htmx:afterSwap listener in base.html.
     #
-    # CDN hosts (Tailwind/unpkg/jsdelivr) stay in script-src as host-sources —
-    # a nonce does NOT disable host allowlists (only 'strict-dynamic' would),
-    # so external <script src=...> keep loading.
+    # NO EXTERNAL ORIGIN APPEARS IN THIS POLICY, and that is load-bearing
+    # rather than tidy. script-src used to allow cdn.tailwindcss.com,
+    # unpkg.com and cdn.jsdelivr.net, with style-src and connect-src carrying
+    # one or two of the same — left behind when the front end stopped using
+    # them. Every asset the browser loads (Tailwind, htmx, idiomorph,
+    # Chart.js, Lucide, both web fonts) is vendored under static/vendor/ and
+    # served from this origin; a measured dashboard load makes zero off-origin
+    # requests.
     #
-    # style-src 'unsafe-inline' STAYS: Tailwind's CDN runtime, dynamic
-    # status-badge gradients, and inline style="..." attributes all depend on
-    # it. Removing it breaks the UI; keeping it is documented practice.
+    # Nothing was broken and nothing was being fetched, which is exactly why
+    # the entries survived: an allowlist entry that nothing uses still GRANTS
+    # THE CAPABILITY. Injected script could have reached three third-party
+    # origins, and "does this thing phone home" is the first question a
+    # customer's security reviewer asks. The claim in docs/DATA_FLOWS.md is
+    # what this policy has to be able to back.
+    #
+    # The comment that stood here explained the CDN entries in terms of
+    # "Tailwind's CDN runtime" — untrue since Tailwind was vendored, and the
+    # kind of stale justification that keeps a stale rule alive.
+    #
+    # style-src 'unsafe-inline' STAYS, and its reason is unchanged and real:
+    # the vendored Tailwind BROWSER build generates CSS into a <style> element
+    # at runtime, status-badge gradients are computed, and inline style="..."
+    # attributes are used throughout. Removing it breaks the UI.
     _nonce = getattr(_g_mod, "csp_nonce", "")
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        f"script-src 'self' https://cdn.tailwindcss.com https://unpkg.com https://cdn.jsdelivr.net 'nonce-{_nonce}'; "
-        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-        "connect-src 'self' https://cdn.jsdelivr.net https://unpkg.com; "
+        f"script-src 'self' 'nonce-{_nonce}'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "connect-src 'self'; "
         "img-src 'self' data:; "
         "frame-ancestors 'none'; "
         "base-uri 'self'; "

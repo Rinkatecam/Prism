@@ -487,9 +487,20 @@ def test_css_and_tailwind_cover_exactly_the_same_tokens():
 # wanted — "without it this regrows" — and it is enforceable.
 
 LITERAL_BASELINE: dict[str, int] = {
-    "server_detail.html": 47,
+    # 47 -> 46 + 1: the anomalies/forecasts region moved to
+    # partials/server_analytics.html for layered rendering, and one literal
+    # went with it. Nothing was added or removed — see LITERAL_TOTAL, which
+    # is what stops a file split being used to launder new literals past the
+    # "new templates start clean" rule.
+    "server_detail.html": 46,
+    "partials/server_analytics.html": 1,
     "workflows.html": 33,
-    "dashboard.html": 16,
+    # 16 -> 0. The dashboard redesign rewrote every region that held one: the
+    # status-filter buttons and their JS class lists went to servers.html
+    # spelled as tokens (the `dark:` literal halves were pre-token leftovers —
+    # `border-faint` already resolves per theme, so they were deleted rather
+    # than moved), and the restart banner's four were the same story.
+    "dashboard.html": 0,
     "rbac.html": 14,
     "reports.html": 12,
     "servers.html": 9,
@@ -499,7 +510,10 @@ LITERAL_BASELINE: dict[str, int] = {
     "partials/server_card.html": 4,
     "compliance.html": 5,
     "partials/incidents_panel.html": 5,
-    "partials/verdict_header.html": 5,
+    # 5 -> 0. Two went with the deleted all-healthy branch; the other three
+    # were the light/dark halves of status washes that the `-tint` / `-strong`
+    # pairs express in one class.
+    "partials/verdict_header.html": 0,
     "operations.html": 4,
     "partials/server_comparison.html": 4,
     "base.html": 1,
@@ -509,12 +523,74 @@ LITERAL_BASELINE: dict[str, int] = {
 
 _LITERAL = re.compile(r"-\[#[0-9A-Fa-f]{6}\]")
 
+# Jinja, HTML and block/line comments, blanked rather than deleted so the
+# offsets a caller might report stay true.
+#
+# Added when a comment in servers.html explaining WHY two `dark:` hex halves
+# were deleted on the way over from the dashboard pushed that file two over
+# its baseline. The literals it named render nothing — they are the removed
+# code, quoted. Without this the ratchet fires on its own documentation, and
+# the cheapest way to make it green is to delete the explanation, which is
+# the wrong repair (docs/OPS-LEARNINGS.md §2.2, and the third time this shape
+# has appeared in this repository).
+#
+# The baseline did not move as a result. Measured across all 33 templates,
+# servers.html is the ONLY file whose count changes (11 -> 9, the two quoted
+# above), so every number recorded in the baseline is a count of live
+# utilities and always was.
+_COMMENTS = re.compile(r"{#.*?#}|<!--.*?-->|/\*.*?\*/", re.S)
+_LINE_COMMENT = re.compile(r"^[ \t]*//[^\n]*", re.M)
+
+
+def _code_only(text: str) -> str:
+    blanked = _COMMENTS.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), text)
+    return _LINE_COMMENT.sub(lambda m: " " * len(m.group(0)), blanked)
+
 
 def _literal_counts() -> dict[str, int]:
     templates = PROJECT_ROOT / "templates"
     return {p.relative_to(templates).as_posix(): n
             for p in sorted(templates.rglob("*.html"))
-            if (n := len(_LITERAL.findall(p.read_text(encoding="utf-8"))))}
+            if (n := len(_LITERAL.findall(
+                _code_only(p.read_text(encoding="utf-8")))))}
+
+
+def test_the_counter_reads_code_and_not_the_comments_about_it():
+    """Positive control for `_code_only`, in both directions.
+
+    A stripper that strips nothing leaves the ratchet firing on prose. A
+    stripper that strips too much hides real literals in the code around it.
+    Both directions are asserted, over the exact shapes that occur in this
+    repository's templates.
+
+    The `//` rule is anchored to the start of a line, which is a deliberate
+    trade and worth pinning: a mid-line rule would consume the `//` in every
+    `https://` URL and everything after it on that line — hiding live
+    literals, i.e. UNDER-reporting, which is the direction that lets a
+    regression through. The cost is that a trailing `// …` comment survives
+    and can be counted, which over-reports. Both are asserted below so
+    swapping one for the other fails here rather than quietly moving the
+    numbers."""
+    quoted = "{# `dark:border-[#6B7280]` was a pre-token leftover #}"
+    assert _LITERAL.findall(quoted), "the sample no longer contains a literal"
+    assert not _LITERAL.findall(_code_only(quoted)), (
+        "a literal quoted inside a comment is being counted; the ratchet is "
+        "reading its own documentation")
+
+    whole_line = "  // hover:bg-[#EF4444] was removed with the token migration"
+    assert not _LITERAL.findall(_code_only(whole_line)), (
+        "a whole-line `//` comment is no longer stripped")
+
+    url_line = "  const u = 'https://example.test/a'; cls = 'text-[#CBD5E1]';"
+    assert len(_LITERAL.findall(_code_only(url_line))) == 1, (
+        "the line-comment rule is eating code — a mid-line `//` rule takes "
+        "the `//` in a URL and everything after it, hiding live literals")
+
+    trailing = '  cls = "text-[#CBD5E1]"; // and hover:bg-[#EF4444]'
+    assert len(_LITERAL.findall(_code_only(trailing))) == 2, (
+        "a trailing comment is now stripped too. That is not wrong in "
+        "itself, but it is the mid-line rule the check above forbids — "
+        "there is no way to strip one without the other")
 
 
 def test_hardcoded_colour_literals_never_increase():
@@ -544,9 +620,51 @@ def test_the_baseline_is_not_left_behind_when_literals_are_removed():
 
 def test_no_colour_literal_outside_the_templates_that_already_have_one():
     """A brand-new template must start clean. The baseline records history;
-    it is not a licence to add the next one somewhere else."""
+    it is not a licence to add the next one somewhere else.
+
+    A partial split out of an existing template is the one legitimate way a
+    new entry appears here, because the literals are relocated rather than
+    written. That is also the loophole — an entry added "for a split" could
+    carry brand-new literals — so it is closed by the total below, not by
+    trusting the reason given in a comment."""
     new = sorted(set(_literal_counts()) - set(LITERAL_BASELINE))
     assert not new, f"new template(s) with hardcoded colours: {new}"
+
+
+# The sum of the per-file baseline, written out rather than computed from it.
+# Computing it would make the assertion tautological; the value of a separate
+# number is that ADDING an entry to LITERAL_BASELINE — the one move the
+# per-file ratchets permit — cannot happen silently.
+#
+# Not 188. The header above records 188 survivors at the end of the token
+# migration; the real count today is 177, and the difference is later
+# reductions that were tracked per file. Taking the number from the prose
+# would have been a constant that agreed with a comment instead of the code.
+# 177 -> 156 with the dashboard redesign: dashboard.html 16 -> 0 and
+# partials/verdict_header.html 5 -> 0. Note that three brand-new templates
+# landed in the same change (vitals_quadrant.html, and the two on /servers)
+# and none of them appears above, which is the rule working rather than a
+# coincidence — `test_no_colour_literal_outside_the_templates_that_already_
+# have_one` fails the build on the first literal in any of them.
+LITERAL_TOTAL = 156
+
+
+def test_the_total_number_of_literals_never_rises():
+    """Per-file ratchets miss one move: adding a NEW baseline entry. That is
+    permitted for an extracted partial — the literals came with the markup —
+    and it would equally permit smuggling in fresh ones under the same
+    justification. The total does not care what the entry is called."""
+    counts = _literal_counts()
+    total = sum(counts.values())
+    assert total <= LITERAL_TOTAL, (
+        f"total hardcoded literals rose to {total} (was {LITERAL_TOTAL}). "
+        "A file split redistributes them; it does not create them:\n  "
+        + "\n  ".join(f"{f}: {n} (baseline {LITERAL_BASELINE.get(f, 0)})"
+                      for f, n in sorted(counts.items())
+                      if n != LITERAL_BASELINE.get(f, 0)))
+    assert total == LITERAL_TOTAL, (
+        f"total fell to {total}; lower LITERAL_TOTAL to match, or the "
+        "headroom just won is silently available to spend again")
 
 
 def test_app_css_matches_the_python_table():

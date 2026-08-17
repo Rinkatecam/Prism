@@ -1,0 +1,259 @@
+{# ── Anomalies & forecasts ───────────────────────────────────────────────
+   Split out of server_detail.html so the page shell can paint before this
+   region exists.
+
+   WHY THIS ONE AND NOT THE OTHERS. Measured on the busiest host in the
+   fleet, per call, median of seven:
+
+     get_latest_by_server        0.01 ms
+     get_server_events(50)       0.10 ms
+     get_server_logs(24h, 50)    0.10 ms
+     get_server_analytics       31.77 ms   <-- 99.3% of the total
+
+   The three DB reads are free; the analytics pass is the page. Deferring
+   anything else would have been motion without effect, which is why the rest
+   of server_detail.html still renders inline.
+
+   Needs `analytics`, `metrics`, `server` and `t`. `metrics` is only read to
+   decide which disks exist, and it costs 0.01 ms, so the partial's view
+   re-reads it rather than threading it through a query parameter.
+
+   No inline <script> here, deliberately: this fragment is fetched with its
+   own request and a per-request CSP nonce would not match the host page's.
+   Both `data-action` handlers inside (_sdAckAnomaly, _sdToggleNextSibling)
+   go through the delegated dispatcher in base.html, which works on swapped-in
+   content without rebinding. #}
+
+  {% if analytics and analytics.anomalies | length > 0 %}
+  <!-- Anomaly cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+    {% for a in analytics.anomalies %}
+    <div class="bg-card rounded-lg p-4 border {% if a.severity == 'critical' %}border-critical dark:border-critical{% else %}border-warning {% endif %}">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-medium text-muted">
+          {{ t.get(a.metric, a.metric) }}
+        </span>
+        <span class="badge badge-{{ a.severity }}">{{ a.severity }}</span>
+      </div>
+      <div class="text-xl font-bold {% if a.severity == 'critical' %}text-critical dark:text-critical{% else %}text-warning {% endif %}">
+        {{ a.value }}%
+      </div>
+      <div class="text-xs text-muted mt-1">
+        {# Direction-aware label: analytics may emit below_baseline (e.g. CPU
+           dropping = service crashed) which is just as alarming as above. #}
+        {% if a.direction == 'below_baseline' %}
+          {{ t.get('below_normal', 'Below normal') }}: {{ a.deviation_percent }}%
+        {% else %}
+          {{ t.above_normal }}: {{ a.deviation_percent }}%
+        {% endif %}
+        <span class="ml-2">({{ t.get('expected', 'expected') }}: {{ a.mean }}% &plusmn; {{ a.stddev }}%)</span>
+      </div>
+      {# ── Context enrichment ── #}
+      {% if a.trend_context %}
+      <div class="flex items-center gap-1 text-xs text-muted mt-2">
+        {% if a.trend_direction == 'up' %}
+          <i data-lucide="trending-up" class="w-3 h-3 text-critical"></i>
+        {% elif a.trend_direction == 'down' %}
+          <i data-lucide="trending-down" class="w-3 h-3 text-healthy"></i>
+        {% else %}
+          <i data-lucide="minus" class="w-3 h-3 text-faint"></i>
+        {% endif %}
+        <span>{{ t.get('trend', 'Trend') }}: {{ a.trend_context }}</span>
+      </div>
+      {% endif %}
+      {% if a.forecast_to_threshold %}
+      <div class="flex items-center gap-1 text-xs mt-1 {% if a.forecast_to_threshold.days < 7 %}text-critical dark:text-critical font-semibold {% elif a.forecast_to_threshold.days < 30 %}text-warning dark:text-warning {% else %}text-muted {% endif %}">
+        <i data-lucide="clock" class="w-3 h-3"></i>
+        <span>{{ t.get('reaches_threshold', 'Reaches threshold') }} ({{ a.forecast_to_threshold.threshold }}%) {{ t.get('in_approx', 'in ~') }}{{ a.forecast_to_threshold.days | int }} {{ t.get('days', 'days') }}</span>
+      </div>
+      {% endif %}
+      {% if a.suggested_action %}
+      <div class="flex items-center gap-1 text-xs text-info mt-1">
+        <i data-lucide="lightbulb" class="w-3 h-3"></i>
+        <span>{{ t.get(a.suggested_action, '') }}</span>
+      </div>
+      {% endif %}
+      {% if a.confidence_level %}
+      <div class="mt-2">
+        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium {% if a.confidence_level == 'high' %}bg-healthy-tint text-healthy-strong dark:bg-healthy-tint dark:text-healthy-strong {% elif a.confidence_level == 'medium' %}bg-warning-tint text-warning-strong dark:text-warning-strong {% else %}bg-raised text-muted dark:bg-[#374151] {% endif %}">
+          {{ t.get('confidence', 'Confidence') }}: {{ t.get('confidence_' + a.confidence_level, a.confidence_level) }}
+        </span>
+      </div>
+      {% endif %}
+      {# ── Acknowledge / Snooze controls ── #}
+      <div class="flex items-center gap-2 mt-3 pt-2 border-t border-line">
+        <button data-action="_sdAckAnomaly" data-server="{{ server.name }}" data-metric="{{ a.metric }}" data-state="acknowledged"
+                class="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded border border-line text-muted hover:bg-page">
+          <i data-lucide="check" class="w-3 h-3"></i>
+          {{ t.get('acknowledge', 'Acknowledge') }}
+        </button>
+        <div class="relative">
+          <button data-action="_sdToggleNextSibling"
+                  class="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded border border-line text-muted hover:bg-page">
+            <i data-lucide="bell-off" class="w-3 h-3"></i>
+            {{ t.get('snooze', 'Snooze') }}
+          </button>
+          <div class="hidden absolute left-0 bottom-full mb-1 bg-card border border-line rounded shadow-lg z-10 py-1 min-w-[100px]">
+            <button data-action="_sdAckAnomaly" data-server="{{ server.name }}" data-metric="{{ a.metric }}" data-state="snoozed" data-days="1" data-hide="1"
+                    class="block w-full text-left px-3 py-1 text-xs text-ink hover:bg-page">1 {{ t.get('days', 'days') }}</button>
+            <button data-action="_sdAckAnomaly" data-server="{{ server.name }}" data-metric="{{ a.metric }}" data-state="snoozed" data-days="3" data-hide="1"
+                    class="block w-full text-left px-3 py-1 text-xs text-ink hover:bg-page">3 {{ t.get('days', 'days') }}</button>
+            <button data-action="_sdAckAnomaly" data-server="{{ server.name }}" data-metric="{{ a.metric }}" data-state="snoozed" data-days="7" data-hide="1"
+                    class="block w-full text-left px-3 py-1 text-xs text-ink hover:bg-page">7 {{ t.get('days', 'days') }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  {# Empty state — same centered icon + message + hint pattern used elsewhere #}
+  <div class="bg-card rounded-lg p-6 border border-line mb-4">
+    <div class="text-sm text-faint text-center py-4">
+      <i data-lucide="check-circle" class="w-8 h-8 mx-auto mb-2 text-healthy opacity-40"></i>
+      <p class="text-healthy">{{ t.no_anomalies }}</p>
+      <p class="text-[10px] mt-1 opacity-60">{{ t.get('no_anomalies_hint', 'Detected anomalies will appear here with severity, deviation, and acknowledgement controls') }}</p>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Disk, RAM & CPU Forecasts -->
+  {% if analytics and analytics.forecasts %}
+  {# Determine available disks for grid sizing. RAM and CPU are always present —
+     both are stationary metrics that get a range/avg/now band rather than a
+     days-until projection. #}
+  {% set has_disk_c = metrics and metrics.disk_c_percent is not none and metrics.disk_c_percent >= 0 %}
+  {% set has_disk_d = metrics and metrics.disk_d_percent is not none and metrics.disk_d_percent >= 0 %}
+  {% set forecast_count = (1 if has_disk_c else 0) + (1 if has_disk_d else 0) + 2 %}
+  <div class="grid grid-cols-1 sm:grid-cols-2 {{ 'lg:grid-cols-4' if forecast_count >= 4 else ('lg:grid-cols-3' if forecast_count == 3 else ('lg:grid-cols-2' if forecast_count == 2 else '')) }} gap-3">
+    {# Build list of forecast metrics based on available disks #}
+    {% set forecast_metrics = [] %}
+    {% if metrics and metrics.disk_c_percent is not none and metrics.disk_c_percent >= 0 %}
+      {% set _ = forecast_metrics.append('disk_c') %}
+    {% endif %}
+    {% if metrics and metrics.disk_d_percent is not none and metrics.disk_d_percent >= 0 %}
+      {% set _ = forecast_metrics.append('disk_d') %}
+    {% endif %}
+    {% set _ = forecast_metrics.append('ram') %}
+    {% set _ = forecast_metrics.append('cpu') %}
+    {% for metric_key in forecast_metrics %}
+    {% set fc = analytics.forecasts.get(metric_key, {}) %}
+    {# RAM and CPU share the stationary treatment; disks keep the linear one. #}
+    {% set is_stationary_metric = metric_key in ('ram', 'cpu') %}
+    {% set icon = 'cpu' if metric_key == 'cpu' else ('memory-stick' if metric_key == 'ram' else 'hard-drive') %}
+    {% set label = t.get('cpu_forecast', 'CPU') if metric_key == 'cpu' else (t.get('ram_forecast', 'RAM') if metric_key == 'ram' else t.get(metric_key, metric_key)) %}
+    {% set full_label = t.get('threshold_in', 'Threshold in') if is_stationary_metric else t.get('disk_full_in', 'Full in') %}
+    {% if fc.enough_data %}
+    <div class="bg-card rounded-lg p-4 border border-line">
+      <div class="flex items-center gap-2 mb-2">
+        <i data-lucide="{{ icon }}" class="w-4 h-4 text-muted"></i>
+        <span class="text-sm font-medium text-muted">{{ label }}</span>
+      </div>
+
+      {# ── Render based on forecast kind (set by analytics.forecast_metric) ── #}
+      {% if fc.kind == 'stationary' %}
+        {# RAM/CPU behaving normally — show baseline range, NOT a fake forecast.
+           Neither fills linearly like a disk, so projecting "X days until full"
+           from noise is misleading. Show what's actually useful: the typical range.
+
+           elevated_but_stable (analytics.forecast_metric): the average sits
+           at/above this server's warning threshold for the metric even though
+           it's not trending — the SQL01 case ("93% RAM shows green Normal
+           usage"), and equally a DC averaging 45% CPU against a 40% warning.
+           Swap the green headline for an amber one; range/avg/hint lines
+           below are unchanged.
+
+           The 'Elevated but stable' / 'Normal usage' strings are metric-neutral
+           in all 5 languages, so RAM and CPU deliberately share them rather
+           than duplicating 10 identical translations. #}
+        {% if fc.elevated_but_stable %}
+        <div class="text-lg font-bold text-warning flex items-center gap-1.5">
+          <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+          {{ t.get('ram_elevated_stable', 'Elevated but stable') }}
+        </div>
+        {% else %}
+        <div class="text-lg font-bold text-healthy">
+          {{ t.get('ram_normal', 'Normal usage') }}
+        </div>
+        {% endif %}
+        <div class="text-xs text-muted mt-1">
+          {{ t.get('range_label', 'Range') }}: {{ fc.range_min }}% – {{ fc.range_max }}%
+          | {{ t.get('avg_label', 'avg') }}: {{ fc.range_avg }}%
+          | {{ t.get('current_label', 'now') }}: {{ fc.current }}%
+        </div>
+        <div class="text-[10px] text-faint mt-1 italic">
+          {% if metric_key == 'cpu' %}
+          {{ t.get('cpu_stationary_hint', 'No sustained climb detected — CPU is oscillating around its workload steady state') }}
+          {% else %}
+          {{ t.get('ram_stationary_hint', 'No memory leak detected — RAM is oscillating around its workload steady state') }}
+          {% endif %}
+        </div>
+
+      {% elif fc.kind == 'leak' %}
+        {# RAM/CPU showing a sustained upward drift across sub-windows.
+           This IS leak-like behavior and worth forecasting. CPU does not "leak"
+           though — a rising CPU baseline is added load or a runaway process, so
+           it gets its own headline rather than borrowing the memory wording. #}
+        <div class="text-lg font-bold text-critical flex items-center gap-1.5">
+          <i data-lucide="trending-up" class="w-4 h-4"></i>
+          {% if metric_key == 'cpu' %}
+          {{ t.get('cpu_climb_suspected', 'Sustained CPU climb') }}
+          {% else %}
+          {{ t.get('memory_leak_suspected', 'Memory leak suspected') }}
+          {% endif %}
+        </div>
+        {% if fc.days_until_full is not none and fc.days_until_full > 0 %}
+        <div class="text-sm font-medium {% if fc.days_until_full < 7 %}text-critical dark:text-critical{% elif fc.days_until_full < 30 %}text-warning dark:text-warning{% else %}text-healthy{% endif %} mt-1">
+          {{ full_label }}: {{ fc.days_until_full }} {{ t.days }}
+        </div>
+        {% endif %}
+        <div class="text-xs text-muted mt-1">
+          {{ t.trend_per_day }}: <strong class="text-critical">+{{ fc.trend_per_day }}{{ t.get('per_day', '%/day') }}</strong>
+          | {{ t.confidence }}: {{ fc.confidence }}
+          | {{ t.get('forecast_7d', '7d forecast') }}: {{ fc.forecast_7d }}%
+        </div>
+
+      {% else %}
+        {# 'growth' (disk) — keep the existing linear forecast view. Disk fills
+           monotonically, so days-until-full from a regression is meaningful. #}
+        {% if fc.days_until_full is not none %}
+          {% if fc.days_until_full < 7 %}
+          <div class="text-lg font-bold text-critical">
+            {{ full_label }}: {{ fc.days_until_full }} {{ t.days }}
+          </div>
+          {% elif fc.days_until_full < 30 %}
+          <div class="text-lg font-bold text-warning">
+            {{ full_label }}: {{ fc.days_until_full }} {{ t.days }}
+          </div>
+          {% else %}
+          <div class="text-lg font-bold text-healthy">
+            {{ full_label }}: {{ fc.days_until_full }} {{ t.days }}
+          </div>
+          {% endif %}
+        {% else %}
+          <div class="text-lg font-bold text-healthy">
+            {{ t.trend_per_day }}: {{ fc.trend_per_day }}%
+          </div>
+        {% endif %}
+        <div class="text-xs text-muted mt-1">
+          {{ t.trend_per_day }}: {{ fc.trend_per_day }}{{ t.get('per_day', '%/day') }}
+          | {{ t.confidence }}: {{ fc.confidence }}
+          | {{ t.get('forecast_7d', '7d forecast') }}: {{ fc.forecast_7d }}%
+        </div>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="bg-card rounded-lg p-4 border border-line">
+      <div class="flex items-center gap-2 mb-2">
+        <i data-lucide="{{ icon }}" class="w-4 h-4 text-muted"></i>
+        <span class="text-sm font-medium text-muted">{{ label }}</span>
+      </div>
+      <div class="text-sm text-faint">
+        <i data-lucide="info" class="w-3 h-3 inline"></i>
+        {{ t.not_enough_data }}
+      </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}

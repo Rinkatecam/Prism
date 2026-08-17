@@ -1,4 +1,5 @@
 <!-- Server Grid - grouped by type -->
+{% from "partials/_empty_state.html" import empty_state %}
 {# Tag ink solver — Jinja port of tools/tag_ink.py's tag_pill_tokens().
    An admin-chosen tag colour has no readability guarantee (the default
    grey measured 4.37:1 on bg-card in light, 3.47:1 in dark — both under
@@ -95,22 +96,55 @@
 {% endif %}
 
 {% if grouped | length == 0 %}
-<div class="bg-card rounded-lg p-8 border border-line text-center">
-  <i data-lucide="server-off" class="w-10 h-10 mx-auto mb-3 text-muted"></i>
-  <p class="text-muted text-sm">{{ t.no_servers_settings }}</p>
-</div>
+{# Two different absences reach this branch and they need different advice:
+   a fleet with no servers at all, and a tag filter that matched none.
+   Telling someone to add their first server when they have 29 and have just
+   clicked a tag is the sort of hint that teaches people to ignore hints. #}
+{{ empty_state(
+     'server-off',
+     t.no_servers_settings,
+     t.get('no_servers_for_tag_hint', 'No server carries this tag — pick another tag, or All, to see the rest of the fleet')
+       if active_tag else
+     t.get('no_servers_hint', 'Add your first server on the Servers page to start collecting CPU, RAM and disk'),
+     card=true) }}
 {% else %}
+{# ── The sliding band ─────────────────────────────────────────────────────
+
+   Was a stacked grid of type-grouped sections on the dashboard. Now one
+   horizontal scroller on /servers, with the type headings laid ALONG the
+   band rather than above stacked blocks: you slide past headed runs of
+   cards, alphabetical within each run.
+
+   The ordering is done in `views.partial_server_grid`, not here. Both halves
+   of it have to be: the segment order (type keys) and the order within a
+   segment (server name). Sorting in the template would sort what the view
+   happened to hand over, which for the groups is dict insertion order —
+   whatever order the metrics cache iterated in, i.e. unstable between
+   refreshes.
+
+   `tabindex="0"` on the scroller, with a label. A scroll container is not
+   keyboard-scrollable unless it is focusable, so without this the entire
+   card view is mouse-and-trackpad only past the first screenful — the same
+   class of defect as a clickable div with no tab stop, but invisible to the
+   `[data-action]` scan because nothing here is clickable. It carries no
+   `data-action`, so the keyboard bridge in base.html does not adopt it and
+   the browser's own arrow-key scrolling is what does the work. #}
+<div class="server-band" tabindex="0" role="group"
+     aria-label="{{ t.get('servers_band_label', 'Server cards grouped by type — scroll sideways, or use the arrow keys') }}">
   {% for type_key, servers in grouped.items() %}
-  <div class="mb-6 last:mb-0">
+  <div class="server-band-segment">
     <h3 class="text-sm font-semibold text-muted uppercase tracking-wider mb-3">
       {{ type_labels.get(type_key, type_key | replace('_', ' ') | title) }}
       <span class="text-xs font-normal">({{ servers | length }})</span>
     </h3>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <div class="server-band-cards">
       {% for server in servers %}
-      {% include "partials/server_card.html" %}
+      <div class="server-band-item">
+        {% include "partials/server_card.html" %}
+      </div>
       {% endfor %}
     </div>
   </div>
   {% endfor %}
+</div>
 {% endif %}

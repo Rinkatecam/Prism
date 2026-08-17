@@ -1070,7 +1070,14 @@ function renderCategoryButtons() {
     // would break here because JSON.stringify'd names contain literal
     // double quotes that terminate the HTML attribute prematurely.
     // Each element carries the data it needs via data-* attributes.
-    return `<span data-cat="${c.id}" data-cat-id="${c.id}" data-cat-name="${escapeHtml(c.name)}" class="wf-cat-chip inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full border cursor-pointer" style="${style}" title="Click to filter; × to delete">
+    // Filtering runs through `data-action`, the same dispatch the "All"
+    // button beside it already uses — so the keyboard bridge in base.html
+    // reaches it for free. It previously had its own click listener on the
+    // wrapper and no tabindex, which made it the one chip in the row a
+    // keyboard could not press. The delete <button> inside keeps its own
+    // branch of that listener and stops propagation, so pressing × does not
+    // also filter.
+    return `<span data-cat="${c.id}" data-cat-id="${c.id}" data-cat-name="${escapeHtml(c.name)}" data-action="filterByCategory" data-args="[${c.id}]" tabindex="0" role="button" class="wf-cat-chip inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full border cursor-pointer" style="${style}" title="Click to filter; × to delete">
       <span class="wf-cat-label">${escapeHtml(c.name)}</span>
       <button type="button" class="wf-cat-delete -mr-1 flex items-center opacity-60 hover:opacity-100 hover:text-critical" title="Delete this category">
         <i data-lucide="x" class="w-3 h-3 pointer-events-none"></i>
@@ -1108,10 +1115,9 @@ function setupCategoryClicks() {
       if (!isNaN(catId)) deleteCategoryConfirm(catId, catName);
       return;
     }
-    const chip = e.target.closest('.wf-cat-chip');
-    if (!chip) return;
-    const catId = parseInt(chip.dataset.catId, 10);
-    if (!isNaN(catId)) filterByCategory(catId);
+    // No chip branch here any more: the chip carries `data-action` and the
+    // document-level dispatcher runs it. Leaving this in would call
+    // filterByCategory twice per click.
   });
 }
 
@@ -1184,7 +1190,8 @@ function renderWorkflowCard(wf) {
 function renderExecutionHistory(executions) {
   const wrap = document.getElementById('execution-history');
   if (!executions.length) {
-    wrap.innerHTML = '<div class="p-6 text-center text-sm text-muted">No executions yet.</div>';
+    wrap.innerHTML = window.prismEmptyState('history', 'No executions yet',
+      'Run a workflow and its history — who ran it, when, and the result — appears here');
     return;
   }
   const rows = executions.map(ex => {
@@ -1193,7 +1200,7 @@ function renderExecutionHistory(executions) {
     const sc = statusColors[ex.status] || 'text-muted';
     const si = statusIcons[ex.status] || 'circle';
     const extra = ex.status === 'running' ? ' animate-spin' : '';
-    return `<tr class="border-b border-line hover:bg-page cursor-pointer" data-action="showExecution" data-args="[${ex.id}]">
+    return `<tr class="border-b border-line hover:bg-page cursor-pointer" data-action="showExecution" data-args="[${ex.id}]" tabindex="0">
       <td class="px-4 py-2 text-xs font-medium">${ex.workflow_name || 'Workflow #' + ex.workflow_id}</td>
       <td class="px-4 py-2 text-xs"><span class="flex items-center gap-1 ${sc}"><i data-lucide="${si}" class="w-3.5 h-3.5${extra}"></i> ${ex.status}</span></td>
       <td class="px-4 py-2 text-xs text-muted">${ex.trigger_source === 'dry-run'
@@ -1533,7 +1540,9 @@ function openTemplateGallery() {
     if (!r.ok) return;
     const templates = r.templates || [];
     if (!templates.length) {
-      document.getElementById('template-list').innerHTML = '<div class="text-center text-sm text-muted py-4">No templates available.</div>';
+      document.getElementById('template-list').innerHTML = window.prismEmptyState(
+        'layout-template', 'No templates available',
+        'Save any workflow as a template to reuse it here');
       return;
     }
     document.getElementById('template-list').innerHTML = templates.map(t => `
@@ -1957,7 +1966,11 @@ function _showCtxMenu(e, headerText, items, sourceEl) {
   for (const item of items) {
     if (item.sep) { html += '<div class="wf-ctx-sep"></div>'; continue; }
     const cls = item.danger ? 'wf-ctx-item danger' : 'wf-ctx-item';
-    html += `<div class="${cls}" data-action="${item.action}">
+    // Every row of this menu was mouse-only. It was missed by the first
+    // sweep because the action is `${item.action}` rather than a literal,
+    // which is exactly the shape a name-matching scan slides past — the
+    // guardrail found it, a reading of the file did not.
+    html += `<div class="${cls}" data-action="${item.action}" tabindex="0" role="menuitem">
       <i data-lucide="${item.icon}" class="w-3.5 h-3.5"></i>${item.label}
     </div>`;
   }
@@ -3262,7 +3275,10 @@ function renderBrowseList() {
 
   const list = document.getElementById('wf-browse-list');
   if (filtered.length === 0) {
-    list.innerHTML = '<div class="text-center py-6 text-xs text-faint">No items found</div>';
+    // A filtered-to-nothing result, not an empty collection — so the hint
+    // points at the filter rather than at creating something.
+    list.innerHTML = window.prismEmptyState('search-x', 'No items found',
+      'Nothing matches this search — clear it or try a shorter term');
     return;
   }
 
@@ -3289,7 +3305,7 @@ function renderBrowseList() {
         : (status ? '<span class="w-1.5 h-1.5 rounded-full bg-muted flex-shrink-0"></span>' : '');
     }
 
-    return `<div data-action="selectBrowseItem" data-args='${JSON.stringify([name]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}' class="flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer hover:bg-page dark:hover:bg-page/60 ${isSelected ? 'bg-brand/10 ring-1 ring-brand' : ''}">
+    return `<div data-action="selectBrowseItem" tabindex="0" role="button" aria-pressed="${isSelected ? 'true' : 'false'}" data-args='${JSON.stringify([name]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}' class="flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer hover:bg-page dark:hover:bg-page/60 ${isSelected ? 'bg-brand/10 ring-1 ring-brand' : ''}">
       ${leftDot}
       <span class="text-xs font-medium flex-1 truncate">${name}</span>
       <span class="text-[10px] text-faint truncate max-w-[180px]">${detail}</span>
@@ -3377,7 +3393,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <!-- Right-click context menu (nodes + connections). Single element,
      repositioned + repopulated each open. See setupContextMenu(). -->
-<div id="wf-context-menu"></div>
+{# role="menu" is what makes the `role="menuitem"` on each row below valid —
+   a menuitem outside a menu is announced as nothing in particular. #}
+<div id="wf-context-menu" role="menu"></div>
 
 <script nonce="{{ csp_nonce }}">
 // ── Rich Tooltip System ──

@@ -17,7 +17,13 @@
   <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
     {% for issue in issues %}
     <a href="/server/{{ issue.server_name }}"
-       class="block bg-card rounded-lg p-4 border border-line hover:shadow-md transition-shadow {% if issue.status == 'critical' %}border-status-critical{% elif issue.status == 'warning' %}border-status-warning{% else %}border-status-offline{% endif %}">
+       {# `card-clickable` replaces `hover:shadow-md transition-shadow`: the
+          class carries the lift, the shadow AND the focus ring, and the
+          Tailwind pair carried only the shadow. `transition-shadow` also
+          quietly narrowed the transition to one property, so the lift the
+          class adds would have snapped instead of moving — Tailwind's sheet
+          is injected after app.css and wins at equal specificity. #}
+       class="card-clickable block bg-card rounded-lg p-4 border border-line {% if issue.status == 'critical' %}border-status-critical{% elif issue.status == 'warning' %}border-status-warning{% else %}border-status-offline{% endif %}">
       <div class="flex items-center justify-between mb-2">
         <span class="font-semibold text-sm">{{ issue.server_name }}</span>
         <span class="badge badge-{{ issue.status }}">{{ issue.status }}</span>

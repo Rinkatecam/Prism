@@ -312,8 +312,24 @@
 
   <!-- Main content -->
   <main id="main-content" class="transition-all duration-base pt-14 min-h-screen" style="margin-left:14rem">
-    {% block breadcrumb %}{% endblock %}
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    {# `{% block breadcrumb %}` stood here and no template ever overrode it, so
+       the seven `.breadcrumb` rules in app.css styled markup that was never
+       produced — 0 elements on every page, measured. Both are gone. Reinstating
+       breadcrumbs means adding the markup and the styling together, which is
+       cheaper than the stub was: a hook that renders unstyled costs the next
+       person more than a blank space does. #}
+    {# The content column's width is a per-page decision, defaulting to the
+       80rem every page had before this block existed. The dashboard overrides
+       it because it is the only page designed to be read from across a room:
+       at 2560 the 80rem cap left over a thousand pixels of empty grey either
+       side of a quadrant whose whole point is to be legible at a distance.
+
+       Expressed as a BLOCK holding the class rather than as an extra class an
+       overriding page adds, because the two would fight and the utility would
+       win: Tailwind's sheet is injected after app.css, so at equal specificity
+       `max-w-7xl` beats any `.page-*` rule authored there. Replacing the class
+       outright has no specificity contest to lose. #}
+    <div class="{% block content_width %}max-w-7xl{% endblock %} mx-auto px-4 sm:px-6 lg:px-8 py-6">
     {% block content %}{% endblock %}
     </div>
   </main>
@@ -383,7 +399,28 @@
         const el = e.currentTarget;
         const title = el.getAttribute('data-tip-title') || '';
         const desc  = el.getAttribute('data-tip-desc') || '';
-        tip.innerHTML = '<div class="tip-title">' + title + '</div><div class="tip-desc">' + desc + '</div>';
+        // Bail on an empty title rather than showing an empty panel. A
+        // control that has been re-enabled has its reason removed, but the
+        // listener stays bound (`__tipBound` is one-way), so without this
+        // every re-enabled control grew a blank tooltip on hover.
+        if (!title && !desc) { hide(); return; }
+        // textContent, not innerHTML: a reason can carry interpolated data
+        // — `data-tip-desc="{{ _reason }}"` on the server card comes from
+        // the fusion layer — and Jinja's escaping is undone by
+        // getAttribute, so assembling markup here would re-open it.
+        tip.textContent = '';
+        if (title) {
+          const t = document.createElement('div');
+          t.className = 'tip-title';
+          t.textContent = title;
+          tip.appendChild(t);
+        }
+        if (desc) {
+          const d = document.createElement('div');
+          d.className = 'tip-desc';
+          d.textContent = desc;
+          tip.appendChild(d);
+        }
         tip.classList.add('visible');
         position(e);
       }
@@ -412,6 +449,46 @@
       // Expose for page scripts that inject new tip elements dynamically
       window.__prismBindTooltips = bindAll;
       window.__rebindTooltips = bindAll; // legacy alias used by server_detail.html
+
+      // ── A disabled control must say WHY ─────────────────────────────────
+      //
+      // The interaction model in app.css gives disabled controls
+      // `cursor: not-allowed` to say THAT they are unavailable, and reserves
+      // `data-tip-title`/`data-tip-desc` for the reason. Nothing supplied
+      // the reasons: 8 markup-disabled controls and 23 places that set
+      // `.disabled` from JS, none of them with a reason attached.
+      //
+      // The reason has to be set at the same moment the control is disabled,
+      // or the two drift — a control gets re-enabled and keeps a stale
+      // explanation of a condition that no longer holds, which is worse than
+      // no explanation. One call does both, so they cannot come apart.
+      //
+      // Falsy `title` means ENABLE and clear the reason, so the common
+      //   el.disabled = someCondition
+      // becomes
+      //   prismSetDisabled(el, someCondition && 'Why not', 'What to do')
+      //
+      // Verified in the browser: a real pointer DOES reach a disabled
+      // <button> — mouseover and mouseenter both fire and the tip renders.
+      // That holds only while nothing sets `pointer-events: none` on
+      // [disabled]; a test guards it, because that one declaration would
+      // silently remove every reason in the app.
+      window.prismSetDisabled = function (el, title, desc) {
+        if (!el) return;
+        if (!title) {
+          el.disabled = false;
+          el.removeAttribute('aria-disabled');
+          el.removeAttribute('data-tip-title');
+          el.removeAttribute('data-tip-desc');
+          return;
+        }
+        el.disabled = true;
+        el.setAttribute('aria-disabled', 'true');
+        el.setAttribute('data-tip-title', title);
+        if (desc) el.setAttribute('data-tip-desc', desc);
+        else el.removeAttribute('data-tip-desc');
+        bindAll();
+      };
     })();
 
     // Translation strings for the collector-pulse ECG widget. The
@@ -817,14 +894,95 @@
           g.apply(el, args);
         }
       }
+      // A disclosure has to SAY whether it is open, and the one reliable
+      // source for that is the thing it controls. Tracking "open" on the
+      // trigger as well means two places to disagree — so this reads the
+      // controlled element's computed display after every activation rather
+      // than remembering anything. Opt-in: an element without both
+      // `aria-expanded` and `aria-controls` is left alone.
+      function syncExpanded(el) {
+        if (!el || !el.hasAttribute || !el.hasAttribute('aria-expanded')) return;
+        const target = document.getElementById(el.getAttribute('aria-controls') || '');
+        if (!target) return;
+        el.setAttribute('aria-expanded',
+          getComputedStyle(target).display !== 'none' ? 'true' : 'false');
+      }
+
       // Bubbling events → event delegation on document.
       const _evtAttr = { click: 'data-action', change: 'data-change', submit: 'data-submit', input: 'data-input', mousedown: 'data-mousedown', mouseup: 'data-mouseup' };
       Object.keys(_evtAttr).forEach(function (evt) {
         document.addEventListener(evt, function (e) {
           const el = e.target.closest('[' + _evtAttr[evt] + ']');
-          if (el) run(el, e, el.getAttribute(_evtAttr[evt]));
+          if (el) { run(el, e, el.getAttribute(_evtAttr[evt])); if (evt === 'click') syncExpanded(el); }
         });
       });
+
+      // ── Keyboard bridge for controls that are not natively interactive ──
+      //
+      // A `<div data-action="…">` is clickable and nothing else: no tab stop,
+      // no Enter, no Space. Across the templates there were 29 such elements
+      // and not one carried a tabindex or a role, so every disclosure, list
+      // picker and clickable row in the app was mouse-only — WCAG 2.1.1.
+      //
+      // The fix is one bridge rather than a handler per widget, because the
+      // failure this repository keeps producing is a rule that reaches some
+      // of its carriers. Anything given a tabindex becomes operable by the
+      // same dispatch its click already uses, so the two cannot drift: you
+      // cannot make an element focusable here and forget to make it work.
+      //
+      // Natively-interactive targets are skipped. A <button data-action>
+      // already fires a click on Enter and Space, and handling the keydown
+      // too would run the action twice — which on a delete confirm is not a
+      // cosmetic bug.
+      const NATIVE = 'button, a[href], input, select, textarea, summary, [contenteditable=""], [contenteditable="true"]';
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+        if (e.altKey || e.ctrlKey || e.metaKey) return;
+        const el = e.target.closest('[data-action][tabindex]');
+        if (!el || e.target.closest(NATIVE)) return;
+        // Space scrolls the page by default, and Enter inside a form submits.
+        e.preventDefault();
+        run(el, e, el.getAttribute('data-action'));
+        syncExpanded(el);
+      });
+
+      // ── Empty states — the three-part rule, in one place ────────────────
+      //
+      // DESIGN_PHASE_3_SCOPE.md §4: a faded icon of the thing that is
+      // missing, what is absent in the user's words, and WHAT TO DO ABOUT
+      // IT. The third part is the one that gets dropped, and it is the part
+      // that separates an empty state from a dead end.
+      //
+      // `hint` is therefore a required argument, not an optional fourth
+      // flourish. server_detail.html had a local version where it was
+      // optional; all 14 of its call sites happened to pass one, but nothing
+      // said they had to, and the next caller is where coverage rots. A
+      // missing hint throws in development rather than rendering two-thirds
+      // of a rule.
+      //
+      // NOT for zero states. "0 critical" is a RESULT and belongs in the
+      // normal layout in the normal colours; "there is nothing here yet" is
+      // a different sentence.
+      window.prismEmptyState = function (icon, message, hint, opts) {
+        if (!hint) {
+          throw new Error('prismEmptyState: a hint is required — say what to ' +
+            'do about it, not just that there is nothing here (' + message + ')');
+        }
+        const esc = function (s) {
+          const d = document.createElement('div');
+          d.appendChild(document.createTextNode(s == null ? '' : String(s)));
+          return d.innerHTML;
+        };
+        const inner =
+          '<div class="text-sm text-faint text-center py-8">' +
+            '<i data-lucide="' + esc(icon || 'info') + '" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>' +
+            '<p>' + esc(message) + '</p>' +
+            '<p class="text-[10px] mt-1 opacity-60">' + esc(hint) + '</p>' +
+          '</div>';
+        return (opts && opts.cardWrap)
+          ? '<div class="bg-card rounded-lg p-6 border border-line">' + inner + '</div>'
+          : inner;
+      };
       // Non-bubbling hover events → attach directly (idempotent; re-run after
       // HTMX swaps so freshly-inserted rows get their handlers).
       window._prismBindHover = function (root) {
@@ -850,6 +1008,38 @@
           if (sec) sec.classList.toggle('hidden', el.innerHTML.trim() === '');
         }
       });
+
+      // ── Real data replacing a ghost fades in, ONCE ──────────────────────
+      //
+      // `.data-settled` (app.css) exists so the first arrival reads as the
+      // same object resolving rather than two different frames. The trap is
+      // that these regions re-swap on every prismRefresh — roughly every 5s
+      // under collector v2 — so putting the class on the swapped-in CONTENT
+      // would re-run the fade forever and turn a settle into a flicker. That
+      // is the same shape as the healthy-banner bug documented below: state
+      // that lives in swapped DOM is state that resets every few seconds.
+      //
+      // So: the class goes on the CONTAINER, which `morph:innerHTML` never
+      // replaces, and only when the outgoing content was actually a ghost.
+      // A CSS animation runs when it is applied, not when children change,
+      // so leaving the class in place is correct and cannot replay it.
+      const _swapTarget = (e) => (e.detail && e.detail.target) || e.target;
+      document.body.addEventListener('htmx:beforeSwap', function (e) {
+        const el = _swapTarget(e);
+        // querySelector, not a class check: the ghost is a descendant of the
+        // region, never the region itself.
+        if (el && el.querySelector && el.querySelector('.skeleton')) {
+          el.setAttribute('data-was-ghost', '1');
+        }
+      });
+      document.body.addEventListener('htmx:afterSwap', function (e) {
+        const el = _swapTarget(e);
+        if (!el || !el.getAttribute) return;
+        if (el.getAttribute('data-was-ghost') !== '1') return;
+        el.removeAttribute('data-was-ghost');
+        el.classList.add('data-settled');
+      });
+
       // Auto-dismiss the "all healthy" banner. Hosted here (not on the swapped-in
       // critical-issues partial) so that partial stays inline-script-free —
       // per-request nonces don't match across an HTMX fragment fetch.
@@ -943,6 +1133,13 @@
 
   <!-- Collector pulse monitor (ECG-style topbar widget) -->
   <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/pulse-monitor.js') }}"></script>
+
+  <!-- Estate vitals trace (the dashboard quadrant's centre circle). A
+       different signal from the pulse above: that one is "is the collector
+       alive", this one is "is the estate healthy". No-ops on every page but
+       the dashboard — it returns immediately when #estate-vitals is absent,
+       same as the pulse monitor. -->
+  <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/vitals-monitor.js') }}"></script>
 
   <!-- Violet stepper buttons for number fields. The native spin button
        cannot be recoloured, so it is hidden in app.css and rebuilt here —
