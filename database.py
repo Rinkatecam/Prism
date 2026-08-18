@@ -2966,9 +2966,15 @@ class Database:
         normal shape of an edit, so the destructive version was waiting for the
         first person to do the obvious thing.
 
-        `verify_tls` is deliberately NOT coalesced: it is a real boolean whose
-        False is meaningful, the route resolves absent-to-True before we see
-        it, and coalescing would make "turn verification off" unexpressible.
+        `verify_tls` is deliberately NOT coalesced, and the reason is that it
+        cannot arrive as NULL: the route resolves absent-to-True before the
+        value gets here, so `excluded.verify_tls` is always 0 or 1 and a
+        COALESCE around it would never fire. The consequence is worth stating
+        because it differs from the fields above — a partial update that omits
+        `verify_tls` RESETS it to verifying rather than preserving it. That is
+        the safe direction and it matches the documented contract ("absent
+        means verify"); the UI always sends the field for an HTTPS check, so
+        it only affects a hand-written API client.
         """
         with self._write_lock:
             conn = self._get_conn()

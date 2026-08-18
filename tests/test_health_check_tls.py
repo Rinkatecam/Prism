@@ -255,3 +255,121 @@ def test_the_probe_reports_which_mode_it_ran_in():
     assert "tls_verified" in src, (
         "http_check does not report tls_verified in its result, so a caller "
         "cannot tell a verified 'up' from an unverified one")
+
+
+# ── the UI carrier ────────────────────────────────────────────────────────
+#
+# The setting existed at four layers and was reachable from none of them,
+# because the form that creates health checks had no field for it. A security
+# default that an operator cannot opt out of through the product is not a
+# setting, it is a breakage with a workaround — and the workaround was a
+# hand-crafted API call. These pin the carrier.
+
+def _servers_html() -> str:
+    return (PROJECT_ROOT / "templates" / "servers.html").read_text(encoding="utf-8")
+
+
+def test_the_form_offers_the_setting():
+    html = _servers_html()
+    assert 'id="hc-new-verify-tls"' in html, (
+        "no verify_tls control in the health-check form; the setting is then "
+        "reachable only by hand-crafting an API call")
+    assert 'id="hc-new-verify-wrap"' in html
+    assert "checked" in html.split('id="hc-new-verify-tls"')[1][:120], (
+        "the checkbox must default to checked — the secure default has to be "
+        "the one an operator gets without thinking about it")
+
+
+def test_the_form_sends_the_setting_when_saving():
+    html = _servers_html()
+    assert "verify_tls: verifyTls" in html, (
+        "saveNewHealthCheck does not send verify_tls, so the control is "
+        "decorative and every check is created verifying regardless")
+
+
+def test_editing_a_check_repopulates_the_setting():
+    """Editing DELETES the row and re-creates it from this form.
+
+    A checkbox left at its default would silently turn verification back on
+    for an endpoint the operator deliberately exempted — on any unrelated
+    edit, such as fixing a typo in the name.
+    """
+    html = _servers_html()
+    assert "document.getElementById('hc-new-verify-tls').checked = hc.verify_tls !== 0;" in html, (
+        "the edit path does not repopulate verify_tls")
+
+
+def test_saving_resets_the_form_to_verifying():
+    html = _servers_html()
+    assert "document.getElementById('hc-new-verify-tls').checked = true;" in html, (
+        "the form keeps the last opt-out, so the NEXT check silently inherits "
+        "an exemption meant for a different endpoint")
+
+
+def test_the_test_button_probes_the_same_way_the_saved_check_will():
+    """Otherwise an operator tunes the endpoint against one behaviour and
+    deploys the other, and 'it worked when I tested it' is the least
+    debuggable complaint a monitoring tool can produce."""
+    html = _servers_html()
+    probe = html.split("'/api/health-checks/probe'")[1][:600]
+    assert "verify_tls" in probe, "the ad-hoc probe ignores the checkbox"
+
+    import inspect
+    import routes.api.health as h
+    src = inspect.getsource(h.probe_health_check)
+    assert "_verify_tls_from_payload" in src, (
+        "the probe endpoint does not apply the same absent-means-verify guard "
+        "as the save endpoint")
+
+
+def test_an_unverified_check_is_visible_in_the_list():
+    """The reason this is a per-check row rather than a constant is that the
+    weaker setting leaves a trace. If you must open the edit form to discover
+    it, it is as invisible as the hardcoded CERT_NONE it replaced."""
+    html = _servers_html()
+    assert "tlsUnverified" in html
+    assert "hc_tls_unverified" in html, "no badge for a non-verifying check"
+
+
+def test_the_new_strings_exist_in_every_locale():
+    from i18n import TRANSLATIONS
+    keys = ["hc_verify_tls", "hc_verify_tls_hint",
+            "hc_tls_unverified", "hc_tls_unverified_hint"]
+    missing = [f"{lang}:{k}" for lang in TRANSLATIONS for k in keys
+               if k not in TRANSLATIONS[lang]]
+    assert not missing, "untranslated: " + ", ".join(missing)
+
+
+def test_an_absent_name_is_not_the_same_as_an_empty_one():
+    """The coercion that defeated COALESCE, pinned at the layer that does it.
+
+    Coercing a MISSING name to an empty string produces a value that is not
+    NULL, so the upsert's COALESCE cannot protect it and a partial edit still
+    blanks the stored name. The DB-level test could not see this: it called
+    save_health_check_config directly and never went through the route. Found
+    by a live round trip against the running app, after the DB test passed.
+
+    PARSED, NOT GREPPED. The first version read the raw source and failed on
+    the comment beside the fix, which quotes the very expression it forbids --
+    the fifth time a text-scanning check in this repository has fired on its
+    own documentation, and the cheapest way to make it pass would have been to
+    delete the explanation. `ast.unparse` round-trips the code and drops every
+    comment; the docstring is stripped separately because it is a real node.
+    """
+    import ast
+    import inspect
+    import textwrap
+    import routes.api.health as h
+
+    tree = ast.parse(textwrap.dedent(inspect.getsource(h.save_health_check_config)))
+    fn = tree.body[0]
+    fn.body = [n for n in fn.body
+               if not (isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant)
+                       and isinstance(n.value.value, str))]
+    code = ast.unparse(fn)
+
+    assert "(data.get('name') or '').strip()" not in code, (
+        "an absent name is coerced to empty string again, which overwrites "
+        "the stored name on any partial update")
+    assert "isinstance(_raw_name, str)" in code, (
+        "the route no longer distinguishes an absent name from an empty one")

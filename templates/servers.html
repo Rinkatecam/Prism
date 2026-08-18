@@ -321,6 +321,18 @@
           <input type="text" id="hc-new-path" placeholder="/health" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field font-mono">
         </div>
       </div>
+      {# Only meaningful for HTTPS, so it only appears for HTTPS. A control that
+         is inert for four of the five check types teaches people to ignore it. #}
+      <div id="hc-new-verify-wrap" class="hidden mb-3">
+        <label class="flex items-start gap-2 cursor-pointer">
+          <input type="checkbox" id="hc-new-verify-tls" checked
+                 class="mt-0.5 rounded border-line">
+          <span>
+            <span class="block text-xs font-medium text-ink">{{ t.get('hc_verify_tls', 'Validate the TLS certificate') }}</span>
+            <span class="block text-[10px] text-muted">{{ t.get('hc_verify_tls_hint', 'Uncheck only for an internal endpoint with a self-signed certificate. Without it, the check proves something answered — not that it was this service.') }}</span>
+          </span>
+        </label>
+      </div>
       <div class="flex items-center gap-2">
         <button data-action="saveNewHealthCheck" class="px-4 py-1.5 text-sm font-medium rounded bg-healthy text-white hover:opacity-90 flex items-center gap-1">
           <i data-lucide="save" class="w-4 h-4"></i>
@@ -1875,6 +1887,11 @@ function editHealthCheck(row) {
       document.getElementById('hc-new-host').value = hc.target_host || '';
       document.getElementById('hc-new-port').value = hc.target_port || '';
       document.getElementById('hc-new-path').value = hc.http_path || '';
+      // MUST be repopulated. Editing DELETES the row and re-creates it from
+      // this form, so a checkbox left at its default would silently turn
+      // verification back on for an endpoint the operator had deliberately
+      // exempted — on any unrelated edit, such as fixing a typo in the name.
+      document.getElementById('hc-new-verify-tls').checked = hc.verify_tls !== 0;
       toggleNewHcFields();
 
       // Delete the old one so saving creates a fresh entry
@@ -1898,6 +1915,7 @@ function toggleNewHcFields() {
   const type = document.getElementById('hc-new-type').value;
   document.getElementById('hc-new-port-wrap').classList.toggle('hidden', type === 'icmp');
   document.getElementById('hc-new-path-wrap').classList.toggle('hidden', type !== 'http' && type !== 'https');
+  document.getElementById('hc-new-verify-wrap').classList.toggle('hidden', type !== 'https');
 }
 
 function saveNewHealthCheck() {
@@ -1907,6 +1925,11 @@ function saveNewHealthCheck() {
   const host = document.getElementById('hc-new-host').value.trim();
   const port = type === 'icmp' ? 0 : parseInt(document.getElementById('hc-new-port').value) || 0;
   const httpPath = document.getElementById('hc-new-path').value.trim() || '/';
+  // Sent only for HTTPS. For the other types it is meaningless, and the API
+  // treats an ABSENT value as "verify", so omitting it can never weaken a
+  // check — see routes/api/health.py:_verify_tls_from_payload.
+  const verifyTls = type === 'https'
+    ? document.getElementById('hc-new-verify-tls').checked : undefined;
 
   if (!server || !host) { pAlert('Server and Host are required'); return; }
   if (type !== 'icmp' && !port) { pAlert('Port is required'); return; }
@@ -1914,7 +1937,7 @@ function saveNewHealthCheck() {
   fetch('/api/health-checks/config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-    body: JSON.stringify({ server_name: server, check_type: type, target_host: host, target_port: port, http_path: httpPath, name: name }),
+    body: JSON.stringify({ server_name: server, check_type: type, target_host: host, target_port: port, http_path: httpPath, name: name, verify_tls: verifyTls }),
   })
   .then(r => r.json())
   .then(result => {
@@ -1924,6 +1947,9 @@ function saveNewHealthCheck() {
       document.getElementById('hc-new-host').value = '';
       document.getElementById('hc-new-port').value = '';
       document.getElementById('hc-new-path').value = '';
+      // Back to checked, not to whatever the last check used. A form that
+      // remembers an opt-out quietly applies it to the next endpoint.
+      document.getElementById('hc-new-verify-tls').checked = true;
       document.getElementById('hc-add-form').classList.add('hidden');
       loadHealthChecks();
     } else {
@@ -1948,7 +1974,8 @@ function testNewHealthCheck() {
   fetch('/api/health-checks/probe', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-    body: JSON.stringify({ host, port, check_type: type, http_path: httpPath }),
+    body: JSON.stringify({ host, port, check_type: type, http_path: httpPath,
+      verify_tls: type === 'https' ? document.getElementById('hc-new-verify-tls').checked : undefined }),
   })
   .then(r => r.json())
   .then(data => {
@@ -1988,12 +2015,18 @@ function addHealthCheckRow(data) {
   const server = data.server || data.server_name || '';
   const portDisplay = data.check_type === 'icmp' ? '' : ':' + port;
   const pathDisplay = (data.check_type === 'http' || data.check_type === 'https') && path ? path : '';
+  // An HTTPS check that is NOT validating its certificate says so in the list.
+  // The whole point of making this a per-check setting was that the weaker
+  // behaviour leaves a trace; if you have to open the edit form to find out,
+  // it is exactly as invisible as the hardcoded CERT_NONE it replaced.
+  const tlsUnverified = data.check_type === 'https' && data.verify_tls === 0;
 
   row.innerHTML = `
     <div class="flex-1 min-w-0">
       <div class="flex items-center gap-2">
         <span class="text-xs font-semibold text-ink dark:text-[#F9FAFB]">${_escHtml(name)}</span>
         <span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-info/10 text-info dark:bg-info/20">${type}</span>
+        ${tlsUnverified ? `<span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-warning/15 text-warning-strong dark:bg-warning/25" title="{{ t.get('hc_tls_unverified_hint', 'This check does not validate the certificate, so it proves the endpoint answered — not that it is this service.') }}">{{ t.get('hc_tls_unverified', 'TLS NOT VERIFIED') }}</span>` : ''}
       </div>
       <div class="text-[10px] text-muted mt-0.5 font-mono">${_escHtml(server)} → ${_escHtml(host)}${portDisplay}${pathDisplay ? ' ' + _escHtml(pathDisplay) : ''}</div>
     </div>

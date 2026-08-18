@@ -474,7 +474,15 @@ def save_health_check_config():
         return jsonify({"ok": False, "error": "server_name, check_type, target_host, and target_port are required"}), 400
     http_path = data.get("http_path")
     expected_status = data.get("expected_status")
-    name = (data.get("name") or "").strip()
+    # ABSENT is not the same as EMPTY, and collapsing them defeated the
+    # COALESCE in save_health_check_config: `(data.get("name") or "").strip()`
+    # turns a missing key into "", which is not NULL, so the upsert wrote it
+    # over the stored name. Caught by a live round trip, not by the unit test —
+    # the test called the DB method directly and never saw this coercion.
+    # None  -> key absent, keep what is stored.
+    # ""    -> caller explicitly cleared it.
+    _raw_name = data.get("name")
+    name = _raw_name.strip() if isinstance(_raw_name, str) else None
     verify_tls = _verify_tls_from_payload(data)
     try:
         new_id = _shared._db.save_health_check_config(
@@ -531,7 +539,14 @@ def probe_health_check():
         elif check_type == "http":
             result = health_checker.http_check(host, port, path=http_path, use_ssl=False)
         elif check_type == "https":
-            result = health_checker.http_check(host, port, path=http_path, use_ssl=True)
+            # Same default and the same guard as the saved check. If the Test
+            # button verified when the stored check would not (or the reverse),
+            # an operator would tune the endpoint against one behaviour and
+            # deploy the other — and "it worked when I tested it" is the least
+            # debuggable complaint a monitoring tool can produce.
+            result = health_checker.http_check(
+                host, port, path=http_path, use_ssl=True,
+                verify_tls=_verify_tls_from_payload(data))
         elif check_type == "udp":
             result = health_checker.udp_probe(host, port)
         elif check_type == "icmp":

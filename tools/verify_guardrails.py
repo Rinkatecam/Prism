@@ -933,6 +933,22 @@ suite(
              "                        http_path = COALESCE(excluded.http_path, health_check_config.http_path),",
              "                        http_path = excluded.http_path,",
              "test_editing_one_field_does_not_blank_the_others"),
+    # The UI carrier. A setting reachable from no screen is not a setting.
+    Mutation("the form stops sending the checkbox",
+             "templates/servers.html",
+             "name: name, verify_tls: verifyTls }),",
+             "name: name }),",
+             "test_the_form_sends_the_setting_when_saving"),
+    Mutation("editing forgets the opt-out and re-enables verification",
+             "templates/servers.html",
+             "checked = hc.verify_tls !== 0;",
+             "checked = true;",
+             "test_editing_a_check_repopulates_the_setting"),
+    Mutation("an absent name is coerced to empty and blanks the stored one",
+             "routes/api/health.py",
+             "name = _raw_name.strip() if isinstance(_raw_name, str) else None",
+             "name = (data.get('name') or '').strip()",
+             "test_an_absent_name_is_not_the_same_as_an_empty_one"),
 )
 
 # ── lan-only: the address classifier behind the LAN-only verdict ─────────
