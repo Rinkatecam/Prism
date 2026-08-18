@@ -167,6 +167,18 @@ class ConfigManager:
             "send_on_warning": False,
         },
         "maintenance_windows": [],
+        # ── The estate severity model (WP-1, docs/plans/SEVERITY_MODEL_SPEC.md) ──
+        # Empty dicts mean "the code constants in severity_roles.py apply" —
+        # weights 10/4/1 and the type seeds ship as constants so CI without a
+        # config.json stays green and a fresh install needs zero configuration.
+        # A site that genuinely differs overrides here (the MSP copies this
+        # block between customers): weights = {role_word: int},
+        # type_roles = {server_type: role_word}. Per-server overrides live on
+        # the server entry itself (`criticality`), not here.
+        "severity_model": {
+            "weights": {},
+            "type_roles": {},
+        },
         # ─────────────────────────────────────────────────────────────────
         # Scheduled restarts (Operations page). These MUST be declared here
         # even though POST /api/scheduled-restarts writes them straight into

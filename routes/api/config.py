@@ -183,6 +183,22 @@ def save_config():
             return jsonify({"ok": False, "error": f"Tier for '{name}' must be 0, 1 or 2"}), 400
         s["tier"] = tier
 
+        # Impact role override (estate severity model). "" = inherit the
+        # type seed. Rejected at the API rather than silently ignored at
+        # resolve time: resolve_role tolerates garbage from a hand-edited
+        # config.json (degrading to the seed), but a VALIDATED writer has
+        # no business persisting a value the resolver will never honour —
+        # the operator typed it expecting an effect.
+        crit_raw = str(s.get("criticality", "") or "").strip()
+        if crit_raw:
+            from severity_roles import ROLES
+            if crit_raw not in ROLES:
+                return jsonify({
+                    "ok": False,
+                    "error": f"criticality for '{name}' must be one of "
+                             f"{', '.join(ROLES)} (or empty to inherit from type)"}), 400
+        s["criticality"] = crit_raw
+
         # HTTPS — closes audit findings R7 (S3-1) and W10 (S3-12).
         existing_entry = existing_servers.get(name) or {}
         existing_https = bool(existing_entry.get("use_https", False))

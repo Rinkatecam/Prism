@@ -80,3 +80,9 @@ docs/COLLECTOR_V2_AUDIT.md
 
 # Personal Claude Code plugin marketplace (unrelated to Prism)
 rinka-skills/
+
+# The private companion repo (planning docs, audits, runbooks live there,
+# versioned; see its own INTERNAL-README.md). Second git-dir over this same
+# working tree — must never be tracked or pushed publicly.
+.internal.git/
+INTERNAL-README.md

@@ -100,6 +100,13 @@ class ServerConfig:
     thresholds: dict = field(default_factory=dict)
     # Tier classification for RBAC: 0 = critical (DC, mail, primary DB), 1 = standard, 2 = dev/test
     tier: int = 1
+    # Impact role override for the estate severity model — one of
+    # severity_roles.ROLES, or "" to inherit the type seed. DELIBERATELY a
+    # separate field from `tier`: tier is who may ACT on a server (RBAC),
+    # criticality is what its loss MEANS to the estate, and the round table
+    # explicitly rejected coupling authorisation to alerting (a tier-0
+    # jump box is not availability-critical). See severity_roles.py.
+    criticality: str = ""
     # WinRM transport: when True, use HTTPS (5986) with cert validation
     use_https: bool = False
     # When use_https=True: skip cert validation (NOT recommended). Allows self-signed for first-rollout.
@@ -126,6 +133,7 @@ class ServerConfig:
             "port": self.port,
             "thresholds": self.thresholds,
             "tier": self.tier,
+            "criticality": self.criticality,
             "use_https": self.use_https,
             "https_skip_verify": self.https_skip_verify,
         }
@@ -147,6 +155,7 @@ class ServerConfig:
             port=int(data.get("port", 5985)),
             thresholds=dict(data.get("thresholds", {})),
             tier=int(data.get("tier", 1)),
+            criticality=str(data.get("criticality", "") or ""),
             use_https=bool(data.get("use_https", False)),
             https_skip_verify=bool(data.get("https_skip_verify", False)),
         )
