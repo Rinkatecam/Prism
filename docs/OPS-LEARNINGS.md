@@ -517,6 +517,35 @@ concurrency, nothing to observe). The first is a test to fix; the second is a
 mutation to delete and a comment to leave behind so the next person does not
 re-add it.*
 
+**37. A hedge in a pattern is a hole in the test.** An assertion that the
+heart's contraction was computed inside the drawing frame was written as
+`squeeze|beatPhase` — two acceptable spellings, in case the implementation
+picked the other one. The mutation that removed the behaviour replaced the real
+call with a line that assigned `dataset.beatPhase`, and the test passed. The
+alternation was not protecting against a rename; it was accepting the absence of
+the thing being tested. The same session produced two more of the shape: a
+substring `--beat-depth: 0` that also matched `--beat-depth: 0.09`, and a helper
+returning "the first CSS rule with this selector" that returned a rule from
+inside a media query because that one came first in the file.
+*Rule: assert the narrowest thing that is true. An alternation, a prefix, or a
+"first match" is a place where a wrong implementation can still be right about
+the pattern — and the mutation harness is the only thing that will tell you,
+because a hedged assertion looks more robust, not less.*
+
+**38. Read back what you wrote, not what you meant to write.** A reduced-motion
+override was spliced in by matching on `.vitals-core {` — which occurs twice,
+and the first occurrence is inside a `max-width` media query rather than the
+motion query. The declaration landed in the responsive block: it would have
+disabled the heart's beat on every narrow screen and left it running for exactly
+the readers who asked for stillness. Two silent failures from one correct-looking
+edit. It was caught by printing the lines around the insertion point
+immediately afterwards, which took one command.
+*Rule: after any anchored splice into a file with repeated structure, print the
+CONTEXT of what landed — not just that the write succeeded. "Anchor found once"
+is a weaker claim than it sounds when the anchor is a selector, a brace, or an
+indented line, and the same class of mistake corrupted three splices of the
+mutation harness earlier in this branch.*
+
 ---
 
 ## 3. The techniques that worked

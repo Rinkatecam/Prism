@@ -77,6 +77,26 @@ def _css() -> str:
 
 # ── reduced motion ───────────────────────────────────────────────────────
 
+def _animating(js: str) -> str:
+    """The body of the ONE predicate that decides whether anything moves.
+
+    WP-2 moved the four reasons not to animate — reduced motion, no beat, an
+    acknowledged change, a hidden tab — out of `start()` and into `animating()`,
+    because the answer is now also published to the DOM as `data-beating` and
+    two copies of the condition would be two answers. The invariants below are
+    unchanged; only the place they are asserted moved with the code.
+    """
+    m = re.search(r"function animating\(\)\s*\{(.*?)\n  \}", js, re.S)
+    assert m, "animating() is gone; re-derive what gates the loop"
+    return m.group(1)
+
+
+def _start(js: str) -> str:
+    m = re.search(r"function start\(\)\s*\{(.*?)\n  \}", js, re.S)
+    assert m, "start() has been reshaped; re-derive what gates the loop"
+    return m.group(1)
+
+
 def test_the_trace_asks_about_reduced_motion_at_all():
     """The stylesheet cannot reach a rAF loop, so this query is the ONLY
     place the preference is honoured. Without it the page passes every
@@ -92,19 +112,20 @@ def test_a_reduced_motion_reader_never_starts_the_loop():
     into a variable and then ignored is the exact shape of a compliance
     measure that reports itself as installed."""
     js = _js()
-    m = re.search(r"function start\(\)\s*\{(.*?)\n  \}", js, re.S)
-    assert m, "start() has been reshaped; re-derive what gates the loop"
-    body = m.group(1)
-    assert "reduceMotion" in body, (
-        "start() no longer consults reduceMotion, so the preference is read "
-        "and discarded")
-    assert re.search(r"if\s*\([^)]*reduceMotion[^)]*\)[\s\S]{0,200}stopRaf\(\)", body), (
-        "the reduced-motion branch does not stop the animation loop")
+    assert "reduceMotion" in _animating(js), (
+        "the movement decision no longer consults reduceMotion, so the "
+        "preference is read and discarded")
+    body = _start(js)
+    assert "animating()" in body, (
+        "start() decides for itself instead of asking animating(), so the "
+        "gate and the published data-beating can disagree")
+    assert re.search(r"if\s*\(!run\)[\s\S]{0,400}stopRaf\(\)", body), (
+        "the not-animating branch does not stop the animation loop")
     # And nothing may start it again further down the same function.
-    after = body[body.index("reduceMotion"):]
+    after = body[body.index("if (!run)"):]
     assert after.index("return") < after.index("startRaf"), (
-        "start() falls through to startRaf() after the reduced-motion "
-        "branch, so the branch changes nothing")
+        "start() falls through to startRaf() after the bail-out branch, so "
+        "the branch changes nothing")
 
 
 def test_stopping_the_sweep_never_leaves_an_empty_canvas():
@@ -112,14 +133,13 @@ def test_stopping_the_sweep_never_leaves_an_empty_canvas():
     in the middle of the quadrant does not read as "a monitor at rest", it
     reads as a region that failed to load — which is the outcome the
     reduced-motion decision was specifically weighed against."""
-    js = _js()
-    m = re.search(r"function start\(\)\s*\{(.*?)\n  \}", js, re.S)
-    body = m.group(1)
-    guard = re.search(r"if\s*\([^)]*reduceMotion[\s\S]{0,300}?\breturn\b", body)
+    body = _start(_js())
+    guard = re.search(r"if\s*\(!run\)[\s\S]{0,500}?\breturn\b", body)
     assert guard, "the bail-out branch is gone"
     assert "paint(" in guard.group(0), (
         "the no-animation branch returns without painting; the canvas stays "
-        "blank for reduced-motion readers, a flat estate and a hidden tab")
+        "blank for reduced-motion readers, an acknowledged state, a flat "
+        "estate and a hidden tab")
 
 
 def test_no_reduced_motion_exemption_was_quietly_granted():
@@ -138,12 +158,20 @@ def test_no_reduced_motion_exemption_was_quietly_granted():
         depth += (css[i] == "{") - (css[i] == "}")
         i += 1
     body = css[block.end():i]
+    # A vitals rule in this block is now allowed IF it removes motion. WP-2
+    # added one — the heart's squeeze depth zeroed — and the distinction is the
+    # whole point of this test: the thing that must be argued rather than
+    # slipped in is a rule that RESTORES animation, not one that takes more of
+    # it away. The original blanket ban would have failed on a rule that makes
+    # the page quieter, which is the opposite of what it is protecting.
     offenders = [line.strip() for line in body.splitlines()
-                 if "vitals" in line]
+                 if "vitals" in line
+                 and re.search(r"animation|transition", line)
+                 and not re.search(r"0\.01ms|iteration-count:\s*1\b", line)]
     assert not offenders, (
-        "a vitals rule appeared inside the reduced-motion block. The trace is "
-        "a status display, not a progress indicator, and the numbers beside "
-        "it carry the same information — see the argument in that block:\n  "
+        "a vitals rule inside the reduced-motion block re-enables animation. "
+        "The trace is a status display, not a progress indicator, and colour "
+        "carries the whole state — see the argument in that block:\n  "
         + "\n  ".join(offenders))
 
 
@@ -156,8 +184,7 @@ def test_the_loop_stops_when_the_tab_is_hidden():
     handler = js[js.index("'visibilitychange'"):]
     assert re.search(r"document\.hidden[\s\S]{0,120}stopRaf\(\)", handler), (
         "the visibility handler does not stop the loop")
-    m = re.search(r"function start\(\)\s*\{(.*?)\n  \}", js, re.S)
-    assert "document.hidden" in m.group(1), (
+    assert "document.hidden" in _animating(js), (
         "start() can re-arm the loop while the tab is hidden, so anything "
         "that calls it — a partial swap, a severity change — undoes the "
         "visibility pause")
@@ -237,12 +264,36 @@ def test_the_state_words_are_defined_once_and_used_twice():
     places to update and one to forget, and the failure is a state word that
     lags the tempo it labels."""
     dash = _code_only(DASHBOARD.read_text(encoding="utf-8"))
-    assert dash.count("vitals_labels") == 3, (
-        "expected exactly one definition of vitals_labels and two uses (the "
-        "JSON handed to the JS, and the word rendered server-side); found "
-        f"{dash.count('vitals_labels')} mentions")
-    assert "data-vitals-labels='{{ vitals_labels | tojson }}'" in dash
-    assert "{{ vitals_labels[vitals.severity] }}" in dash
+    # One DEFINITION, asserted structurally rather than by counting mentions.
+    # The count was 3 and became 4 when WP-2 rendered the word in two places —
+    # the live region on the face of the circle and the visible line in the
+    # detail — and a magic number would have failed on a change that adds a
+    # correct second USE while keeping the single definition intact. The
+    # invariant is "defined once", so that is what is checked.
+    assert dash.count("{% set vitals_labels =") == 1, (
+        "vitals_labels is defined more than once; two copies of five "
+        "translated strings is two places to update and one to forget")
+    assert "data-vitals-labels='{{ vitals_labels | tojson }}'" in dash, (
+        "the JS is no longer handed the same map Jinja renders from")
+    assert dash.count("{{ vitals_labels[vitals.severity] }}") >= 1, (
+        "no server-rendered state word, so the readout is blank until the "
+        "first swap lands")
+    # THE ACTUAL INVARIANT: every state word is looked up in the map, and the
+    # map is the only place that reaches for a `vitals_state_*` translation.
+    # Checked by splitting the template at the definition, because "the count of
+    # a substring" could not see a use that duplicates the LOOKUP rather than
+    # the definition — a mutation that replaced one lookup with a direct
+    # `t.get('vitals_state_calm', …)` left the definition intact and the count
+    # unchanged, and the test passed while the word it rendered had stopped
+    # tracking the severity.
+    start = dash.index("{% set vitals_labels =")
+    end = dash.index("%}", dash.index("}", start)) + 2
+    definition, rest = dash[start:end], dash[:start] + dash[end:]
+    assert definition.count("vitals_state_") == 6, (
+        "the definition no longer names all six severities' translations")
+    assert "vitals_state_" not in rest, (
+        "a state-word translation is fetched outside the vitals_labels "
+        "definition, so that word no longer tracks the severity it labels")
 
 
 def test_every_state_word_exists_in_every_locale():

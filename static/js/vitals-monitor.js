@@ -106,11 +106,34 @@
   // height is what makes it read as strain.
   const AMPLITUDE = { calm: 0.70, elevated: 0.85, urgent: 1.0 };
 
+  // The phase the R spike sits at, named once so the squeeze and the waveform
+  // cannot disagree about where the beat is. WAVE below has to keep its R
+  // deflection here; a test asserts the two match, because a heart contracting
+  // a fifth of a beat away from its own spike looks like two unrelated
+  // animations sharing a box and neither of them looks broken.
+  const R_CENTRE = 0.250;
+
+  // How sharply the contraction rises and falls around that spike. Wider than
+  // the R deflection itself: a real ventricle is still squeezing well after the
+  // electrical spike has passed, and matching the spike's own 8ms-equivalent
+  // width would read as a flicker rather than a beat.
+  const SQUEEZE_W = 0.055;
+
+  // Storage key prefix for "somebody has looked at this". Namespaced because
+  // localStorage is shared across the whole origin.
+  const ACK_KEY = 'prism.vitals.ack';
+
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ── State ───────────────────────────────────────────────────────────
   let core = null, canvas = null, ctx = null;
   let percentEl = null, countEl = null, stateEl = null;
+  let heartEl = null, detailEl = null, toggleEl = null;
+  let railOut = null, whyOut = null, contribOut = null, detailStateEl = null;
+  let railRow = null, whyRow = null, contribRow = null;
+  let settlingRow = null, clearRow = null;
+  let rail = '';
+  let unacknowledged = false;
   let labels = {};
   let severity = 'calm';
   let bpm = 60;
@@ -129,6 +152,18 @@
     percentEl = core.querySelector('[data-vitals-percent-out]');
     countEl = core.querySelector('[data-vitals-count-out]');
     stateEl = core.querySelector('[data-vitals-state-out]');
+    heartEl = core.querySelector('.vitals-heart');
+    detailEl = core.querySelector('#estate-vitals-detail');
+    toggleEl = core.querySelector('[data-vitals-detail-toggle]');
+    detailStateEl = core.querySelector('[data-vitals-detail-state]');
+    railOut = core.querySelector('[data-vitals-rail-out]');
+    whyOut = core.querySelector('[data-vitals-why-out]');
+    contribOut = core.querySelector('[data-vitals-contributors-out]');
+    railRow = core.querySelector('[data-vitals-rail-row]');
+    whyRow = core.querySelector('[data-vitals-why-row]');
+    contribRow = core.querySelector('[data-vitals-contributors-row]');
+    settlingRow = core.querySelector('[data-vitals-settling-row]');
+    clearRow = core.querySelector('[data-vitals-clear-row]');
 
     try {
       labels = JSON.parse(core.getAttribute('data-vitals-labels') || '{}');
@@ -140,6 +175,24 @@
     // already filled in would be a step backwards.
     severity = core.getAttribute('data-severity') || 'calm';
     bpm = parseInt(core.getAttribute('data-bpm'), 10) || 0;
+    rail = core.getAttribute('data-rail') || '';
+    // First paint decides whether this is news. A page load that finds an
+    // unacknowledged state should beat — the operator has not seen it, and the
+    // fact that they were not here when it happened is exactly why.
+    unacknowledged = !acknowledged();
+
+    if (toggleEl) {
+      toggleEl.addEventListener('click', toggleDetail);
+    }
+    // Escape closes it, and the focus goes back to the control that opened it.
+    // Without the second half, the keyboard user is left at the top of the
+    // document having done nothing they can see.
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && isDetailOpen()) {
+        closeDetail();
+        if (toggleEl) toggleEl.focus();
+      }
+    });
 
     if (canvas) {
       ctx = canvas.getContext('2d');
@@ -172,6 +225,93 @@
   }
 
   function now() { return performance.now(); }
+
+  // ── The squeeze ─────────────────────────────────────────────────────
+  //
+  // A pure function of the beat's phase, so a paused frame is reproducible
+  // rather than depending on when the page happened to load, and so it can be
+  // reasoned about without running it. Peaks ON the R spike (R_CENTRE) because
+  // that is the electrical event a ventricular contraction follows; wrapped the
+  // same way `wave()` wraps, so a beat boundary is continuous instead of
+  // clipping the rise flat.
+  function squeeze(u) {
+    let d = u - R_CENTRE;
+    if (d > 0.5) d -= 1;
+    else if (d < -0.5) d += 1;
+    return Math.exp(-(d * d) / (2 * SQUEEZE_W * SQUEEZE_W));
+  }
+
+  // ── "Somebody has looked at this" ───────────────────────────────────
+  //
+  // Motion means NEW, and this is what NEW means: a severity the operator has
+  // not opened the detail on. Keyed on severity AND rail — the rail names the
+  // machine, so two different critical problems are two pieces of news. Keyed
+  // on severity alone, the second one would arrive already acknowledged: silent,
+  // at exactly the moment silence is wrong.
+  function ackKey() {
+    return ACK_KEY + ':' + severity + '|' + rail;
+  }
+
+  // Is there any news to have? Found by looking at the running dashboard: a
+  // calm estate with nothing driving it made the heart beat on every fresh page
+  // load, because nothing had been acknowledged yet. Technically consistent and
+  // wrong in substance — "motion means NEW" is worthless if the resting state
+  // is also motion, and the one thing this signal must never become is ambient.
+  //
+  // There is no news in "everything is fine". Every other severity has one,
+  // and so does calm-with-a-rail, which means something is down and being
+  // explained away rather than nothing being wrong.
+  function newsworthy() {
+    return severity !== 'calm' || !!rail;
+  }
+
+  function acknowledged() {
+    if (!newsworthy()) return true;
+    try {
+      return window.localStorage.getItem(ackKey()) === '1';
+    } catch (e) {
+      // Private browsing throws on localStorage. Fail towards BEATING: a heart
+      // that beats when it needn't is noise, and one that stays still when
+      // something changed is a missed outage. Over-signal, never under-signal.
+      return false;
+    }
+  }
+
+  function remember() {
+    try {
+      window.localStorage.setItem(ackKey(), '1');
+    } catch (e) {
+      // Nothing to do and nothing to say: the beat simply keeps its meaning
+      // for this session instead of across them.
+    }
+  }
+
+  // ── The one gesture ─────────────────────────────────────────────────
+  function isDetailOpen() {
+    return !!detailEl && !detailEl.hasAttribute('hidden');
+  }
+
+  function openDetail() {
+    if (!detailEl) return;
+    detailEl.removeAttribute('hidden');
+    if (toggleEl) toggleEl.setAttribute('aria-expanded', 'true');
+    // Looking IS acknowledging. This is the whole of the ratified rule: the
+    // motion stops because the question it was asking has been answered.
+    remember();
+    unacknowledged = false;
+    start();
+  }
+
+  function closeDetail() {
+    if (!detailEl) return;
+    detailEl.setAttribute('hidden', '');
+    if (toggleEl) toggleEl.setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleDetail() {
+    if (isDetailOpen()) closeDetail();
+    else openDetail();
+  }
 
   // ── Geometry ────────────────────────────────────────────────────────
   //
@@ -207,10 +347,18 @@
     const percent = src.getAttribute('data-vitals-percent');
     const ok = src.getAttribute('data-vitals-ok');
     const monitored = src.getAttribute('data-vitals-monitored');
+    const nextRail = src.getAttribute('data-vitals-rail') || '';
 
     const changed = nextSeverity !== severity;
+    // News is a change of severity OR of which machine is driving it. The
+    // second half matters: an estate that stays `urgent` while the cause moves
+    // from one server to another has changed in the only way an operator cares
+    // about, and severity alone cannot see it.
+    const isNews = changed || nextRail !== rail;
     severity = nextSeverity;
+    rail = nextRail;
     if (!isNaN(nextBpm)) bpm = nextBpm;
+    if (isNews) unacknowledged = !acknowledged();
 
     // An empty percent means nothing is monitored — the honest readout is a
     // dash, not 0%.
@@ -219,10 +367,16 @@
     if (countEl && ok != null && monitored != null) {
       countEl.textContent = ok + '/' + monitored;
     }
-    if (stateEl) {
-      const label = labels[severity];
-      if (label) stateEl.textContent = label;
+    // Every element that shows the word, from one place: the live region on
+    // the face (for assistive technology) and the visible line in the detail.
+    // Two writers would be two chances to disagree about the same state.
+    const label = labels[severity];
+    if (label) {
+      if (stateEl) stateEl.textContent = label;
+      if (detailStateEl) detailStateEl.textContent = label;
     }
+
+    writeDetail(src);
 
     // The attributes track state unconditionally; only the class swap is
     // guarded, because rewriting className every 5s for no change is a
@@ -232,6 +386,7 @@
     // unnoticed as a lie about live state.
     core.setAttribute('data-severity', severity);
     core.setAttribute('data-bpm', String(bpm));
+    core.setAttribute('data-rail', rail);
     if (changed) {
       core.className = core.className.replace(/\bvitals-core--\S+/g, '').trim()
         + ' vitals-core--' + severity;
@@ -242,15 +397,94 @@
     start();
   }
 
+  // ── The dossier ─────────────────────────────────────────────────────
+  //
+  // WP-1's fold already computes the rail, the contributors and the
+  // why-not-higher sentence; until WP-2 they had nowhere to appear. The circle
+  // is static markup OUTSIDE the swapped fragment (it owns a canvas), so these
+  // are written from the partial's attributes rather than re-rendered — the
+  // same route the counts have always taken.
+  //
+  // textContent throughout, never innerHTML. Every string here contains a
+  // SERVER NAME, which is operator-supplied text arriving through a database
+  // and an HTML attribute; building markup out of it would make the dashboard's
+  // most prominent element an injection sink for anyone who can add a server.
+  function writeDetail(src) {
+    if (railOut) railOut.textContent = rail;
+    if (railRow) toggleRow(railRow, !!rail);
+
+    if (whyOut) {
+      const why = src.getAttribute('data-vitals-why') || '';
+      whyOut.textContent = why;
+      if (whyRow) toggleRow(whyRow, !!why);
+    }
+
+    let contributors = [];
+    try {
+      contributors = JSON.parse(src.getAttribute('data-vitals-contributors') || '[]');
+    } catch (e) {
+      contributors = [];
+    }
+    if (contribOut) {
+      contribOut.textContent = '';
+      for (let i = 0; i < contributors.length; i++) {
+        const c = contributors[i] || {};
+        const li = document.createElement('li');
+        const name = document.createElement('span');
+        name.className = 'vitals-detail-name';
+        name.textContent = c.name == null ? '' : String(c.name);
+        const status = document.createElement('span');
+        status.className = 'vitals-detail-dim';
+        status.textContent = c.status == null ? '' : String(c.status);
+        li.appendChild(name);
+        li.appendChild(status);
+        contribOut.appendChild(li);
+      }
+      if (contribRow) toggleRow(contribRow, contributors.length > 0);
+    }
+
+    if (settlingRow) {
+      toggleRow(settlingRow, src.getAttribute('data-vitals-settling') === '1');
+    }
+    if (clearRow) toggleRow(clearRow, !rail && contributors.length === 0);
+  }
+
+  function toggleRow(el, show) {
+    if (show) el.removeAttribute('hidden');
+    else el.setAttribute('hidden', '');
+  }
+
   // ── The loop ────────────────────────────────────────────────────────
   function beating() { return bpm > 0; }
 
+  // Should anything be moving? Named rather than inlined, because the answer
+  // is published to the DOM and a second copy of this condition would be a
+  // second answer.
+  //
+  // MOTION MEANS NEW (ratified). Once the change has been looked at, the whole
+  // monitor goes still — trace included, not just the squeeze. That is the rule
+  // applied honestly: a trace that sweeps forever is motion that means nothing,
+  // and a dashboard whose centre is permanently animating is the thing the
+  // owner objected to. The still frame is not blank; it carries the severity's
+  // colour, its amplitude and its beat spacing, so a critical estate still
+  // shows a faster, taller, busier waveform than a calm one. Nothing is lost.
+  function animating() {
+    return !reduceMotion && beating() && unacknowledged && !document.hidden;
+  }
+
   function start() {
     if (!ctx) return;
-    // Every reason not to run, in one place. Each of them still PAINTS —
-    // stopping the sweep must never leave an empty canvas, which reads as a
-    // region that failed to load rather than as a monitor at rest.
-    if (reduceMotion || !beating() || document.hidden) {
+    const run = animating();
+    // Published so the decision can be read rather than inferred from an
+    // animation. In an automated browser pane requestAnimationFrame is
+    // throttled below one frame per second and CSS transitions never advance,
+    // so "is it beating" cannot be answered by looking at it.
+    core.setAttribute('data-beating', run ? 'true' : 'false');
+    core.setAttribute('data-unacknowledged', unacknowledged ? 'true' : 'false');
+    if (!run) {
+      // Every reason not to run still PAINTS — stopping the sweep must never
+      // leave an empty canvas, which reads as a region that failed to load
+      // rather than as a monitor at rest.
       stopRaf();
       paint(now());
       return;
@@ -343,11 +577,28 @@
 
     const amp = (AMPLITUDE[severity] || AMPLITUDE.calm) * (mid - LINE_W);
     const beatsPerSecond = bpm / 60;
-    // x = w is "now"; x = 0 is SECONDS_VISIBLE ago. A static frame for a
-    // reduced-motion user pins the phase to 0 so the trace is the same
-    // every time it is painted rather than depending on when the page
-    // happened to load.
-    const nowBeats = reduceMotion ? 0 : (t / 1000) * beatsPerSecond;
+    // x = w is "now"; x = 0 is SECONDS_VISIBLE ago. A still frame — reduced
+    // motion, or a change that has been acknowledged — pins the phase to 0 so
+    // the trace is the same every time it is painted rather than depending on
+    // when the page happened to load.
+    const still = !animating();
+    const nowBeats = still ? 0 : (t / 1000) * beatsPerSecond;
+
+    // THE HEART SQUEEZES ON THIS FRAME, from this phase. One clock for both,
+    // which is the only way the contraction cannot drift away from the spike it
+    // is supposed to follow. A CSS keyframe animation whose duration is
+    // recomputed from bpm would look right and be a second clock, and nothing
+    // would ever notice — both versions look like a beating heart.
+    //
+    // A still frame rests at squeeze(0)'s complement: 0 contraction, the heart
+    // at its own size. Not the phase it happened to stop on — a permanently
+    // half-contracted heart reads as a rendering bug rather than a monitor at
+    // rest.
+    if (heartEl) {
+      let beatU = nowBeats % 1;
+      if (beatU < 0) beatU += 1;
+      heartEl.style.setProperty('--beat', still ? '0' : squeeze(beatU).toFixed(3));
+    }
 
     ctx.beginPath();
     const step = 1 / SAMPLES_PER_PX;
@@ -364,7 +615,7 @@
     // The leading edge, the way a monitor marks where the sweep is. Skipped
     // when nothing is moving, because a bright dot at a fixed point is not
     // a sweep position, it is a smudge.
-    if (!reduceMotion) {
+    if (!still) {
       let u = nowBeats % 1;
       if (u < 0) u += 1;
       ctx.fillStyle = ink;

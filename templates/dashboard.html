@@ -128,14 +128,94 @@
      than no word. #}
   <div id="estate-vitals" class="vitals-core vitals-core--{{ vitals.severity }}"
        data-severity="{{ vitals.severity }}" data-bpm="{{ vitals.bpm }}"
+       data-rail="{{ vitals.rail or '' }}"
+       data-beating="false" data-unacknowledged="false"
        data-vitals-labels='{{ vitals_labels | tojson }}'>
     <span class="vitals-core-label">{{ t.get('vitals_estate', 'Estate') }}</span>
-    <span class="vitals-core-percent" data-vitals-percent-out="">{% if vitals.percent is not none %}{{ vitals.percent }}%{% else %}&mdash;{% endif %}</span>
-    <span class="vitals-core-count" data-vitals-count-out="">{{ vitals.ok }}/{{ vitals.monitored }}</span>
-    <span class="vitals-core-state" data-vitals-state-out="">{{ vitals_labels[vitals.severity] }}</span>
-    {# Decorative: everything it encodes is stated as text above it. That is
-       also the reduced-motion argument — see app.css. #}
-    <canvas class="vitals-canvas" aria-hidden="true"></canvas>
+
+    {# ── The heart (WP-2) ──
+       The owner's brief in one line: "97% answers nothing". The percentage,
+       the count and the state word are gone from the face; what is left is
+       the word ESTATE and a heart whose COLOUR carries the severity and whose
+       BEAT carries only one thing — that something changed and nobody has
+       looked yet.
+
+       It is a <button> because it is the one gesture that reaches everything
+       the readout used to show, plus the things that actually answer the
+       question. A div with a click handler would need focus, Enter, Space and
+       a role reimplemented, and would get one of them wrong.
+
+       This is also the ONLY hit-testable thing inside the circle. `.vitals-core`
+       covers all four quadrant cards and two of them reveal their reason on
+       hover, so the disc stays transparent to the pointer and the heart takes
+       it back for itself — see app.css. #}
+    <button type="button" class="vitals-heart" data-vitals-detail-toggle
+            aria-expanded="false" aria-controls="estate-vitals-detail"
+            aria-label="{{ t.get('vitals_detail_toggle', 'Show what this reading means') }}">
+      <svg class="vitals-heart-svg" viewBox="0 0 48 44" aria-hidden="true" focusable="false">
+        <path class="vitals-heart-shape"
+              d="M24 41C24 41 3 27.5 3 14.5C3 7.6 8.6 2 15.5 2C19.8 2 23.1 4.4 24 6.5C24.9 4.4 28.2 2 32.5 2C39.4 2 45 7.6 45 14.5C45 27.5 24 41 24 41Z" />
+      </svg>
+      {# The trace runs THROUGH the heart and out both sides, which is what
+         makes the pair read as one object rather than an icon with a graph
+         next to it. Decorative: everything it encodes is available as text in
+         the detail below, which is also the reduced-motion argument. #}
+      <canvas class="vitals-canvas" aria-hidden="true"></canvas>
+    </button>
+
+    {# The severity word left the FACE, not the page. Colour cannot be the only
+       carrier of a state: a screen reader gets nothing from a fill, and neither
+       does a reader who cannot separate red from amber. So the word is here for
+       assistive technology and announced when it changes, and it is visible to
+       everyone else one gesture away, in the detail. #}
+    <span class="sr-only" data-vitals-state-out="" aria-live="polite"
+          role="status">{{ vitals_labels[vitals.severity] }}</span>
+
+    {# ── The one-gesture detail ──
+       First paint is server-rendered; every refresh after it is written by
+       vitals-monitor.js from the swapped partial's data attributes, the same
+       way the counts always were. The circle sits OUTSIDE the swapped region
+       because it owns a canvas, so without that the detail would freeze at
+       whatever was true when the page loaded. #}
+    <div id="estate-vitals-detail" class="vitals-detail" hidden>
+      <p class="vitals-detail-state" data-vitals-detail-state="">{{ vitals_labels[vitals.severity] }}</p>
+
+      <div class="vitals-detail-row" data-vitals-rail-row{% if not vitals.rail %} hidden{% endif %}>
+        <span class="vitals-detail-key">{{ t.get('vitals_detail_cause', 'What is driving this') }}</span>
+        <span class="vitals-detail-value" data-vitals-rail-out="">{{ vitals.rail or '' }}</span>
+      </div>
+
+      <div class="vitals-detail-row" data-vitals-contributors-row{% if not vitals.contributors %} hidden{% endif %}>
+        <span class="vitals-detail-key">{{ t.get('vitals_detail_contributors', 'Biggest contributors') }}</span>
+        <ul class="vitals-detail-list" data-vitals-contributors-out="">
+          {% for c in vitals.contributors %}
+          <li><span class="vitals-detail-name">{{ c.name }}</span><span class="vitals-detail-dim">{{ c.status }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="vitals-detail-row" data-vitals-why-row{% if not vitals.why_not_higher %} hidden{% endif %}>
+        <span class="vitals-detail-key">{{ t.get('vitals_detail_not_higher', 'Why it is not worse') }}</span>
+        <span class="vitals-detail-value" data-vitals-why-out="">{{ vitals.why_not_higher or '' }}</span>
+      </div>
+
+      {# `settling` is the fold deliberately holding a cautious answer while the
+         estate keeps changing its mind. An operator watching a reading refuse
+         to move is owed the reason. #}
+      <p class="vitals-detail-settling" data-vitals-settling-row{% if not vitals.settling %} hidden{% endif %}>
+        {{ t.get('vitals_detail_settling',
+                 'Settling — the reading is being held steady while the estate stops changing') }}</p>
+
+      <p class="vitals-detail-clear" data-vitals-clear-row{% if vitals.rail or vitals.contributors %} hidden{% endif %}>
+        {{ t.get('vitals_detail_all_clear', 'Nothing is pushing the estate above calm.') }}</p>
+
+      {# The numbers. Moved, not deleted — they answer "how much", which is a
+         real question once you already know what. #}
+      <p class="vitals-detail-counts">
+        <span data-vitals-percent-out="">{% if vitals.percent is not none %}{{ vitals.percent }}%{% else %}&mdash;{% endif %}</span>
+        <span class="vitals-detail-dim" data-vitals-count-out="">{{ vitals.ok }}/{{ vitals.monitored }}</span>
+      </p>
+    </div>
   </div>
 </section>
 

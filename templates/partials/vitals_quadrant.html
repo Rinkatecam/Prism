@@ -25,7 +25,15 @@
      data-vitals-bpm="{{ vitals.bpm }}"
      data-vitals-ok="{{ vitals.ok }}"
      data-vitals-monitored="{{ vitals.monitored }}"
-     data-vitals-percent="{{ vitals.percent if vitals.percent is not none else '' }}">
+     data-vitals-percent="{{ vitals.percent if vitals.percent is not none else '' }}"
+     {# WP-2's dossier. The circle is static markup outside this fragment (it
+        owns a canvas), so these attributes are how its one-gesture detail stays
+        current after a refresh — the same route the counts have always taken.
+        One source of truth per refresh, read by vitals-monitor.js. #}
+     data-vitals-rail="{{ vitals.rail or '' }}"
+     data-vitals-why="{{ vitals.why_not_higher or '' }}"
+     data-vitals-settling="{{ '1' if vitals.settling else '' }}"
+     data-vitals-contributors='{{ (vitals.contributors or []) | tojson }}'>
 {% if vitals.monitored == 0 %}
 {# Nothing configured at all — no servers AND no probes. The four cards
    would frame a circle with nothing to say, so the region says what is
