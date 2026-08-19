@@ -431,6 +431,49 @@ nothing downstream catches the wrong one. Make "declined, and here is why" a
 first-class output; the residue list is what lets the next person finish the
 job or ratchet the count.*
 
+**33. A mutation harness running in the background rewrites the files you are
+editing.** The harness works by saving a file, writing a defect into it,
+running one test, and restoring the saved copy. Left running while other edits
+land in the same files, its restore writes the version it captured — so an edit
+made inside one of those windows disappears with no error anywhere. Worse, a
+harness killed mid-run leaves the last defect APPLIED, and a deliberately
+introduced defect is indistinguishable from a bug when you find it later. Both
+happened in one session here: one mutation was found still applied in the
+working tree, and it was only noticed because a suite's own baseline went red.
+*Rule: a tool that mutates the working tree runs in the FOREGROUND, alone, and
+is never backgrounded or interrupted. If one is killed anyway, the recovery is
+not "look at the diff" — it is run the full suite AND every mutation baseline,
+because those are the only things that can tell a leftover defect from a real
+one.*
+
+---
+
+### 2.6 Replacements that were installed and unreachable
+
+**34. A replacement can be written, wired, and still never run — because an
+outer guard's meaning quietly widened.** A retrospective correlation rule was
+replaced by a closure-driven one: the new code was written, tested, mutation-
+checked, and demonstrated against the real fleet. It had two defects that no
+test could see. First, the old rule was never deleted, so the function that ran
+in production still contained it and the replacement had no caller at all —
+"replaces" was true of the design and false of the code. Second, after the call
+was added, the pass still did nothing on a quiet system: its caller began with
+an early return when no new events were pending. That guard was correct when
+the pass only grouped fresh events. It became wrong the moment the same pass
+also took on work that is driven by STATE rather than by events — an ongoing
+outage emits nothing, and a recovery is the absence of a failure, so the pass
+that must notice "the cause is fixed and the consequence is not" is the
+quietest one there is. The same early return had also been skipping incident
+auto-resolution on a quiet system for as long as it had existed.
+*Rule 1: "X replaces Y" is a claim about the call graph. Assert it as one —
+walk the AST from the entry point to the replacement, and assert the retired
+code is gone by absence, not by comment.*
+*Rule 2: when a function acquires a second responsibility, re-read every early
+return in it AND in its callers. A guard is written against one meaning of
+"there is nothing to do", and nothing re-derives it when the meaning changes.*
+*Rule 3: neither defect was findable by reading the new module, and both were
+findable in seconds by running the system and asking what it actually did.*
+
 ---
 
 ## 3. The techniques that worked

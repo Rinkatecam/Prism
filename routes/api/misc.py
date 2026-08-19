@@ -847,6 +847,12 @@ def add_dependency():
         _shared._db.log_audit(flask_session.get("username", "system"), "add_dependency",
                       "server_dependencies", f"{server_name} -> {depends_on} ({dependency_type})")
         return jsonify({"ok": True, "id": dep_id})
+    except ValueError as e:
+        # Cycle rejection (WP-1 phase 3). A 400 with the writer's own
+        # message, which names both ends of the loop — the operator needs to
+        # know WHICH existing edge conflicts, not just that something did.
+        # Caught before the generic handler so it never reads as a 500.
+        return jsonify({"ok": False, "error": str(e)}), 400
     except Exception as e:
         if "UNIQUE constraint" in str(e):
             return jsonify({"ok": False, "error": "This dependency already exists"}), 409

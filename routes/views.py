@@ -151,6 +151,36 @@ def _estate_vitals(server_count: int, summary: dict | None,
     else:
         severity = "calm"
 
+    # THE SEVERITY NOW COMES FROM THE WEIGHTED FOLD (WP-1). The count-fold
+    # above still runs — it produces the cards, the percent, and the
+    # pre-band gates (idle/unmeasured/flat), and it is the FALLBACK when the
+    # collector has not yet published a verdict (a cold cache on a fresh
+    # start, or any test that never ran the supervisor). But when
+    # estate_service has a verdict, its band is authoritative: it weighs
+    # servers by role and fires the rails ("a DC down is urgent even though
+    # one box of thirty is a small fraction"), which presence-counting
+    # cannot. The two agree on the gates by construction — display_severity
+    # applies the same idle/unmeasured/flat order — so the override only
+    # ever changes the MEASURED band, never the gates.
+    rail = None
+    why_not_higher = ""
+    contributors: list = []
+    settling = False
+    try:
+        import estate_service
+        verdict = estate_service.current_verdict()
+    except Exception:
+        verdict = None
+    if verdict is not None and severity not in ("idle", "unmeasured"):
+        # Trust the weighted band for a measured estate. The gates stay local
+        # because they are about "is there anything to measure", which the
+        # count-fold answers from the same cache the fold used.
+        severity = verdict.get("severity", severity)
+        rail = verdict.get("rail")
+        why_not_higher = verdict.get("why_not_higher", "")
+        contributors = verdict.get("contributors", [])
+        settling = bool(verdict.get("settling"))
+
     # A score needs something to have been measured. `idle` has no
     # denominator and `unmeasured` has no numerator that means anything —
     # both render as a dash, which is the readout saying "ask me later"
@@ -165,6 +195,11 @@ def _estate_vitals(server_count: int, summary: dict | None,
         "bpm": _VITALS_BPM[severity],
         "servers": servers_card,
         "services": services_card,
+        # Dossier fields for the tooltip (WP-1 rails-first; WP-2 renders them).
+        "rail": rail,
+        "why_not_higher": why_not_higher,
+        "contributors": contributors,
+        "settling": settling,
     }
 
 

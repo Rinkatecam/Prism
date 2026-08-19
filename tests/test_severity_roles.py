@@ -103,12 +103,19 @@ def test_the_type_seed_wins_when_no_override_is_set():
     assert (role, source) == ("critical_infrastructure", "type")
 
 
-def test_an_unknown_type_defaults_to_background():
-    """The live fleet uses types outside DEFAULT_THRESHOLDS (they fall
-    through to _default thresholds); the role must fall through just as
-    quietly — to Background, the ratified default."""
+def test_an_unknown_type_fails_UP_to_important():
+    """Research-amended (2026-08-18): an unknown type is an UNCLASSIFIED
+    box, and the persona evidence is unanimous that unclassified must fail
+    up — a missed outage on a silently-Background box is how monitoring
+    tools get uninstalled. "other" stays Background because choosing it IS
+    a classification; falling through is not one."""
     role, source = resolve_role(_server(type="management"), {})
-    assert (role, source) == ("background", "default")
+    assert (role, source) == ("important", "default")
+
+
+def test_choosing_other_is_a_classification_and_stays_background():
+    role, source = resolve_role(_server(type="other"), {})
+    assert (role, source) == ("background", "type")
 
 
 def test_a_garbage_override_is_ignored_not_honoured():

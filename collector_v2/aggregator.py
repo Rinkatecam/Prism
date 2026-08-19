@@ -1474,9 +1474,20 @@ class Aggregator:
         while _recent_events and _recent_events[0].get("event_at", 0) < cutoff:
             _recent_events.popleft()
 
-        if not _recent_events:
-            return
-
+        # NO early-out on an empty window. It used to return here, and that was
+        # right when correlation only ever grouped fresh events. It is wrong now
+        # that the pass also runs the closure-driven cascade election, incident
+        # PROMOTION and auto-resolution — none of which are event-driven:
+        #
+        #   * an ongoing outage emits nothing; it is a state, not an event;
+        #   * a recovery is the ABSENCE of a failure, so the pass that must
+        #     notice "the root is back but its dependent is not" is typically
+        #     the quietest one there is;
+        #   * auto-resolution was silently skipped on a quiet fleet too, which
+        #     is how an incident could outlive the trouble it described.
+        #
+        # The cost of running anyway is three small indexed reads per 30s, off
+        # the 5s hot path. `correlate_events` handles an empty window itself.
         correlate = _correlate_events_fn()
         if correlate is None:
             return  # analytics module missing — skip silently
@@ -1484,7 +1495,8 @@ class Aggregator:
         try:
             servers = _list_servers_for_correlation()
             window_events = list(_recent_events)
-            correlated = correlate(self.db, window_events, servers)
+            correlated = correlate(self.db, window_events, servers,
+                                   settings=self.get_settings() or {})
             if correlated:
                 logger.info(
                     "Time-windowed correlation produced %d incidents "

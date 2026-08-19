@@ -357,6 +357,61 @@ class Supervisor:
         self._enqueued_since_summary += enqueued
         self._maybe_log_summary(len(servers))
 
+        # Fold the weighted estate verdict once per tick (every 5s). This one
+        # call both computes the current truth and advances the dwell/freeze
+        # timers, so recovery eases down on this clock even when the collector
+        # is quiet. Off the per-result hot path, O(fleet) over the hot cache,
+        # zero queries beyond the health summary. Fully guarded — the estate
+        # widget must never take the supervisor down. See estate_service.
+        try:
+            self._recompute_estate(servers, settings)
+        except Exception:
+            logger.debug("estate recompute failed (non-fatal)", exc_info=True)
+
+    def _recompute_estate(self, servers, settings: dict) -> None:
+        import time as _time
+        import estate_service
+        import state as _state
+        from cascade import seeded_domain_edges, build_closure
+        with _state._state_lock:
+            cache = dict(_state.latest_by_server or {})
+        try:
+            health = self.db.get_health_check_summary()
+        except Exception:
+            health = {}
+
+        # The cascade's inputs: the operator's own edges (closure cached at
+        # CRUD time) PLUS the seeded Domain Services edges, which are
+        # computed here rather than stored — they follow the config, so a
+        # server whose type changes stops or starts being seeded without a
+        # migration, and they never pollute the operator's real edge list.
+        closure, groups = None, None
+        try:
+            assumed, groups = seeded_domain_edges(servers, settings)
+            if assumed:
+                real = self.db.get_all_dependencies()
+                closure = build_closure(list(real) + assumed)
+            else:
+                closure = self.db.get_dependency_closure()
+        except Exception:
+            logger.debug("cascade inputs unavailable (non-fatal)", exc_info=True)
+
+        estate_service.recompute(
+            servers, cache, settings,
+            latched_worst=self._flap_worst_map(),
+            health_summary=health,
+            now=_time.time(),
+            poll_interval=int(settings.get("poll_interval_seconds", 60) or 60),
+            closure=closure, groups=groups)
+
+    def _flap_worst_map(self) -> dict:
+        """Worst-recent status per latched server, for the fold's Unsteady
+        substitution. The flap_state persistence is a separate phase-2 slice;
+        until it lands this returns {} and the fold reads live status — a safe
+        no-op, never a wrong answer. Wired here so that slice is a one-line
+        change, not a re-plumb."""
+        return {}
+
     @staticmethod
     def _compute_intervals(settings: dict[str, Any]) -> dict[CheckType, int]:
         """Read live settings into a CheckType→seconds map.

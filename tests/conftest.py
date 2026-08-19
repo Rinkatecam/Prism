@@ -34,3 +34,29 @@ def fresh_config(tmp_path, monkeypatch):
     cfg_file = tmp_path / "config.json"
     cfg_file.write_text('{"servers": [], "settings": {}}', encoding="utf-8")
     return ConfigManager(cfg_file)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_estate_state():
+    """Reset the estate service's module state around EVERY test.
+
+    `estate_service` publishes one process-wide verdict, and
+    `routes.views._estate_vitals` reads it — so a test that folds a fleet
+    leaks a severity into every later test that renders vitals. That is
+    exactly what happened: six tests in test_estate_vitals.py passed alone
+    and failed in the full suite, depending on file order.
+
+    Autouse rather than opt-in: the leak crosses FILES, so any test that
+    forgets the fixture is a test that can be poisoned by a neighbour. The
+    reset runs before AND after — before so a test starts clean, after so a
+    test never leaves a verdict behind for whatever pytest-randomly puts
+    next.
+    """
+    try:
+        import estate_service
+    except Exception:
+        yield
+        return
+    estate_service.reset()
+    yield
+    estate_service.reset()

@@ -512,6 +512,19 @@ CREATE TABLE IF NOT EXISTS server_dependencies (
 CREATE INDEX IF NOT EXISTS idx_deps_server ON server_dependencies(server_name);
 CREATE INDEX IF NOT EXISTS idx_deps_target ON server_dependencies(depends_on);
 
+-- WP-1 phase 3: reachability, precomputed at dependency-CRUD time.
+-- Rebuilt whole on every edge write (rare, human-driven) so the runtime
+-- cascade reducer is a point lookup and never a graph walk on the 5s path.
+-- `depth` is the SHORTEST path from root to dependent.
+CREATE TABLE IF NOT EXISTS dependency_closure (
+    root TEXT NOT NULL,
+    dependent TEXT NOT NULL,
+    depth INTEGER NOT NULL,
+    UNIQUE(root, dependent)
+);
+CREATE INDEX IF NOT EXISTS idx_closure_root ON dependency_closure(root);
+CREATE INDEX IF NOT EXISTS idx_closure_dependent ON dependency_closure(dependent);
+
 -- F10: Runbook Library with Quick-Actions
 CREATE TABLE IF NOT EXISTS runbooks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -758,6 +771,43 @@ class Database:
             # Migration: add name to health_check_config
             try:
                 conn.execute("ALTER TABLE health_check_config ADD COLUMN name TEXT DEFAULT ''")
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass
+
+            # Migration: add promoted_at to incidents (WP-1 phase 3).
+            # Nullable and additive. Once the root recovers and the child is
+            # still down at its next fresh poll, the child's incident is born
+            # with this stamped. root_cause_server is NEVER nulled — it is the
+            # historical fact of how the outage began, and an audit needs it.
+            try:
+                conn.execute("ALTER TABLE incidents ADD COLUMN promoted_at TEXT")
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass
+
+            # Migration: add subject_server to incidents (WP-1 close).
+            #
+            # This resolves the design point phase 3 recorded rather than
+            # papered over. `root_cause_server` answers "what CAUSED this",
+            # and phase 3 wrote the root's own name into it on the root's own
+            # incident — natural for the column's meaning, and it made a root
+            # row satisfy the child predicate, so the promotion guard was
+            # weaker than intended.
+            #
+            # SUBJECT answers a different question: "which server is this
+            # incident ABOUT". With both columns the identity rule is
+            # structural instead of conventional —
+            #
+            #     root incident      subject_server == root_cause_server
+            #     promoted ex-child  subject_server != root_cause_server
+            #
+            # — and nothing has to be inferred from a title or a description.
+            # Rows written before this column existed meant subject == root,
+            # which is exactly how `get_open_incident_by_subject` reads a
+            # NULL, so no backfill is needed and none is done.
+            try:
+                conn.execute("ALTER TABLE incidents ADD COLUMN subject_server TEXT")
                 conn.commit()
             except sqlite3.OperationalError:
                 pass
@@ -2474,7 +2524,21 @@ class Database:
                        description: str | None = None, custom_type_name: str | None = None,
                        target_mode: str = "port", service_name: str | None = None,
                        process_name: str | None = None) -> int:
-        """Add a dependency relationship. Returns the new row id."""
+        """Add a dependency relationship. Returns the new row id.
+
+        REJECTS an edge that would close a cycle (WP-1 phase 3), raising
+        ValueError with a message naming the loop. Rejecting at the write is
+        what lets the runtime cascade reducer be a lookup rather than a
+        traversal — it can assume the graph is acyclic because this is the
+        only door in. A self-edge is a cycle of length one.
+        """
+        from cascade import would_create_cycle
+        existing = self.get_all_dependencies()
+        if would_create_cycle(existing, server_name, depends_on):
+            raise ValueError(
+                f"'{server_name}' depends on '{depends_on}' would create a "
+                f"dependency cycle — '{depends_on}' already depends on "
+                f"'{server_name}' directly or through other servers.")
         with self._write_lock:
             conn = self._get_conn()
             try:
@@ -2485,12 +2549,18 @@ class Database:
                     (server_name, depends_on, dependency_type, custom_type_name, target_mode, port, service_name, process_name, description)
                 )
                 conn.commit()
-                return cur.lastrowid
+                new_id = cur.lastrowid
             finally:
                 conn.close()
+        self.rebuild_dependency_closure()
+        return new_id
 
     def remove_dependency(self, dep_id: int):
-        """Remove a dependency by id."""
+        """Remove a dependency by id, then rebuild the closure.
+
+        A STALE closure is worse than no closure: it would keep muting a
+        server whose dependency the operator just deleted.
+        """
         with self._write_lock:
             conn = self._get_conn()
             try:
@@ -2498,6 +2568,51 @@ class Database:
                 conn.commit()
             finally:
                 conn.close()
+        self.rebuild_dependency_closure()
+
+    def rebuild_dependency_closure(self) -> int:
+        """Recompute the whole closure from the edges. Returns row count.
+
+        Whole-rebuild rather than incremental: edge writes are rare and
+        human-driven, and an incremental update is where a subtle staleness
+        bug would live forever. Cheap at any realistic fleet size.
+        """
+        from cascade import build_closure
+        closure = build_closure(self.get_all_dependencies())
+        rows = [(root, dep, depth)
+                for root, reach in closure["downstream"].items()
+                for dep, depth in reach.items()]
+        with self._write_lock:
+            conn = self._get_conn()
+            try:
+                conn.execute("DELETE FROM dependency_closure")
+                if rows:
+                    conn.executemany(
+                        "INSERT OR REPLACE INTO dependency_closure "
+                        "(root, dependent, depth) VALUES (?, ?, ?)", rows)
+                conn.commit()
+            finally:
+                conn.close()
+        return len(rows)
+
+    def get_dependency_closure(self) -> dict:
+        """The cached closure, in the shape `cascade` uses.
+
+        Returns {"downstream": {root: {dependent: depth}},
+                 "upstream":   {dependent: {root: depth}}}
+        """
+        conn = self._get_conn()
+        try:
+            rows = conn.execute(
+                "SELECT root, dependent, depth FROM dependency_closure").fetchall()
+        finally:
+            conn.close()
+        down: dict[str, dict] = {}
+        up: dict[str, dict] = {}
+        for r in rows:
+            down.setdefault(r["root"], {})[r["dependent"]] = r["depth"]
+            up.setdefault(r["dependent"], {})[r["root"]] = r["depth"]
+        return {"downstream": down, "upstream": up}
 
     def get_all_dependencies(self) -> list[dict]:
         """Return all dependency records."""
@@ -3493,19 +3608,88 @@ class Database:
     # ── F7: Incident operations ──
 
     def create_incident(self, title: str, severity: str, description: str | None = None,
-                        root_cause_server: str | None = None) -> int:
-        """Create a new incident and return its ID."""
+                        root_cause_server: str | None = None,
+                        subject_server: str | None = None,
+                        promoted_at: str | None = None) -> int:
+        """Create a new incident and return its ID.
+
+        `subject_server` is which server the incident is ABOUT;
+        `root_cause_server` is what caused it. They are equal on a root's own
+        incident and differ on a promoted ex-child, which is the whole of the
+        identity rule (see the subject_server migration). `promoted_at` is
+        stamped at creation because a promoted child has no earlier row to
+        update — children are created only at promotion.
+        """
         with self._write_lock:
             conn = self._get_conn()
             try:
                 cur = conn.execute(
-                    "INSERT INTO incidents (title, severity, description, root_cause_server) VALUES (?, ?, ?, ?)",
-                    (title, severity, description, root_cause_server)
+                    "INSERT INTO incidents (title, severity, description, "
+                    "root_cause_server, subject_server, promoted_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (title, severity, description, root_cause_server,
+                     subject_server, promoted_at)
                 )
                 conn.commit()
                 return cur.lastrowid
             finally:
                 conn.close()
+
+    # NOTE: `get_open_incident_by_root` is gone. Phase 3 added it to replace
+    # title-prefix dedup — a title is a rendered sentence containing the child
+    # count, which is how one outage became 295 incidents — and keying on the
+    # root cause was the right correction at the time. It is the wrong KEY now:
+    # a root cause is shared, so five orphans of one dead domain controller all
+    # name it, and the first of them would block the other four. Removed rather
+    # than left unused, because an unused dedup helper beside the correct one is
+    # an invitation to reintroduce exactly the bug it caused.
+
+    def get_open_incident_by_subject(self, server: str) -> dict | None:
+        """The open incident ABOUT this server, or None. The cascade's dedup
+        key, and the guard that makes promotion fire exactly once.
+
+        Subject rather than root cause, because the root cause is shared: five
+        orphans of one dead domain controller all name it, and keying on it
+        would let the first promotion block the other four. A server, on the
+        other hand, has at most one open incident about it — which is the
+        invariant this method both reads and enforces.
+
+        NULLIF before COALESCE on purpose. A pre-upgrade row has subject NULL
+        and meant subject == root; a row that reached here through a form or a
+        route may carry '' instead, and '' is not NULL — that exact confusion
+        cost a live-verified fix a whole extra round in this repo.
+        """
+        conn = self._get_conn()
+        try:
+            row = conn.execute(
+                "SELECT * FROM incidents "
+                "WHERE COALESCE(NULLIF(subject_server, ''), root_cause_server) = ? "
+                "AND status = 'open' ORDER BY id DESC LIMIT 1",
+                (server,)).fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
+
+    def get_incident(self, incident_id: int) -> dict | None:
+        """One incident row, or None. (`get_incident_detail` adds its events;
+        this is the bare row, which promotion and its tests need.)"""
+        conn = self._get_conn()
+        try:
+            row = conn.execute("SELECT * FROM incidents WHERE id = ?",
+                               (incident_id,)).fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
+
+    # NOTE: there is deliberately no `promote_incident` UPDATE. Phase 3 had
+    # one, guarded on `root_cause_server IS NOT NULL AND promoted_at IS NULL`,
+    # and the owner's ruling at WP-1's close removed the thing it guarded:
+    # children are created only AT promotion, so there is never an earlier row
+    # to stamp. `create_incident(..., promoted_at=...)` is the whole mechanism
+    # and the child's own row is the idempotence guard — see
+    # `get_open_incident_by_subject`. Keeping an UPDATE whose predicate a root
+    # row also satisfied would have left a way to corrupt the identity rule
+    # that nothing needed.
 
     def update_incident(self, incident_id: int, **kwargs):
         """Flexible update for an incident. Supported keys: status, severity, resolved_at,
