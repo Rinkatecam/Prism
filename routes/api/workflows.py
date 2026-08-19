@@ -25,6 +25,8 @@ from analytics import get_server_analytics, forecast_disk, forecast_metric
 from reports import generate_csv_metrics, generate_csv_events, generate_pdf_report
 from i18n import get_translations
 
+from workflow_engine import parse_canvas
+
 from . import _shared
 from ._shared import (
     api_bp,
@@ -341,6 +343,11 @@ def create_workflow():
     _sync_trigger_from_canvas(data)
     tc = data.get("trigger_config", {})
     cj = data.get("canvas_json", {})
+    gate = _require_canvas_permissions(
+        cj, flask_session.get("username", "system"),
+        "rbac_denied_workflow_create", f"workflow-create name={name!r}")
+    if gate:
+        return gate
     wf_id = _shared._db.create_workflow(
         name=name,
         description=data.get("description"),
@@ -363,6 +370,14 @@ def update_workflow(wf_id):
     # Same sync as create: a Schedule block dropped onto the canvas of
     # an existing workflow must update trigger_type/trigger_config.
     _sync_trigger_from_canvas(data)
+    # Gated as well as create, because "create it empty and fill it in" would
+    # otherwise be the bypass — and it is the obvious one.
+    if "canvas_json" in data:
+        gate = _require_canvas_permissions(
+            data["canvas_json"], flask_session.get("username", "system"),
+            "rbac_denied_workflow_update", f"workflow-update id={wf_id}")
+        if gate:
+            return gate
     if "trigger_config" in data and isinstance(data["trigger_config"], (dict, list)):
         data["trigger_config"] = _json.dumps(data["trigger_config"])
     if "canvas_json" in data and isinstance(data["canvas_json"], (dict, list)):
@@ -394,6 +409,20 @@ def clone_workflow(wf_id):
         return auth_err
     data = request.get_json(silent=True) or {}
     new_name = data.get("name", "New Workflow")
+    # A clone copies SOMEBODY ELSE'S blocks into a workflow the cloner owns and
+    # can schedule, so it is an authoring act and gated as one.
+    try:
+        _src = next((w for w in _shared._db.get_workflows(include_templates=True)
+                     if w.get("id") == wf_id), None)
+    except Exception:
+        _src = None
+    if _src:
+        gate = _require_canvas_permissions(
+            _src.get("canvas_json") or "{}",
+            flask_session.get("username", "system"),
+            "rbac_denied_workflow_clone", f"workflow-clone src={wf_id}")
+        if gate:
+            return gate
     try:
         new_id = _shared._db.clone_workflow(wf_id, new_name=new_name,
                                      created_by=flask_session.get("username", "system"))
@@ -414,6 +443,65 @@ _WINRM_BLOCK_TYPES = frozenset({
     "run_powershell", "restart_server", "kill_process", "clear_temp",
     "condition",  # condition can run PS expressions on a server
 })
+
+
+def _require_canvas_permissions(canvas, actor: str, event: str,
+                                context: str = ""):
+    """None if `actor` may own this canvas, else the (response, status) to return.
+
+    ONE RULE: you may author what you may run. Every block that reaches WinRM
+    needs the same per-server admin grant that manual execution has always
+    required — and it is checked HERE, at authoring, because that is the last
+    moment a user is present. A workflow can fire from a schedule, and the
+    scheduler executes with no session and therefore no permission to check.
+    That was the whole escalation the collector audit found (finding 3): a login
+    was enough to plant a `run_powershell` block on a daily trigger.
+
+    A node with NO server named is allowed through. A canvas under construction
+    is full of half-configured nodes, and rejecting them would make the editor
+    unusable; naming a server later is an update, and updates run this too.
+    Execution keeps its own stricter check — an unnamed server on a WinRM block
+    is a misconfiguration at RUN time, which is where it can be judged.
+    """
+    try:
+        if isinstance(canvas, str):
+            canvas = json.loads(canvas or "{}")
+        graph = parse_canvas(canvas if isinstance(canvas, dict) else {})
+    except Exception:
+        # An unparseable canvas is rejected by the writer below on its own
+        # terms; refusing here would turn a syntax problem into a permissions
+        # message and send the operator the wrong way.
+        return None
+
+    checked = set()
+    for node_id, node in (graph.get("nodes") or {}).items():
+        node_type = node.get("type", "")
+        if node_type not in _WINRM_BLOCK_TYPES:
+            continue
+        server_name = ((node.get("config") or {}).get("server") or "").strip()
+        if not server_name or server_name in checked:
+            continue
+        checked.add(server_name)
+        perm_err = _require_server_permission(server_name, "admin")
+        if not perm_err:
+            continue
+        _shared._db.log_audit(actor, event, "rbac",
+                              f"{context} server={server_name} node={node_id} "
+                              f"type={node_type}")
+        resp, status = perm_err
+        try:
+            payload = resp.get_json() or {}
+        except Exception:
+            payload = {}
+        payload["ok"] = False
+        payload["error"] = (
+            f"Access denied for server {server_name!r} (workflow node "
+            f"{node_id}, type {node_type}): a workflow block that runs on a "
+            f"server requires admin permission on it — a scheduled workflow "
+            f"executes with nobody to ask")
+        payload["server"] = server_name
+        return jsonify(payload), status
+    return None
 
 
 @api_bp.route("/workflows/<int:wf_id>/execute", methods=["POST"])

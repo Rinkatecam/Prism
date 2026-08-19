@@ -194,8 +194,45 @@ who knows that endpoint is self-signed — with the probe reporting which mode i
 ran in, so the weaker setting leaves a trace instead of living in a constant.
 Five mutations cover the four layers that carry the setting.
 
-Still open, and stated so you can weigh it: nothing at present. Items we
-deliberately have not changed are argued in `DATA_FLOWS.md`.
+**A monitored server was trusted about how much it could say.** Prism asks each
+server to run a PowerShell script and believes the answer. The script limits its
+own output — thirty rows, two hundred characters — and a server that has been
+compromised is under no obligation to run the script it was sent. Nothing above
+that script enforced anything: the check returned whatever came back, the writer
+stored it, and the failed-login query had no bound on its result set at all.
+Because every server's data is written through one lock, **one hostile machine
+could have stalled monitoring for the whole fleet.** The same bounds are now
+enforced where the host cannot skip them — before the response is even parsed,
+again at the check, and again at the writer — and everything refused or trimmed
+is counted and reported on the health endpoint, because a cap that discards
+silently is indistinguishable from a collector that is quietly broken.
+
+**Authoring a workflow did not require the permission to run one.** Running a
+workflow by hand required admin on every server it touches. But a workflow can
+fire from a schedule, and the scheduler runs with no user present — so nothing
+was checked, and any account that could log in could leave a script on a timer
+to run with the service account's rights. Authoring now requires the same
+per-server admin grant that running does, on create, update and clone. This is
+the boundary; the script sanitiser is defence in depth behind it, and
+`WORKFLOW_SANDBOX.md` is explicit about which is which.
+
+**New servers are monitored over HTTPS by default.** WinRM over HTTP was never
+plaintext — the authentication layer encrypts the message — but choosing it
+silently on the operator's behalf gave up transport encryption and any chance to
+check the server's certificate. A new server now defaults to HTTPS with the
+certificate validated. Existing entries are untouched: an explicit choice of
+HTTP is still honoured, because a default that overrode a deliberate setting
+would take a whole fleet off monitoring in one restart. Windows enables only the
+HTTP listener out of the box, so this default can fail on first contact — and it
+fails LOUDLY rather than falling back, with a message naming both ports and both
+ways forward. A security default that quietly downgrades itself is a suggestion,
+not a default.
+
+Still open, and stated so you can weigh it: a compromised server can still lie
+about the CONTENT of what it reports — forged log lines, fabricated metrics that
+drift its own learned baseline. Bounding volume is not the same as verifying
+truth, and nothing here claims to. Items we deliberately have not changed are
+argued in `DATA_FLOWS.md`.
 
 ---
 

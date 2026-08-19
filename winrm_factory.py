@@ -37,7 +37,12 @@ def make_wsman(
     HTTPS rules:
       * `use_https=True`  → ssl=True, default port 5986, server cert validated
         (unless `https_skip_verify=True`, which is intentionally noisy in logs).
-      * `use_https=False` → ssl=False on port 5985 (legacy default).
+      * `use_https=False` → ssl=False on port 5985 (still supported, and an
+        explicit False on an existing server entry is always honoured).
+
+    HTTPS is the DEFAULT for a new server (collector audit finding 6). Windows
+    enables only the HTTP listener out of the box, so that default can fail on
+    first contact — which is why `explain_transport_failure` exists.
 
     The port stored on ServerConfig wins over our defaults, so an operator
     can explicitly run HTTPS on a non-standard port.
@@ -82,6 +87,34 @@ def make_wsman(
         kwargs["cert_validation"] = not skip_verify
 
     return WSMan(server_config.host, **kwargs)
+
+
+def explain_transport_failure(server_config, error: str,
+                              kind: str | None) -> str:
+    """Add the missing sentence to a WinRM failure on an HTTPS server.
+
+    HTTPS is the default for a new server, and Windows enables only the HTTP
+    listener out of the box — so the most likely first failure on a fresh
+    install is a connection error that says nothing about the transport. An
+    operator reading "timed out" has no reason to suspect the port, and the
+    honest fix is not to fall back silently: it is to say what Prism tried,
+    what Windows does by default, and both ways forward.
+
+    Only connection-level failures are annotated. A parse error or a
+    PowerShell error is not a transport problem, and attaching transport
+    advice to one would send the reader the wrong way.
+    """
+    if kind not in ("offline", "winrm"):
+        return error
+    if not bool(getattr(server_config, "use_https", False)):
+        return error
+    port = getattr(server_config, "port", None) or 5986
+    return (
+        f"{error} — Prism connected over WinRM HTTPS on port {port}. Windows "
+        f"enables only the HTTP listener (5985) by default, so this server may "
+        f"have no HTTPS listener: add one with a certificate, or turn HTTPS off "
+        f"for this server in its settings."
+    )
 
 
 def current_correlation_id() -> str:

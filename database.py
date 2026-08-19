@@ -1027,7 +1027,8 @@ class Database:
     logs_kept_by_allowlist: int = 0
 
     def insert_logs(self, server_name: str, logs_list: list[dict],
-                    ingest_cfg: dict | None = None):
+                    ingest_cfg: dict | None = None,
+                    caps: dict | None = None):
         """Bulk insert log dicts (keys: source, time, level, event_id, message).
 
         Two volume controls, both configurable via ``settings.log_ingest`` and
@@ -1045,6 +1046,15 @@ class Database:
         Timestamps are normalised first — see ``_canonical_ts`` for why a
         non-canonical row is invisible to every window query.
         """
+        if not logs_list:
+            return
+        # Capped here as well as at the check layer, because this is a public
+        # method and the collector is not its only possible caller — a CSV
+        # import or a later integration must not be able to write an unbounded
+        # row either. `caps=None` uses the ceilings, so a caller that knows
+        # nothing about the setting still gets bounded.
+        import ingest_caps
+        logs_list = ingest_caps.cap_log_rows(logs_list, caps, server=server_name)
         if not logs_list:
             return
         cfg = ingest_cfg or {}
@@ -1814,20 +1824,34 @@ class Database:
         batches. ``logs`` alone was 1.77M rows at 29 servers and projects to
         tens of millions, so this is the table that needs it.
 
+        THE LOCK IS TAKEN AND RELEASED PER CHUNK, HERE. Until the 2026-08
+        collector audit it was not: the caller wrapped this whole loop in one
+        ``with self._write_lock``, so the chunking bounded each STATEMENT while
+        the lock was held for the entire multi-minute operation — which is
+        precisely the stall the chunking was written to prevent. The docstring
+        above described the intended behaviour and had described it, wrongly,
+        for as long as it existed.
+
+        Owning the lock in here rather than in the caller is deliberate: it puts
+        the acquire in the same three lines as the loop it has to interleave
+        with, where the next person cannot re-wrap it from a distance without
+        noticing. Callers must NOT hold the write lock when calling this.
+
         Returns the number of rows deleted.
         """
         total = 0
         cutoff = (f"-{days} days",)
         while True:
-            cur = conn.execute(
-                f"DELETE FROM {table} WHERE rowid IN "
-                f"(SELECT rowid FROM {table} "
-                f" WHERE {ts_col} < strftime('%Y-%m-%dT%H:%M:%SZ','now', ?) "
-                f" LIMIT {int(chunk)})",
-                cutoff,
-            )
-            n = cur.rowcount
-            conn.commit()
+            with self._write_lock:
+                cur = conn.execute(
+                    f"DELETE FROM {table} WHERE rowid IN "
+                    f"(SELECT rowid FROM {table} "
+                    f" WHERE {ts_col} < strftime('%Y-%m-%dT%H:%M:%SZ','now', ?) "
+                    f" LIMIT {int(chunk)})",
+                    cutoff,
+                )
+                n = cur.rowcount
+                conn.commit()
             total += n
             if n < chunk:
                 return total
@@ -1853,8 +1877,12 @@ class Database:
         # every writer in the process.
         conn = self._get_conn()
         try:
+            # NOT wrapped in the write lock. `_chunked_delete` takes and
+            # releases it per chunk, which is the whole point of chunking —
+            # holding it out here made the batches cosmetic and stalled every
+            # collector write for the duration (collector audit, 2026-08).
+            logs_deleted = self._chunked_delete(conn, "logs", "timestamp", d_logs)
             with self._write_lock:
-                logs_deleted = self._chunked_delete(conn, "logs", "timestamp", d_logs)
                 # log_signatures is WITHOUT ROWID (its primary key IS the row),
                 # so it cannot be chunked by rowid — and does not need to be:
                 # coalescing makes it ~40x smaller than `logs`, so a single
@@ -3442,8 +3470,18 @@ class Database:
 
     # ── F5: Failed Login methods ────────────────────────────────
 
-    def insert_failed_logins(self, server_name: str, logins: list[dict]):
-        """Bulk insert failed login events (ignore duplicates)."""
+    def insert_failed_logins(self, server_name: str, logins: list[dict],
+                             caps: dict | None = None):
+        """Bulk insert failed login events (ignore duplicates).
+
+        Capped on the way in: every text field on one of these rows comes from
+        the target's own event XML, and the query that produces them runs
+        against a log an attacker can flood on purpose.
+        """
+        if not logins:
+            return
+        import ingest_caps
+        logins = ingest_caps.cap_failed_logins(logins, caps, server=server_name)
         if not logins:
             return
         with self._write_lock:

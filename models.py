@@ -107,8 +107,22 @@ class ServerConfig:
     # explicitly rejected coupling authorisation to alerting (a tier-0
     # jump box is not availability-critical). See severity_roles.py.
     criticality: str = ""
-    # WinRM transport: when True, use HTTPS (5986) with cert validation
-    use_https: bool = False
+    # WinRM transport. Defaults to HTTPS on 5986 with the server certificate
+    # validated (collector audit finding 6). It used to default to False, which
+    # is not plaintext — Negotiate encrypts at the message level over HTTP — but
+    # it is still the wrong default to SHIP: no transport encryption and no
+    # certificate to check, chosen silently on the operator's behalf.
+    #
+    # An existing installation does not move: every entry the app writes carries
+    # an explicit `use_https`, and an explicit False is honoured. Only a NEW
+    # server, or a hand-written entry that omits the field, gets the new default.
+    #
+    # The cost is real and is paid deliberately: Windows enables only the HTTP
+    # listener by default, so a new server on a host without an HTTPS listener
+    # now fails to connect. There is NO automatic fallback to HTTP — a security
+    # default that quietly downgrades itself is a suggestion, not a default. The
+    # failure explains itself instead; see winrm_factory.explain_transport_failure.
+    use_https: bool = True
     # When use_https=True: skip cert validation (NOT recommended). Allows self-signed for first-rollout.
     https_skip_verify: bool = False
 
@@ -156,6 +170,6 @@ class ServerConfig:
             thresholds=dict(data.get("thresholds", {})),
             tier=int(data.get("tier", 1)),
             criticality=str(data.get("criticality", "") or ""),
-            use_https=bool(data.get("use_https", False)),
+            use_https=bool(data.get("use_https", True)),
             https_skip_verify=bool(data.get("https_skip_verify", False)),
         )

@@ -448,7 +448,7 @@ one.*
 
 ---
 
-### 2.6 Replacements that were installed and unreachable
+### 2.6 Mechanisms that were installed and not doing the work
 
 **34. A replacement can be written, wired, and still never run — because an
 outer guard's meaning quietly widened.** A retrospective correlation rule was
@@ -473,6 +473,49 @@ return in it AND in its callers. A guard is written against one meaning of
 "there is nothing to do", and nothing re-derives it when the meaning changes.*
 *Rule 3: neither defect was findable by reading the new module, and both were
 findable in seconds by running the system and asking what it actually did.*
+
+**35. A mechanism can be cancelled by its own caller, and the comment beside
+it will still describe the intent.** A retention routine deleted rows in bounded
+chunks specifically so the process-global write lock would be released between
+batches — the alternative being a single statement that holds it for minutes
+while every other writer blocks. Its docstring said "the loop keeps each
+statement small so the lock is released between batches". The caller wrapped the
+entire loop in one lock acquisition, so the chunking bounded each STATEMENT while
+the lock was held for the whole operation. The comment one line above the call
+even said the delete happened "outside the big lock block". Both statements
+described the design; neither described the code. Worse, the fix has a sharper
+edge than the bug: with the acquisition now inside the loop, and the lock a plain
+mutex rather than a reentrant one, a caller that takes it first no longer merely
+serialises — it deadlocks.
+*Rule 1: when a routine's correctness depends on NOT being wrapped in something,
+that is a property of the call site, and the call site is where it has to be
+asserted. Walk the callers; a docstring cannot enforce it.*
+*Rule 2: put the acquisition in the same few lines as the loop it must interleave
+with. Ownership at a distance is what let this survive — the loop and the lock
+were in different functions, and each one read correctly on its own.*
+
+**36. A text-scanning check can be silenced by its own documentation, not only
+triggered by it.** The familiar version of this failure is a grep that fires on
+the comment explaining the fix. The mirror image is worse and had not been seen
+here before: a check asserted that a required flag appeared in a generated
+script, the flag was then removed, and the check still passed — because the
+comment explaining why the flag was needed also contained its name. The
+substring was present; the behaviour was gone. It was caught only because a
+mutation deliberately removed the flag and the harness reported the test as
+blind.
+*Rule: assert against the INVOCATION, not the file. Exclude comment lines
+explicitly, and where there is no parser for the language, match the call line
+rather than the whole text.*
+*Corollary, from two other blind mutations in the same run: a mutation that
+lands and changes nothing observable is not always a blind test — sometimes it
+is a useless mutation, and the two look identical in the output. One test was
+genuinely aiming at the wrong guard (it asserted an integer field survived
+capping, but that field was not on the capped list at all, so the isinstance
+check it meant to defend was never reached). Another was equivalent by
+construction (a thread pool of one against a serial loop: same order, same peak
+concurrency, nothing to observe). The first is a test to fix; the second is a
+mutation to delete and a comment to leave behind so the next person does not
+re-add it.*
 
 ---
 

@@ -9,6 +9,7 @@ from flask import jsonify, request, Response, make_response, current_app
 from flask import session as flask_session
 from crypto_utils import is_password_masked, decrypt_password, PASSWORD_MASK
 import collector_v2 as _collector_v2
+import ingest_caps as _ingest_caps
 from collector_v2 import (
     accelerate_server,
     sync_now as _v2_sync_now,
@@ -213,6 +214,13 @@ def system_health():
             # settings.log_ingest allow-list to see what the filter is doing.
             "logs_dropped_information": type(_shared._db).logs_dropped_information,
             "logs_kept_by_allowlist": type(_shared._db).logs_kept_by_allowlist,
+            # What the untrusted-ingest caps refused or trimmed. Same rule as
+            # the filter above and the same reason: a cap that discards silently
+            # is indistinguishable from a collector that is quietly broken. A
+            # non-zero `payloads_rejected` means a monitored host answered with
+            # more than half a megabyte for one check, which is worth looking at
+            # whether it is hostile or merely misconfigured.
+            "ingest_caps": _ingest_caps.snapshot(),
             "oldest_record": db_stats.get("oldest_record"),
             "newest_record": db_stats.get("newest_record"),
         },

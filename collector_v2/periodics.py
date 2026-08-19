@@ -37,6 +37,8 @@ from typing import Any, Callable
 
 logger = logging.getLogger("prism.collector_v2.periodics")
 
+from . import fleet_walk
+
 # Per-job state — last successful run time + lock to make sure two threads
 # don't race on the same job. The supervisor (and the periodics thread)
 # can both be reading these for health snapshots; the lock guards writes.
@@ -400,15 +402,27 @@ def _build_jobs(get_servers, get_settings, db) -> list[_Job]:
         try:
             from security_checker import collect_security_status
             from maintenance import _is_alert_suppressed_by_maintenance
-            for server in get_servers():
+            def _walk_one(server):
                 if _is_alert_suppressed_by_maintenance(server.name, settings):
-                    continue
+                    return
                 try:
                     collect_security_status(db, server, settings)
                 except Exception:
                     logger.exception(
                         "[%s] security_status check failed", server.name
                     )
+
+            # Bounded concurrency instead of a serial fleet walk (collector
+            # audit finding 2). One WinRM session per server, serial, in the same thread as every
+            # other periodic job.
+            # Serial, the cost of the pass was the SUM of every timeout, which
+            # is how a job starts exceeding its own cadence at around 100-150
+            # servers. `collector_v2_periodic_workers: 1` restores the old
+            # serial walk exactly, which is how to rule this out as a cause.
+            fleet_walk.walk(
+                get_servers(), _walk_one,
+                workers=fleet_walk.worker_count(settings),
+                label="security_status")
         except ImportError:
             logger.debug("security_checker module not available", exc_info=True)
 
@@ -834,7 +848,24 @@ def _periodics_loop(get_servers, get_settings, db) -> None:
                         # Recovered — drop any accumulated backoff so the job
                         # resumes its configured cadence on the next tick.
                         _consecutive_failures.pop(job.name, None)
-                    if elapsed > 5.0:
+                    # A job that takes longer than its own cadence can never
+                    # catch up: the next run is already due before this one
+                    # finished. That is the shape of the scale ceiling the
+                    # collector audit found — a serial fleet walk whose cost is
+                    # the SUM of every host's timeout — and its worst property
+                    # was invisibility, because a job quietly overrunning looks
+                    # exactly like a job running normally. Warned here, once per
+                    # run, so it is visible for EVERY job rather than only the
+                    # ones that were converted to a bounded walk.
+                    if elapsed > job.interval_s:
+                        logger.warning(
+                            "Periodic job %s took %.0fs — longer than its own "
+                            "%.0fs cadence, so it cannot keep up. If it walks "
+                            "the fleet, raise settings."
+                            "collector_v2_periodic_workers; otherwise find out "
+                            "what it is waiting for.",
+                            job.name, elapsed, job.interval_s)
+                    elif elapsed > 5.0:
                         logger.info("Periodic job %s took %.1fs", job.name, elapsed)
                 except Exception:
                     # Record the attempt even though it failed, then back off.

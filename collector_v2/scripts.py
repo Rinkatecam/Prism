@@ -299,7 +299,11 @@ PS_COLLECT_FAILED_LOGINS = r"""
 #  3. If still nothing, leave empty.
 $cutoff = (Get-Date).AddMinutes(-15)
 try {
-    $events = Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4625,4740; StartTime=$cutoff} -ErrorAction SilentlyContinue
+    # -MaxEvents bounds the result set. Without it a brute-force flood in
+    # the 15-minute window returns every 4625 there is, and the collector had
+    # nothing to say no with. This is the host's own promise, not a guarantee —
+    # ingest_caps enforces the same bound where the host cannot skip it.
+    $events = Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4625,4740; StartTime=$cutoff} -MaxEvents 200 -ErrorAction SilentlyContinue
 } catch { $events = @() }
 $lt = @{2='Interactive';3='Network';4='Batch';5='Service';7='Unlock';8='NetworkCleartext';9='NewCredentials';10='RDP';11='CachedInteractive'}
 

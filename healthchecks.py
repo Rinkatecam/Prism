@@ -29,6 +29,8 @@ from __future__ import annotations
 
 import logging
 
+from collector_v2 import fleet_walk
+
 logger = logging.getLogger("prism.healthchecks")
 
 
@@ -50,9 +52,9 @@ def _run_health_checks(db, settings: dict) -> None:
     if not configs:
         return
 
-    for cfg in configs:
+    def _walk_one(cfg):
         if not cfg.get("enabled", True):
-            continue
+            return
 
         host = cfg["target_host"]
         port = cfg["target_port"]
@@ -113,5 +115,18 @@ def _run_health_checks(db, settings: dict) -> None:
                 db.insert_event(server_name, "info", "health_check", None, None,
                                 f"Health check RECOVERED: {check_name} ({check_type} {host}:{port})")
                 logger.info("[%s] Health check UP: %s %s:%d", server_name, check_type, host, port)
+
+    # Bounded concurrency instead of a serial fleet walk (collector
+    # audit finding 2). Each probe is a network timeout, not work, and they are independent of
+    # one another.
+    # Serial, the cost of the pass was the SUM of every timeout, which
+    # is how a job starts exceeding its own cadence at around 100-150
+    # servers. `collector_v2_periodic_workers: 1` restores the old
+    # serial walk exactly, which is how to rule this out as a cause.
+    fleet_walk.walk(
+        configs, _walk_one,
+        workers=fleet_walk.worker_count(settings),
+        label="health_checks",
+        name_of=lambda c: c.get("server_name") or c.get("target_host") or "?")
 
     logger.debug("Health checks completed for %d endpoints", len(configs))

@@ -8,6 +8,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from models import ServerConfig
+from ingest_caps import DEFAULTS as _INGEST_CAP_DEFAULTS
 from crypto_utils import (
     encrypt_password,
     decrypt_password,
@@ -73,6 +74,16 @@ class ConfigManager:
             # drill-down; signatures are what survives raw retention.
             "coalesce_signatures": True,
         },
+        # ── Caps on untrusted ingest ──────────────────────────────────────
+        # A monitored server is SEMI-TRUSTED: Prism asks it to run a script and
+        # believes the answer. The script's own 30-row / 200-char limits are a
+        # promise a compromised host need not keep, so these are the same bounds
+        # enforced where the host cannot skip them. Every value is generously
+        # above what the shipped scripts emit, so a well-behaved machine is
+        # never truncated. Seeded here for discoverability; `ingest_caps.resolve`
+        # is what reads them, and a test pins these values against that module's
+        # defaults so the two cannot drift apart.
+        "ingest_caps": dict(_INGEST_CAP_DEFAULTS),
         # ── Per-table retention ───────────────────────────────────────────
         # retention_days below is the fallback for anything not named here.
         # These exist because one uniform value is why `logs` dominates: the
@@ -106,6 +117,15 @@ class ConfigManager:
         # see ``docs/COLLECTOR_V1_RETIREMENT.md``. ``app.py`` logs a
         # warning if an old settings.json still carries the key.
         "collector_v2_num_workers": 15,
+        # Concurrency for the PERIODIC fleet walks — failed logins, health
+        # checks, security status, TLS, drift. A different pool from the one
+        # above and a different problem: those five ran serially in the single
+        # periodics thread, so the cost of a pass was the SUM of every host's
+        # timeout and a 300s job started missing its own cadence at roughly
+        # 100-150 servers (collector audit finding 2). Set it to 1 to restore
+        # the old serial walk exactly, which is how to rule the pool out as the
+        # cause of a problem. See collector_v2/fleet_walk.py.
+        "collector_v2_periodic_workers": 8,
         "retention_days": 30,
         "language": "en",
         "timezone": "Europe/Berlin",

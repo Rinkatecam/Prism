@@ -28,6 +28,8 @@ from __future__ import annotations
 import json
 import logging
 
+from collector_v2 import fleet_walk
+
 logger = logging.getLogger("prism.drift")
 
 
@@ -59,7 +61,7 @@ def _collect_drift_snapshots(db, servers, settings: dict) -> None:
     redaction_patterns = drift_cfg.get("redaction_patterns", [])
     alert_on_change = drift_cfg.get("alert_on_change", True)
 
-    for server in servers:
+    def _walk_one(server):
         try:
             from winrm_factory import make_wsman
             wsman = make_wsman(server, connection_timeout=15, read_timeout=30)
@@ -126,3 +128,15 @@ def _collect_drift_snapshots(db, servers, settings: dict) -> None:
 
         except Exception:
             logger.debug("[%s] Drift snapshot collection skipped", server.name)
+
+    # Bounded concurrency instead of a serial fleet walk (collector
+    # audit finding 2). Drift opens a WinRM session per server; an unreachable host is ~15s of
+    # pure waiting.
+    # Serial, the cost of the pass was the SUM of every timeout, which
+    # is how a job starts exceeding its own cadence at around 100-150
+    # servers. `collector_v2_periodic_workers: 1` restores the old
+    # serial walk exactly, which is how to rule this out as a cause.
+    fleet_walk.walk(
+        servers, _walk_one,
+        workers=fleet_walk.worker_count(settings),
+        label="drift")

@@ -28,6 +28,9 @@ import logging
 import time
 from typing import Any
 
+import ingest_caps
+from winrm_factory import explain_transport_failure
+
 from .scripts import (
     PS_COLLECT_SCRIPT,
     PS_COLLECT_LOGS,
@@ -195,7 +198,7 @@ def _unwrap_ps_json_value_array(parsed: Any) -> Any:
     return parsed
 
 
-def _run_ps(pool, script: str, server_name: str) -> tuple[bool, str, str | None, str | None]:
+def _run_ps(pool, script: str, server) -> tuple[bool, str, str | None, str | None]:
     """Run one PS script in an existing RunspacePool and return raw stdout.
 
     Returns (ok, stdout, error_message, error_kind).
@@ -203,6 +206,14 @@ def _run_ps(pool, script: str, server_name: str) -> tuple[bool, str, str | None,
     The check-specific function is responsible for JSON-parsing stdout
     when ok is True.
     """
+    # The ServerConfig itself, not just its name: a connection failure needs
+    # the transport flags to explain itself (winrm_factory finding 6), and
+    # deriving the name here keeps every caller passing one thing.
+    server_name = getattr(server, "name", None) or str(server)
+
+    def _fail(err: str, kind: str) -> tuple[bool, str, str, str]:
+        return False, "", explain_transport_failure(server, err, kind), kind
+
     try:
         from pypsrp.powershell import PowerShell
     except ImportError:
@@ -226,17 +237,30 @@ def _run_ps(pool, script: str, server_name: str) -> tuple[bool, str, str | None,
         # can decide how to interpret the parsed payload.
         if output:
             raw = str(output[0]) if output[0] is not None else ""
+            # The response is UNTRUSTED and this is the last point before
+            # `json.loads`, which is where the memory of a host streaming
+            # gigabytes inside its deadline would go (audit finding 4). A
+            # payload over the ceiling is REFUSED, not truncated: truncated
+            # JSON does not parse, so truncating would report the flood as
+            # "Bad JSON" and point the reader at the script instead of the
+            # host. The ceiling is a fixed safety limit rather than a tuning
+            # knob — it is generously above anything the shipped scripts emit.
+            if raw and not ingest_caps.payload_ok(raw, server=server_name):
+                return False, "", (
+                    f"Response exceeded the "
+                    f"{ingest_caps.DEFAULTS['max_payload_chars']}-char ingest "
+                    f"ceiling ({len(raw)} chars)"), "oversize"
             if raw:
                 return True, raw, None, None
 
         # No output — that's a real failure
         if ps_err_msg:
             kind = "offline" if _is_offline_error(ps_err_msg) else "ps"
-            return False, "", ps_err_msg, kind
+            return _fail(ps_err_msg, kind)
         return False, "", "No output from PowerShell", "ps"
     except Exception as e:
         kind = "offline" if _is_offline_error(e) else "winrm"
-        return False, "", f"{type(e).__name__}: {str(e)[:300]}", kind
+        return _fail(f"{type(e).__name__}: {str(e)[:300]}", kind)
 
 
 # ── Public check functions ───────────────────────────────────────────────
@@ -253,7 +277,7 @@ def check_metrics(server, pool) -> tuple[bool, dict | None, str | None, str | No
         ok=False with error + error_kind on any failure.
     """
     t0 = time.time()
-    ok, raw, err, kind = _run_ps(pool, PS_COLLECT_SCRIPT, server.name)
+    ok, raw, err, kind = _run_ps(pool, PS_COLLECT_SCRIPT, server)
     if not ok:
         return False, None, err, kind
     try:
@@ -273,7 +297,7 @@ def check_logs(server, pool) -> tuple[bool, list | None, str | None, str | None]
                                                  per System/Application/Security)
         ok=False with error + error_kind on any failure.
     """
-    ok, raw, err, kind = _run_ps(pool, PS_COLLECT_LOGS, server.name)
+    ok, raw, err, kind = _run_ps(pool, PS_COLLECT_LOGS, server)
     if not ok:
         return False, None, err, kind
     try:
@@ -286,7 +310,12 @@ def check_logs(server, pool) -> tuple[bool, list | None, str | None, str | None]
         parsed = [parsed]
     if not isinstance(parsed, list):
         return False, None, f"Logs payload not a list: {type(parsed).__name__}", "parse"
-    return True, parsed, None, None
+    # The 30-row / 200-char limits in PS_COLLECT_LOGS are ADVISORY: a
+    # compromised host runs whatever it likes and answers however it likes.
+    # This is the same bound applied where the host cannot skip it. Defaults
+    # rather than settings because the check layer has none to hand — the
+    # settings-aware cap runs again at the writer.
+    return True, ingest_caps.cap_log_rows(parsed, server=server.name), None, None
 
 
 def check_updates(server, pool) -> tuple[bool, dict | None, str | None, str | None]:
@@ -303,7 +332,7 @@ def check_updates(server, pool) -> tuple[bool, dict | None, str | None, str | No
     then apply the _is_offline_error gate to decide whether to surface or
     suppress the error.
     """
-    ok, raw, err, kind = _run_ps(pool, PS_CHECK_UPDATES, server.name)
+    ok, raw, err, kind = _run_ps(pool, PS_CHECK_UPDATES, server)
     if not ok:
         return False, None, err, kind
     try:
@@ -329,7 +358,7 @@ def check_hardware(server, pool) -> tuple[bool, dict | None, str | None, str | N
                               "disk_d_size_gb", "disk_d_free_gb"}
         ok=False with error + error_kind on any failure.
     """
-    ok, raw, err, kind = _run_ps(pool, PS_HARDWARE_SCRIPT, server.name)
+    ok, raw, err, kind = _run_ps(pool, PS_HARDWARE_SCRIPT, server)
     if not ok:
         return False, None, err, kind
     try:

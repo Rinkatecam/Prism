@@ -45,6 +45,8 @@ import queue
 import threading
 import time
 import traceback
+
+import ingest_caps
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -1277,9 +1279,11 @@ class Aggregator:
                 # Pass the ingest controls so Information-level noise is dropped
                 # and identical lines are coalesced into log_signatures. See
                 # Database.insert_logs — logs were 96% of all rows.
+                _settings = self.get_settings() or {}
                 self.db.insert_logs(
                     server_name, result.data,
-                    ingest_cfg=(self.get_settings() or {}).get("log_ingest"),
+                    ingest_cfg=_settings.get("log_ingest"),
+                    caps=ingest_caps.resolve(_settings),
                 )
             except Exception:
                 logger.error(
