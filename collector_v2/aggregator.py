@@ -801,6 +801,32 @@ class Aggregator:
         """
         prev = _previous_status.get(server.name)
 
+        # RELEASE ACCELERATED POLLING once the machine is demonstrably back.
+        #
+        # Acceleration exists to catch a comeback quickly. The moment the server
+        # reports healthy again, that job is done — what is left is letting the
+        # metrics settle, which is what the stabilising window is for. Before
+        # this, a manual restart's twenty-minute window ran to completion
+        # regardless: measured on a live domain controller, 184 samples in twenty
+        # minutes against 21 for a comparable host, almost all of them after it
+        # was healthy.
+        #
+        # `settle_acceleration` SHORTENS an active window and never arms one.
+        # That distinction is load-bearing: arming here would start hammering any
+        # server that merely blipped offline and recovered.
+        #
+        # Placed before the maintenance gate deliberately. Releasing polling
+        # pressure is not an alert, and a patch window is exactly when a machine
+        # is most likely to be restarting — so it is also exactly when the
+        # release must not be suppressed.
+        if prev is not None and prev != status and status == "healthy":
+            try:
+                from .supervisor import settle_acceleration as _settle
+                _settle(server.name, duration_s=self._STABILISING_WINDOW_S)
+            except Exception:
+                logger.debug("[%s] acceleration release failed", server.name,
+                             exc_info=True)
+
         # Maintenance gate — applies BEFORE event dispatch (collector.py:1966)
         maint_suppressed = _is_alert_suppressed_by_maintenance(
             server.name, settings,

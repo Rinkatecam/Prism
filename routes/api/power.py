@@ -97,10 +97,22 @@ def _clear_reboot_state(name: str, action: str):
             info.pop("pending_reboot", None)
             info.pop("reboot_required", None)
             info.pop("last_install", None)
-        # Long acceleration window — covers the reboot itself plus a buffer
-        # for stabilising metrics to flow. Re-armed by the aggregator when
-        # the server actually comes back.
-        accelerate_server(name, duration_s=20 * 60, reason="manual_restart")
+        # Covers the reboot itself. FIVE minutes, not twenty: the aggregator
+        # releases this window the moment the server reports healthy again (see
+        # `settle_acceleration`), so the number here is only the upper bound for
+        # a machine that never comes back — and hammering an unreachable host
+        # every five seconds for twenty minutes helps nobody.
+        #
+        # It used to be 20*60, which is exactly the supervisor's safety ceiling,
+        # and the comment beside that ceiling says why: ~240 forced WinRM checks
+        # of one machine. Measured on a live domain controller that rebooted in
+        # fifty seconds: 184 samples in twenty minutes against 21 for a
+        # comparable host. The "re-armed by the aggregator when the server comes
+        # back" this comment used to claim was true only for update-driven
+        # reboots — that path hangs off the install-state machine, and a manual
+        # restart never creates an install-state row, so there was no early exit
+        # at all.
+        accelerate_server(name, duration_s=5 * 60, reason="manual_restart")
         logger.debug("Marked %s as rebooting after manual restart command", name)
 
 

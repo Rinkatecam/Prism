@@ -8,13 +8,22 @@ numbers move behind one gesture, together with the things that actually answer
 the question — the rail sentence naming a machine, the biggest contributors, and
 why the reading is not worse.
 
-FOUR RULES THIS FILE PINS, each of which is easy to lose:
+FIVE RULES THIS FILE PINS, each of which is easy to lose:
 
-  * COLOUR CARRIES THE FULL TRUTH, and motion means NEW. The heart beats only
-    while a change is unacknowledged (ratified), and "acknowledged" means
-    somebody opened the detail — the one gesture that shows what is wrong. A
-    reduced-motion reader therefore loses nothing, because the state was never
-    in the motion.
+  * TWO MOTIONS, TWO DECISIONS. The TRACE sweeps whenever there is a beat to
+    draw; the HEART contracts only while a change is unacknowledged. Conflating
+    them is the defect the owner reported after watching the real dashboard: one
+    predicate for both froze the ECG the moment you clicked the heart, and a
+    still ECG is what a monitor shows when the machine is OFF — which in this app
+    is also what `flat` means, every server down. The ratified rule says "the
+    BEAT animates only for unacknowledged change", and the beat is the squeeze.
+  * COLOUR CARRIES THE FULL TRUTH, and the squeeze means NEW — where NEW is an
+    OCCURRENCE, not a tuple never seen before. "Acknowledged" means somebody
+    opened the detail, it is remembered for the current episode only, and any
+    change of state forgets it. Persisting it made every recurrence silent: a
+    key was found on disk while the estate was elevated, so the one moment the
+    signal was needed was the one moment it could not fire. A reduced-motion
+    reader loses nothing either way, because the state was never in the motion.
   * COLOUR IS NEVER THE ONLY CARRIER. A heart that is red and says nothing is
     unreadable to a screen reader and to anyone who cannot tell red from amber.
     The severity word survives as live text even though it left the face of the
@@ -329,36 +338,52 @@ def test_the_beat_state_is_observable_from_the_dom():
     assert "data-unacknowledged" in js
 
 
-def _animating_body(js: str) -> str:
-    """The single function that decides whether anything moves.
-
-    Asserted through this rather than through `start()` on purpose: the four
-    reasons not to move (reduced motion, no beat, acknowledged, hidden tab) live
-    in ONE predicate whose answer is also published to the DOM. Two copies of
-    that condition would be two answers, and the attribute would eventually
-    describe a decision the loop did not make.
-    """
-    m = re.search(r"function animating\(\)\s*\{(.*?)\n  \}", js, re.S)
-    assert m, "there is no single animating() decision"
+def _fn_body(js: str, name: str) -> str:
+    m = re.search(rf"function {name}\(\)\s*\{{(.*?)\n  \}}", js, re.S)
+    assert m, f"there is no {name}() decision"
     return m.group(1)
 
 
-def test_the_decision_to_move_is_made_in_one_place():
+def _sweeping(js: str) -> str:
+    """Does the TRACE advance? One predicate, published to the DOM."""
+    return _fn_body(js, "sweeping")
+
+
+def _squeezing(js: str) -> str:
+    """Does the HEART contract? One predicate, published to the DOM."""
+    return _fn_body(js, "squeezing")
+
+
+def test_the_two_motions_are_separate_decisions():
+    """The defect the owner reported. The ratified rule is "the BEAT animates
+    only for unacknowledged change" — the BEAT, not the trace. One predicate for
+    both froze the ECG, and a still ECG is what a monitor shows when the machine
+    is OFF."""
     js = _js()
-    start = re.search(r"function start\(\)\s*\{(.*?)\n  \}", js, re.S)
-    assert start, "could not isolate start()"
-    assert "animating()" in start.group(1), (
-        "start() decides for itself instead of asking animating(), so the "
-        "published data-beating can disagree with what the loop does")
+    assert "function sweeping()" in js and "function squeezing()" in js, (
+        "the trace and the squeeze share one decision again")
+    start = _fn_body(js, "start")
+    assert "sweeping()" in start and "squeezing()" in start, (
+        "start() does not publish both decisions")
 
 
-def test_an_acknowledged_state_does_not_beat():
+def test_the_trace_is_not_gated_on_acknowledgement():
+    """The whole of the owner's report: clicking the heart stopped the ECG. It
+    must not. Measured on the running dashboard before the fix — three identical
+    canvas frames over 2.4 seconds, on an ELEVATED estate."""
+    assert "unacknowledged" not in _sweeping(_js()), (
+        "the trace stops once a change is acknowledged, so an acknowledged "
+        "estate renders a still ECG — which in this app already means `flat`, "
+        "every server down")
+
+
+def test_an_acknowledged_state_does_not_squeeze():
     js = _js()
     assert re.search(r"function\s+acknowledged\s*\(", js), (
         "there is no acknowledgement check, so the heart beats forever")
-    assert "unacknowledged" in _animating_body(js), (
-        "the movement decision ignores acknowledgement, so a change that has "
-        "been looked at keeps beating")
+    assert "unacknowledged" in _squeezing(js), (
+        "the squeeze ignores acknowledgement, so a change that has been looked "
+        "at keeps waving at the operator")
 
 
 def test_acknowledgement_is_keyed_on_what_is_wrong_not_just_how_bad():
@@ -421,19 +446,30 @@ def test_a_calm_estate_with_nothing_wrong_is_not_news():
         "acknowledged() does not consult it, so the resting state still beats")
 
 
-def test_an_unavailable_store_fails_towards_beating():
-    """Private browsing throws on localStorage. The safe direction for a signal
-    that means NEW is to over-signal: a heart that beats when it did not need to
-    is noise, and one that stays still when something changed is a missed
-    outage."""
+def test_the_acknowledgement_is_not_persisted():
+    """The second defect the owner's live dashboard exposed. It was stored in
+    localStorage keyed on severity|rail, which made it PERMANENT: once a state
+    had been looked at, every later occurrence of that same state arrived
+    pre-acknowledged and silent. Found with `prism.vitals.ack:elevated|` on disk
+    while the estate was elevated — the one moment the signal was needed was the
+    one moment it could not fire."""
     js = _js()
-    m = re.search(r"function\s+acknowledged\s*\([^)]*\)\s*\{(.*?)\n  \}", js, re.S)
-    assert m, "could not isolate acknowledged()"
-    body = m.group(1)
-    assert "catch" in body, "a throwing store is not handled at all"
-    assert re.search(r"catch[^{]*\{[^}]*return false", body, re.S), (
-        "a throwing store is treated as acknowledged, which silences the beat "
-        "exactly when it cannot be verified")
+    assert "localStorage" not in js, (
+        "acknowledgement is persisted again, so a recurrence of a state the "
+        "operator has already seen once will never beat")
+    assert "sessionStorage" not in js
+
+
+def test_the_acknowledgement_is_forgotten_when_the_state_changes():
+    """What makes it per-EPISODE rather than per-tuple: a condition that clears
+    and comes back has to be news again. Without the reset, `_ackFor` still
+    matches the key the second time round."""
+    js = _js()
+    m = re.search(r"if \(isNews\) \{(.*?)\n    \}", js, re.S)
+    assert m, "the news branch is gone"
+    assert "_ackFor = null" in m.group(1), (
+        "a change of state does not forget the acknowledgement, so the second "
+        "occurrence of a state arrives already acknowledged")
 
 
 def test_reduced_motion_keeps_the_colour_and_drops_the_squeeze():
@@ -445,7 +481,7 @@ def test_reduced_motion_keeps_the_colour_and_drops_the_squeeze():
     canvas painted from rAF, or a transform written by script), and the
     stylesheet's zeroed depth is what makes a loop bug harmless rather than
     visible."""
-    assert "reduceMotion" in _animating_body(_js()), (
+    assert "reduceMotion" in _sweeping(_js()), (
         "the movement decision no longer checks reduced motion")
     rm = _reduced_motion_block(_css())
     assert re.search(r"\.vitals-heart\s*\{[^}]*--beat-depth:\s*0", rm), (
@@ -478,9 +514,12 @@ def test_the_still_heart_is_not_a_shrunken_heart():
     # comment — so it passed while asserting nothing, and only showed itself
     # once comments were being stripped. Exactly the failure this suite exists
     # to catch, found in the suite itself.
-    assert re.search(r"setProperty\(\s*'--beat',\s*still\s*\?\s*'0'", js), (
-        "nothing pins the resting frame to zero contraction, so a paused heart "
-        "keeps whatever phase it stopped on")
+    assert re.search(r"setProperty\(\s*\n?\s*'--beat',\s*squeezing\(\)\s*\?", js), (
+        "the squeeze is not gated on squeezing(), so either the heart contracts "
+        "when there is no news or it never contracts at all")
+    assert re.search(r"squeezing\(\)\s*\?[^:]*:\s*'0'", js), (
+        "nothing pins the resting frame to zero contraction, so a heart with "
+        "no news keeps whatever phase it stopped on")
 
 
 # ── the detail answers the question the percentage did not ────────────────

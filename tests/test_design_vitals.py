@@ -80,14 +80,15 @@ def _css() -> str:
 def _animating(js: str) -> str:
     """The body of the ONE predicate that decides whether anything moves.
 
-    WP-2 moved the four reasons not to animate — reduced motion, no beat, an
-    acknowledged change, a hidden tab — out of `start()` and into `animating()`,
-    because the answer is now also published to the DOM as `data-beating` and
-    two copies of the condition would be two answers. The invariants below are
-    unchanged; only the place they are asserted moved with the code.
+    WP-2 moved the reasons not to animate out of `start()` and into a named
+    predicate, because the answer is also published to the DOM and two copies of
+    the condition would be two answers. It is `sweeping()` — does the TRACE
+    advance — since the owner's live report split the one decision in two: the
+    squeeze is gated on unacknowledged news, the trace never is. The invariants
+    below are unchanged; only the place they are asserted moved with the code.
     """
-    m = re.search(r"function animating\(\)\s*\{(.*?)\n  \}", js, re.S)
-    assert m, "animating() is gone; re-derive what gates the loop"
+    m = re.search(r"function sweeping\(\)\s*\{(.*?)\n  \}", js, re.S)
+    assert m, "sweeping() is gone; re-derive what gates the loop"
     return m.group(1)
 
 
@@ -116,9 +117,9 @@ def test_a_reduced_motion_reader_never_starts_the_loop():
         "the movement decision no longer consults reduceMotion, so the "
         "preference is read and discarded")
     body = _start(js)
-    assert "animating()" in body, (
-        "start() decides for itself instead of asking animating(), so the "
-        "gate and the published data-beating can disagree")
+    assert "sweeping()" in body, (
+        "start() decides for itself instead of asking sweeping(), so the gate "
+        "and the published data-sweeping can disagree")
     assert re.search(r"if\s*\(!run\)[\s\S]{0,400}stopRaf\(\)", body), (
         "the not-animating branch does not stop the animation loop")
     # And nothing may start it again further down the same function.

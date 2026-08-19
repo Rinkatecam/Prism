@@ -1149,6 +1149,29 @@ TRANSLATIONS = {
         "vitals_detail_contributors": "Biggest contributors",
         "vitals_detail_settling": "Settling \u2014 the reading is held steady while the estate stops changing",
         "vitals_detail_all_clear": "Nothing is pushing the estate above calm.",
+        # The restart overlay. Every one of these was written as
+        # `t.get(key, "English text")` and existed in NO locale, so the
+        # overlay rendered English everywhere and always had — a fallback
+        # makes an untranslated string indistinguishable from a translated
+        # one, and `t.get` never fails, so nothing could notice.
+        "server_restarting_title": "Server is restarting",
+        "restart_overlay_waiting": "Waiting for",
+        "restart_overlay_to_respond": "to respond",
+        "restart_overlay_check": "Check",
+        "restart_overlay_title": "Restart in progress",
+        "restart_overlay_rebooting": "The server is rebooting. This page will refresh automatically when it is fully back.",
+        "restart_overlay_stabilising": "Stabilising",
+        "restart_overlay_stabilising_generic": "The server is back but still finishing updates. Waiting for it to settle.",
+        "restart_overlay_stage2": "Update installer is running stage 2. The server may reboot again — do not power it off.",
+        "restart_overlay_pending_reboot": "Server is up but reports a pending reboot. Another restart is likely coming.",
+        "restart_overlay_warming_up": "Server is up but has only been running for",
+        "restart_overlay_settling": "Waiting for the boot to settle.",
+        "server_back_online": "Server is fully back",
+        "restart_overlay_reloading": "Reloading page",
+        "server_not_responding": "Server is not responding",
+        "restart_overlay_investigate": "The server did not come back within the check window. It may still be installing updates, or something went wrong.",
+        "dismiss": "Dismiss",
+        "retry": "Retry",
         "srv_state_unsteady": "Unsteady",
         "srv_state_down": "Down",
         "srv_state_impacted": "Impacted",
@@ -2254,6 +2277,29 @@ TRANSLATIONS = {
         "vitals_detail_contributors": "Gr\u00f6\u00dfte Einflussfaktoren",
         "vitals_detail_settling": "Beruhigt sich \u2014 der Wert wird stabil gehalten, bis sich die Umgebung nicht mehr \u00e4ndert",
         "vitals_detail_all_clear": "Nichts hebt die Umgebung \u00fcber ruhig hinaus.",
+        # The restart overlay. Every one of these was written as
+        # `t.get(key, "English text")` and existed in NO locale, so the
+        # overlay rendered English everywhere and always had — a fallback
+        # makes an untranslated string indistinguishable from a translated
+        # one, and `t.get` never fails, so nothing could notice.
+        "server_restarting_title": "Server startet neu",
+        "restart_overlay_waiting": "Warte auf",
+        "restart_overlay_to_respond": "bis er antwortet",
+        "restart_overlay_check": "Prüfung",
+        "restart_overlay_title": "Neustart läuft",
+        "restart_overlay_rebooting": "Der Server startet neu. Diese Seite wird automatisch aktualisiert, sobald er vollständig zurück ist.",
+        "restart_overlay_stabilising": "Stabilisiert sich",
+        "restart_overlay_stabilising_generic": "Der Server ist zurück, schließt aber noch Updates ab. Warte, bis er sich beruhigt hat.",
+        "restart_overlay_stage2": "Das Update-Installationsprogramm läuft in Phase 2. Der Server startet möglicherweise erneut — nicht ausschalten.",
+        "restart_overlay_pending_reboot": "Server ist erreichbar, meldet aber einen ausstehenden Neustart. Ein weiterer Neustart folgt wahrscheinlich.",
+        "restart_overlay_warming_up": "Server ist erreichbar, läuft aber erst seit",
+        "restart_overlay_settling": "Warte, bis der Start abgeschlossen ist.",
+        "server_back_online": "Server ist vollständig zurück",
+        "restart_overlay_reloading": "Seite wird neu geladen",
+        "server_not_responding": "Server antwortet nicht",
+        "restart_overlay_investigate": "Der Server war innerhalb des Prüffensters nicht zurück. Möglicherweise installiert er noch Updates, oder etwas ist schiefgelaufen.",
+        "dismiss": "Schließen",
+        "retry": "Erneut versuchen",
         "srv_state_unsteady": "Unruhig",
         "srv_state_down": "Ausgefallen",
         "srv_state_impacted": "Beeinträchtigt",
@@ -3359,6 +3405,29 @@ TRANSLATIONS = {
         "vitals_detail_contributors": "Principaux contributeurs",
         "vitals_detail_settling": "Stabilisation \u2014 la mesure est maintenue le temps que le parc cesse de changer",
         "vitals_detail_all_clear": "Rien ne pousse le parc au-del\u00e0 du calme.",
+        # The restart overlay. Every one of these was written as
+        # `t.get(key, "English text")` and existed in NO locale, so the
+        # overlay rendered English everywhere and always had — a fallback
+        # makes an untranslated string indistinguishable from a translated
+        # one, and `t.get` never fails, so nothing could notice.
+        "server_restarting_title": "Le serveur redémarre",
+        "restart_overlay_waiting": "En attente de",
+        "restart_overlay_to_respond": "pour qu’il réponde",
+        "restart_overlay_check": "Vérification",
+        "restart_overlay_title": "Redémarrage en cours",
+        "restart_overlay_rebooting": "Le serveur redémarre. Cette page se rafraîchira automatiquement dès qu’il sera complètement revenu.",
+        "restart_overlay_stabilising": "Stabilisation",
+        "restart_overlay_stabilising_generic": "Le serveur est revenu mais termine encore ses mises à jour. En attente qu’il se stabilise.",
+        "restart_overlay_stage2": "Le programme d’installation des mises à jour exécute l’étape 2. Le serveur peut redémarrer à nouveau — ne l’éteignez pas.",
+        "restart_overlay_pending_reboot": "Le serveur répond mais signale un redémarrage en attente. Un autre redémarrage est probable.",
+        "restart_overlay_warming_up": "Le serveur répond mais ne fonctionne que depuis",
+        "restart_overlay_settling": "En attente de la fin du démarrage.",
+        "server_back_online": "Le serveur est entièrement revenu",
+        "restart_overlay_reloading": "Rechargement de la page",
+        "server_not_responding": "Le serveur ne répond pas",
+        "restart_overlay_investigate": "Le serveur n’est pas revenu dans la fenêtre de vérification. Il installe peut-être encore des mises à jour, ou quelque chose s’est mal passé.",
+        "dismiss": "Fermer",
+        "retry": "Réessayer",
         "srv_state_unsteady": "Instable",
         "srv_state_down": "Hors service",
         "srv_state_impacted": "Impacté",
@@ -4464,6 +4533,29 @@ TRANSLATIONS = {
         "vitals_detail_contributors": "Mayores contribuyentes",
         "vitals_detail_settling": "Estabiliz\u00e1ndose \u2014 la lectura se mantiene fija mientras el parque deja de cambiar",
         "vitals_detail_all_clear": "Nada eleva el parque por encima de la calma.",
+        # The restart overlay. Every one of these was written as
+        # `t.get(key, "English text")` and existed in NO locale, so the
+        # overlay rendered English everywhere and always had — a fallback
+        # makes an untranslated string indistinguishable from a translated
+        # one, and `t.get` never fails, so nothing could notice.
+        "server_restarting_title": "El servidor se está reiniciando",
+        "restart_overlay_waiting": "Esperando a",
+        "restart_overlay_to_respond": "para que responda",
+        "restart_overlay_check": "Comprobación",
+        "restart_overlay_title": "Reinicio en curso",
+        "restart_overlay_rebooting": "El servidor se está reiniciando. Esta página se actualizará automáticamente cuando haya vuelto por completo.",
+        "restart_overlay_stabilising": "Estabilizándose",
+        "restart_overlay_stabilising_generic": "El servidor ha vuelto pero aún está terminando actualizaciones. Esperando a que se estabilice.",
+        "restart_overlay_stage2": "El instalador de actualizaciones está en la fase 2. El servidor puede reiniciarse de nuevo: no lo apague.",
+        "restart_overlay_pending_reboot": "El servidor responde pero informa de un reinicio pendiente. Es probable que venga otro reinicio.",
+        "restart_overlay_warming_up": "El servidor responde pero solo lleva funcionando",
+        "restart_overlay_settling": "Esperando a que termine el arranque.",
+        "server_back_online": "El servidor ha vuelto por completo",
+        "restart_overlay_reloading": "Recargando la página",
+        "server_not_responding": "El servidor no responde",
+        "restart_overlay_investigate": "El servidor no volvió dentro de la ventana de comprobación. Puede que siga instalando actualizaciones, o algo ha fallado.",
+        "dismiss": "Cerrar",
+        "retry": "Reintentar",
         "srv_state_unsteady": "Inestable",
         "srv_state_down": "Caído",
         "srv_state_impacted": "Afectado",
@@ -5569,6 +5661,29 @@ TRANSLATIONS = {
         "vitals_detail_contributors": "主な要因",
         "vitals_detail_settling": "安定化中 \u2014 変動が収まるまで表示を固定しています",
         "vitals_detail_all_clear": "平常を超える要因はありません。",
+        # The restart overlay. Every one of these was written as
+        # `t.get(key, "English text")` and existed in NO locale, so the
+        # overlay rendered English everywhere and always had — a fallback
+        # makes an untranslated string indistinguishable from a translated
+        # one, and `t.get` never fails, so nothing could notice.
+        "server_restarting_title": "サーバーを再起動しています",
+        "restart_overlay_waiting": "応答を待っています:",
+        "restart_overlay_to_respond": "",
+        "restart_overlay_check": "確認",
+        "restart_overlay_title": "再起動中",
+        "restart_overlay_rebooting": "サーバーを再起動しています。完全に復帰すると、このページは自動的に更新されます。",
+        "restart_overlay_stabilising": "安定化中",
+        "restart_overlay_stabilising_generic": "サーバーは復帰しましたが、更新の適用が続いています。落ち着くまで待機しています。",
+        "restart_overlay_stage2": "更新インストーラーがステージ 2 を実行中です。サーバーが再度再起動する可能性があります — 電源を切らないでください。",
+        "restart_overlay_pending_reboot": "サーバーは応答していますが、再起動保留を報告しています。もう一度再起動される見込みです。",
+        "restart_overlay_warming_up": "サーバーは応答していますが、稼働時間はまだ",
+        "restart_overlay_settling": "起動が落ち着くまで待機しています。",
+        "server_back_online": "サーバーは完全に復帰しました",
+        "restart_overlay_reloading": "ページを再読み込みしています",
+        "server_not_responding": "サーバーが応答しません",
+        "restart_overlay_investigate": "確認ウィンドウ内にサーバーは復帰しませんでした。更新のインストールが続いているか、何か問題が発生した可能性があります。",
+        "dismiss": "閉じる",
+        "retry": "再試行",
         "srv_state_unsteady": "不安定",
         "srv_state_down": "停止",
         "srv_state_impacted": "影響あり",

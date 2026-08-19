@@ -546,6 +546,44 @@ is a weaker claim than it sounds when the anchor is a selector, a brace, or an
 indented line, and the same class of mistake corrupted three splices of the
 mutation harness earlier in this branch.*
 
+**41. A fixed timer is not a release.** A manual restart put one server into
+accelerated polling — every check on every five-second tick — for twenty minutes,
+which is the safety ceiling the code itself warns about ("~240 forced cycles…
+almost certainly a bug"). The machine came back in fifty seconds. Measured
+against a comparable host in the same window: 184 samples versus 21. There WAS an
+early release, and it was unreachable from the case that needed it: it hangs off
+the update-install state machine, and a manual restart never creates an
+install-state row. So the mechanism existed, was correct, and could only fire for
+the path nobody triggers by hand.
+*Rule 1: a window opened to WAIT FOR AN EVENT must be closed BY that event.
+"Twenty minutes should be enough" is a guess with a cost attached, and it pays
+that cost in full every single time.*
+*Rule 2: when adding the release, the primitive must SHORTEN and never ARM.
+Calling the arming function with a small duration looks equivalent and is not —
+it would start polling every host that briefly blipped and recovered, turning a
+fix for excessive load into a cause of it. That distinction is what most of that
+feature's tests are for.*
+*Rule 3: put the release BEFORE the maintenance gate. A patch window is exactly
+when machines restart, so it is exactly when a suppression must not also suppress
+the thing that stops the hammering.*
+
+**42. Absence of motion was already carrying a meaning.** A still ECG trace was
+introduced to mean "you have seen this" — and this app already used a motionless
+trace to mean the opposite kind of thing entirely: the `flat` severity, every
+server offline. The new state was therefore not merely ambiguous, it collided
+with the one that means dead, and the rationale written beside it ("the still
+frame still carries colour and beat spacing") was true and beside the point. It
+took the owner looking at the real dashboard to see it; measured afterwards as
+three identical canvas frames over 2.4 seconds while the estate was elevated.
+*Rule: before using STILLNESS, EMPTINESS or SILENCE to encode something, ask what
+that absence already means in the same widget. Encoding a second meaning onto an
+absence is not like adding a colour — there is only one way to be absent, so the
+two meanings cannot be told apart.*
+*Corollary, from the same round: a signal must not fire in the resting state. The
+first version beat on every page load of a perfectly healthy estate, because
+nothing had been acknowledged yet — technically consistent with the rule and
+ambient in practice, which is the one thing the signal could not afford to be.*
+
 ---
 
 ## 3. The techniques that worked

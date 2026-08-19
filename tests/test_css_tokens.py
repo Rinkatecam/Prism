@@ -446,7 +446,18 @@ def test_no_token_reference_in_app_css_round_trips_to_a_different_token():
     # re-derivable — #E8EDF3 belongs to one token. Confirmed by enumerating
     # the unresolved sites, not inferred from the delta; the other six are
     # unchanged and are the same six described above.
-    assert unresolved == 8, unresolved
+    #
+    # Measured 2026-08-19 after the restart overlay was tokenised: 10. The two
+    # new ones are `.restart-overlay { background }` (`page`, the ALREADY-
+    # DOCUMENTED page/raised collision — #F1F5F9 in light belongs to both) and
+    # `.restart-overlay-btn--primary { color }` (`card`, the ALREADY-DOCUMENTED
+    # card/field collision — both #FFFFFF in light). Neither is a new pair
+    # colliding, which is the thing this number exists to catch; both are sites
+    # painted from a token whose light value another token shares, so they
+    # cannot be re-derived from their own colour alone. Enumerated, as before,
+    # rather than inferred from the delta. The `.dark` half of that button rule
+    # resolves cleanly and is not among them.
+    assert unresolved == 10, unresolved
 
 
 # ── the ratchet ──────────────────────────────────────────────────────────

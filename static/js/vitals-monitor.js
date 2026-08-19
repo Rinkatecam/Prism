@@ -29,15 +29,29 @@
  * so a <canvas> inside the fragment would be discarded and rebuilt every
  * few seconds and the beat would never get past its first cycle.
  *
- * REDUCED MOTION — the exemption was considered and declined; the argument
- * is written out in full in the reduced-motion block of app.css. Short
- * version: the tempo is real information, but it is not the ONLY carrier
- * of that information (percentage, count and a state word all sit inside
- * the same circle), and a still status display asserts nothing false the
- * way a frozen spinner does. So: draw the waveform ONCE and never animate.
- * Note that no stylesheet rule can enforce this — a canvas painted from
- * rAF is invisible to `animation-duration` — which is why it is a branch
- * here and a test in tests/test_design_vitals.py.
+ * TWO MOTIONS, and they answer different questions (WP-2, corrected after the
+ * owner watched it live):
+ *
+ *   sweeping()   does the TRACE advance?  Whenever there is a beat to draw.
+ *   squeezing()  does the HEART contract? Only while a change is unacknowledged.
+ *
+ * The ratified rule is "the BEAT animates only for unacknowledged change", and
+ * it says the beat — not the trace. Gating the trace on it as well was wrong
+ * twice: a still ECG is what a monitor shows when the machine is OFF, and this
+ * app already uses a motionless trace to mean exactly that (the `flat` severity,
+ * every server down). Measured before the fix: three identical canvas frames
+ * over 2.4 seconds while the estate was ELEVATED.
+ *
+ * REDUCED MOTION — the exemption was considered and declined; the argument is
+ * written out in full in the reduced-motion block of app.css. Short version: the
+ * tempo is real information, but it is not the ONLY carrier — severity's COLOUR
+ * carries the whole state, and the severity word is one gesture away in the
+ * detail — and a still status display asserts nothing false the way a frozen
+ * spinner does. So: draw the waveform ONCE and never animate. No stylesheet rule
+ * can enforce that — a canvas painted from rAF is invisible to
+ * `animation-duration`, and the squeeze is a transform written by script — which
+ * is why it is a branch here plus a zeroed depth in the stylesheet, and tests in
+ * tests/test_design_vitals.py and tests/test_design_heart_monitor.py.
  *
  * ENERGY:
  *   • rAF stops entirely when the tab is hidden (visibilitychange).
@@ -119,9 +133,12 @@
   // width would read as a flicker rather than a beat.
   const SQUEEZE_W = 0.055;
 
-  // Storage key prefix for "somebody has looked at this". Namespaced because
-  // localStorage is shared across the whole origin.
-  const ACK_KEY = 'prism.vitals.ack';
+  // (No storage key any more. Acknowledgement used to live in localStorage
+  // under `prism.vitals.ack:<severity>|<rail>`, which made it PERMANENT: once a
+  // state had been looked at, every later occurrence of that same state arrived
+  // pre-acknowledged and silent. Found live with `…ack:elevated|` on disk while
+  // the estate was elevated — the one moment the signal was needed was the one
+  // moment it could not fire. It is held in memory for the current episode now.)
 
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -134,6 +151,9 @@
   let settlingRow = null, clearRow = null;
   let rail = '';
   let unacknowledged = false;
+  // The state key the operator has looked at, or null. Reset by any change of
+  // state, so it can only ever describe the episode currently on screen.
+  let _ackFor = null;
   let labels = {};
   let severity = 'calm';
   let bpm = 60;
@@ -249,7 +269,7 @@
   // on severity alone, the second one would arrive already acknowledged: silent,
   // at exactly the moment silence is wrong.
   function ackKey() {
-    return ACK_KEY + ':' + severity + '|' + rail;
+    return severity + '|' + rail;
   }
 
   // Is there any news to have? Found by looking at the running dashboard: a
@@ -265,25 +285,18 @@
     return severity !== 'calm' || !!rail;
   }
 
+  // NEW means a new OCCURRENCE, not a tuple never seen before. `_ackFor` holds
+  // the state key the operator has actually looked at, and `readState` clears it
+  // on any change — so a condition that clears and comes back is news again.
+  // The persistent version got this wrong in the worst possible direction: it
+  // silenced exactly the states it had already taught the operator to expect.
   function acknowledged() {
     if (!newsworthy()) return true;
-    try {
-      return window.localStorage.getItem(ackKey()) === '1';
-    } catch (e) {
-      // Private browsing throws on localStorage. Fail towards BEATING: a heart
-      // that beats when it needn't is noise, and one that stays still when
-      // something changed is a missed outage. Over-signal, never under-signal.
-      return false;
-    }
+    return _ackFor === ackKey();
   }
 
   function remember() {
-    try {
-      window.localStorage.setItem(ackKey(), '1');
-    } catch (e) {
-      // Nothing to do and nothing to say: the beat simply keeps its meaning
-      // for this session instead of across them.
-    }
+    _ackFor = ackKey();
   }
 
   // ── The one gesture ─────────────────────────────────────────────────
@@ -358,7 +371,12 @@
     severity = nextSeverity;
     rail = nextRail;
     if (!isNaN(nextBpm)) bpm = nextBpm;
-    if (isNews) unacknowledged = !acknowledged();
+    if (isNews) {
+      // Any change of state forgets the acknowledgement. That is what makes
+      // it per-episode: a condition that clears and returns must be news.
+      _ackFor = null;
+      unacknowledged = !acknowledged();
+    }
 
     // An empty percent means nothing is monitored — the honest readout is a
     // dash, not 0%.
@@ -468,18 +486,36 @@
   // owner objected to. The still frame is not blank; it carries the severity's
   // colour, its amplitude and its beat spacing, so a critical estate still
   // shows a faster, taller, busier waveform than a calm one. Nothing is lost.
-  function animating() {
-    return !reduceMotion && beating() && unacknowledged && !document.hidden;
+  // TWO MOTIONS, TWO QUESTIONS — and conflating them was the defect the owner
+  // reported after watching the real dashboard.
+  //
+  // `sweeping()` — does the ECG advance? Whenever there is a beat to draw. A
+  // still ECG is what a monitor shows when the machine is OFF, and this app
+  // already uses a motionless trace to mean something specific: the `flat`
+  // severity, every server down. Freezing a healthy trace therefore did not
+  // merely look dead — it collided with the state that means dead. Measured
+  // before the fix: three identical canvas frames over 2.4 seconds, while the
+  // estate was ELEVATED.
+  //
+  // `squeezing()` — does the HEART contract? Only for news. That is the ratified
+  // rule, and the rule says "the beat", which is this and not the trace.
+  function sweeping() {
+    return !reduceMotion && beating() && !document.hidden;
+  }
+
+  function squeezing() {
+    return sweeping() && unacknowledged;
   }
 
   function start() {
     if (!ctx) return;
-    const run = animating();
-    // Published so the decision can be read rather than inferred from an
+    const run = sweeping();
+    // Published so each decision can be read rather than inferred from an
     // animation. In an automated browser pane requestAnimationFrame is
     // throttled below one frame per second and CSS transitions never advance,
-    // so "is it beating" cannot be answered by looking at it.
-    core.setAttribute('data-beating', run ? 'true' : 'false');
+    // so neither question can be answered by looking at it.
+    core.setAttribute('data-sweeping', run ? 'true' : 'false');
+    core.setAttribute('data-beating', squeezing() ? 'true' : 'false');
     core.setAttribute('data-unacknowledged', unacknowledged ? 'true' : 'false');
     if (!run) {
       // Every reason not to run still PAINTS — stopping the sweep must never
@@ -581,7 +617,7 @@
     // motion, or a change that has been acknowledged — pins the phase to 0 so
     // the trace is the same every time it is painted rather than depending on
     // when the page happened to load.
-    const still = !animating();
+    const still = !sweeping();
     const nowBeats = still ? 0 : (t / 1000) * beatsPerSecond;
 
     // THE HEART SQUEEZES ON THIS FRAME, from this phase. One clock for both,
@@ -597,7 +633,10 @@
     if (heartEl) {
       let beatU = nowBeats % 1;
       if (beatU < 0) beatU += 1;
-      heartEl.style.setProperty('--beat', still ? '0' : squeeze(beatU).toFixed(3));
+      // Gated on NEWS while the trace above is not: an acknowledged estate
+      // keeps its monitor alive and stops waving at you.
+      heartEl.style.setProperty(
+        '--beat', squeezing() ? squeeze(beatU).toFixed(3) : '0');
     }
 
     ctx.beginPath();

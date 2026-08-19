@@ -1361,6 +1361,149 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   outline-offset: 2px;
 }
 
+/* ── The restart overlay (WP-3) ──
+   Covers the content area while a server reboots, and is the sanctioned CIRCLE
+   pattern rather than the skeleton one: an ACTION is in flight and there is no
+   content shape to ghost.
+
+   Every colour here was a raw hex in an inline style until WP-3 — nineteen of
+   them, all picked from the dark palette, so the whole overlay was a dark panel
+   with light text regardless of theme. It looked deliberate in dark mode and
+   like a bug in light mode. The existing colour-literal ratchet could not see
+   any of it: that scanner matches Tailwind arbitrary-value utilities
+   (`text-[#3B82F6]`), and these were `style="color:#F8FAFC"` and JS string
+   assignments, which no rule in this project was looking at.
+
+   ONE accent variable carries the phase. The four `--restart-*` modifiers set
+   it and everything downstream reads it, so a phase's colour is chosen once
+   rather than in the four places that used to assign a hex to a title, an
+   icon stroke, a dot and a button. */
+.restart-overlay {
+  position: fixed;
+  top: 3.5rem;
+  /* `left` is set from #main-content's real box by the script that builds this.
+     It was `14rem` — the desktop sidebar's width, hardcoded — which misaligns
+     the moment the sidebar collapses. Defaulting to 0 here means a script
+     failure covers MORE than intended rather than leaving a strip of live UI
+     next to a modal claiming the page is busy. */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(var(--c-page) / 0.92);
+  backdrop-filter: blur(6px);
+  --restart-accent: var(--c-info);
+}
+
+.restart-overlay--rebooting   { --restart-accent: var(--c-info); }
+.restart-overlay--stabilising { --restart-accent: var(--c-warning); }
+.restart-overlay--ready       { --restart-accent: var(--c-healthy); }
+.restart-overlay--timeout     { --restart-accent: var(--c-warning); }
+
+.restart-overlay-panel {
+  text-align: center;
+  max-width: 24rem;
+  padding: 0 1rem;
+}
+
+/* The icons are stroked with `currentColor`, so the phase's accent reaches them
+   through inheritance instead of through a second hex per SVG. */
+.restart-overlay-icon {
+  margin: 0 auto 1rem;
+  color: rgb(var(--restart-accent));
+}
+
+.restart-overlay-icon svg {
+  display: block;
+  margin: 0 auto;
+}
+
+.restart-overlay-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: rgb(var(--c-ink));
+  margin-bottom: 0.5rem;
+}
+
+/* Two phases colour their own title: the ones that need the reader to stop and
+   read it. `rebooting` and `ready` are ordinary progress and stay ink. */
+.restart-overlay--stabilising .restart-overlay-title,
+.restart-overlay--timeout .restart-overlay-title {
+  color: rgb(var(--restart-accent));
+}
+
+.restart-overlay-msg {
+  font-size: 0.8125rem;
+  color: rgb(var(--c-muted));
+  margin-bottom: 1.25rem;
+}
+
+.restart-overlay-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* One dot per readiness condition: WinRM answers, no pending reboot, the
+   installer task is not running, uptime is past a minute. The transition is
+   frozen by the global reduced-motion rule, which is correct — the colour
+   change is the information and it still happens, instantly. */
+.restart-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: rgb(var(--c-line));
+  transition: background var(--dur-slow);
+}
+
+.restart-dot--met     { background: rgb(var(--c-healthy)); }
+.restart-dot--waiting { background: rgb(var(--c-warning)); }
+.restart-dot--pending { background: rgb(var(--c-info)); }
+.restart-dot--failed  { background: rgb(var(--c-critical)); }
+
+.restart-overlay-attempt {
+  font-size: 0.6875rem;
+  color: rgb(var(--c-muted));
+  font-variant-numeric: tabular-nums;
+}
+
+.restart-overlay-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.restart-overlay-actions[hidden] { display: none; }
+
+.restart-overlay-btn {
+  padding: 0.375rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(var(--c-line));
+  background: rgb(var(--c-raised));
+  color: rgb(var(--c-ink));
+  cursor: pointer;
+}
+
+.restart-overlay-btn--primary {
+  background: rgb(var(--c-brand));
+  border-color: rgb(var(--c-brand));
+  color: rgb(var(--c-card));
+}
+
+/* The brand lifts to a pale violet in dark mode, so white-on-brand inverts to
+   unreadable — the same trap the filled turquoise button and the servers view
+   toggle both hit. Near-black ink on the pale fill instead. */
+.dark .restart-overlay-btn--primary {
+  color: rgb(var(--c-page));
+}
+
 /* ── Print: strip chrome so Reports / Compliance docs print clean ── */
 @media print {
   .sidebar, #sidebar, nav[aria-label], .topbar, #topbar,

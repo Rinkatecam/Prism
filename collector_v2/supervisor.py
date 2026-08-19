@@ -161,6 +161,53 @@ def accelerate_server(
     )
 
 
+def settle_acceleration(name: str, duration_s: int = 60) -> bool:
+    """SHORTEN an active acceleration window. Never arms one. True if shortened.
+
+    Why this exists, measured on a live domain controller: a manual restart armed
+    twenty minutes of accelerated polling (`routes/api/power.py`), which at the
+    supervisor's 5 s tick is ~240 forced WinRM checks of ONE machine. The host
+    was back in fifty seconds. Counted: 184 samples in twenty minutes against 21
+    for a comparable server in the same window — nine times the load, all of it
+    after the machine was healthy again.
+
+    There WAS an early release, and it did not apply: it hangs off the
+    update-install state machine's stabilising window, and a manual restart never
+    creates an install-state row. So the only exit was the twenty-minute timer.
+
+    SHORTEN-ONLY is the whole safety property, and it is why this is not just a
+    call to `accelerate_server` with a small duration. That function ARMS: calling
+    it for a server that was never accelerated would start hammering a machine
+    because it briefly went offline and came back, which is the opposite of the
+    fix. This one requires an ACTIVE window and only ever brings its end closer.
+    """
+    now = datetime.now(timezone.utc)
+    until = now + timedelta(seconds=max(0, int(duration_s)))
+    with state._server_health_lock:
+        h = state.server_health.get(name)
+        if h is None or h.accelerated_until is None:
+            return False                      # never accelerated — do NOT arm
+        # One comparison covers both "already shorter" and "already expired":
+        # `until` is never in the past (the duration is clamped at 0 above), so
+        # an expired window is always <= it. A separate `<= now` check was
+        # written here first and was provably redundant — the mutation harness
+        # reported the test for it as blind, because removing that check alone
+        # changed nothing. Do not re-add it as a readability aid; a guard that
+        # cannot fail is a guard nobody can trust.
+        if h.accelerated_until <= until:
+            return False
+        was = h.accelerated_until
+        reason = h.accelerated_reason
+        h.accelerated_until = until
+    logger.info(
+        "Accelerated polling for %s shortened to %.0fs (was %.0fs remaining)%s",
+        name, max(0.0, (until - now).total_seconds()),
+        max(0.0, (was - now).total_seconds()),
+        f" [reason: {reason}]" if reason else "",
+    )
+    return True
+
+
 # Bridging dict for acceleration requests that arrive BEFORE the supervisor
 # has seen the server. The supervisor drains this on every tick.
 _pending_acceleration: dict[str, tuple[datetime, str]] = {}

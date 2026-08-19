@@ -1778,68 +1778,158 @@
       });
   }
 
-  // ── Restart overlay: covers the whole page until the server comes back ──
+  // ── Restart overlay: covers the content area until the server comes back ──
+  //
+  // The sanctioned CIRCLE pattern, not the skeleton one: an ACTION is in flight
+  // and there is no content shape to ghost.
+  //
+  // Rewritten at WP-3 for three defects, one of them not on the flagged list.
+  //   * Nineteen raw hex colours in inline styles and JS assignments, all from
+  //     the dark palette — so the overlay was a dark panel with light text in
+  //     BOTH themes. The project's colour-literal ratchet could not see one of
+  //     them: it matches Tailwind arbitrary-value utilities, and these were
+  //     `style="color:#F8FAFC"`. Styling now lives in app.css against tokens.
+  //   * The panel was built with innerHTML and a template literal splicing
+  //     ${SERVER_NAME} into markup. A server name is operator-supplied text
+  //     arriving through a database; it belongs in textContent, never in HTML.
+  //     The SVGs still go in as markup because they are developer-authored
+  //     constants with nothing interpolated — that is the distinction, not a
+  //     blanket ban.
+  //   * ALL EIGHTEEN of its strings were missing from every locale. Each was
+  //     written `t.get(key, 'English')`, so a German, French, Spanish or
+  //     Japanese operator read English and always had. `t.get` never fails, so
+  //     no test could see it. They exist in all five locales now.
+  const RESTART_LABELS = {
+    restarting: {{ t.get('server_restarting_title', 'Server is restarting') | tojson }},
+    waiting: {{ t.get('restart_overlay_waiting', 'Waiting for') | tojson }},
+    toRespond: {{ t.get('restart_overlay_to_respond', 'to respond') | tojson }},
+    check: {{ t.get('restart_overlay_check', 'Check') | tojson }},
+    title: {{ t.get('restart_overlay_title', 'Restart in progress') | tojson }},
+    rebooting: {{ t.get('restart_overlay_rebooting', 'The server is rebooting. This page will refresh automatically when it is fully back.') | tojson }},
+    stabilising: {{ t.get('restart_overlay_stabilising', 'Stabilising') | tojson }},
+    stabilisingGeneric: {{ t.get('restart_overlay_stabilising_generic', 'The server is back but still finishing updates. Waiting for it to settle.') | tojson }},
+    stage2: {{ t.get('restart_overlay_stage2', 'Update installer is running stage 2. The server may reboot again — do not power it off.') | tojson }},
+    pendingReboot: {{ t.get('restart_overlay_pending_reboot', 'Server is up but reports a pending reboot. Another restart is likely coming.') | tojson }},
+    warmingUp: {{ t.get('restart_overlay_warming_up', 'Server is up but has only been running for') | tojson }},
+    settling: {{ t.get('restart_overlay_settling', 'Waiting for the boot to settle.') | tojson }},
+    backOnline: {{ t.get('server_back_online', 'Server is fully back') | tojson }},
+    reloading: {{ t.get('restart_overlay_reloading', 'Reloading page') | tojson }},
+    notResponding: {{ t.get('server_not_responding', 'Server is not responding') | tojson }},
+    investigate: {{ t.get('restart_overlay_investigate', 'The server did not come back within the check window. It may still be installing updates, or something went wrong.') | tojson }},
+    dismiss: {{ t.get('dismiss', 'Dismiss') | tojson }},
+    retry: {{ t.get('retry', 'Retry') | tojson }}
+  };
+
+  // Developer-authored, constant, and interpolation-free. Stroked with
+  // currentColor so the phase's accent reaches them from CSS.
+  const RESTART_ICONS = {
+    rebooting: '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/></svg>',
+    stabilising: '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+    ready: '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    timeout: '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="m12 17 .01 0"/></svg>'
+  };
+
   function showRestartOverlay() {
     // Remove any existing overlay (double-click protection)
     const existing = document.getElementById('restart-overlay');
     if (existing) existing.remove();
 
-    // Cover the main content area (right of sidebar, below topbar) with a
-    // fixed overlay. Using fixed positioning so the spinner is always centered
-    // in the visible viewport regardless of scroll position.
-    const main = document.getElementById('main-content');
-
     const overlay = document.createElement('div');
     overlay.id = 'restart-overlay';
-    overlay.style.cssText = 'position:fixed;top:3.5rem;left:14rem;right:0;bottom:0;z-index:50;' +
-      'display:flex;align-items:center;justify-content:center;' +
-      'background:rgba(15,23,42,0.92);backdrop-filter:blur(6px);transition:opacity var(--dur-slow);';
-    overlay.innerHTML = `
-      <div style="text-align:center;max-width:380px;">
-        <div id="restart-overlay-icon" style="margin:0 auto 16px;">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin" style="display:block;margin:0 auto;">
-            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-          </svg>
-        </div>
-        <h2 id="restart-overlay-title" style="font-size:18px;font-weight:700;color:#F8FAFC;margin-bottom:8px;">
-          {{ t.get('server_restarting_title', 'Server is restarting') }}…
-        </h2>
-        <p id="restart-overlay-msg" style="font-size:13px;color:#94A3B8;margin-bottom:20px;">
-          {{ t.get('restart_overlay_waiting', 'Waiting for') }} ${SERVER_NAME} {{ t.get('restart_overlay_to_respond', 'to respond') }}…
-        </p>
-        <div id="restart-overlay-dots" style="display:flex;justify-content:center;gap:8px;margin-bottom:16px;">
-          <span class="restart-dot" style="width:12px;height:12px;border-radius:50%;background:#334155;transition:background var(--dur-slow);"></span>
-          <span class="restart-dot" style="width:12px;height:12px;border-radius:50%;background:#334155;transition:background var(--dur-slow);"></span>
-          <span class="restart-dot" style="width:12px;height:12px;border-radius:50%;background:#334155;transition:background var(--dur-slow);"></span>
-          <span class="restart-dot" style="width:12px;height:12px;border-radius:50%;background:#334155;transition:background var(--dur-slow);"></span>
-        </div>
-        <p id="restart-overlay-attempt" style="font-size:11px;color:#64748B;">
-          {{ t.get('restart_overlay_check', 'Check') }} 0 / 30
-        </p>
-      </div>`;
+    overlay.className = 'restart-overlay restart-overlay--rebooting';
+    // The phase changes are the only progress signal, so they have to be
+    // announced. `polite` rather than `assertive`: this is progress, not an
+    // alert, and it updates every twenty seconds.
+    overlay.setAttribute('role', 'status');
+    overlay.setAttribute('aria-live', 'polite');
+
+    // Anchored to the real content box. This was `left: 14rem` — the desktop
+    // sidebar's width as a literal — which leaves a misaligned strip the moment
+    // the sidebar collapses.
+    const main = document.getElementById('main-content');
+    if (main) {
+      const box = main.getBoundingClientRect();
+      if (box.width > 0) overlay.style.left = Math.round(box.left) + 'px';
+    }
+
+    const panel = document.createElement('div');
+    panel.className = 'restart-overlay-panel';
+
+    const icon = document.createElement('div');
+    icon.id = 'restart-overlay-icon';
+    icon.className = 'restart-overlay-icon';
+    icon.innerHTML = RESTART_ICONS.rebooting;
+
+    const title = document.createElement('h2');
+    title.id = 'restart-overlay-title';
+    title.className = 'restart-overlay-title';
+    title.textContent = RESTART_LABELS.restarting + '…';
+
+    const msg = document.createElement('p');
+    msg.id = 'restart-overlay-msg';
+    msg.className = 'restart-overlay-msg';
+    // textContent: SERVER_NAME is operator-supplied.
+    msg.textContent = RESTART_LABELS.waiting + ' ' + SERVER_NAME + ' '
+      + RESTART_LABELS.toRespond + '…';
+
+    const dotRow = document.createElement('div');
+    dotRow.id = 'restart-overlay-dots';
+    dotRow.className = 'restart-overlay-dots';
+    for (let i = 0; i < 4; i++) {
+      const dot = document.createElement('span');
+      dot.className = 'restart-dot';
+      dotRow.appendChild(dot);
+    }
+
+    const attemptEl = document.createElement('p');
+    attemptEl.id = 'restart-overlay-attempt';
+    attemptEl.className = 'restart-overlay-attempt';
+
+    const actions = document.createElement('div');
+    actions.id = 'restart-overlay-actions';
+    actions.className = 'restart-overlay-actions';
+    actions.hidden = true;
+
+    const dismissBtn = document.createElement('button');
+    dismissBtn.type = 'button';
+    dismissBtn.className = 'restart-overlay-btn';
+    dismissBtn.dataset.action = '_sdRemoveEl';
+    dismissBtn.dataset.target = 'restart-overlay';
+    dismissBtn.textContent = RESTART_LABELS.dismiss;
+
+    const retryBtn = document.createElement('button');
+    retryBtn.type = 'button';
+    retryBtn.className = 'restart-overlay-btn restart-overlay-btn--primary';
+    retryBtn.dataset.action = '_sdReload';
+    retryBtn.textContent = RESTART_LABELS.retry;
+
+    actions.appendChild(dismissBtn);
+    actions.appendChild(retryBtn);
+
+    panel.appendChild(icon);
+    panel.appendChild(title);
+    panel.appendChild(msg);
+    panel.appendChild(dotRow);
+    panel.appendChild(attemptEl);
+    panel.appendChild(actions);
+    overlay.appendChild(panel);
     document.body.appendChild(overlay);
 
-    // Q4 from the May review — 3-state restart detection.
-    //
-    // A server is FULLY back only when ALL of these are true:
-    //   1. WinRM responds (we can run a script).
-    //   2. No pending-reboot flag (CBS / WindowsUpdate / file-rename / packages).
-    //   3. PrismInstallUpdates scheduled task is NOT running (stage 2/3 done).
-    //   4. Uptime ≥ 60s (no flapping during the boot/login screen window).
-    //
-    // The /api/servers/<name>/restart-readiness endpoint checks 1-3 and
-    // returns uptime so we can compute 4 client-side. Three visual states:
-    //   • REBOOTING     — winrm_ok false, OR uptime < 60s
-    //   • STABILISING   — winrm_ok true, pending_reboot true OR install task running
-    //   • READY         — all four conditions hold
     let attempt = 0;
     const maxAttempts = 30;  // 30 × 20 s = 10 min — covers 2-3 reboot cycles
     const POLL_MS = 20000;
     const dots = overlay.querySelectorAll('.restart-dot');
     let _phase = 'rebooting';  // rebooting -> stabilising -> ready
+    attemptEl.textContent = RESTART_LABELS.check + ' 0 / ' + maxAttempts;
 
-    function paintDots(color) {
-      dots.forEach(d => d.style.background = color);
+    // Classes, not inline colours: the four states map to tokens in app.css so
+    // there is one mapping rather than a hex per call site.
+    function setDot(el, state) {
+      el.className = 'restart-dot' + (state ? ' restart-dot--' + state : '');
+    }
+
+    function paintDots(state) {
+      dots.forEach(d => setDot(d, state));
     }
 
     // Each dot represents one of the four readiness conditions, in order:
@@ -1847,7 +1937,8 @@
     //   dot[1] No pending-reboot flag
     //   dot[2] Install task not running
     //   dot[3] Uptime >= 60s
-    // Green = condition met, blue = not yet, red = explicitly failed.
+    // met = the condition holds, waiting = the host answers but this one does
+    // not hold yet, pending = the host is not answering at all, failed = gave up.
     function paintPhaseDots(payload) {
       const checks = payload ? [
         !!payload.winrm_ok,
@@ -1857,7 +1948,8 @@
       ] : [false, false, false, false];
       checks.forEach((ok, i) => {
         if (!dots[i]) return;
-        dots[i].style.background = ok ? '#10B981' : (payload && payload.winrm_ok ? '#F59E0B' : '#3B82F6');
+        setDot(dots[i], ok ? 'met'
+          : (payload && payload.winrm_ok ? 'waiting' : 'pending'));
       });
     }
 
@@ -1865,59 +1957,54 @@
       const titleEl = document.getElementById('restart-overlay-title');
       const msgEl = document.getElementById('restart-overlay-msg');
       const iconEl = document.getElementById('restart-overlay-icon');
+      const actionsEl = document.getElementById('restart-overlay-actions');
       _phase = phase;
 
+      // ONE place decides the phase, and everything colours itself from it:
+      // the title, the icon stroke and the buttons all read `--restart-accent`
+      // out of the modifier below. Four hex assignments per phase used to do
+      // this, in four different functions.
+      overlay.className = 'restart-overlay restart-overlay--' + phase;
+      if (iconEl) iconEl.innerHTML = RESTART_ICONS[phase] || RESTART_ICONS.rebooting;
+      if (actionsEl) actionsEl.hidden = phase !== 'timeout';
+
       if (phase === 'rebooting') {
-        if (titleEl) {
-          titleEl.textContent = '{{ t.get("restart_overlay_title", "Restart in progress") }}';
-          titleEl.style.color = '#F8FAFC';
-        }
-        if (msgEl) msgEl.textContent = '{{ t.get("restart_overlay_rebooting", "The server is rebooting. This page will refresh automatically when it is fully back.") }}';
-        if (iconEl) iconEl.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin" style="display:block;margin:0 auto;"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/></svg>';
+        if (titleEl) titleEl.textContent = RESTART_LABELS.title;
+        if (msgEl) msgEl.textContent = RESTART_LABELS.rebooting;
         paintPhaseDots(payload);
       } else if (phase === 'stabilising') {
-        if (titleEl) {
-          titleEl.textContent = '{{ t.get("restart_overlay_stabilising", "Stabilising…") }}';
-          titleEl.style.color = '#F59E0B';
-        }
-        // Detailed sub-state so the user knows WHY it's not done yet
-        let why = '{{ t.get("restart_overlay_stabilising_generic", "The server is back but still finishing updates. Waiting for it to settle.") }}';
+        if (titleEl) titleEl.textContent = RESTART_LABELS.stabilising + '…';
+        // The detailed sub-state, so the reader knows WHY it is not done.
+        let why = RESTART_LABELS.stabilisingGeneric;
         if (payload && payload.install_task_running) {
-          why = '{{ t.get("restart_overlay_stage2", "Update installer is running stage 2. The server may reboot again — do not power it off.") }}';
+          why = RESTART_LABELS.stage2;
         } else if (payload && payload.pending_reboot) {
-          why = '{{ t.get("restart_overlay_pending_reboot", "Server is up but reports a pending reboot. Another restart is likely coming.") }}';
-        } else if (payload && payload.uptime_seconds !== null && payload.uptime_seconds < 60) {
-          why = '{{ t.get("restart_overlay_warming_up", "Server is up but has only been running for") }} ' + payload.uptime_seconds + 's. {{ t.get("restart_overlay_settling", "Waiting for the boot to settle.") }}';
+          why = RESTART_LABELS.pendingReboot;
+        } else if (payload && payload.uptime_seconds !== null
+                   && payload.uptime_seconds < 60) {
+          why = RESTART_LABELS.warmingUp + ' ' + payload.uptime_seconds + 's. '
+            + RESTART_LABELS.settling;
         }
-        if (msgEl) msgEl.innerHTML = why;
-        if (iconEl) iconEl.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+        // textContent, not innerHTML: `why` interpolates a number today and is
+        // one edit away from interpolating something a host controls.
+        if (msgEl) msgEl.textContent = why;
         paintPhaseDots(payload);
       } else if (phase === 'ready') {
-        if (titleEl) {
-          titleEl.textContent = '{{ t.get("server_back_online", "Server is fully back") }}';
-          titleEl.style.color = '#F8FAFC';
-        }
-        if (msgEl) msgEl.textContent = '{{ t.get("restart_overlay_reloading", "Reloading page…") }}';
-        if (iconEl) iconEl.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
-        paintDots('#10B981');
+        if (titleEl) titleEl.textContent = RESTART_LABELS.backOnline;
+        if (msgEl) msgEl.textContent = RESTART_LABELS.reloading + '…';
+        paintDots('met');
         setTimeout(() => location.reload(), 1500);
       } else if (phase === 'timeout') {
-        if (titleEl) {
-          titleEl.textContent = '{{ t.get("server_not_responding", "Server is not responding") }}';
-          titleEl.style.color = '#F59E0B';
-        }
-        if (msgEl) msgEl.innerHTML = '{{ t.get("restart_overlay_investigate", "The server did not come back after 4 checks. It may still be installing updates or something went wrong.") }}<br><br>' +
-          '<button data-action="_sdRemoveEl" data-target="restart-overlay" style="padding:6px 16px;font-size:12px;font-weight:600;border-radius:8px;background:#334155;color:#F8FAFC;border:none;cursor:pointer;">{{ t.get("dismiss", "Dismiss") }}</button>' +
-          ' <button data-action="_sdReload" style="padding:6px 16px;font-size:12px;font-weight:600;border-radius:8px;background:#2563EB;color:#FFF;border:none;cursor:pointer;margin-left:8px;">{{ t.get("retry", "Retry") }}</button>';
-        if (iconEl) iconEl.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="m12 17 .01 0"/></svg>';
-        paintDots('#DC2626');
+        if (titleEl) titleEl.textContent = RESTART_LABELS.notResponding;
+        if (msgEl) msgEl.textContent = RESTART_LABELS.investigate;
+        paintDots('failed');
       }
     }
 
     function check() {
       attempt++;
       const atEl = document.getElementById('restart-overlay-attempt');
-      if (atEl) atEl.textContent = '{{ t.get("restart_overlay_check", "Check") }} ' + attempt + ' / ' + maxAttempts;
+      if (atEl) atEl.textContent = RESTART_LABELS.check + ' ' + attempt + ' / ' + maxAttempts;
 
       fetch('/api/servers/' + encodeURIComponent(SERVER_NAME) + '/restart-readiness')
         .then(r => r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)))
