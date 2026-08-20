@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{# ── /network — an honest surface over an absence ────────────────────────
+
+   The Network quadrant card is now a link, which means this page has to
+   exist. It is NOT the beginning of an implementation: no collector watches
+   switches, firewalls, routers or access points, and WP-3 does not add one.
+
+   What it must not do is manufacture a page. No zeroed stat tiles, no empty
+   table with headers, no skeleton — a zero is a MEASUREMENT and there is no
+   measurement here; a skeleton is a claim that content is coming and none
+   is. Two blocks and nothing else: what is absent, and what Prism watches
+   instead.
+
+   The scope sentence is the CARD'S OWN `data-tip-desc`, deliberately. One
+   string, so the card and the page it links to cannot drift apart. It used
+   to open "This card will cover…", which was correct in a hover tip and
+   referred to nothing here — found by reading the rendered page, which is
+   also why there is no third block headed "What this will cover": the
+   sentence below already says it, and saying it twice was the first draft.
+
+   "Coming soon" is deliberately not the framing. On the card it justified an
+   inert control; on a page it reads as a delivery date nobody has promised.
+   The wording describes the product's CURRENT SCOPE. #}
+
+{% block content %}
+
+<h1 class="text-2xl font-bold flex items-center gap-2 mb-1">
+  <i data-lucide="router" class="w-6 h-6 text-brand" aria-hidden="true"></i>
+  {{ t.get('vitals_network', 'Network') }}
+</h1>
+
+<p class="text-sm text-muted mb-6 max-w-2xl">
+  {{ t.get('network_lede',
+           'Prism does not watch network equipment yet. This is what that would mean, and what it watches instead today.') }}
+</p>
+
+<div class="max-w-3xl">
+
+  {# The one plain statement. It leads, because an operator who navigated here
+     from a dashboard card is asking exactly this question. #}
+  <div class="bg-card rounded-md border border-line p-5 mb-4 flex items-start gap-3">
+    <i data-lucide="circle-slash" class="w-5 h-5 text-faint flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+    <div>
+      <p class="text-sm font-semibold text-ink">
+        {{ t.get('overview_not_collected', 'Nothing here is being collected yet.') }}
+      </p>
+      <p class="text-sm text-muted mt-1">
+        {{ t.get('vitals_network_tip_desc',
+                 'Network monitoring will cover switches, firewalls, routers and access points. There is nothing to configure yet - servers and services are what Prism watches today.') }}
+      </p>
+    </div>
+  </div>
+
+  <section class="bg-card rounded-md border border-line p-5">
+    <h2 class="text-sm font-semibold text-muted uppercase tracking-wider mb-3">
+      {{ t.get('overview_today', 'What Prism watches today') }}
+    </h2>
+    <p class="text-sm text-muted mb-3">
+      {{ t.get('network_today_desc',
+               'Reachability is already measured from the server side: every health check proves a port, a URL or a host answered, and the map shows how the servers relate.') }}
+    </p>
+    {# Named routes onward. A page about an absence that offers nowhere to go
+       is the dead end the empty-state rule exists to prevent. #}
+    <ul class="flex flex-wrap gap-2">
+      <li>
+        <a href="/services" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-line text-ink hover:bg-page transition-colors">
+          <i data-lucide="activity" class="w-4 h-4 text-accent" aria-hidden="true"></i>
+          {{ t.get('vitals_services', 'Services') }}
+        </a>
+      </li>
+      <li>
+        <a href="/topology" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-line text-ink hover:bg-page transition-colors">
+          <i data-lucide="network" class="w-4 h-4 text-accent" aria-hidden="true"></i>
+          {{ t.get('infrastructure_map', 'Infrastructure Map') }}
+        </a>
+      </li>
+    </ul>
+  </section>
+
+</div>
+
+{% endblock %}

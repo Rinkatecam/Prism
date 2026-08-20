@@ -268,8 +268,13 @@
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 3b — Health Checks
+
+     `id` is load-bearing, not decoration: /services is a state-only page
+     and its one route to configuration is `/servers#health-checks`. The
+     quadrant card's empty-state hint names this section too — it named
+     Operations until WP-3, which has no such section and never had one.
      ═══════════════════════════════════════════════════════════════ -->
-<section class="mb-8">
+<section class="mb-8" id="health-checks">
   <div class="flex items-center justify-between mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
       <i data-lucide="activity" class="w-5 h-5 text-accent"></i>

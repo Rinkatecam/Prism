@@ -3275,6 +3275,77 @@ class Database:
         finally:
             conn.close()
 
+    def get_health_check_overview(self) -> list[dict]:
+        """One row per CONFIGURED probe, carrying its most recent result.
+
+        The aggregate twin of :meth:`get_health_check_summary`, and it is
+        shaped the same way for the same measured reason: drive from
+        ``health_check_config`` (a dozen rows) and take one indexed seek per
+        probe into ``idx_hc_results_probe``, rather than grouping the
+        append-only ``health_check_results`` history. That docstring has the
+        numbers — 0.033 ms against 82.64 ms at the 30-day retention default.
+
+        TWO DELIBERATE DIFFERENCES from the summary, both load-bearing:
+
+          * **No ``enabled`` filter.** The summary excludes switched-off
+            probes because a probe nobody is watching is not down; this
+            returns them, flagged, because the page is the only place an
+            operator can see that they exist. The caller filters on
+            ``enabled`` before counting anything — otherwise the page's
+            arithmetic and the dashboard card that links to it disagree by
+            exactly the number of disabled probes, and neither says which
+            one is wrong.
+          * **``status`` is folded here, not left raw.** ``up`` and ``down``
+            pass through; NULL (never probed) and anything the probes do not
+            emit both become ``unknown``, which is precisely the summary's
+            bucketing. Two folds that agree by construction rather than by
+            being written the same way twice.
+
+        Never-probed stays distinguishable from probed-without-a-verdict
+        despite both folding to ``unknown``: only the second has a
+        ``last_checked``.
+
+        The ``LEFT JOIN`` resolves the newest row PER PROBE — the correlated
+        subquery carries the config table's full UNIQUE tuple (server_name,
+        check_type, target_host, target_port), which is the probe's identity
+        everywhere else in the application. Matching on anything narrower
+        gives every probe on a host the same status, which reads as a
+        perfectly ordinary page.
+        """
+        conn = self._get_conn()
+        try:
+            rows = conn.execute("""
+                SELECT c.id, c.name, c.server_name, c.check_type,
+                       c.target_host, c.target_port, c.http_path,
+                       c.expected_status, c.enabled, c.verify_tls,
+                       r.status          AS status,
+                       r.response_time_ms AS response_time_ms,
+                       r.error           AS error,
+                       r.last_checked    AS last_checked
+                FROM health_check_config c
+                LEFT JOIN health_check_results r ON r.id = (
+                    SELECT r2.id
+                    FROM health_check_results r2
+                    WHERE r2.server_name = c.server_name
+                      AND r2.check_type  = c.check_type
+                      AND r2.target_host = c.target_host
+                      AND r2.target_port = c.target_port
+                    ORDER BY r2.id DESC
+                    LIMIT 1
+                )
+                ORDER BY c.server_name, c.id
+            """).fetchall()
+            out = []
+            for row in rows:
+                probe = dict(row)
+                status = probe.get("status")
+                probe["status"] = ("up" if status == "up" else
+                                   "down" if status == "down" else "unknown")
+                out.append(probe)
+            return out
+        finally:
+            conn.close()
+
     def get_health_check_results(self, server_name: str | None = None) -> list[dict]:
         """Get health check results, optionally filtered by server."""
         conn = self._get_conn()

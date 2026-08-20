@@ -419,6 +419,87 @@ def servers_page():
         return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
 
 
+def _services_context() -> dict:
+    """The probes and their counts, from one place.
+
+    Called by the page view AND by the partial, for the same reason
+    ``_vitals_context`` is: the two must agree. The counts come from
+    ``get_health_check_summary`` (which excludes disabled probes) and the
+    rows from ``get_health_check_overview`` (which does not) — two reads a
+    few milliseconds apart, so a probe switched off between them would make
+    the page's table and its own figures disagree. One call site, one pair.
+
+    Each read is defended separately: a missing ``health_check_config``
+    table on an old database must not cost the page its heading.
+
+    ``readable`` is the part worth stating. Swallowing a failed read into an
+    empty list turns "Prism could not read the inventory" into "you have no
+    health checks configured" — the page's own empty state, hint and all,
+    asserting something about the operator's estate that Prism does not know.
+    That is this repository's most-repeated failure written in the UI layer:
+    a check that reports a clean result when it did not do the work. The flag
+    lets the template say which of the two it is; the caller must not infer
+    it from ``probes`` being empty, because both cases produce that.
+    """
+    readable = True
+    try:
+        probes = _db.get_health_check_overview()
+    except Exception:
+        logger.exception("services: could not read the probe inventory")
+        probes = []
+        readable = False
+    try:
+        summary = _db.get_health_check_summary()
+    except Exception:
+        logger.exception("services: could not read the health-check summary")
+        summary = {"total": 0, "up": 0, "down": 0, "unknown": 0}
+        readable = False
+    return {"probes": probes, "summary": summary, "readable": readable}
+
+
+@views_bp.route("/services")
+def services_page():
+    """The Services quadrant card's landing page — state only.
+
+    Everything it shows is server-rendered on first paint: the inventory is
+    a config-side scan of a dozen rows (see
+    ``Database.get_health_check_overview``), so deferring it would buy a
+    skeleton and nothing else.
+    """
+    logger.debug("Serving %s", request.path)
+    try:
+        return render_template("services.html", **_services_context())
+    except Exception:
+        logger.exception("Error rendering services")
+        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+
+
+@views_bp.route("/network")
+def network_page():
+    """An honest surface over an absence — nothing is collected for it.
+
+    It takes no context at all, and that is the point: a view that fetched
+    something would eventually render a zero, and a zero is a measurement.
+    """
+    logger.debug("Serving %s", request.path)
+    try:
+        return render_template("network.html")
+    except Exception:
+        logger.exception("Error rendering network")
+        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+
+
+@views_bp.route("/scan")
+def scan_page():
+    """The twin of :func:`network_page`; same argument, same shape."""
+    logger.debug("Serving %s", request.path)
+    try:
+        return render_template("scan.html")
+    except Exception:
+        logger.exception("Error rendering scan")
+        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+
+
 @views_bp.route("/monitoring")
 def monitoring_page():
     logger.debug("Serving %s", request.path)
@@ -757,6 +838,22 @@ def partial_activity_feed():
         return render_template("partials/activity_feed.html", events=events)
     except Exception:
         logger.exception("Error rendering partial activity_feed")
+        return "Internal Server Error", 500
+
+
+@views_bp.route("/partials/services-table")
+def partial_services_table():
+    """The /services inventory, refreshed on every prismRefresh.
+
+    There is no `load` trigger on the page's region: it is painted
+    server-side from the same context this returns, so a load-triggered swap
+    would blank a region that is already correct and buy a flicker.
+    """
+    logger.debug("Serving %s", request.path)
+    try:
+        return render_template("partials/services_table.html", **_services_context())
+    except Exception:
+        logger.exception("Error rendering partial services_table")
         return "Internal Server Error", 500
 
 

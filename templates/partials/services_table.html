@@ -1,0 +1,174 @@
+{# ── The services inventory — one row per configured probe ───────────────
+
+   Rendered server-side on first paint by services.html via {% include %},
+   and re-rendered on every prismRefresh. NO `load` trigger and NO skeleton,
+   deliberately: `Database.get_health_check_overview()` is a config-side scan
+   of a dozen rows at 0.033 ms, so there is no gap between paint and data to
+   ghost. A skeleton is a claim that content is coming; here it has already
+   arrived.
+
+   `probes` is the FULL list including switched-off ones. The counts come
+   from `summary`, which excludes them — see the accessor's docstring for why
+   those two must not be computed from one list. The disabled group below is
+   rendered from the same rows the counts deliberately skipped, which is the
+   only place in the application an operator can see that they exist.
+
+   Colour: no `-[#hex]` anywhere in this file, and it is a new template, so
+   `test_no_colour_literal_outside_the_templates_that_already_have_one` fails
+   the build if one appears rather than a ratchet tolerating it. #}
+{% from "partials/_empty_state.html" import empty_state %}
+
+{% set live = probes | selectattr('enabled') | list %}
+{% set switched_off = probes | rejectattr('enabled') | list %}
+
+{% if not readable %}
+{# NOT the empty state, and the distinction is the whole point of the flag.
+   A failed read also produces an empty list, and rendering "no health checks
+   configured" over it would have Prism assert something about the operator's
+   estate that it does not know — the same defect as a verifier that cannot
+   tell "saw nothing bad" from "saw nothing", written in the UI layer.
+   Deliberately NOT an empty state either: there is no hint, because the
+   action is not the operator's. #}
+<div class="bg-card rounded-md border border-warning p-5 flex items-start gap-3">
+  <i data-lucide="alert-triangle" class="w-5 h-5 text-warning flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+  <p class="text-sm text-ink">
+    {{ t.get('services_unreadable',
+             'The probe inventory could not be read. That is a fault in Prism, not a report about the services - nothing here says whether they are reachable.') }}
+  </p>
+</div>
+{% elif probes | length == 0 %}
+{{ empty_state(
+     'activity',
+     t.get('no_health_checks', 'No health checks configured'),
+     t.get('vitals_no_services_hint',
+           'Add a probe under Servers - Health Checks to watch a port, a URL or a host'),
+     card=true) }}
+{% else %}
+
+{# The four numbers, in the quadrant card's order and the quadrant card's
+   words. The card links here; two vocabularies for one measurement is how an
+   operator ends up wondering which page is telling the truth. #}
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+  <div class="bg-card rounded-md border border-line p-4">
+    <p class="text-2xl font-bold tabular-nums text-ink">{{ summary.total }}</p>
+    <p class="text-xs text-muted mt-0.5">{{ t.get('services_probes_total', 'Probes configured') }}</p>
+  </div>
+  <div class="bg-card rounded-md border border-line p-4">
+    <p class="text-2xl font-bold tabular-nums text-healthy">{{ summary.up }}</p>
+    <p class="text-xs text-muted mt-0.5">{{ t.get('vitals_up', 'Reachable') }}</p>
+  </div>
+  <div class="bg-card rounded-md border border-line p-4">
+    <p class="text-2xl font-bold tabular-nums {% if summary.down %}text-critical{% else %}text-faint{% endif %}">{{ summary.down }}</p>
+    <p class="text-xs text-muted mt-0.5">{{ t.get('vitals_down', 'Failing') }}</p>
+  </div>
+  <div class="bg-card rounded-md border border-line p-4">
+    <p class="text-2xl font-bold tabular-nums text-faint">{{ summary.unknown }}</p>
+    <p class="text-xs text-muted mt-0.5">{{ t.get('vitals_not_probed', 'Not probed') }}</p>
+  </div>
+</div>
+
+{# The switched-off rows carry NO dim, and that is a measurement rather
+   than a preference. `.is-disabled` sets opacity 0.72, which app.css argues
+   keeps a label above AA — and it does, for INK. Measured on this table's
+   rendered rows, the secondary cells are `muted` and `faint` to begin with,
+   and 0.72 takes them to 3.76 and 2.82 against the card in light mode. The
+   fade was making the one group the operator cannot otherwise find the one
+   group they cannot read. What marks the group is its heading, its note and
+   its separation — all of which a screen reader gets too, which the opacity
+   never was. #}
+{% macro probe_rows(rows) %}
+  {% for p in rows %}
+  <tr class="border-t border-line">
+    <td class="px-3 py-2 font-medium text-ink">{{ p.name or p.target_host }}</td>
+    <td class="px-3 py-2">
+      <a href="/server/{{ p.server_name }}" class="text-info hover:underline">{{ p.server_name }}</a>
+    </td>
+    <td class="px-3 py-2 text-muted uppercase">{{ p.check_type }}</td>
+    <td class="px-3 py-2 text-muted tabular-nums">{{ p.target_host }}:{{ p.target_port }}</td>
+    <td class="px-3 py-2">
+      {% if p.status == 'up' %}
+      <span class="badge badge-healthy">{{ t.get('vitals_up', 'Reachable') }}</span>
+      {% elif p.status == 'down' %}
+      <span class="badge badge-critical">{{ t.get('vitals_down', 'Failing') }}</span>
+      {% else %}
+      {# Never probed and probed-without-a-verdict both fold to `unknown` in
+         the accessor, and the two are genuinely different things to an
+         operator: one is waiting for its first tick, the other answered
+         something nobody expected. `last_checked` is the discriminator the
+         accessor preserves for exactly this. #}
+      <span class="badge badge-unknown">{% if p.last_checked %}{{ t.get('vitals_not_probed', 'Not probed') }}{% else %}{{ t.get('services_never_probed', 'Never probed') }}{% endif %}</span>
+      {% endif %}
+    </td>
+    <td class="px-3 py-2 text-muted tabular-nums">
+      {% if p.response_time_ms is not none %}{{ '%.0f' | format(p.response_time_ms) }} ms{% else %}&mdash;{% endif %}
+    </td>
+    <td class="px-3 py-2 text-faint">{% if p.last_checked %}{{ fmt_ts(p.last_checked) }}{% else %}&mdash;{% endif %}</td>
+  </tr>
+  {% if p.status == 'down' and p.error %}
+  <tr>
+    {# The reason a probe failed is the whole point of it having failed, and
+       it is too long for the status cell. Its own row under the probe, spanning
+       the table, rather than a title attribute nobody can reach.
+
+       ONE <td> WITH A COLSPAN IS LOAD-BEARING, not just convenient markup:
+       that exact shape is how static/js/table-sort.js recognises a
+       continuation row and keeps it attached to the probe above it when the
+       table is reordered. Split this into two cells and sorting scatters the
+       reasons across the table, each one landing under somebody else's
+       probe. #}
+    <td colspan="7" class="px-3 pb-2 text-xs text-critical-strong">{{ p.error }}</td>
+  </tr>
+  {% endif %}
+  {% endfor %}
+{% endmacro %}
+
+{% if live | length %}
+<div class="bg-card rounded-md border border-line overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead data-sort-table="services-probes">
+        <tr class="bg-page">
+          <th class="text-left px-3 py-2 font-medium text-muted" data-sort="text">{{ t.get('name', 'Name') }}</th>
+          <th class="text-left px-3 py-2 font-medium text-muted" data-sort="text">{{ t.get('server', 'Server') }}</th>
+          <th class="text-left px-3 py-2 font-medium text-muted" data-sort="text">{{ t.get('type', 'Type') }}</th>
+          <th class="text-left px-3 py-2 font-medium text-muted" data-sort="text">{{ t.get('services_col_target', 'Target') }}</th>
+          <th class="text-left px-3 py-2 font-medium text-muted" data-sort="status">{{ t.get('status', 'Status') }}</th>
+          <th class="text-left px-3 py-2 font-medium text-muted" data-sort="number">{{ t.get('response_time', 'Response Time') }}</th>
+          <th class="text-left px-3 py-2 font-medium text-muted" data-sort="timestamp">{{ t.get('last_check', 'Last check') }}</th>
+        </tr>
+      </thead>
+      <tbody>{{ probe_rows(live) }}</tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if switched_off | length %}
+{# Switched off. Present because this is the only surface that shows they
+   exist, and OUTSIDE the table above because they are outside the counts —
+   putting them in the same tbody would make the row count disagree with the
+   figure at the top of the page for a reason nobody could see. #}
+<section class="mt-6">
+  <h2 class="text-sm font-semibold text-muted flex items-center gap-1.5 mb-1">
+    <i data-lucide="power-off" class="w-4 h-4" aria-hidden="true"></i>
+    {{ t.get('services_switched_off', 'Switched off') }}
+    <span class="text-xs font-normal text-muted tabular-nums">({{ switched_off | length }})</span>
+  </h2>
+  {# `muted`, not `faint`. This heading block sits on the PAGE, not on a
+     card, and measured on the rendered page `faint` is 4.76 against the
+     card and 4.34 against the page — the token is only AA on the lighter
+     of the two surfaces, which is not something a colour name conveys. #}
+  <p class="text-xs text-muted mb-2">
+    {{ t.get('services_switched_off_note', 'Configured but not running, and not counted above.') }}
+  </p>
+  <div class="bg-card rounded-md border border-line overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <tbody>{{ probe_rows(switched_off) }}</tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% endif %}

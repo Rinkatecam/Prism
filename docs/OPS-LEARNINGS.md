@@ -671,6 +671,29 @@ These are the ones that cost time and are not obvious from the documentation.
 animations before reading anything. This is trap number one and it will happen
 again.
 
+It happened again, and the near-miss is the part worth recording. The usual
+workaround — measure on a FRESH node, one that has never transitioned — is
+*almost* enough and fails on exactly one class of value: anything INHERITED.
+A newly created element inherits `color` from an ancestor that is still
+holding the colour it is leaving, so every element without an explicit colour
+class reported a contrast of 1.0 against the theme it had just switched to.
+Three separate readings looked like a catastrophic cascade defect and every
+one of them was the instrument. The reliable move is the blunt one named
+above: inject `* { transition: none !important }`, toggle, read, remove. Do
+not reach for the clever workaround first.
+
+**A dim factor is validated against one colour pair, and then applied to a
+region containing others.** The disabled treatment here is `opacity: 0.72`,
+chosen and measured to keep a label above AA. It does — for the label it was
+measured on. Applied to a table row whose secondary cells are already the
+muted and faint tokens, the same 0.72 took them to 3.76 and 2.82 against the
+card: the group the operator could not otherwise find became the group they
+could not read. A related edge from the same measurement: `faint` clears AA
+on the CARD surface and does not clear it on the PAGE surface, so the same
+class is compliant or not depending on which of two backgrounds it happens to
+sit on — and nothing in the class name says so. Measure the composition, not
+the token.
+
 **`requestAnimationFrame` never fires in that pane either, and the reason is
 worse than it sounds.** `document.visibilityState` is `"hidden"`, so the
 browser suspends frame callbacks entirely — zero in 600ms, and a chained rAF

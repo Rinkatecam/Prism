@@ -816,6 +816,12 @@ EXPECTED = {
         ["number", "text", "status", "text", None, None],  # ...Present on, Missing on
     ("partials/server_comparison.html", "compare-event-servers"):
         ["text", "number", "status", "timestamp"],
+    # WP-3's /services inventory. An inventory, not a history — the rows are
+    # "what is configured and how it answered", so ordering them by response
+    # time or by status is a real question an operator asks. That is the
+    # distinction the NOT_SORTABLE list below is drawn on.
+    ("partials/services_table.html", "services-probes"):
+        ["text", "text", "text", "text", "status", "number", "timestamp"],  # Name, Server, Type, Target, Status, Response, Last check
     ("rbac.html", "rbac-acl"):
         ["text", "text", "status", None, None],  # User, Server, Perm, Granted, <revoke>
     ("reports.html", "reports-fleet"):

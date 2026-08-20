@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{# ── /scan — an honest surface over an absence ───────────────────────────
+
+   The twin of network.html, and the same rules apply in full: no zeroed
+   tiles, no empty table, no skeleton, no "coming soon", and the scope
+   sentence is the card's own tip string so the two cannot drift. See that
+   file's header for the argument; it is not repeated here because one copy
+   of a rule is easier to keep true than two.
+
+   The one thing specific to this page: the description says explicitly that
+   this is a POSTURE CHECK and not an attack tool. "Scan" invites the other
+   reading, and an on-prem admin evaluating a monitoring product is exactly
+   the reader who will assume the worst of the word. #}
+
+{% block content %}
+
+<h1 class="text-2xl font-bold flex items-center gap-2 mb-1">
+  <i data-lucide="shield" class="w-6 h-6 text-brand" aria-hidden="true"></i>
+  {{ t.get('vitals_scan', 'Scan') }}
+</h1>
+
+<p class="text-sm text-muted mb-6 max-w-2xl">
+  {{ t.get('scan_lede',
+           'Prism does not sweep the estate for posture yet. This is what that would mean, and what it checks instead today.') }}
+</p>
+
+<div class="max-w-3xl">
+
+  <div class="bg-card rounded-md border border-line p-5 mb-4 flex items-start gap-3">
+    <i data-lucide="circle-slash" class="w-5 h-5 text-faint flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+    <div>
+      <p class="text-sm font-semibold text-ink">
+        {{ t.get('overview_not_collected', 'Nothing here is being collected yet.') }}
+      </p>
+      <p class="text-sm text-muted mt-1">
+        {{ t.get('vitals_scan_tip_desc',
+                 'Posture scanning will sweep the network for what should not be there and what needs updating - rogue devices, stale drivers, configuration drift. A posture check, not an attack tool.') }}
+      </p>
+    </div>
+  </div>
+
+  <section class="bg-card rounded-md border border-line p-5">
+    <h2 class="text-sm font-semibold text-muted uppercase tracking-wider mb-3">
+      {{ t.get('overview_today', 'What Prism watches today') }}
+    </h2>
+    <p class="text-sm text-muted mb-3">
+      {{ t.get('scan_today_desc',
+               'Patch state is already tracked per server, and configuration drift is detected against each server\'s own baseline. Both are per-host rather than a sweep of the network.') }}
+    </p>
+    <ul class="flex flex-wrap gap-2">
+      <li>
+        <a href="/servers" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-line text-ink hover:bg-page transition-colors">
+          <i data-lucide="server" class="w-4 h-4 text-accent" aria-hidden="true"></i>
+          {{ t.get('servers', 'Servers') }}
+        </a>
+      </li>
+      {# Compliance is an optional per-customer module. Linking to it when it
+         is switched off would send the operator to a route that is not
+         registered — the flag is already in the global template context for
+         exactly this. #}
+      {% if compliance_enabled %}
+      <li>
+        <a href="/compliance" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-line text-ink hover:bg-page transition-colors">
+          <i data-lucide="clipboard-check" class="w-4 h-4 text-accent" aria-hidden="true"></i>
+          {{ t.get('compliance', 'Compliance') }}
+        </a>
+      </li>
+      {% endif %}
+    </ul>
+  </section>
+
+</div>
+
+{% endblock %}

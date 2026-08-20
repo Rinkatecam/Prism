@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{# ── /services — the Services quadrant card's landing page ───────────────
+
+   `healthchecks.py` has been probing tcp / http / https / udp / icmp against
+   operator-configured targets since long before this page existed, storing
+   every result in `health_check_results`; until WP-2's quadrant card nothing
+   surfaced it outside Operations - Health Checks. The card shows four
+   numbers. This shows the probes behind them.
+
+   STATE ONLY. WP-4's rule — a page either shows state or configures, never
+   both — is binding on new pages from the start, so nothing here is editable
+   and the one route to editing is named at the top.
+
+   No skeleton anywhere on this page, and that is a decision rather than an
+   omission: the inventory is a config-side scan of a dozen rows, rendered
+   server-side on first paint, so there is no gap between paint and data. See
+   the partial's header. #}
+
+{% block content %}
+
+<div class="flex items-start justify-between gap-4 flex-wrap mb-1">
+  <h1 class="text-2xl font-bold flex items-center gap-2">
+    <i data-lucide="activity" class="w-6 h-6 text-brand" aria-hidden="true"></i>
+    {{ t.get('vitals_services', 'Services') }}
+  </h1>
+  {# The way out to configuration. A state page that does not say where its
+     state comes from is a dead end the same way an empty state without a
+     hint is. #}
+  <a href="/servers#health-checks"
+     class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg border border-line text-ink hover:bg-page transition-colors">
+    <i data-lucide="settings-2" class="w-4 h-4" aria-hidden="true"></i>
+    {{ t.get('services_configure', 'Configure health checks') }}
+  </a>
+</div>
+
+<p class="text-sm text-muted mb-6 max-w-2xl">
+  {{ t.get('services_lede',
+           'Every probe Prism runs against a port, a URL or a host, and how it last answered.') }}
+</p>
+
+{# Painted server-side, refreshed on prismRefresh — the same shape as the
+   dashboard's verdict header, and for the same reason: `load` would blank a
+   region that is already correct. #}
+<section id="services-inventory"
+         hx-get="/partials/services-table" hx-trigger="prismRefresh from:body"
+         hx-swap="morph:innerHTML">
+  {% include "partials/services_table.html" %}
+</section>
+
+{% endblock %}
