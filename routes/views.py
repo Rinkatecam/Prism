@@ -821,9 +821,19 @@ def partial_server_grid():
 
 @views_bp.route("/partials/activity-feed")
 def partial_activity_feed():
+    """The consolidated events timeline.
+
+    `?compact=1` is the /servers copy (WP-3): eight rows in a 240px scroller
+    instead of twenty in a 400px one. A FLAG rather than a `?limit=` number,
+    deliberately — a numeric parameter from the query string is a value to
+    validate and clamp on a path that has never needed one, and there are
+    exactly two shapes this region takes. Its PRESENCE is the whole input, so
+    there is nothing to range-check.
+    """
     logger.debug("Serving %s", request.path)
     try:
-        events = _db.get_consolidated_activity(limit=20)
+        compact = bool(request.args.get("compact"))
+        events = _db.get_consolidated_activity(limit=8 if compact else 20)
         # Enrich events with alert fatigue noise scores
         try:
             for ev in events:
@@ -835,7 +845,8 @@ def partial_activity_feed():
                 ev["noise_score"] = score_rec["score"] if score_rec else None
         except Exception:
             pass  # Don't break the feed if scoring fails
-        return render_template("partials/activity_feed.html", events=events)
+        return render_template("partials/activity_feed.html", events=events,
+                               compact=compact)
     except Exception:
         logger.exception("Error rendering partial activity_feed")
         return "Internal Server Error", 500

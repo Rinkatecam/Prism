@@ -229,14 +229,21 @@
    pixel utility. Note its `:last-child { width: 60% }` does NOT fire here —
    the timestamp ghost follows it — and that is correct: the real message is
    a full-width truncating <p>, not a ragged final line. #}
-{% macro feed_rows(n=6) %}
+{% macro feed_rows(n=6, compact=false) %}
 <div class="bg-card rounded-lg border border-line overflow-hidden" aria-hidden="true">
 {# The real feed is a 400px-capped scroller, so on any fleet with events it
    is exactly 402px tall regardless of how many rows it holds. Capping the
    ghost the same way makes this the one region that matches to the pixel —
    six 81px rows overflow 400px, so the cap does the work and the row count
-   stops mattering. Without it the ghost was 372px and the card grew 30px. #}
-<div class="max-h-[400px] overflow-hidden">
+   stops mattering. Without it the ghost was 372px and the card grew 30px.
+
+   `compact` is the /servers copy (WP-3), capped at 240px instead. The CAP
+   is what has to agree, not the row count — which is exactly why the flag
+   changes the cap here and in partials/activity_feed.html rather than
+   changing how many rows each renders. Pass enough rows to overflow the
+   cap and the arithmetic takes care of itself; pass too few and the ghost
+   is short by the difference. #}
+<div class="{% if compact %}max-h-[240px]{% else %}max-h-[400px]{% endif %} overflow-hidden">
   {% for _ in range(n) %}
   <div class="flex items-start gap-3 px-4 py-3 {% if not loop.last %}border-b border-line{% endif %}">
     <div class="skeleton w-2 h-2 rounded-full mt-1.5 flex-shrink-0"></div>

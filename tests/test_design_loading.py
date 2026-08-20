@@ -75,7 +75,60 @@ def dashboard_html() -> str:
                         "critical": 1, "offline": 0, "unknown": 0},
             "services": {"total": 0, "up": 0, "down": 0, "unknown": 0},
         },
+        # The four overview doorways read the TOP-LEVEL summary, which is the
+        # same dict routes.views._vitals_context hands the circle. Supplied so
+        # the populated branch renders here rather than the `services is None`
+        # dash — a fixture that only ever exercises the degraded path would
+        # let the other one rot.
+        services={"total": 12, "up": 11, "down": 1, "unknown": 0},
     )
+
+
+@pytest.fixture(scope="module")
+def servers_html() -> str:
+    """/servers, which is where the activity feed lives as of WP-3.
+
+    This fixture exists because of what would have happened without it: the
+    feed's region moved off the dashboard, and the accounting below is
+    per-page, so the move would have taken the region out of coverage
+    entirely while every test stayed green. A region that stops being
+    checked because it moved is the same failure as a check that was never
+    written — see this file's own header.
+    """
+    env = jinja2.Environment(
+        loader=jinja2.ChoiceLoader([
+            jinja2.DictLoader({"base.html": "{% block content %}{% endblock %}"}),
+            jinja2.FileSystemLoader(str(TEMPLATES)),
+        ]),
+        autoescape=True,
+    )
+
+    class _Server:
+        name = "host-01"
+        host = "10.0.0.1"
+        port = 5985
+        tags: list = []
+        enabled = True
+
+        def __getattr__(self, item):
+            return None
+
+    return env.get_template("servers.html").render(
+        t=_T(), csp_nonce="test", servers=[_Server()], settings={},
+        app_settings={}, max_compare_servers=4,
+    )
+
+
+# Per page, the number of load-triggered regions that must be there. A floor
+# rather than an equality: adding a region is not a regression, and losing one
+# silently is exactly what these numbers exist to catch.
+#
+# dashboard 8 -> 7 with the dashboard redesign (status-overview deleted,
+# server-grid moved to /servers, vitals arrived), then 7 -> 6 in WP-3 when the
+# activity feed moved to /servers. That sixth region did not vanish; it is the
+# first entry in the servers floor below, which is the only reason lowering
+# this number is a move rather than a retreat.
+_REGION_FLOORS = {"dashboard": 6, "servers": 1}
 
 
 class _Regions(HTMLParser):
@@ -149,54 +202,101 @@ def _code_only(text: str) -> str:
 
 # ── the ghosts ───────────────────────────────────────────────────────────
 
-def test_every_load_triggered_region_is_accounted_for(dashboard_html):
+@pytest.fixture(params=sorted(_REGION_FLOORS))
+def page(request, dashboard_html, servers_html):
+    """Both pages that carry load-triggered regions, one at a time."""
+    html = {"dashboard": dashboard_html, "servers": servers_html}[request.param]
+    return request.param, html
+
+
+def test_every_load_triggered_region_is_accounted_for(page):
     """A region that fetches its own data on load either shows a ghost while
     it waits, or is one of the conditionally-hidden alert sections that
     deliberately shows nothing. There is no third case, and "somebody forgot"
     must not be able to masquerade as one of the first two."""
-    regions = _load_triggered(_regions(dashboard_html))
-    # 8 -> 7 with the dashboard redesign, and the floor is here so that a
-    # region silently disappearing cannot make "every region is accounted
-    # for" true by emptying the page. Two regions left and one arrived:
-    # `/partials/status-overview` was deleted (the quadrant carries its
-    # numbers) and `/partials/server-grid` moved to /servers, against
-    # `/partials/vitals` arriving. Verdict-header is not counted at all —
-    # it refreshes on prismRefresh but paints server-side via {% include %},
-    # so it never has a loading state to cover.
-    assert len(regions) >= 7, (
-        f"expected the dashboard's load-triggered regions, found {len(regions)}; "
-        "if the page was restructured this test is now measuring the wrong thing")
+    name, html = page
+    regions = _load_triggered(_regions(html))
+    floor = _REGION_FLOORS[name]
+    assert len(regions) >= floor, (
+        f"expected at least {floor} load-triggered regions on {name}, found "
+        f"{len(regions)}; if the page was restructured this test is now "
+        "measuring the wrong thing")
 
     unaccounted = [r["hx_get"] for r in regions
                    if r["skeletons"] == 0 and not r["inside_hidden"]]
     assert not unaccounted, (
-        "these regions fetch on load, are visible from first paint, and show "
-        "nothing while they wait:\n  " + "\n  ".join(unaccounted))
+        f"these regions on {name} fetch on load, are visible from first paint, "
+        "and show nothing while they wait:\n  " + "\n  ".join(unaccounted))
 
 
-def test_the_hidden_alert_sections_deliberately_have_no_ghost(dashboard_html):
+def test_the_feed_is_accounted_for_wherever_it_lives(dashboard_html, servers_html):
+    """The move itself, asserted in both directions.
+
+    A per-page floor can be satisfied by the wrong regions. This names the
+    one that moved: it must be gone from the dashboard and present on
+    /servers, with a ghost, because "the feed is covered somewhere" is not
+    the same claim as "the feed is covered where it now is"."""
+    on_dash = [r for r in _regions(dashboard_html)
+               if "activity-feed" in (r["hx_get"] or "")]
+    assert not on_dash, "the activity feed is still on the dashboard"
+
+    on_servers = [r for r in _load_triggered(_regions(servers_html))
+                  if "activity-feed" in (r["hx_get"] or "")]
+    assert len(on_servers) == 1, (
+        f"expected exactly one activity-feed region on /servers, found "
+        f"{len(on_servers)}")
+    assert "compact" in on_servers[0]["hx_get"], (
+        "the servers-page feed asks for the full twenty-row version")
+    assert on_servers[0]["skeletons"] > 0, (
+        "the feed moved without its ghost, so the region is blank while it "
+        "waits on the one page that now shows it")
+
+
+def test_the_hidden_alert_sections_deliberately_have_no_ghost(page):
     """The inverse, asserted rather than assumed. A ghost inside a section
     that starts `hidden` is invisible, so it buys nothing; unhiding the
     section to show one would promise a panel that usually resolves to
     nothing and disappears again. If somebody adds a skeleton there, they
     should have to argue with this test first."""
-    over_eager = [r["hx_get"] for r in _load_triggered(_regions(dashboard_html))
+    name, html = page
+    over_eager = [r["hx_get"] for r in _load_triggered(_regions(html))
                   if r["inside_hidden"] and r["skeletons"] > 0]
     assert not over_eager, (
-        "a hidden alert section grew a skeleton; it cannot be seen, and "
+        f"a hidden section on {name} grew a skeleton; it cannot be seen, and "
         "revealing the section to show it would flash an empty panel:\n  "
         + "\n  ".join(over_eager))
 
 
-def test_a_ghost_is_hidden_from_assistive_technology(dashboard_html):
+def test_a_ghost_is_hidden_from_assistive_technology(page):
     """A skeleton has nothing to say to a screen reader. Every ghost root is
     aria-hidden, so the region reads as empty until real content lands
     rather than announcing a fistful of blank boxes."""
-    exposed = [r["hx_get"] for r in _load_triggered(_regions(dashboard_html))
+    name, html = page
+    exposed = [r["hx_get"] for r in _load_triggered(_regions(html))
                if r["skeletons"] > 0 and not r["aria_hidden_root"]]
     assert not exposed, (
-        "ghost markup is exposed to assistive technology in:\n  "
+        f"ghost markup is exposed to assistive technology on {name}:\n  "
         + "\n  ".join(exposed))
+
+
+def test_the_two_feed_caps_and_their_ghosts_agree():
+    """The scroller's height and its skeleton's height are one decision in
+    two files, and there are two of them now — 400px on the dashboard's
+    former full-width feed, 240px for the compact copy on /servers. If a cap
+    moves in one file and not the other, the region jumps by the difference
+    the moment real content lands, which is the exact thing the ghost exists
+    to prevent. Nothing renders both at once, so no test would see it."""
+    feed = _code_only((TEMPLATES / "partials" / "activity_feed.html")
+                      .read_text(encoding="utf-8"))
+    ghost = _code_only((TEMPLATES / "partials" / "_skeletons.html")
+                       .read_text(encoding="utf-8"))
+    for cap in ("max-h-[400px]", "max-h-[240px]"):
+        assert cap in feed, f"the real feed no longer offers {cap}"
+        assert cap in ghost, f"the ghost cannot match the feed's {cap}"
+    # And both must switch on the same flag, or they agree by coincidence.
+    for src, what in ((feed, "activity_feed.html"), (ghost, "_skeletons.html")):
+        assert re.search(r"if compact.*max-h-\[240px\]", src, re.S), (
+            f"{what} does not tie the compact cap to the compact flag")
 
 
 def test_the_old_pulse_placeholders_are_gone(dashboard_html):

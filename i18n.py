@@ -1135,6 +1135,9 @@ TRANSLATIONS = {
         # ── WP-3: the three overview pages (/services, /network, /scan) ──
         "services_lede": "Every probe Prism runs against a port, a URL or a host, and how it last answered.",
         "services_unreadable": "The probe inventory could not be read. That is a fault in Prism, not a report about the services — nothing here says whether they are reachable.",
+        "dashboard_overview": "Overview",
+        "digest_managed": "managed",
+        "digest_probing": "probing",
         "services_probes_total": "Probes configured",
         "services_col_target": "Target",
         "services_switched_off": "Switched off",
@@ -2282,6 +2285,9 @@ TRANSLATIONS = {
         # ── WP-3: the three overview pages (/services, /network, /scan) ──
         "services_lede": "Jede Prüfung, die Prism gegen einen Port, eine URL oder einen Host ausführt — und wie sie zuletzt geantwortet hat.",
         "services_unreadable": "Die Prüfübersicht konnte nicht gelesen werden. Das ist ein Fehler in Prism und keine Aussage über die Dienste — nichts hier sagt, ob sie erreichbar sind.",
+        "dashboard_overview": "Übersicht",
+        "digest_managed": "verwaltet",
+        "digest_probing": "aktiv",
         "services_probes_total": "Konfigurierte Prüfungen",
         "services_col_target": "Ziel",
         "services_switched_off": "Abgeschaltet",
@@ -3426,6 +3432,9 @@ TRANSLATIONS = {
         # ── WP-3: the three overview pages (/services, /network, /scan) ──
         "services_lede": "Chaque sonde que Prism exécute vers un port, une URL ou un hôte, et sa dernière réponse.",
         "services_unreadable": "L'inventaire des sondes n'a pas pu être lu. C'est une défaillance de Prism, pas un constat sur les services — rien ici n'indique s'ils répondent.",
+        "dashboard_overview": "Vue d'ensemble",
+        "digest_managed": "gérés",
+        "digest_probing": "actives",
         "services_probes_total": "Sondes configurées",
         "services_col_target": "Cible",
         "services_switched_off": "Désactivées",
@@ -4570,6 +4579,9 @@ TRANSLATIONS = {
         # ── WP-3: the three overview pages (/services, /network, /scan) ──
         "services_lede": "Cada sonda que Prism ejecuta contra un puerto, una URL o un host, y cómo respondió por última vez.",
         "services_unreadable": "No se pudo leer el inventario de sondas. Es un fallo de Prism, no una afirmación sobre los servicios — nada aquí indica si están disponibles.",
+        "dashboard_overview": "Resumen",
+        "digest_managed": "gestionados",
+        "digest_probing": "activas",
         "services_probes_total": "Sondas configuradas",
         "services_col_target": "Destino",
         "services_switched_off": "Desactivadas",
@@ -5714,6 +5726,9 @@ TRANSLATIONS = {
         # ── WP-3: the three overview pages (/services, /network, /scan) ──
         "services_lede": "Prism がポート・URL・ホストに対して実行している各プローブと、その最新の応答です。",
         "services_unreadable": "プローブ一覧を読み取れませんでした。これは Prism 側の障害であり、サービスに関する報告ではありません — ここにはサービスが到達可能かどうかを示す情報はありません。",
+        "dashboard_overview": "概要",
+        "digest_managed": "台を管理中",
+        "digest_probing": "件を監視中",
         "services_probes_total": "設定済みプローブ",
         "services_col_target": "対象",
         "services_switched_off": "無効",

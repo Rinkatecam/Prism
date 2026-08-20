@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/_skeletons.html" import server_band %}
+{% from "partials/_skeletons.html" import server_band, feed_rows %}
 {% block content %}
 
 <div class="flex items-center justify-between mb-6">
@@ -236,6 +236,36 @@
     </div>
   </div>
   {% endif %}
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 1a — Recent Activity  (moved off the dashboard, WP-3)
+
+     It sits DIRECTLY UNDER THE SERVER LIST and above the configuration
+     sections, because every row in it is about one of the servers listed
+     above and every row links to one. On the dashboard it was the last
+     thing on the page, under four alert panels that are usually empty, and
+     it answered a question the dashboard is not for: not "is anything
+     wrong right now" but "what has been happening to these hosts".
+
+     COMPACT, and the compactness is a query flag rather than a second
+     template: eight rows instead of twenty, in a shorter scroller. One
+     markup, one set of rules — a duplicate would drift, and the drift would
+     be invisible because both halves would keep rendering.
+
+     `prismBandLoad` is deliberately NOT the trigger. That event belongs to
+     the server grid's own deferred load; this region uses the ordinary
+     `load` and shows the same ghost the dashboard used to.
+     ═══════════════════════════════════════════════════════════════ -->
+<section id="activity-section" class="mb-8">
+  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+    <i data-lucide="activity" class="w-5 h-5 text-accent"></i>
+    {{ t.activity_feed }}
+  </h2>
+  <div hx-get="/partials/activity-feed?compact=1" hx-trigger="load, prismRefresh from:body"
+       hx-swap="morph:innerHTML">
+    {{ feed_rows(4, compact=true) }}
+  </div>
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════

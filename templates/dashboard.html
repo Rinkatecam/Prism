@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/_skeletons.html" import vitals_cards, banner, feed_rows %}
+{% from "partials/_skeletons.html" import vitals_cards, banner %}
 
 {# 1280 -> 2560 is the design's range, and the top end is the requirement that
    does not survive being ignored: a wall-screen dashboard must not be a
@@ -273,17 +273,82 @@
   </div>
 </section>
 
-{# Activity feed. Full width now that the server grid has moved to /servers,
-   where it is one of two view modes rather than a third of the dashboard.
-   The alert sections above it stay — they are already conditional, so they
-   cost nothing on a healthy fleet. #}
-<section id="activity-section">
-  <h2 class="text-xl font-semibold flex items-center gap-2 mb-4">
-    <i data-lucide="activity" class="w-5 h-5 text-accent"></i>
-    {{ t.activity_feed }}
+{# ── The four doorways ───────────────────────────────────────────────────
+
+   Where the activity feed used to be. The feed moved to /servers, next to
+   the servers it is about; what takes its place is the way OUT of the
+   dashboard, in the order the quadrant reads: Servers, Services, Network,
+   Scan.
+
+   EACH LINE IS A CONFIGURATION FACT, NOT A MEASUREMENT, and that is the
+   whole design. The quadrant above already reports state and Issues
+   Detected already reports problems; a third copy of the same numbers is
+   noise, and worse, a copy that can disagree. These say how much is
+   MANAGED here — a count that only changes when an operator changes the
+   config, on a different page — so they need no refresh, no skeleton and
+   no JavaScript, and they cannot contradict the circle because they are
+   not answering its question.
+
+   Both numbers come from the page context the circle was already rendered
+   from (`server_count`, `services`), so there is no second query either.
+
+   `services` is None when the health-check read failed. A dash, not a
+   zero: nothing here should claim the operator has no probes because
+   Prism could not read them — the same distinction /services makes at
+   length. #}
+<section id="overview-sections" class="mt-8">
+  <h2 class="text-sm font-semibold text-muted uppercase tracking-wider mb-3">
+    {{ t.get('dashboard_overview', 'Overview') }}
   </h2>
-  <div hx-get="/partials/activity-feed" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML">
-    {{ feed_rows() }}
+  <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+
+    <a href="/servers" class="card-clickable bg-card rounded-md border border-line p-4 flex items-start gap-3">
+      <i data-lucide="server" class="w-5 h-5 text-accent flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      <div class="min-w-0">
+        <p class="text-sm font-semibold text-ink">{{ t.servers }}</p>
+        <p class="text-xs text-muted mt-0.5">
+          <span class="tabular-nums font-semibold text-ink">{{ server_count }}</span>
+          {{ t.get('digest_managed', 'managed') }}
+        </p>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-muted flex-shrink-0 ml-auto mt-0.5" aria-hidden="true"></i>
+    </a>
+
+    <a href="/services" class="card-clickable bg-card rounded-md border border-line p-4 flex items-start gap-3">
+      <i data-lucide="activity" class="w-5 h-5 text-accent flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      <div class="min-w-0">
+        <p class="text-sm font-semibold text-ink">{{ t.get('vitals_services', 'Services') }}</p>
+        <p class="text-xs text-muted mt-0.5">
+          {% if services %}
+          <span class="tabular-nums font-semibold text-ink">{{ services.total }}</span>
+          {{ t.get('digest_probing', 'probing') }}
+          {% else %}&mdash;{% endif %}
+        </p>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-muted flex-shrink-0 ml-auto mt-0.5" aria-hidden="true"></i>
+    </a>
+
+    {# Dashed, like the quadrant cards they mirror — the app's idiom for
+       "nothing here yet". No dim: that treatment was measured under AA on
+       exactly these words. #}
+    <a href="/network" class="card-clickable bg-card rounded-md border border-dashed border-line p-4 flex items-start gap-3">
+      <i data-lucide="router" class="w-5 h-5 text-muted flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      <div class="min-w-0">
+        <p class="text-sm font-semibold text-ink">{{ t.get('vitals_network', 'Network') }}</p>
+        <p class="text-xs text-muted mt-0.5">{{ t.get('vitals_not_monitored_yet', 'Not monitored yet') }}</p>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-muted flex-shrink-0 ml-auto mt-0.5" aria-hidden="true"></i>
+    </a>
+
+    <a href="/scan" class="card-clickable bg-card rounded-md border border-dashed border-line p-4 flex items-start gap-3">
+      <i data-lucide="shield" class="w-5 h-5 text-muted flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      <div class="min-w-0">
+        <p class="text-sm font-semibold text-ink">{{ t.get('vitals_scan', 'Scan') }}</p>
+        <p class="text-xs text-muted mt-0.5">{{ t.get('vitals_not_monitored_yet', 'Not monitored yet') }}</p>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-muted flex-shrink-0 ml-auto mt-0.5" aria-hidden="true"></i>
+    </a>
+
   </div>
 </section>
 
@@ -338,6 +403,18 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
 // The `showServers` preference is gone with the grid it hid: the server
 // cards live on /servers now, and a checkbox that toggles nothing is worse
 // than no checkbox. Its control has been removed from Settings too.
+//
+// `showActivity` went the same way in WP-3, and for the same reason: the
+// activity feed is on /servers now, so the branch that read the preference
+// had no section left to hide. A stored `showActivity: false` from before
+// the move is simply ignored — it cannot hide the feed on a page that no
+// longer owns it, and reinterpreting a dashboard preference as a servers-
+// page preference would silently repurpose a setting the user made about a
+// different page. The Settings control went with it.
+//
+// Nothing was added for the four overview doorways below. They are four
+// links; a preference to hide the way out of a page is a setting nobody
+// asked for and one more thing that can be wrong.
 (function() {
   try {
     const prefs = JSON.parse(localStorage.getItem('prism-dashboard-prefs') || '{}');
@@ -347,7 +424,6 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
     };
     if (prefs.showCritical === false) hide('critical-issues-section');
     if (prefs.showStatus === false) hide('vitals-section');
-    if (prefs.showActivity === false) hide('activity-section');
   } catch(e) {}
 })();
 </script>

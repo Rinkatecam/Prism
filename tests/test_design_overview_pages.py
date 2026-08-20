@@ -52,15 +52,23 @@ def _src(path: Path) -> str:
 
 
 def _code_only(text: str) -> str:
-    """Jinja comments blanked, so an assertion cannot be satisfied — or
-    defeated — by prose that merely mentions the thing under test.
+    """Comments blanked, so an assertion cannot be satisfied — or defeated —
+    by prose that merely mentions the thing under test.
 
     This is OPS-LEARNINGS #36 in its template form: a check silenced by its
-    own documentation. These files argue their decisions in `{# #}` blocks at
-    some length, and several of those blocks contain the exact words the
-    tests below search for.
+    own documentation. These files argue their decisions at some length, and
+    several of those arguments contain the exact words the tests below search
+    for — `test_the_preference_...` failed on the paragraph explaining why the
+    preference was removed, which is the mirror of #36 rather than #36
+    itself, and just as useless either way.
+
+    THREE comment syntaxes, because the dashboard argues in all three: Jinja
+    `{# #}`, HTML `<!-- -->`, and whole-line `//` inside its inline scripts.
+    Whole-line only for `//` — a mid-line rule eats the `//` in every URL and
+    blanks the code after it (OPS-LEARNINGS #31).
     """
-    return re.sub(r"\{#.*?#\}", " ", text, flags=re.S)
+    blanked = re.sub(r"\{#.*?#\}|<!--.*?-->", " ", text, flags=re.S)
+    return re.sub(r"^[ \t]*//[^\n]*", " ", blanked, flags=re.M)
 
 
 def _keys_used(text: str) -> set[str]:
@@ -304,6 +312,82 @@ def test_no_surface_still_sends_the_operator_to_operations_for_a_probe():
             found = [w for w in wrong if w in hint]
             assert not found, (
                 f"{lang}:{key} still points at {found[0]} for a health check")
+
+
+# ── the dashboard's four doorways ────────────────────────────────────────
+
+DASHBOARD = TEMPLATES / "dashboard.html"
+SETTINGS = TEMPLATES / "settings.html"
+
+
+def _doorways() -> str:
+    """The overview region of dashboard.html, comments blanked.
+
+    Sliced rather than searched, so an assertion about "the doorways" cannot
+    accidentally be satisfied by something elsewhere on a long page."""
+    body = _code_only(_src(DASHBOARD))
+    start = body.index('<section id="overview-sections"')
+    return body[start:body.index("</section>", start)]
+
+
+def test_the_dashboard_offers_a_doorway_to_each_of_the_four_topics():
+    """The owner's brief: four overview sections below the fold, in order —
+    Servers, Services, Network, Scan — each linking to its own page."""
+    hrefs = re.findall(r'href="(/[a-z]+)"', _doorways())
+    assert hrefs == ["/servers", "/services", "/network", "/scan"], hrefs
+
+
+def test_a_doorway_reports_scope_and_leaves_state_to_the_circle():
+    """The quadrant reports state and Issues Detected reports problems. A
+    third copy of the same numbers is noise, and a copy that can disagree is
+    worse than noise — so these lines report how much is MANAGED, from the
+    configuration counts, and never touch the fold's verdict.
+
+    `vitals.` appearing here would mean a doorway had started reporting
+    severity, healthy counts or percentages: the circle's job."""
+    doorways = _doorways()
+    assert "vitals." not in doorways, (
+        "a doorway reads the estate verdict; that is the circle's answer and "
+        "a second rendering of it can disagree with the first")
+    assert "server_count" in doorways
+    assert "services.total" in doorways
+
+
+def test_a_doorway_fetches_nothing_and_therefore_ghosts_nothing():
+    """Both numbers come from the page context the circle was already
+    rendered from, so there is no second query, no swap and no gap between
+    paint and data. A skeleton here would be a claim about a wait that does
+    not happen."""
+    doorways = _doorways()
+    for marker in ("hx-get", "hx-trigger", "skeleton", "fetch("):
+        assert marker not in doorways, f"the doorways carry {marker}"
+
+
+def test_a_failed_probe_read_is_not_reported_as_zero_probes():
+    """`services` is None when the health-check read failed, and `{{ 0 }}` is
+    a claim about the operator's estate that Prism cannot make from a failed
+    read. Same distinction /services makes at length, one line long here."""
+    assert "{% if services %}" in _doorways(), (
+        "the Services doorway prints a count without checking the read "
+        "succeeded")
+
+
+def test_the_preference_for_a_section_the_dashboard_no_longer_owns_is_gone():
+    """The feed moved to /servers, so the Settings checkbox that hid it on
+    the dashboard had nothing left to toggle — the same removal the server
+    grid's toggle got, for the same reason.
+
+    Checked in three places because a half-removal leaves a control that
+    writes a key nothing reads, which behaves exactly like a broken setting.
+    """
+    settings = _code_only(_src(SETTINGS))
+    dashboard = _code_only(_src(DASHBOARD))
+    assert "pref-show-activity" not in settings, "the dead checkbox is still rendered"
+    assert "showActivity" not in settings, (
+        "Settings still writes a preference key nothing reads")
+    assert "showActivity" not in dashboard, (
+        "the dashboard still branches on a preference for a section it no "
+        "longer has")
 
 
 # ── shared: nothing here animates, and nothing here is disabled ──────────

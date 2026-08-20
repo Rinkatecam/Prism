@@ -726,11 +726,15 @@
            grid, which has moved to /servers as one of two view modes, so the
            checkbox had nothing left to toggle — and a preference control that
            silently does nothing is worse than its absence, because the user
-           blames themselves for the setting not taking. #}
-        <label class="flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" id="pref-show-activity" checked data-change="savePreferences" class="rounded border-gray-300">
-          {{ t.activity_feed }}
-        </label>
+           blames themselves for the setting not taking.
+
+           The "Activity Feed" toggle went the same way in WP-3, when the feed
+           moved to /servers. Two removals for one reason is a pattern rather
+           than a coincidence: this list is named "Dashboard Sections", so an
+           entry survives here only as long as the section it hides is on the
+           dashboard. It was not re-pointed at the feed's new home — a
+           preference the user set about the DASHBOARD must not quietly start
+           governing a different page. #}
       </div>
     </div>
     <div id="pref-saved-msg" class="hidden text-xs text-healthy">{{ t.preferences_saved }}</div>
@@ -1668,7 +1672,6 @@ function loadPreferences() {
     if (prefs.refreshInterval !== undefined) document.getElementById('pref-refresh-interval').value = prefs.refreshInterval;
     if (prefs.showCritical !== undefined) document.getElementById('pref-show-critical').checked = prefs.showCritical;
     if (prefs.showStatus !== undefined) document.getElementById('pref-show-status').checked = prefs.showStatus;
-    if (prefs.showActivity !== undefined) document.getElementById('pref-show-activity').checked = prefs.showActivity;
   } catch(e) {}
 }
 
@@ -1678,7 +1681,6 @@ function savePreferences() {
     refreshInterval: document.getElementById('pref-refresh-interval').value,
     showCritical: document.getElementById('pref-show-critical').checked,
     showStatus: document.getElementById('pref-show-status').checked,
-    showActivity: document.getElementById('pref-show-activity').checked,
   };
   localStorage.setItem('prism-dashboard-prefs', JSON.stringify(prefs));
   const msg = document.getElementById('pref-saved-msg');
