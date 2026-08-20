@@ -428,15 +428,22 @@ suite(
              "document.body.addEventListener('htmx:afterSettle', readState);",
              "document.body.addEventListener('htmx:afterSwap', readState);",
              "test_the_javascript_reads_the_state_after_the_swap_has_settled"),
-    Mutation("a coming-soon card loses its reason",
+    # These two used to name `test_a_coming_soon_card_*`. WP-3 gave both cards
+    # a destination, so "unavailable control" stopped being what they are and
+    # those tests were replaced rather than relaxed. The DEFECTS they guard
+    # against are unchanged and are re-pointed at the tests that now hold
+    # them; the second one's old anchor described markup that no longer
+    # exists, which is the harness reporting a drifted anchor rather than a
+    # blind test.
+    Mutation("a card whose subject is unbuilt loses its reason",
              "templates/partials/vitals_quadrant.html",
              """data-tip-title="{{ t.get('vitals_scan_tip_title', 'Posture scanning is not built yet') }}\"""",
-             "", "test_a_coming_soon_card_says_why_it_is_unavailable"),
-    Mutation("a coming-soon card becomes focusable but inert",
+             "", "test_a_card_whose_subject_is_unbuilt_still_says_why"),
+    Mutation("the disabled styling hook comes back on a working link",
              "templates/partials/vitals_quadrant.html",
-             '<div class="vitals-card vitals-card--tr vitals-card--soon" aria-disabled="true"',
-             '<div class="vitals-card vitals-card--tr vitals-card--soon" tabindex="0" aria-disabled="true"',
-             "test_a_coming_soon_card_is_not_focusable_but_inert"),
+             '<a href="/scan" class="vitals-card vitals-card--br vitals-card--soon',
+             '<a href="/scan" aria-disabled="true" class="vitals-card vitals-card--br vitals-card--soon',
+             "test_no_quadrant_card_claims_to_be_unavailable"),
     Mutation("the reason becomes hover-only",
              "templates/partials/vitals_quadrant.html",
              """    <p class="vitals-soon-desc">{{ t.get('vitals_scan_desc', 'Rogue devices, stale drivers, configuration drift') }}</p>\n""",
@@ -464,6 +471,57 @@ suite(
              ".page-dashboard { max-width: 120rem; }",
              ".page-dashboard-UNUSED { max-width: 120rem; }",
              "test_the_dashboard_is_not_a_fixed_width_island_on_a_wall_screen"),
+
+    # WP-3 slice B: the four cards navigate.
+    Mutation("a card goes back to being a div that does nothing",
+             "templates/partials/vitals_quadrant.html",
+             '<a href="/network" class="vitals-card vitals-card--tr',
+             '<div class="vitals-card vitals-card--tr',
+             "test_every_quadrant_card_navigates_to_its_own_topic"),
+    Mutation("two cards point at the same page",
+             "templates/partials/vitals_quadrant.html",
+             'href="/scan"', 'href="/network"',
+             "test_every_quadrant_card_navigates_to_its_own_topic"),
+    Mutation("a card points at a route the app does not serve",
+             "templates/partials/vitals_quadrant.html",
+             'href="/services"', 'href="/service"',
+             "test_every_destination_is_a_route_the_app_serves"),
+    Mutation("aria-disabled returns to a card that navigates",
+             "templates/partials/vitals_quadrant.html",
+             '<a href="/network" class="vitals-card',
+             '<a aria-disabled="true" href="/network" class="vitals-card',
+             "test_no_quadrant_card_claims_to_be_unavailable"),
+    Mutation("the sub-AA dim is re-added under a different name",
+             "static/css/app.css",
+             ".vitals-card--soon {\n  border-style: dashed;\n}",
+             ".vitals-card--soon {\n  border-style: dashed;\n  opacity: 0.72;\n}",
+             "test_the_unbuilt_cards_are_marked_without_dimming_their_text"),
+    Mutation("the two unbuilt cards stop being marked at all",
+             "static/css/app.css",
+             ".vitals-card--soon {\n  border-style: dashed;\n}",
+             ".vitals-card--soon {\n  border-style: solid;\n}",
+             "test_the_unbuilt_cards_are_marked_without_dimming_their_text"),
+    Mutation("the scope line goes back to the faintest token",
+             "static/css/app.css",
+             "  color: rgb(var(--c-muted));\n  margin-top: 0.25rem;\n  max-width: 22ch;",
+             "  color: rgb(var(--c-faint));\n  margin-top: 0.25rem;\n  max-width: 22ch;",
+             "test_the_scope_line_is_not_the_faintest_token_available"),
+    Mutation("a card loses its click affordance and looks like a panel",
+             "templates/partials/vitals_quadrant.html",
+             'class="vitals-card vitals-card--tl card-clickable"',
+             'class="vitals-card vitals-card--tl"',
+             "test_the_cards_opt_into_the_shared_clickable_treatment"),
+    Mutation("a bespoke focus rule outranks the global ring",
+             "static/css/app.css",
+             ".vitals-card--soon {\n  border-style: dashed;\n}",
+             ".vitals-card:focus-visible { outline: none; }\n"
+             ".vitals-card--soon {\n  border-style: dashed;\n}",
+             "test_the_cards_opt_into_the_shared_clickable_treatment"),
+    Mutation("the card's state line loses a locale",
+             "i18n.py",
+             '"vitals_not_monitored_yet": "Noch nicht',
+             '"_vitals_not_monitored_yet_removed": "Noch nicht',
+             "test_both_unbuilt_cards_describe_their_scope_in_every_locale"),
 )
 
 # ── /servers: view modes, the band, and sort-before-pagination ───────────
@@ -2320,6 +2378,12 @@ suite(
              'summary = {"total": 0, "up": 0, "down": 0, "unknown": 0}\n        readable = False',
              'summary = {"total": 0, "up": 0, "down": 0, "unknown": 0}',
              "test_the_context_reports_whether_the_read_succeeded"),
+    Mutation("the OTHER stale hint survives the correction",
+             "i18n.py",
+             '"vitals_nothing_monitored_hint": "Add a server on the Servers page',
+             '"vitals_nothing_monitored_hint": "Add a server on the Servers page, '
+             'or a health check under Operations',
+             "test_no_surface_still_sends_the_operator_to_operations_for_a_probe"),
 )
 
 

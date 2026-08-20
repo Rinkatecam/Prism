@@ -1826,17 +1826,44 @@ body.healthy-dismissed #healthy-banner { display: none !important; }
 .vitals-chip--dead     { background: rgb(var(--c-raised)); color: rgb(var(--c-muted)); }
 .vitals-chip--unknown  { background: rgb(var(--c-raised)); color: rgb(var(--c-faint)); }
 
-/* The two unbuilt cards. `aria-disabled="true"` already dims them to 0.72
-   via the global disabled rule, so nothing here repeats that. */
+/* The two cards whose subject is not monitored yet.
+
+   They used to be `aria-disabled`, which dimmed them to 0.72 through the
+   global disabled rule above. Two things were wrong with that and only one
+   of them was WP-3's doing:
+
+   * The cards now NAVIGATE (they are links to /network and /scan), so
+     `cursor: not-allowed` and a disabled dim describe something untrue.
+   * The dim was already failing AA before that. `opacity: 0.72` is measured
+     against an INK label; every line on these cards is `muted` or `faint` to
+     start with, and measured on the rendered dashboard the same factor put
+     the head and the state line at 3.76 light / 4.92 dark and the scope line
+     at 2.82 / 3.39. The most prominent unbuilt thing in the product was also
+     the least readable.
+
+   So the signal is a DASHED border instead — the idiom this app already uses
+   for "nothing here yet" (the onboarding block on the dashboard) — and every
+   line keeps its full-strength colour. A border carries no contrast
+   requirement of its own for text, and it survives a theme change because it
+   is the same `--c-line` token the solid one uses. */
+.vitals-card--soon {
+  border-style: dashed;
+}
+
 .vitals-soon {
   font-size: clamp(1rem, 1.1vw, 1.25rem);
   font-weight: 600;
   color: rgb(var(--c-muted));
 }
 
+/* `muted`, not `faint`. This is the card's actual content — the scope of the
+   thing that is not monitored — and `faint` measures 4.76 against the card
+   surface, which clears AA by 0.26. A line that IS the card's message should
+   not sit on the edge of legibility to signal that its subject is unbuilt;
+   the dashed border does that job now. */
 .vitals-soon-desc {
   font-size: 0.8125rem;
-  color: rgb(var(--c-faint));
+  color: rgb(var(--c-muted));
   margin-top: 0.25rem;
   max-width: 22ch;
 }

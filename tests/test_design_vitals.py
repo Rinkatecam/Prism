@@ -379,48 +379,143 @@ def test_the_javascript_reads_the_state_after_the_swap_has_settled():
 
 # ── the two unbuilt cards ────────────────────────────────────────────────
 
-_SOON = re.compile(r"<div[^>]*vitals-card--soon[^>]*>", re.S)
+_SOON = re.compile(r"<a[^>]*vitals-card--soon[^>]*>", re.S)
+_CARD = re.compile(r"<a[^>]*class=\"vitals-card[^\"]*\"[^>]*>", re.S)
+
+# Which corner goes where. The owner's instruction was that all four cards
+# navigate; this is the mapping, written out so a card silently pointing at
+# the wrong topic is a failure rather than a plausible page.
+_DESTINATIONS = {
+    "vitals-card--tl": "/servers",
+    "vitals-card--tr": "/network",
+    "vitals-card--bl": "/services",
+    "vitals-card--br": "/scan",
+}
 
 
-def test_a_coming_soon_card_says_why_it_is_unavailable():
-    """`cursor: not-allowed` says THAT a control is unavailable; these carry
-    the reason. Same rule as every other disabled control in the app, but
-    invisible to the scan in test_design_disabled.py — that one matches
-    <button>/<input> with a `disabled` attribute, and these are neither.
+def test_every_quadrant_card_navigates_to_its_own_topic():
+    """WP-3's instruction, and the reason the three overview pages had to
+    exist before this landed."""
+    html = _code_only(QUADRANT.read_text(encoding="utf-8"))
+    cards = _CARD.findall(html)
+    assert len(cards) == 4, (
+        f"expected four card links, found {len(cards)}; if the count changed "
+        "this test is measuring the wrong thing")
+    seen = {}
+    for card in cards:
+        one = re.sub(r"\s+", " ", card)
+        corner = next((c for c in _DESTINATIONS if c in one), None)
+        assert corner, f"a card with no corner class: {one[:110]}"
+        href = re.search(r'href="([^"]+)"', one)
+        assert href, f"{corner} is not a link: {one[:110]}"
+        seen[corner] = href.group(1)
+    assert seen == _DESTINATIONS
 
-    `aria-disabled` is checked as the STYLING HOOK it is, not as an
-    announcement. Read out of the accessibility tree, these cards are three
-    `generic` text nodes with no disabled state: `aria-disabled` is not a
-    global attribute and a <div> has no role that supports it, so assistive
-    technology ignores it. What it does do is match app.css's
-    `[aria-disabled="true"]` rule — measured at opacity 0.72 and
-    `cursor: not-allowed` on the rendered card. The announcement is the
-    visible text, which `test_the_reason_is_readable_without_a_pointer`
-    below is what actually guards."""
+
+def test_every_destination_is_a_route_the_app_serves():
+    """A card that navigates to a 404 is worse than a card that does
+    nothing — the state these two were in before WP-3, and honestly so.
+
+    Checked against the app's own URL map, because a template that exists
+    with no route registered for it is exactly as broken as no template.
+
+    THE HREFS ARE READ OUT OF THE TEMPLATE, not out of `_DESTINATIONS`. The
+    first version of this test compared the constant above against the URL
+    map and was blind: a mutation pointing a card at `/service` left both
+    sides of the comparison untouched and the test passed. That is
+    docs/OPS-LEARNINGS.md #12 — a test whose expectation is a constant
+    declared beside it — caught by the mutation harness rather than by
+    re-reading the test."""
+    import app as prism_app
+    html = _code_only(QUADRANT.read_text(encoding="utf-8"))
+    hrefs = set()
+    for card in _CARD.findall(html):
+        m = re.search(r'href="([^"]+)"', re.sub(r"\s+", " ", card))
+        if m:
+            hrefs.add(m.group(1))
+    assert len(hrefs) == 4, f"expected four distinct destinations, got {hrefs}"
+    rules = {r.rule for r in prism_app.app.url_map.iter_rules()}
+    missing = sorted(h for h in hrefs if h not in rules)
+    assert not missing, f"quadrant cards point at unregistered routes: {missing}"
+
+
+def test_a_card_whose_subject_is_unbuilt_still_says_why():
+    """These two carry their reason as their entire content, plus the hover
+    tip. Unchanged by the card becoming a link — the subject is still not
+    monitored even though the control now works."""
     html = _code_only(QUADRANT.read_text(encoding="utf-8"))
     cards = _SOON.findall(html)
     assert len(cards) == 2, (
-        f"expected the Network and Scan cards, found {len(cards)}; if the "
-        "count changed this test is measuring the wrong thing")
+        f"expected the Network and Scan cards, found {len(cards)}")
     for card in cards:
         one = re.sub(r"\s+", " ", card)
-        assert 'aria-disabled="true"' in one, (
-            "no aria-disabled, so the card does not pick up the global "
-            f"disabled styling and reads as available: {one[:110]}")
         for attr in ("data-tip-title", "data-tip-desc"):
             assert attr in one, f"no {attr}: {one[:110]}"
 
 
-def test_a_coming_soon_card_is_not_focusable_but_inert():
-    """A tab stop on something that does nothing is worse than no tab stop:
-    it promises a control and then swallows the keypress."""
+def test_no_quadrant_card_claims_to_be_unavailable():
+    """The reversal, and the thing that must not creep back.
+
+    `aria-disabled` on these two was right while they did nothing, and it
+    dimmed them to 0.72 and painted `cursor: not-allowed` through app.css's
+    global rule. Both are now false: the cards navigate. The dim was ALSO
+    already failing AA before that — measured on the rendered dashboard, the
+    head and state line at 3.76 light / 4.92 dark and the scope line at 2.82
+    / 3.39, because 0.72 is calibrated for an INK label and every line on
+    these cards is muted or faint.
+
+    Asserted on the whole fragment rather than on the two cards, because the
+    attribute would be just as wrong on the other two."""
     html = _code_only(QUADRANT.read_text(encoding="utf-8"))
-    for card in _SOON.findall(html):
+    assert "aria-disabled" not in html, (
+        "a quadrant card claims to be unavailable while linking somewhere")
+    assert "is-disabled" not in html
+
+
+def test_the_unbuilt_cards_are_marked_without_dimming_their_text():
+    """What replaced the opacity: a dashed border, which is the idiom this
+    app already uses for 'nothing here yet'. A border has no contrast
+    requirement to fail, and the lines keep their full-strength colour.
+
+    The negative half is the point — an `opacity` on `.vitals-card--soon`
+    would reproduce exactly the defect that was removed, and would look like
+    a tidy re-implementation of it."""
+    css = _css()
+    m = re.search(r"\.vitals-card--soon\s*\{([^}]*)\}", css, re.S)
+    assert m, ".vitals-card--soon has no rule, so nothing marks the two cards"
+    body = m.group(1)
+    assert "dashed" in body, f".vitals-card--soon no longer marks itself: {body!r}"
+    assert "opacity" not in body, (
+        "the dim is back on the two cards whose every line is muted or faint")
+
+
+def test_the_scope_line_is_not_the_faintest_token_available():
+    """`faint` measures 4.76 against the card surface — AA by 0.26. This line
+    IS the card's message, and it should not sit on the edge of legibility to
+    signal that its subject is unbuilt; the dashed border does that."""
+    css = _css()
+    m = re.search(r"\.vitals-soon-desc\s*\{([^}]*)\}", css, re.S)
+    assert m, ".vitals-soon-desc is gone"
+    assert "--c-faint" not in m.group(1), (
+        "the scope line went back to the faintest token in the palette")
+
+
+def test_the_cards_opt_into_the_shared_clickable_treatment():
+    """`.card-clickable` rather than a bespoke rule. Its focus ring is
+    already reconciled with the global one — and the heart's lesson is that
+    writing MORE code about focus is how a control becomes keyboard-
+    invisible, because a class-plus-pseudo selector outranks
+    `a:focus-visible`."""
+    html = _code_only(QUADRANT.read_text(encoding="utf-8"))
+    assert len(_CARD.findall(html)) == 4
+    for card in _CARD.findall(html):
         one = re.sub(r"\s+", " ", card)
-        assert "tabindex" not in one, (
-            f"a tab stop on an inert card: {one[:110]}")
-        assert "data-action" not in one and "href" not in one, (
-            f"the card claims to do something: {one[:110]}")
+        assert "card-clickable" in one, f"card with no click affordance: {one[:110]}"
+    css = _css()
+    for sel in (r"\.vitals-card[^,{]*:focus", r"\.vitals-card--soon[^,{]*:focus"):
+        assert not re.search(sel, css), (
+            "a bespoke focus rule on the quadrant cards — the global ring is "
+            "the whole treatment")
 
 
 def test_the_reason_is_readable_without_a_pointer():
@@ -440,7 +535,7 @@ def test_both_unbuilt_cards_describe_their_scope_in_every_locale():
     from i18n import TRANSLATIONS
     keys = ["vitals_network_tip_title", "vitals_network_tip_desc",
             "vitals_network_desc", "vitals_scan_tip_title",
-            "vitals_scan_tip_desc", "vitals_scan_desc", "vitals_coming_soon"]
+            "vitals_scan_tip_desc", "vitals_scan_desc", "vitals_not_monitored_yet"]
     missing = [f"{lang}:{k}" for lang in TRANSLATIONS for k in keys
                if k not in TRANSLATIONS[lang]]
     assert not missing, "untranslated: " + ", ".join(missing)

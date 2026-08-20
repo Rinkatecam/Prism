@@ -288,12 +288,22 @@ def test_no_surface_still_sends_the_operator_to_operations_for_a_probe():
     """The stale hint, in the one place it can still hide: the locale table.
     It survived in all five languages because `t.get` returned it happily and
     nothing rendered a 404 — the operator just arrived at a page with no such
-    section and concluded the feature was missing."""
+    section and concluded the feature was missing.
+
+    BOTH hints, because there were two. The quadrant's whole-region empty
+    state carried the same wrong destination as the Services card's, and
+    fixing one and not the other is how a correction half-lands: the surviving
+    copy reads like the deliberate one."""
     from i18n import TRANSLATIONS
+    keys = ("vitals_no_services_hint", "vitals_nothing_monitored_hint")
+    wrong = ("Operations", "Opérations", "Operaciones", "Betrieb", "運用")
     for lang, table in TRANSLATIONS.items():
-        hint = table.get("vitals_no_services_hint", "")
-        assert "Operations" not in hint and "Opérations" not in hint, (
-            f"{lang}:vitals_no_services_hint still points at Operations")
+        for key in keys:
+            hint = table.get(key, "")
+            assert hint, f"{lang}:{key} is missing entirely"
+            found = [w for w in wrong if w in hint]
+            assert not found, (
+                f"{lang}:{key} still points at {found[0]} for a health check")
 
 
 # ── shared: nothing here animates, and nothing here is disabled ──────────
