@@ -340,7 +340,8 @@ def dashboard():
         return render_template("dashboard.html", **_vitals_context())
     except Exception:
         logger.exception("Error rendering dashboard")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/server/<name>")
@@ -379,7 +380,8 @@ def server_detail(name: str):
                                settings=settings, active_maintenance=active_window)
     except Exception:
         logger.exception("Error rendering server_detail for %s", name)
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/reports")
@@ -392,7 +394,8 @@ def reports():
         return render_template("reports.html")
     except Exception:
         logger.exception("Error rendering reports")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 # The settings sub-pages, in the order they appear in the section nav.
@@ -437,7 +440,8 @@ def settings(section: str | None = None):
                                section=section, settings_sections=_SETTINGS_SECTIONS)
     except Exception:
         logger.exception("Error rendering settings")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/servers")
@@ -449,7 +453,8 @@ def servers_page():
         return render_template("servers.html", servers=servers, settings=settings_data)
     except Exception:
         logger.exception("Error rendering servers")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 def _services_context() -> dict:
@@ -504,7 +509,8 @@ def services_page():
         return render_template("services.html", **_services_context())
     except Exception:
         logger.exception("Error rendering services")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/network")
@@ -519,7 +525,8 @@ def network_page():
         return render_template("network.html")
     except Exception:
         logger.exception("Error rendering network")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/scan")
@@ -530,7 +537,8 @@ def scan_page():
         return render_template("scan.html")
     except Exception:
         logger.exception("Error rendering scan")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/monitoring")
@@ -542,7 +550,8 @@ def monitoring_page():
         return render_template("monitoring.html", servers=servers, settings=settings_data)
     except Exception:
         logger.exception("Error rendering monitoring")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/operations")
@@ -554,7 +563,8 @@ def operations_page():
         return render_template("operations.html", servers=servers, settings=settings_data)
     except Exception:
         logger.exception("Error rendering operations")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/workflows")
@@ -566,7 +576,8 @@ def workflows_page():
         return render_template("workflows.html", servers=servers, settings=settings_data)
     except Exception:
         logger.exception("Error rendering workflows")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/topology")
@@ -577,7 +588,8 @@ def topology():
         return render_template("topology.html", servers=servers)
     except Exception:
         logger.exception("Error rendering topology")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 # ── HTMX partial routes (return HTML fragments, not full pages) ──
@@ -1163,7 +1175,8 @@ def compliance_page():
         )
     except Exception:
         logger.exception("Error rendering /compliance")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/compliance/sop/<sop_id>")
@@ -1185,7 +1198,8 @@ def compliance_sop_page(sop_id: str):
         )
     except Exception:
         logger.exception("Error rendering /compliance/sop/%s", sop_id)
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/compliance/doc/<doc_id>")
@@ -1212,7 +1226,8 @@ def compliance_doc_page(doc_id: str):
         )
     except Exception:
         logger.exception("Error rendering /compliance/doc/%s", doc_id)
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 def _template_exists(template_name: str) -> bool:

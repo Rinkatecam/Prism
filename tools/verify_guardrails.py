@@ -209,10 +209,10 @@ suite(
 # ── empty states: the three-part rule ────────────────────────────────────
 suite(
     "empty-states",
-    Mutation("part 3 dropped from a JS empty state", "templates/rbac.html",
-             "window.prismEmptyState('check-circle', 'No pending approvals',\n"
-             "          'Nothing is waiting on you — requests needing sign-off will appear here')",
-             "window.prismEmptyState('check-circle', 'No pending approvals')",
+    Mutation("part 3 dropped from a JS empty state",
+             "templates/partials/settings/_rbac.html",
+             "window.prismEmptyState('check-circle', RBAC_T.noApprovals, RBAC_T.noApprovalsHint)",
+             "window.prismEmptyState('check-circle', RBAC_T.noApprovals)",
              "test_every_empty_state_supplies_all_three_parts"),
     Mutation("part 3 dropped from the Jinja macro call",
              "templates/partials/activity_feed.html",
@@ -2680,6 +2680,68 @@ suite(
 )
 
 
+# ── every page route renders, and a failure answers 500 ─────────────────
+suite(
+    "pages-render",
+    Mutation("a settings section stops rendering",
+             "templates/settings.html",
+             "{% if section == 'rbac' %}",
+             "{% if section == 'rbac' %}{{ undefined_filter | nosuchfilter }}",
+             "test_every_settings_section_renders"),
+    Mutation("the error path goes back to answering 200",
+             "routes/views.py",
+             '(render_template("500.html"), 500) if _template_exists("500.html")',
+             'render_template("500.html") if _template_exists("500.html")',
+             "test_the_error_path_answers_with_an_error_status"),
+)
+
+
+# ── the permissions page's translations ─────────────────────────
+suite(
+    "permissions",
+    Mutation("a string goes back to being built into the script",
+             "templates/partials/settings/_rbac.html",
+             "showToast(RBAC_T.usernameRequired, 'warn')",
+             "showToast('Username required', 'warn')",
+             "test_the_script_renders_no_bare_english_sentence"),
+    Mutation("an aria-label goes back to English",
+             "templates/partials/settings/_rbac.html",
+             "aria-label=\"{{ t.get('rbac_server_aria', 'Server name') }}\"",
+             "aria-label=\"Server name\"",
+             "test_every_aria_label_on_the_page_is_translated"),
+    Mutation("a locale loses a key and silently falls back to English",
+             "i18n.py",
+             '"rbac_no_acls_hint": "Jeder Benutzer',
+             '"rbac_no_acls_hint_disabled": "Jeder Benutzer',
+             "test_every_permissions_string_exists_in_every_locale"),
+    Mutation("a sentence is assembled from fragments again",
+             "templates/partials/settings/_rbac.html",
+             "function rbacFill",
+             "function rbacFillDisabled",
+             "test_the_sentences_substitute_rather_than_concatenate"),
+    Mutation("the page carries its own escaper again",
+             "templates/partials/settings/_rbac.html",
+             "  const RBAC_T = {",
+             "  function _escHtml(s) { return s; }\n  const RBAC_T = {",
+             "test_the_page_uses_the_shared_escaper"),
+    Mutation("a timestamp stops going through the formatter",
+             "templates/partials/settings/_rbac.html",
+             "_escHtml(formatTs(a.requested_at))",
+             "_escHtml(a.requested_at)",
+             "test_every_timestamp_goes_through_the_formatter"),
+    Mutation("the old /admin/rbac address stops redirecting",
+             "routes/views.py",
+             'return redirect("/settings/rbac", code=301)',
+             'return redirect("/settings/rbac", code=302)',
+             "test_the_old_rbac_address_still_resolves"),
+    Mutation("a label is resolved at its use site rather than from RBAC_T",
+             "templates/partials/settings/_rbac.html",
+             "showToast(d.error || RBAC_T.grantFailed, 'error')",
+             "showToast(d.error || {{ t.get('rbac_grant_failed', 'x') | tojson }}, 'error')",
+             "test_the_labels_are_defined_once_for_the_script"),
+)
+
+
 SUITE_FILES = {
     "loading": "tests/test_design_loading.py",
     "status-cache": "tests/test_status_summary_cache.py",
@@ -2722,6 +2784,8 @@ SUITE_FILES = {
     "overview-pages": "tests/test_design_overview_pages.py",
     "settings-tracking": "tests/test_settings_change_tracking.py",
     "action-dispatch": "tests/test_action_dispatch.py",
+    "pages-render": "tests/test_pages_render.py",
+    "permissions": "tests/test_design_permissions.py",
 }
 
 
@@ -2753,6 +2817,13 @@ def run_suite(name: str) -> tuple[int, int]:
     caught = 0
     for m in SUITES[name]:
         path = PROJECT_ROOT / m.path
+        if not path.exists():
+            # A missing FILE used to raise out of run_suite, which stopped the
+            # whole run — every suite after it silently never ran. Reported
+            # like a missing anchor now: loudly, and the run continues.
+            print(f"  !! {m.label}\n       FILE NOT FOUND: {m.path} — "
+                  "the file moved or was deleted; update this mutation")
+            continue
         original = path.read_text(encoding="utf-8")
         if m.find not in original:
             print(f"  !! {m.label}\n       ANCHOR NOT FOUND in {m.path} — "
