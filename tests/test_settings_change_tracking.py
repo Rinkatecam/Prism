@@ -302,3 +302,130 @@ def test_a_scheduled_report_change_reaches_disk_and_reads_back(config_client):
         assert fresh.get(key) == expected, (
             f"scheduled_reports.{key} did not survive the round trip: "
             f"{fresh.get(key)!r} != {expected!r}")
+
+
+# ── what the page sends ──────────────────────────────────────────────────
+#
+# The tracker above decides whether Save appears. This decides what Save
+# posts, and it had the same shape of defect one layer up: the payload was
+# built by fetching the WHOLE configuration and overwriting the parts this
+# page renders, so every save echoed back ~35 settings sub-trees and the
+# server list — including everything owned by /monitoring and /operations.
+#
+# That is a last-write-wins clobber over data the operator never saw. Two
+# tabs are enough: change a threshold on /monitoring, press Save here, and
+# the threshold reverts to whatever it was when this page loaded.
+#
+# Measured on the rendered page: 35 settings keys plus `servers` before,
+# 14 keys and no server list after.
+
+_OWNED_SETTINGS_KEYS = {
+    # General
+    "poll_interval_seconds", "log_collection_interval_minutes",
+    "update_check_interval_minutes", "retention_days", "language",
+    "timezone", "date_format", "time_format",
+    # Collector
+    "collector_v2_num_workers",
+    # Security & access
+    "https", "auth",
+    # Notifications
+    "email", "webhooks", "scheduled_reports",
+}
+
+
+def _save_builder() -> str:
+    src = _script()
+    i = src.index("function doSaveAllSettings(")
+    # Sliced on CODE, not on the comment that follows the builder: _script()
+    # blanks whole-line // comments, so anchoring here on prose raises rather
+    # than asserting — the same mistake as anchoring a mutation on a comment,
+    # one step earlier (OPS-LEARNINGS #38).
+    j = src.index("const ldapPayload = {", i)
+    return src[i:j]
+
+
+def test_the_page_posts_only_the_settings_it_owns():
+    """Every key assigned into the payload must be one this page renders a
+    control for. A key here that no control drives is a value being echoed
+    back from a fetch, which is the clobber."""
+    assigned = set(re.findall(r"data\.settings\.(\w+)\s*=", _save_builder()))
+    assert assigned == _OWNED_SETTINGS_KEYS, (
+        f"unexpected: {sorted(assigned - _OWNED_SETTINGS_KEYS)}, "
+        f"missing: {sorted(_OWNED_SETTINGS_KEYS - assigned)}")
+
+
+def test_the_payload_starts_empty_rather_than_from_the_fetched_config():
+    """The regression that matters, and it is one line: reinstating
+    `data.settings = Object.assign(data.settings || {}, {...})` puts all ~35
+    keys back and nothing else in this file would notice."""
+    builder = _save_builder()
+    assert "const data = { settings: {} };" in builder, (
+        "the payload is no longer built from scratch")
+    assert "Object.assign(data.settings || {}" not in builder, (
+        "the payload is being seeded from the fetched configuration again")
+
+
+def test_the_server_list_is_not_posted_back():
+    """Omitting `servers` is what puts save_config on its `settings_only`
+    path, where the list is preserved wholesale instead of being rewritten
+    from a copy this page fetched some time earlier."""
+    builder = _save_builder()
+    assert not re.search(r"data\.servers\s*=", builder)
+    assert '"servers"' not in builder and "'servers'" not in builder
+
+
+def test_the_auth_subtree_is_still_sent_whole():
+    """The one deliberate exception. save_config's auth validator normalises
+    that sub-tree by writing every field back, so a partial auth object
+    blanks `backup_admin` and the three `lockout_*` keys — none of which are
+    rendered on this page. It is merged over the fetched value for exactly
+    that reason, and dropping the merge would be a silent credential wipe."""
+    builder = _save_builder()
+    assert re.search(r"data\.settings\.auth\s*=\s*Object\.assign\(\{\},\s*current\.settings\?\.auth",
+                     builder), (
+        "auth is no longer merged over the fetched sub-tree; a partial auth "
+        "object blanks backup_admin and the lockout settings")
+
+
+def test_a_narrowed_save_preserves_everything_it_did_not_send(config_client):
+    """The behaviour the narrowing depends on, exercised rather than assumed.
+
+    Seeds sub-trees owned by other pages, posts only this page's keys, and
+    checks that the others came through untouched — and that the owned ones
+    actually changed, so a save that quietly did nothing cannot pass."""
+    client, cfg = config_client
+
+    elsewhere = {
+        # Values chosen INSIDE the route's clamps — exhaustion_disk 80..100,
+        # exhaustion_ram 90..100, which are different ranges. An out-of-range
+        # value comes back as the clamp and reads exactly like a clobber; the
+        # first draft of this test accused the save path of losing data the
+        # validator had simply corrected, twice.
+        "thresholds": {"enabled": True, "exhaustion_disk": 83, "exhaustion_ram": 93,
+                       "slow_collection_ms": 4321},
+        "tls_monitoring": {"enabled": True, "warning_days": 21, "critical_days": 3,
+                           "check_interval_cycles": 11, "certificates": []},
+        "scheduled_server_restart_schedule": {"enabled": True, "schedule": "weekly",
+                                              "time": "02:30", "day": "3", "month_day": 1},
+    }
+    r = client.post("/api/config", json={"settings": dict(elsewhere)})
+    assert r.status_code == 200, r.get_data(as_text=True)
+
+    # What the Settings page posts: only its own keys.
+    r = client.post("/api/config", json={"settings": {
+        "language": "fr",
+        "retention_days": 45,
+        "poll_interval_seconds": 300,
+        "scheduled_reports": dict(_SCHEDULED_REPORTS_PAYLOAD),
+    }})
+    assert r.status_code == 200, r.get_data(as_text=True)
+
+    after = ConfigManager(cfg.config_path).get_settings()
+    for key, expected in elsewhere.items():
+        for field, value in expected.items():
+            assert after.get(key, {}).get(field) == value, (
+                f"{key}.{field} was clobbered by a save that never sent it: "
+                f"{after.get(key, {}).get(field)!r} != {value!r}")
+    assert after["language"] == "fr"
+    assert after["retention_days"] == 45
+    assert after["scheduled_reports"]["daily_time"] == "06:15"

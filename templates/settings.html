@@ -1197,20 +1197,52 @@ function doSaveAllSettings(needsRestart) {
   // page reloads, which resets it.
   if (_settingsSaving) return;
   _settingsSaving = true;
-  loadConfig().then(data => {
-    // General settings
-    data.settings = Object.assign(data.settings || {}, {
-      poll_interval_seconds: (parseInt(document.getElementById('poll-interval').value) || 1) * 60,
-      log_collection_interval_minutes: parseInt(document.getElementById('log-collection-interval').value) || 5,
-      update_check_interval_minutes: parseInt(document.getElementById('update-check-interval').value) || 30,
-      retention_days: parseInt(document.getElementById('retention-days').value) || 30,
-      language: document.getElementById('setting-language').value,
-      timezone: document.getElementById('setting-timezone').value,
-      date_format: document.getElementById('setting-date-format').value,
-      time_format: document.getElementById('setting-time-format').value,
-    });
+  loadConfig().then(current => {
+    // POST ONLY WHAT THIS PAGE OWNS.
+    //
+    // This used to start from the fetched config and overwrite the parts the
+    // page renders — so every save posted the WHOLE configuration back,
+    // including ~20 sub-trees no control here displays: anomaly_detection,
+    // baseline_detection, drift_detection, ingest_caps, workflows,
+    // severity_model, thresholds, tls_monitoring, maintenance_windows, the
+    // restart schedules, and the server list.
+    //
+    // That is a last-write-wins clobber over data the operator never saw.
+    // /monitoring and /operations save settings too (see save_config's
+    // `settings_only` path, which exists for exactly those callers), so two
+    // tabs — or one operator and one scheduled job — are enough: change a
+    // threshold on /monitoring, press Save here, and the threshold silently
+    // goes back to whatever it was when this page loaded.
+    //
+    // The server's merge already protects omitted TOP-LEVEL keys, and that
+    // behaviour is pinned by tests/test_config_partial_save.py. So the fix is
+    // to send less: build a fresh object holding this page's keys and let the
+    // merge preserve everything else.
+    //
+    // `servers` is omitted for the same reason and with an extra benefit —
+    // its absence is what puts save_config on the `settings_only` path, so
+    // the server list is preserved wholesale rather than re-written from a
+    // copy this page fetched some time ago.
+    //
+    // THE ONE EXCEPTION IS `auth`, and it is not a lapse. save_config's auth
+    // validator normalises that sub-tree by writing every field back, so a
+    // partial auth object blanks the fields it omits — `backup_admin` and the
+    // three `lockout_*` keys, none of which are rendered here. It is merged
+    // over the fetched value for that reason. The same rule applies to
+    // https / email / webhooks, and those are safe because every one of their
+    // fields IS on this page, so the object built below is already whole.
+    const data = { settings: {} };
 
-    // Security + notification settings (always include to preserve them)
+    // General
+    data.settings.poll_interval_seconds = (parseInt(document.getElementById('poll-interval').value) || 1) * 60;
+    data.settings.log_collection_interval_minutes = parseInt(document.getElementById('log-collection-interval').value) || 5;
+    data.settings.update_check_interval_minutes = parseInt(document.getElementById('update-check-interval').value) || 30;
+    data.settings.retention_days = parseInt(document.getElementById('retention-days').value) || 30;
+    data.settings.language = document.getElementById('setting-language').value;
+    data.settings.timezone = document.getElementById('setting-timezone').value;
+    data.settings.date_format = document.getElementById('setting-date-format').value;
+    data.settings.time_format = document.getElementById('setting-time-format').value;
+
     data.settings.https = {
       enabled: document.getElementById('https-enabled').checked,
       cert_file: document.getElementById('https-cert').value.trim(),
@@ -1223,14 +1255,14 @@ function doSaveAllSettings(needsRestart) {
     // would wipe the directory config rather than preserve it. Sent values are
     // replaced with the on-disk ones server-side, which by then are the newly
     // saved ones.
-    data.settings.auth = Object.assign({}, data.settings.auth || {}, {
+    data.settings.auth = Object.assign({}, current.settings?.auth || {}, {
       enabled: document.getElementById('auth-enabled').checked,
       type: document.getElementById('auth-type').value,
       ldap_url: document.getElementById('auth-ldap-url').value.trim(),
       ldap_base_dn: document.getElementById('auth-ldap-basedn').value.trim(),
       ldap_user_filter: '(sAMAccountName={username})',
       ldap_bind_user: document.getElementById('auth-ldap-bind-user').value.trim(),
-      ldap_bind_password: document.getElementById('auth-ldap-bind-pass').value.trim() || (data.settings?.auth?.ldap_bind_password || ''),
+      ldap_bind_password: document.getElementById('auth-ldap-bind-pass').value.trim() || (current.settings?.auth?.ldap_bind_password || ''),
       allowed_users: document.getElementById('auth-allowed-users').value.trim().split('\n').map(s => s.trim()).filter(Boolean),
       session_timeout_minutes: parseInt(document.getElementById('auth-timeout').value) || 480,
     });
