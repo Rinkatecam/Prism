@@ -449,18 +449,28 @@ def save_config():
             settings["time_format"] = tf
 
         # ─────────────────────────────────────────────────────────────────────
-        # SUB-TREE CONTRACT for the five validators below (https / auth / email /
-        # webhooks / scheduled_reports).
+        # SUB-TREE CONTRACT for the FOUR validators below (https / auth / email /
+        # webhooks).
         #
-        # Each normalises its sub-tree by writing EVERY field back, so a caller
-        # that posts a fragment (e.g. {"email": {"recipients": [...]}}) blanks the
-        # omitted siblings before ConfigManager.save_config's merge ever sees the
-        # value. The merge protects omitted TOP-LEVEL keys; it cannot protect
-        # omitted keys inside these sub-trees.
+        # `scheduled_reports` used to be named here as a fifth. It is not one:
+        # there is no validator for it anywhere in this file, so it passes
+        # straight through `save_config`'s merge like any ordinary key. The
+        # list was wrong in the safe direction — it warned about a hazard that
+        # does not exist for that sub-tree — but a contract comment that names
+        # a mechanism the code does not have is the same defect as one that
+        # omits a mechanism the code does have, and this repository has been
+        # caught by both. Corrected when WP-4 traced the scheduled-reports save
+        # path end to end.
+        #
+        # Each of the four normalises its sub-tree by writing EVERY field back,
+        # so a caller that posts a fragment (e.g. {"email": {"recipients":
+        # [...]}}) blanks the omitted siblings before ConfigManager.
+        # save_config's merge ever sees the value. The merge protects omitted
+        # TOP-LEVEL keys; it cannot protect omitted keys inside these sub-trees.
         #
         #   Rule: omit a top-level settings key freely. NEVER post a partial
-        #   sub-tree for https / auth / email / webhooks / scheduled_reports —
-        #   build the whole object, as templates/settings.html does.
+        #   sub-tree for https / auth / email / webhooks — build the whole
+        #   object, as templates/settings.html does.
         #
         # Pinned by tests/test_config_partial_save.py
         # ::test_subtree_contract_partial_subtree_resets_its_siblings.

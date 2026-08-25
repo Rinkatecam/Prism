@@ -601,11 +601,24 @@
         {{ t.scheduled_reports }}
       </div>
       <div class="space-y-4 pl-1">
+        {# The eight controls in this block carry `general-input`, and the
+           move from `security-input` is a correction rather than a
+           preference. The bucket states whether a change needs a RESTART:
+           `security-input` raises the restart badge and the restart
+           confirmation. Scheduled reports need neither — `periodics.py`'s
+           60-second `scheduled_reports` job calls `get_settings()` on every
+           run, so a change is live within a minute.
+
+           They were in the security bucket and invisible to the compare
+           function, so the effect never showed: no Save bar meant no badge
+           either. Fixing the tracker made the misplacement visible
+           immediately, which is the useful kind of regression — the badge
+           started claiming a restart for a setting that does not need one. #}
         <!-- Enable scheduled reports -->
         <div class="flex items-center justify-between">
           <div class="text-xs text-muted">{{ t.get('enable_scheduled_reports', 'Enable scheduled reports') }}</div>
           <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="sched-enabled" class="sr-only peer security-input"
+            <input type="checkbox" id="sched-enabled" class="sr-only peer general-input"
                    {% if settings.get('scheduled_reports', {}).get('enabled') %}checked{% endif %}>
             <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-brand transition-colors"></div>
             <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
@@ -617,13 +630,13 @@
           <div class="text-xs text-muted">{{ t.daily_report }}</div>
           <div class="flex items-center gap-2">
             <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" id="sched-daily-enabled" class="sr-only peer security-input"
+              <input type="checkbox" id="sched-daily-enabled" class="sr-only peer general-input"
                      {% if settings.get('scheduled_reports', {}).get('daily_enabled', True) %}checked{% endif %}>
               <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-healthy transition-colors"></div>
               <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
             </label>
             <input type="time" id="sched-daily-time" value="{{ settings.get('scheduled_reports', {}).get('daily_time', '07:00') }}"
-                   class="security-input text-xs rounded border border-line bg-field px-2 py-1">
+                   class="general-input text-xs rounded border border-line bg-field px-2 py-1">
           </div>
         </div>
 
@@ -632,12 +645,12 @@
           <div class="text-xs text-muted">{{ t.weekly_report }}</div>
           <div class="flex items-center gap-2">
             <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" id="sched-weekly-enabled" class="sr-only peer security-input"
+              <input type="checkbox" id="sched-weekly-enabled" class="sr-only peer general-input"
                      {% if settings.get('scheduled_reports', {}).get('weekly_enabled', False) %}checked{% endif %}>
               <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-healthy transition-colors"></div>
               <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
             </label>
-            <select id="sched-weekly-day" class="security-input text-xs rounded border border-line bg-field px-2 py-1">
+            <select id="sched-weekly-day" class="general-input text-xs rounded border border-line bg-field px-2 py-1">
               {% for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] %}
               <option value="{{ day }}" {% if settings.get('scheduled_reports', {}).get('weekly_day', 'monday') == day %}selected{% endif %}>
                 {{ day | capitalize }}
@@ -645,7 +658,7 @@
               {% endfor %}
             </select>
             <input type="time" id="sched-weekly-time" value="{{ settings.get('scheduled_reports', {}).get('weekly_time', '07:00') }}"
-                   class="security-input text-xs rounded border border-line bg-field px-2 py-1">
+                   class="general-input text-xs rounded border border-line bg-field px-2 py-1">
           </div>
         </div>
 
@@ -653,7 +666,7 @@
         <div class="flex items-center justify-between">
           <div class="text-xs text-muted">{{ t.get('email_report', 'Send via email') }}</div>
           <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="sched-email-report" class="sr-only peer security-input"
+            <input type="checkbox" id="sched-email-report" class="sr-only peer general-input"
                    {% if settings.get('scheduled_reports', {}).get('email_report', True) %}checked{% endif %}>
             <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-brand transition-colors"></div>
             <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
@@ -662,7 +675,7 @@
         <div class="flex items-center justify-between">
           <div class="text-xs text-muted">{{ t.get('include_pdf', 'Include PDF attachment') }}</div>
           <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="sched-include-pdf" class="sr-only peer security-input"
+            <input type="checkbox" id="sched-include-pdf" class="sr-only peer general-input"
                    {% if settings.get('scheduled_reports', {}).get('include_pdf', True) %}checked{% endif %}>
             <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-brand transition-colors"></div>
             <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
@@ -1026,138 +1039,90 @@ function loadConfig() {
 // Initialize
 document.addEventListener('DOMContentLoaded', () => loadConfig());
 
-// --- General Settings change detection ---
-const generalInitial = {};
-function captureGeneralState() {
-  generalInitial.poll = document.getElementById('poll-interval').value;
-  generalInitial.logInterval = document.getElementById('log-collection-interval').value;
-  // Update Check Interval was tracked by NEITHER bucket, so editing it alone
-  // never opened the sticky Save bar — the value could only be saved by
-  // bundling it with some other tracked change. All three functions below must
-  // stay in sync or Cancel silently fails to revert this field.
-  generalInitial.updateInterval = document.getElementById('update-check-interval').value;
-  generalInitial.retention = document.getElementById('retention-days').value;
-  generalInitial.language = document.getElementById('setting-language').value;
-  generalInitial.timezone = document.getElementById('setting-timezone').value;
-  generalInitial.dateFormat = document.getElementById('setting-date-format').value;
-  generalInitial.timeFormat = document.getElementById('setting-time-format').value;
-}
-function hasGeneralChanged() {
-  return (
-    document.getElementById('poll-interval').value !== generalInitial.poll ||
-    document.getElementById('log-collection-interval').value !== generalInitial.logInterval ||
-    document.getElementById('update-check-interval').value !== generalInitial.updateInterval ||
-    document.getElementById('retention-days').value !== generalInitial.retention ||
-    document.getElementById('setting-language').value !== generalInitial.language ||
-    document.getElementById('setting-timezone').value !== generalInitial.timezone ||
-    document.getElementById('setting-date-format').value !== generalInitial.dateFormat ||
-    document.getElementById('setting-time-format').value !== generalInitial.timeFormat
-  );
-}
-function cancelGeneralSettings() {
-  document.getElementById('poll-interval').value = generalInitial.poll;
-  document.getElementById('log-collection-interval').value = generalInitial.logInterval;
-  document.getElementById('update-check-interval').value = generalInitial.updateInterval;
-  document.getElementById('retention-days').value = generalInitial.retention;
-  document.getElementById('setting-language').value = generalInitial.language;
-  document.getElementById('setting-timezone').value = generalInitial.timezone;
-  document.getElementById('setting-date-format').value = generalInitial.dateFormat;
-  document.getElementById('setting-time-format').value = generalInitial.timeFormat;
+// --- Settings change detection ---
+//
+// ONE tracker, driven by the marker class each control already carries.
+//
+// This replaced six hand-maintained lists — capture, compare and revert, for
+// each of two buckets — that had to agree with each other and with the
+// markup. They did not. Measured on the rendered page before the rewrite:
+// 43 controls carry a marker class and the compare lists named 35 of them.
+// The eight missing were the whole scheduled-reports block, and the effect
+// was exact: `doSaveAllSettings()` reads all eight and writes them
+// correctly, but the sticky Save bar only opens when a compare function
+// returns true, so an operator who switched scheduled reports on — or
+// changed the daily time — got no Save button and lost the edit on
+// navigation. Cancel did not restore them either.
+//
+// That is the same defect the comment above `updateInterval` used to
+// describe, in a different section, found again six weeks later. A list you
+// have to remember to extend is a list that will be forgotten, so the list
+// is gone: the DOM is the source of truth, and the marker class is what
+// settings.html's own section comment already says it is — "the JS
+// change-detection bucket".
+//
+// The buckets still differ in MEANING, which is why there are two rather
+// than one: `security-input` drives the restart-confirmation modal,
+// `general-input` does not. Placement in a bucket is a statement about
+// whether the change needs a restart, not about which section it renders
+// in. See the note on the Collector section.
+const _settingsSnapshots = {};
+
+function _settingsControls(bucket) {
+  return document.querySelectorAll('.' + bucket + '-input');
 }
 
-// --- Security Settings change detection ---
-const securityInitial = {};
-function captureSecurityState() {
-  securityInitial.httpsEnabled = document.getElementById('https-enabled').checked;
-  securityInitial.httpsCert = document.getElementById('https-cert').value;
-  securityInitial.httpsKey = document.getElementById('https-key').value;
-  securityInitial.authEnabled = document.getElementById('auth-enabled').checked;
-  securityInitial.authType = document.getElementById('auth-type').value;
-  securityInitial.ldapUrl = document.getElementById('auth-ldap-url').value;
-  securityInitial.ldapBaseDn = document.getElementById('auth-ldap-basedn').value;
-  securityInitial.ldapBindUser = document.getElementById('auth-ldap-bind-user').value;
-  securityInitial.ldapBindPass = document.getElementById('auth-ldap-bind-pass').value;
-  securityInitial.authTimeout = document.getElementById('auth-timeout').value;
-  securityInitial.authAllowedUsers = document.getElementById('auth-allowed-users').value;
-  securityInitial.emailEnabled = document.getElementById('email-enabled').checked;
-  securityInitial.emailSmtpServer = document.getElementById('email-smtp-server').value;
-  securityInitial.emailSmtpPort = document.getElementById('email-smtp-port').value;
-  securityInitial.emailUseTls = document.getElementById('email-use-tls').checked;
-  securityInitial.emailUsername = document.getElementById('email-username').value;
-  securityInitial.emailPassword = document.getElementById('email-password').value;
-  securityInitial.emailFrom = document.getElementById('email-from').value;
-  securityInitial.emailRecipients = document.getElementById('email-recipients').value;
-  securityInitial.emailSendCritical = document.getElementById('email-send-critical').checked;
-  securityInitial.emailSendWarning = document.getElementById('email-send-warning').checked;
-  securityInitial.emailDashboardUrl = document.getElementById('email-dashboard-url').value;
-  securityInitial.webhookEnabled = document.getElementById('webhook-enabled').checked;
-  securityInitial.webhookUrl = document.getElementById('webhook-url').value;
-  securityInitial.webhookSendCritical = document.getElementById('webhook-send-critical').checked;
-  securityInitial.webhookSendWarning = document.getElementById('webhook-send-warning').checked;
-  // Worker-pool size needs a restart to take effect, so it lives in
-  // the security-class change set (which triggers the restart diff).
-  securityInitial.collectorV2Workers = document.getElementById('collector-v2-workers').value;
+// Checkboxes compare by `checked`, everything else by `value`. Stringified
+// so one snapshot shape covers both and `!==` cannot compare a boolean to a
+// string. There are no radios in the settings form; if one is ever added it
+// lands here rather than in a list somebody has to update.
+function _settingsValue(el) {
+  return (el.type === 'checkbox' || el.type === 'radio') ? String(el.checked) : el.value;
 }
-function hasSecurityChanged() {
-  return (
-    document.getElementById('https-enabled').checked !== securityInitial.httpsEnabled ||
-    document.getElementById('https-cert').value !== securityInitial.httpsCert ||
-    document.getElementById('https-key').value !== securityInitial.httpsKey ||
-    document.getElementById('auth-enabled').checked !== securityInitial.authEnabled ||
-    document.getElementById('auth-type').value !== securityInitial.authType ||
-    document.getElementById('auth-ldap-url').value !== securityInitial.ldapUrl ||
-    document.getElementById('auth-ldap-basedn').value !== securityInitial.ldapBaseDn ||
-    document.getElementById('auth-ldap-bind-user').value !== securityInitial.ldapBindUser ||
-    document.getElementById('auth-ldap-bind-pass').value !== securityInitial.ldapBindPass ||
-    document.getElementById('auth-allowed-users').value !== securityInitial.authAllowedUsers ||
-    document.getElementById('auth-timeout').value !== securityInitial.authTimeout ||
-    document.getElementById('email-enabled').checked !== securityInitial.emailEnabled ||
-    document.getElementById('email-smtp-server').value !== securityInitial.emailSmtpServer ||
-    document.getElementById('email-smtp-port').value !== securityInitial.emailSmtpPort ||
-    document.getElementById('email-use-tls').checked !== securityInitial.emailUseTls ||
-    document.getElementById('email-username').value !== securityInitial.emailUsername ||
-    document.getElementById('email-password').value !== securityInitial.emailPassword ||
-    document.getElementById('email-from').value !== securityInitial.emailFrom ||
-    document.getElementById('email-recipients').value !== securityInitial.emailRecipients ||
-    document.getElementById('email-send-critical').checked !== securityInitial.emailSendCritical ||
-    document.getElementById('email-send-warning').checked !== securityInitial.emailSendWarning ||
-    document.getElementById('email-dashboard-url').value !== securityInitial.emailDashboardUrl ||
-    document.getElementById('webhook-enabled').checked !== securityInitial.webhookEnabled ||
-    document.getElementById('webhook-url').value !== securityInitial.webhookUrl ||
-    document.getElementById('webhook-send-critical').checked !== securityInitial.webhookSendCritical ||
-    document.getElementById('webhook-send-warning').checked !== securityInitial.webhookSendWarning ||
-    document.getElementById('collector-v2-workers').value !== securityInitial.collectorV2Workers
-  );
+
+function captureSettingsBucket(bucket) {
+  const snap = {};
+  _settingsControls(bucket).forEach(function (el) {
+    if (el.id) snap[el.id] = _settingsValue(el);
+  });
+  _settingsSnapshots[bucket] = snap;
 }
-function cancelSecuritySettings() {
-  document.getElementById('https-enabled').checked = securityInitial.httpsEnabled;
-  document.getElementById('https-cert').value = securityInitial.httpsCert;
-  document.getElementById('https-key').value = securityInitial.httpsKey;
-  document.getElementById('auth-enabled').checked = securityInitial.authEnabled;
-  document.getElementById('auth-type').value = securityInitial.authType;
-  document.getElementById('auth-ldap-url').value = securityInitial.ldapUrl;
-  document.getElementById('auth-ldap-basedn').value = securityInitial.ldapBaseDn;
-  document.getElementById('auth-ldap-bind-user').value = securityInitial.ldapBindUser;
-  document.getElementById('auth-ldap-bind-pass').value = securityInitial.ldapBindPass;
-  document.getElementById('auth-allowed-users').value = securityInitial.authAllowedUsers;
-  document.getElementById('auth-timeout').value = securityInitial.authTimeout;
-  document.getElementById('email-enabled').checked = securityInitial.emailEnabled;
-  document.getElementById('email-smtp-server').value = securityInitial.emailSmtpServer;
-  document.getElementById('email-smtp-port').value = securityInitial.emailSmtpPort;
-  document.getElementById('email-use-tls').checked = securityInitial.emailUseTls;
-  document.getElementById('email-username').value = securityInitial.emailUsername;
-  document.getElementById('email-password').value = securityInitial.emailPassword;
-  document.getElementById('email-from').value = securityInitial.emailFrom;
-  document.getElementById('email-recipients').value = securityInitial.emailRecipients;
-  document.getElementById('email-send-critical').checked = securityInitial.emailSendCritical;
-  document.getElementById('email-send-warning').checked = securityInitial.emailSendWarning;
-  document.getElementById('email-dashboard-url').value = securityInitial.emailDashboardUrl;
-  document.getElementById('webhook-enabled').checked = securityInitial.webhookEnabled;
-  document.getElementById('webhook-url').value = securityInitial.webhookUrl;
-  document.getElementById('webhook-send-critical').checked = securityInitial.webhookSendCritical;
-  document.getElementById('webhook-send-warning').checked = securityInitial.webhookSendWarning;
-  document.getElementById('collector-v2-workers').value = securityInitial.collectorV2Workers;
+
+function settingsBucketChanged(bucket) {
+  const snap = _settingsSnapshots[bucket] || {};
+  const controls = _settingsControls(bucket);
+  for (let i = 0; i < controls.length; i++) {
+    const el = controls[i];
+    if (!el.id) continue;
+    // A control that was not present when the snapshot was taken counts as
+    // a CHANGE. The form is server-rendered, so today this cannot happen —
+    // and if it ever does, the operator is looking at a field the tracker
+    // has never seen, which is precisely the state that must not be silent.
+    if (!(el.id in snap)) return true;
+    if (_settingsValue(el) !== snap[el.id]) return true;
+  }
+  return false;
 }
+
+function revertSettingsBucket(bucket) {
+  const snap = _settingsSnapshots[bucket] || {};
+  _settingsControls(bucket).forEach(function (el) {
+    if (!el.id || !(el.id in snap)) return;
+    if (el.type === 'checkbox' || el.type === 'radio') el.checked = (snap[el.id] === 'true');
+    else el.value = snap[el.id];
+  });
+}
+
+// The four names below are the API the rest of this page calls. Kept as
+// named functions rather than inlined at the call sites so the bucket string
+// appears exactly once per bucket per operation.
+function captureGeneralState() { captureSettingsBucket('general'); }
+function hasGeneralChanged() { return settingsBucketChanged('general'); }
+function cancelGeneralSettings() { revertSettingsBucket('general'); }
+
+function captureSecurityState() { captureSettingsBucket('security'); }
+function hasSecurityChanged() { return settingsBucketChanged('security'); }
+function cancelSecuritySettings() { revertSettingsBucket('security'); }
 
 // --- Unified change detection + sticky save bar ---
 //

@@ -2433,6 +2433,59 @@ suite(
 )
 
 
+# ── settings: the "have you changed anything?" mechanism ────────────────
+suite(
+    "settings-tracking",
+    Mutation("a control loses its bucket and its edits go nowhere",
+             "templates/settings.html",
+             'class="security-input w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">',
+             'class="w-full px-2 py-1 text-sm rounded border border-line bg-field font-mono text-xs">',
+             "test_every_settings_control_is_tracked_or_deliberately_exempt"),
+    Mutation("the tracker starts naming a control by id again",
+             "templates/settings.html",
+             "  const snap = _settingsSnapshots[bucket] || {};\n  const controls = _settingsControls(bucket);",
+             "  const snap = _settingsSnapshots[bucket] || {};\n"
+             "  if (document.getElementById('poll-interval')) { /* list is back */ }\n"
+             "  const controls = _settingsControls(bucket);",
+             "test_the_tracker_reads_the_dom_rather_than_a_list_of_ids"),
+    Mutation("revert stops walking the same control set as capture",
+             "templates/settings.html",
+             "function revertSettingsBucket(bucket) {\n  const snap = _settingsSnapshots[bucket] || {};\n  _settingsControls(bucket).forEach(function (el) {",
+             "function revertSettingsBucket(bucket) {\n  const snap = _settingsSnapshots[bucket] || {};\n  document.querySelectorAll('.' + bucket + '-input').forEach(function (el) {",
+             "test_all_three_operations_walk_the_same_control_set"),
+    Mutation("a checkbox is compared by value, so toggling it reads as no change",
+             "templates/settings.html",
+             "  return (el.type === 'checkbox' || el.type === 'radio') ? String(el.checked) : el.value;",
+             "  return el.value;",
+             "test_a_checkbox_is_compared_by_checked_and_not_by_value"),
+    Mutation("a control the snapshot never saw is absorbed in silence",
+             "templates/settings.html",
+             "    if (!(el.id in snap)) return true;",
+             "    if (!(el.id in snap)) continue;",
+             "test_a_control_the_snapshot_has_never_seen_counts_as_a_change"),
+    Mutation("scheduled reports go back to claiming they need a restart",
+             "templates/settings.html",
+             'class="general-input text-xs rounded border border-line bg-field px-2 py-1">',
+             'class="security-input text-xs rounded border border-line bg-field px-2 py-1">',
+             "test_the_bucket_states_whether_a_restart_is_needed"),
+    Mutation("the one field that DOES need a restart leaves the restart bucket",
+             "templates/settings.html",
+             'class="security-input w-20 px-2 py-1 text-sm rounded border border-line bg-field text-right">',
+             'class="general-input w-20 px-2 py-1 text-sm rounded border border-line bg-field text-right">',
+             "test_the_one_field_that_does_need_a_restart_is_still_in_that_bucket"),
+    Mutation("the page stops sending one of the eight fields it collects",
+             "templates/settings.html",
+             "      include_pdf: document.getElementById('sched-include-pdf').checked,",
+             "",
+             "test_the_payload_below_is_the_one_the_page_actually_sends"),
+    Mutation("the periodics job stops re-reading settings, so the bucket's premise fails",
+             "collector_v2/periodics.py",
+             "_check_scheduled_reports(db, get_servers(), get_settings())",
+             "_check_scheduled_reports(db, get_servers(), {})",
+             "test_scheduled_reports_really_do_take_effect_without_a_restart"),
+)
+
+
 SUITE_FILES = {
     "loading": "tests/test_design_loading.py",
     "status-cache": "tests/test_status_summary_cache.py",
@@ -2473,6 +2526,7 @@ SUITE_FILES = {
     "layered": "tests/test_design_layered.py",
     "health-overview": "tests/test_health_check_overview.py",
     "overview-pages": "tests/test_design_overview_pages.py",
+    "settings-tracking": "tests/test_settings_change_tracking.py",
 }
 
 
