@@ -510,7 +510,10 @@ LITERAL_BASELINE: dict[str, int] = {
     # The toggle idiom's dark override, relocated with the TLS block in
     # WP-4 D2b. settings.html carries nine identical copies; WP-8 takes
     # them in one pass rather than leaving one fixed and nine behind.
-    "partials/settings/_tls.html": 1,   # 6 -> 4: two left with the detection block
+    "partials/settings/_tls.html": 1,
+    # Two more copies of the same toggle idiom, relocated with the
+    # scheduled-restart block in WP-4 D3.
+    "partials/settings/_restarts.html": 2,   # 6 -> 4: two left with the detection block
     #                           extracted to partials/settings/_detection.html
     #                           in WP-4 D2, and were tokenised on the way
     #                           rather than given a baseline of their own
@@ -521,7 +524,7 @@ LITERAL_BASELINE: dict[str, int] = {
     # were the light/dark halves of status washes that the `-tint` / `-strong`
     # pairs express in one class.
     "partials/verdict_header.html": 0,
-    "operations.html": 4,
+    "operations.html": 0,
     "partials/server_comparison.html": 4,
     "base.html": 1,
     "partials/critical_issues.html": 1,
@@ -661,7 +664,10 @@ def test_no_colour_literal_outside_the_templates_that_already_have_one():
 # 154 -> 151 with WP-4 D2b: four literals left monitoring.html with the TLS
 # and maintenance blocks; three of them were tokenised on the way and one
 # (the shared toggle idiom) took a baseline entry in the new partial.
-LITERAL_TOTAL = 151
+# 151 -> 149 with WP-4 D3: four literals left operations.html with the
+# scheduled-restart block; two were redundant dark overrides of a token
+# that already flips, and two are the shared toggle idiom.
+LITERAL_TOTAL = 149
 
 
 def test_the_total_number_of_literals_never_rises():

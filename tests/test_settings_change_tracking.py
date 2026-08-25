@@ -107,23 +107,34 @@ _EXEMPT = {
 # save bar. A container rule rather than a list of ids: the maintenance modal
 # holds twelve controls, two of them without an id, and a list of twelve would
 # go stale the first time one was renamed.
+# Regions that save through their own endpoint rather than the settings save
+# bar. Keyed by the ATTRIBUTE that identifies them, because the two members
+# are different shapes — one is a modal, one is a whole settings section —
+# and a rule that only understood ids would have needed a second mechanism
+# the moment the second one arrived.
 _EXEMPT_CONTAINERS = {
-    "maint-modal": ("maintenance windows save one at a time from this modal, "
-                    "through POST /api/maintenance-windows"),
+    'id="maint-modal"': ("maintenance windows save one at a time from this "
+                         "modal, through POST /api/maintenance-windows"),
+    'data-settings-section="operations"': ("scheduled restarts save through "
+                                           "POST /api/scheduled-restarts and "
+                                           "their own button"),
 }
 
 
 def _markup_outside_exempt_containers() -> str:
     """The page's markup with the self-saving regions removed."""
     markup = _markup()
-    for container in _EXEMPT_CONTAINERS:
-        m = re.search(rf'<div id="{container}"', markup)
-        assert m, f"the exempt container {container!r} is not on the page any more"
-        # Cut to the end of the enclosing block: the modal is the last thing
-        # in its own markup file, so the next top-level marker is enough.
-        rest = markup[m.start():]
-        end = rest.find("\n</div>\n")
-        markup = markup[:m.start()] + (rest[end:] if end != -1 else "")
+    for attr in _EXEMPT_CONTAINERS:
+        i = markup.find(attr)
+        assert i != -1, f"the exempt region {attr!r} is not on the page any more"
+        # Back up to the element's own opening tag, then drop to the end of
+        # the file's block: both members are the last thing in their region.
+        start = markup.rfind("<", 0, i)
+        rest = markup[start:]
+        end = rest.find("\n</section>")
+        if end == -1:
+            end = rest.find("\n</div>\n")
+        markup = markup[:start] + (rest[end:] if end != -1 else "")
     return markup
 
 
@@ -450,7 +461,12 @@ def test_every_settings_section_declares_itself():
         + "\n  ".join(undeclared))
     names = re.findall(r'data-settings-section="([^"]+)"', _markup())
     assert len(names) == len(set(names)), f"duplicate section names: {names}"
-    assert set(names) == set(_SECTION_KEYS) | {"display"}, sorted(names)
+    # `_SECTION_KEYS` lists the sections that contribute to the settings
+    # payload. Two do not and still exist: `display` keeps its preferences in
+    # localStorage, `operations` posts its restart schedules to their own
+    # endpoint. Both are real sections with real URLs, so the declaration
+    # check has to know them even though no builder does.
+    assert set(names) == set(_SECTION_KEYS) | {"display", "operations"}, sorted(names)
 
 
 def test_the_section_builders_cover_exactly_the_keys_the_page_owns():
@@ -641,7 +657,10 @@ def test_the_builder_map_covers_every_section_that_has_settings():
     """The third party to the agreement. `display` is the one section with no
     builder, because its controls are localStorage preferences."""
     builders = set(_section_builder_bodies())
-    assert builders | {"display"} == set(_router_sections())
+    # `operations` joins `display` as a section with no builder: its
+    # scheduled restarts post to their own endpoint, so nothing of theirs
+    # belongs in the settings payload.
+    assert builders | {"display", "operations"} == set(_router_sections())
 
 
 def test_every_section_renders_only_when_it_is_the_active_one():

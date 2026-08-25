@@ -103,6 +103,20 @@ def _defined_functions(src: str) -> set[str]:
     return names
 
 
+def _static_js_functions() -> set[str]:
+    """Globals defined in static/js/*.js.
+
+    base.html loads several of these with a <script src>, so their functions
+    are as reachable from a page as anything in its own inline block. A scan
+    blind to them reports working calls as missing — and the fix a reader
+    would reach for is to move the function, not to fix the scan."""
+    names: set[str] = set()
+    static_js = PROJECT_ROOT / "static" / "js"
+    for f in sorted(static_js.glob("*.js")):
+        names |= _defined_functions(f.read_text(encoding="utf-8"))
+    return names
+
+
 def _requested_actions(src: str) -> set[str]:
     out: set[str] = set()
     for attr in _DISPATCH_ATTRS:
@@ -116,7 +130,8 @@ def test_every_dispatched_action_resolves_to_a_handler(page: Path):
     global function is a control that does nothing, quietly."""
     src = _code_only(_expand_includes(page.read_text(encoding="utf-8")))
     base_src = _code_only(BASE.read_text(encoding="utf-8"))
-    available = _registry_names() | _defined_functions(src) | _defined_functions(base_src)
+    available = (_registry_names() | _defined_functions(src)
+                 | _defined_functions(base_src) | _static_js_functions())
 
     missing = sorted(a for a in _requested_actions(src) if a not in available)
     assert not missing, (
@@ -156,3 +171,91 @@ def test_the_fallback_to_a_global_function_still_exists():
     assert "window[key]" in m.group(1), (
         "the global-function fallback is gone; every page-local data-action "
         "handler now resolves to nothing")
+
+
+# ── the other way a page reaches a handler ───────────────────────────────
+
+# Keywords first: `if (…)` matches "a name followed by a paren" exactly as
+# well as `loadThing()` does, and the first run of this scan duly reported
+# `if` on four pages — the check describing JavaScript's grammar rather than
+# the page's dependencies.
+_JS_KEYWORDS = {
+    "if", "for", "while", "switch", "catch", "return", "typeof", "new",
+    "function", "else", "do", "try", "await", "yield", "delete", "void",
+    "in", "of", "instanceof", "case",
+}
+
+_BUILTIN_CALLS = {
+    # Things every page can call that are not page-local functions.
+    "fetch", "setTimeout", "setInterval", "clearTimeout", "clearInterval",
+    "requestAnimationFrame", "cancelAnimationFrame", "requestIdleCallback",
+    "queueMicrotask", "structuredClone", "parseInt", "parseFloat", "String",
+    "Number", "Boolean", "Array", "Object", "JSON", "Date", "Math", "Promise",
+    "Set", "Map", "WeakMap", "RegExp", "Error", "URL", "URLSearchParams",
+    "FormData", "Intl", "alert", "confirm", "prompt", "console",
+    "encodeURIComponent", "decodeURIComponent", "isNaN", "isFinite",
+    "matchMedia", "getComputedStyle", "atob", "btoa",
+} | _JS_KEYWORDS
+
+
+def _bootstrap_calls(src: str) -> set[str]:
+    """Bare `name()` calls made directly in a DOMContentLoaded body.
+
+    Nested function bodies are included — they run later but they run, and a
+    name that is not there is the same ReferenceError whenever it fires."""
+    out: set[str] = set()
+    for m in re.finditer(r"addEventListener\('DOMContentLoaded',\s*(?:function\s*\(\)|\(\)\s*=>)\s*\{",
+                         src):
+        depth, i = 1, m.end()
+        while i < len(src) and depth:
+            if src[i] == "{":
+                depth += 1
+            elif src[i] == "}":
+                depth -= 1
+            i += 1
+        body = src[m.end():i]
+        out |= set(re.findall(r"(?<![.\w$])([A-Za-z_$][\w$]*)\s*\(", body))
+    return out - _BUILTIN_CALLS
+
+
+@pytest.mark.parametrize("page", _pages(), ids=lambda p: p.name)
+def test_every_bootstrap_call_resolves_on_its_own_page(page: Path):
+    """A loader that moved away leaves its call behind, and the resulting
+    ReferenceError aborts every initialiser after it in the same handler.
+
+    Twice in two slices: `recalculateBaselines` and `loadRestartSchedules`.
+    The first was caught by the data-action guard above; the second was only
+    visible in the browser console, which is why this exists."""
+    src = _code_only(_expand_includes(page.read_text(encoding="utf-8")))
+    base_src = _code_only(BASE.read_text(encoding="utf-8"))
+    available = (_defined_functions(src) | _defined_functions(base_src)
+                 | _registry_names() | _static_js_functions())
+
+    missing = sorted(c for c in _bootstrap_calls(src)
+                     if c not in available and not c.startswith("_"))
+    assert not missing, (
+        f"{page.name} calls these on load and they are not defined on that "
+        f"page:\n  " + "\n  ".join(missing))
+
+
+def test_the_bootstrap_scan_finds_calls_at_all():
+    """The same guard-on-the-guard as above: a regex that matched no
+    DOMContentLoaded bodies would make every assertion vacuous."""
+    total = sum(len(_bootstrap_calls(_code_only(p.read_text(encoding="utf-8"))))
+                for p in _pages())
+    assert total >= 20, f"only {total} bootstrap calls found across the pages"
+
+
+def test_the_external_scripts_are_visible_to_the_scan():
+    """Positive control for `_static_js_functions`, in place of a mutation
+    that would have edited this file to prove this file works.
+
+    `loadChart` lives in static/js/charts.js and is called from
+    server_detail.html's bootstrap. If the external scripts ever stop being
+    scanned, the bootstrap check reports it — and every other cross-file
+    global — as missing, and the obvious "fix" is to move working code."""
+    names = _static_js_functions()
+    assert "loadChart" in names, (
+        "static/js is no longer being scanned; cross-file globals will be "
+        "reported as missing")
+    assert len(names) >= 10, f"only {len(names)} globals found in static/js"
