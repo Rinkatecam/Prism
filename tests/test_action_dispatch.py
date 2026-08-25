@@ -259,3 +259,90 @@ def test_the_external_scripts_are_visible_to_the_scan():
         "static/js is no longer being scanned; cross-file globals will be "
         "reported as missing")
     assert len(names) >= 10, f"only {len(names)} globals found in static/js"
+
+
+# ── a shared partial's dependencies ──────────────────────────────────────
+
+
+def _shared_partials() -> dict[Path, list[Path]]:
+    """Partials that more than one page includes, and who includes them."""
+    users: dict[Path, list[Path]] = {}
+    for page in _pages():
+        text = page.read_text(encoding="utf-8")
+        for name in re.findall(r'\{%\s*include\s+"([^"]+)"\s*%\}', text):
+            target = TEMPLATES / name
+            if target.exists():
+                users.setdefault(target, []).append(page)
+    return {k: v for k, v in users.items() if len(v) > 1}
+
+
+def _javascript_of(src: str) -> str:
+    """The JS in a partial, or "" if it holds none.
+
+    A partial included INSIDE a page's <script> block is bare JavaScript with
+    no tag of its own; one included in the body may carry <script> and
+    <style>. Both shapes exist here, and the CSS ones must not be scanned:
+    the first version of this check reported `calc()`, `attr()` and a dozen
+    English words as missing dependencies of a stylesheet partial, which is
+    the pattern matching the file format rather than the dependency."""
+    if "<style" in src:
+        src = re.sub(r"<style\b.*?</style>", " ", src, flags=re.S | re.I)
+    # Jinja expressions are server-side: `{{ t.edit | default('Edit') }}`
+    # reads as a call to `default()` to a scanner that cannot tell the two
+    # languages apart, and these partials are full of them.
+    src = re.sub(r"\{\{.*?\}\}|\{%.*?%\}", " ", src, flags=re.S)
+    tagged = re.findall(r"<script\b[^>]*>(.*?)</script>", src, re.S | re.I)
+    if tagged:
+        return "\n".join(tagged)
+    # Bare-JS partial: only if it actually looks like code.
+    return src if re.search(r"\bfunction\s+\w+\s*\(|=>", src) else ""
+
+
+def _calls_in(src: str) -> set[str]:
+    """Bare `name(` calls in a source's JavaScript, minus what it defines."""
+    js = _javascript_of(src)
+    if not js:
+        return set()
+    called = set(re.findall(r"(?<![.\w$])([A-Za-z_$][\w$]*)\s*\(", js))
+    return called - _BUILTIN_CALLS - _defined_functions(js)
+
+
+def test_a_shared_partial_only_calls_what_every_including_page_has():
+    """`_escHtml` had three definitions and no owner, so moving a block off a
+    page took that page's only copy with it. The shared runbook renderer then
+    failed on /operations and nowhere else — reported in a table cell, and by
+    nothing else.
+
+    Checked per (partial, including page) pair, because a dependency that
+    exists on one includer and not the other is exactly the failure."""
+    base_src = _code_only(BASE.read_text(encoding="utf-8"))
+    external = _static_js_functions()
+    broken: list[str] = []
+
+    for partial, pages in sorted(_shared_partials().items()):
+        needs = _calls_in(_code_only(partial.read_text(encoding="utf-8")))
+        if not needs:
+            continue
+        for page in pages:
+            page_src = _code_only(_expand_includes(page.read_text(encoding="utf-8")))
+            available = (_defined_functions(page_src) | _defined_functions(base_src)
+                         | external | _registry_names())
+            for name in sorted(needs - available):
+                if name.startswith("_") and name not in {"_escHtml"}:
+                    # Locals a partial defines under another spelling are not
+                    # this check's business; `_escHtml` is named explicitly
+                    # because it is the one that actually broke.
+                    continue
+                broken.append(f"{partial.name} needs {name}(), missing on {page.name}")
+
+    assert not broken, (
+        "shared partials calling something an including page does not "
+        "define:\n  " + "\n  ".join(broken))
+
+
+def test_there_are_shared_partials_to_check():
+    """Guard on the guard, again: with no shared partials the assertion above
+    is vacuous, and shared partials are the mechanism the whole restructure
+    leans on."""
+    shared = _shared_partials()
+    assert len(shared) >= 2, f"only {len(shared)} shared partials found"

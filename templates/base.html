@@ -963,6 +963,23 @@
       // NOT for zero states. "0 critical" is a RESULT and belongs in the
       // normal layout in the normal colours; "there is nothing here yet" is
       // a different sentence.
+      // ── One HTML-escaper for every page ────────────────────────────────
+      //
+      // There were three identical copies (monitoring, servers, settings), and
+      // that is precisely why a WP-4 move could carry "the" definition off a
+      // page without anything noticing: /operations' runbook list rendered
+      // "Failed to load runbooks: _escHtml is not defined" for exactly as long
+      // as it took to read the page.
+      //
+      // A shared partial cannot rely on a helper that each page happens to
+      // define, and shared partials are what the rest of this restructure is
+      // built on.
+      window._escHtml = function (s) {
+        const d = document.createElement('div');
+        d.textContent = s == null ? '' : s;
+        return d.innerHTML;
+      };
+
       window.prismEmptyState = function (icon, message, hint, opts) {
         if (!hint) {
           throw new Error('prismEmptyState: a hint is required — say what to ' +

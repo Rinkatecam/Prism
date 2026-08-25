@@ -1,0 +1,34 @@
+{# ── The runbook inventory ────────────────────────────────────────────────
+
+   Shared by /operations and Settings -> Operations, with a MODE, because the
+   list is neither state nor configuration on its own: it is the inventory.
+   On /operations it is the menu of things you can run; in Settings it is the
+   list of things you can edit.
+
+   `mode` reaches the renderer through the tbody's data attribute rather than
+   a JS global, so the page that renders the table is the page that decides
+   what its rows can do — and a page that forgets to set it gets no buttons
+   at all rather than somebody else's.
+
+   Callers pass `mode='run'` or `mode='manage'`. #}
+    <!-- Runbook list table -->
+    <div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead data-sort-table="ops-runbooks">
+            <tr class="border-b border-line">
+              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="text">{{ t.name | default('Name') }}</th>
+              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="text">{{ t.get('category', 'Category') }}</th>
+              <th class="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="status">{{ t.type | default('Type') }}</th>
+              <th class="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wider text-muted">{{ t.actions | default('Actions') }}</th>
+            </tr>
+          </thead>
+          <tbody id="runbook-table-body" data-runbook-mode="{{ mode }}">
+            <tr><td colspan="4" class="px-3 py-8 text-center">
+              <i data-lucide="loader" class="w-6 h-6 mx-auto mb-2 text-faint animate-spin"></i>
+              <p class="text-xs text-faint">{{ t.get('loading', 'Loading...') }}</p>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>

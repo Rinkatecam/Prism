@@ -1,0 +1,76 @@
+{# Runbook inventory: translations, state, loader and row renderer. See partials/_runbook_list.html for why the list is shared. #}
+// ═══════════════════════════════════════════════════════════════
+// Runbooks Management
+// ═══════════════════════════════════════════════════════════════
+const RB_T = {
+  builtin: {{ t.builtin_runbook | default('Built-in') | tojson }},
+  custom: {{ t.custom_runbook | default('Custom') | tojson }},
+  create: {{ t.create_runbook | default('Create Runbook') | tojson }},
+  edit: {{ t.edit_runbook | default('Edit Runbook') | tojson }},
+  completed: {{ t.execution_completed | default('Completed') | tojson }},
+  failed: {{ t.execution_failed | default('Failed') | tojson }},
+  running: {{ t.execution_running | default('Running') | tojson }},
+  pending: {{ t.execution_pending | default('Pending') | tojson }},
+};
+
+// Cached runbooks list (used by openRunbookRunModal to look up by id)
+let _opsRunbooks = [];
+
+function loadRunbooksSettings() {
+  // Both pages call this on load; only one of them renders the table on
+  // any given Settings sub-page.
+  if (!document.getElementById('runbook-table-body')) return;
+  // Cross-ref: this populates the runbook table on the Operations page.
+  // The same /api/runbooks endpoint is consumed by server_detail.html
+  // Quick Actions dropdown — keep payload shape compatible.
+  fetch('/api/runbooks')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) {
+        document.getElementById('runbook-table-body').innerHTML =
+          '<tr><td colspan="4" class="px-3 py-8 text-center text-critical">' +
+          {{ t.get('failed_to_load_runbooks', 'Failed to load runbooks') | tojson }} + '</td></tr>';
+        return;
+      }
+      _opsRunbooks = data.runbooks || [];
+      const tbody = document.getElementById('runbook-table-body');
+      if (_opsRunbooks.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="px-3 py-10 text-center">' +
+          '<i data-lucide="book-open" class="w-10 h-10 mx-auto mb-2 text-faint opacity-50"></i>' +
+          '<p class="text-sm text-muted font-medium">' + {{ t.get('no_runbooks', 'No runbooks yet') | tojson }} + '</p>' +
+          '<p class="text-[10px] mt-1 text-faint">' + {{ t.get('no_runbooks_hint', 'Click Create Runbook to add your first one') | tojson }} + '</p>' +
+          '</td></tr>';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        return;
+      }
+      let html = '';
+      _opsRunbooks.forEach(rb => {
+        const typeBadge = rb.is_builtin
+          ? '<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-brand/10 text-brand">' + RB_T.builtin + '</span>'
+          : '<span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium bg-healthy/10 text-healthy">' + RB_T.custom + '</span>';
+        // The page supplies its own row actions. /operations returns a Run
+        // button; Settings returns Edit and Delete. Neither page's source
+        // mentions the other's handlers, which is what keeps
+        // tests/test_action_dispatch.py able to check this file at all —
+        // and a page that defines no hook gets no buttons, which is a
+        // visible gap rather than somebody else's affordances.
+        const actions = '<div class="inline-flex items-center gap-1">'
+          + (typeof runbookRowActions === 'function' ? runbookRowActions(rb) : '')
+          + '</div>';
+        html += '<tr class="border-b border-line hover:bg-page dark:hover:bg-page/50">';
+        html += '<td class="px-3 py-2">' + _escHtml(rb.name) + (rb.description ? '<div class="text-[10px] text-faint">' + _escHtml(rb.description) + '</div>' : '') + '</td>';
+        html += '<td class="px-3 py-2 text-muted">' + _escHtml(rb.category || 'general') + '</td>';
+        html += '<td class="px-3 py-2">' + typeBadge + '</td>';
+        html += '<td class="px-3 py-2 text-right">' + actions + '</td>';
+        html += '</tr>';
+      });
+      tbody.innerHTML = html;
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    })
+    .catch(err => {
+      // Don't swallow — surface the error to the user
+      document.getElementById('runbook-table-body').innerHTML =
+        '<tr><td colspan="4" class="px-3 py-8 text-center text-critical">' +
+        {{ t.get('failed_to_load_runbooks', 'Failed to load runbooks') | tojson }} + ': ' + (err.message || '') + '</td></tr>';
+    });
+}

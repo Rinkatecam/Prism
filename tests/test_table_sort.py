@@ -800,7 +800,10 @@ EXPECTED = {
         ["text", "status", "text"],  # Server, Status, Message
     ("monitoring.html", "monitoring-noise-digest"):
         ["text", "text", "number", "number", "number", "text"],  # Server, Type, Score, Fires, Acked, Suggestion
-    ("operations.html", "ops-runbooks"):
+    # The runbook table moved to a shared partial in WP-4 D3: /operations
+    # renders it to run from, Settings -> Operations to edit from, and one
+    # markup keeps their columns from drifting apart.
+    ("partials/_runbook_list.html", "ops-runbooks"):
         ["text", "text", "status", None],  # Name, Category, Type, Actions
     ("operations.html", "ops-config-backups"):
         ["timestamp", "bytes", None],  # Timestamp, DB Size, Actions

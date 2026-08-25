@@ -69,11 +69,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── Utility ──
-function _escHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
 
 // Server names list for TLS cert rows
 const _serverNames = [{% for s in servers %}'{{ s.name }}'{{ ',' if not loop.last }}{% endfor %}];

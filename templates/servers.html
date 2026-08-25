@@ -877,11 +877,6 @@ document.addEventListener('DOMContentLoaded', () => {
 const _serverNames = [{% for s in servers %}'{{ s.name }}'{{ ',' if not loop.last }}{% endfor %}];
 
 // HTML escape helper
-function _escHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
 
 // ── Config Loading ──
 let configData = null;

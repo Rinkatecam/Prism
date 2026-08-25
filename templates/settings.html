@@ -299,6 +299,16 @@
     <i data-lucide="wrench" class="w-5 h-5 text-accent"></i>
     {{ t.get('settings_section_operations', 'Operations') }}
   </h2>
+  {# Runbook DEFINITIONS. Running one is an action and stays on
+     /operations; the list is shared markup in `manage` mode. #}
+  <div class="flex items-center justify-end mb-4">
+    {% include "partials/_runbook_create_button.html" %}
+  </div>
+  <div class="bg-card rounded-lg p-5 border border-line space-y-6 mb-6">
+    {% with mode = 'manage' %}{% include "partials/_runbook_list.html" %}{% endwith %}
+    {% include "partials/_runbook_form.html" %}
+  </div>
+
   {% include "partials/settings/_restarts.html" %}
   {# The picker the restart condition rows open. #}
   <div id="service-picker-modal" class="fixed inset-0 z-[70] hidden">
@@ -2009,6 +2019,9 @@ function getTlsConfigPayload() {
 // The service/process picker moved with them: its target is a restart
 // condition row's `.cond-value`, so it edits the block that moved rather
 // than anything left on /operations.
+{% include "partials/_runbooks_shared.html" %}
+{% include "partials/_runbooks_manage.html" %}
+
 // ── Scheduled restarts, moved from /operations (WP-4 D3) ──
 //
 // Saves through its own `/api/scheduled-restarts` endpoint and its own
@@ -2287,7 +2300,9 @@ function saveRestartSchedules() {
   .finally(() => { btn.disabled = false; });
 }
 document.addEventListener('DOMContentLoaded', () => {
-  if (settingsSectionPresent('operations')) loadRestartSchedules();
+  if (!settingsSectionPresent('operations')) return;
+  loadRestartSchedules();
+  loadRunbooksSettings();
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -2298,11 +2313,6 @@ let _pickerType = null;
 let _pickerItems = [];
 let _pickerFetchId = 0;
 
-function _escHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
 
 function openServicePicker(btn) {
   const restartRow = btn.closest('#server-restart-list > .rounded-lg');
