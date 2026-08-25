@@ -279,9 +279,9 @@ def test_the_payload_below_is_the_one_the_page_actually_sends():
     `data.settings.scheduled_reports = {...}` literal rather than restated
     here — a payload agreed with a constant beside it proves nothing about
     the page (OPS-LEARNINGS #12)."""
-    m = re.search(r"data\.settings\.scheduled_reports\s*=\s*\{(.*?)\n\s*\};",
-                  _script(), re.S)
-    assert m, "the save path no longer builds a scheduled_reports object"
+    m = re.search(r"scheduled_reports:\s*\{(.*?)\n      \},",
+                  _section_builder_bodies()["notifications"], re.S)
+    assert m, "the notifications builder no longer builds a scheduled_reports object"
     sent = set(re.findall(r"^\s*(\w+):", m.group(1), re.M))
     assert sent == set(_SCHEDULED_REPORTS_PAYLOAD), (
         f"the page sends {sorted(sent)}; this test posts "
@@ -333,58 +333,186 @@ _OWNED_SETTINGS_KEYS = {
 }
 
 
-def _save_builder() -> str:
+_SECTION_KEYS = {
+    "general": {"retention_days", "language", "timezone", "date_format", "time_format"},
+    "collector": {"poll_interval_seconds", "log_collection_interval_minutes",
+                  "update_check_interval_minutes", "collector_v2_num_workers"},
+    "security": {"https", "auth"},
+    "notifications": {"email", "scheduled_reports", "webhooks"},
+}
+
+
+def _builder_map() -> str:
     src = _script()
-    i = src.index("function doSaveAllSettings(")
-    # Sliced on CODE, not on the comment that follows the builder: _script()
-    # blanks whole-line // comments, so anchoring here on prose raises rather
-    # than asserting — the same mistake as anchoring a mutation on a comment,
-    # one step earlier (OPS-LEARNINGS #38).
-    j = src.index("const ldapPayload = {", i)
+    i = src.index("const _SETTINGS_SECTION_BUILDERS = {")
+    j = src.index("function settingsSectionPresent(", i)
     return src[i:j]
 
 
-def test_the_page_posts_only_the_settings_it_owns():
-    """Every key assigned into the payload must be one this page renders a
-    control for. A key here that no control drives is a value being echoed
-    back from a fetch, which is the clobber."""
-    assigned = set(re.findall(r"data\.settings\.(\w+)\s*=", _save_builder()))
-    assert assigned == _OWNED_SETTINGS_KEYS, (
-        f"unexpected: {sorted(assigned - _OWNED_SETTINGS_KEYS)}, "
-        f"missing: {sorted(_OWNED_SETTINGS_KEYS - assigned)}")
+def _section_builder_bodies() -> dict[str, str]:
+    """Each section builder's source, split on the `name: function (` heads."""
+    body = _builder_map()
+    heads = [(m.start(), m.group(1)) for m in
+             re.finditer(r"^  (\w+): function \(", body, re.M)]
+    assert heads, "the builder map has changed shape"
+    out = {}
+    for k, (pos, name) in enumerate(heads):
+        stop = heads[k + 1][0] if k + 1 < len(heads) else len(body)
+        out[name] = body[pos:stop]
+    return out
 
 
-def test_the_payload_starts_empty_rather_than_from_the_fetched_config():
-    """The regression that matters, and it is one line: reinstating
-    `data.settings = Object.assign(data.settings || {}, {...})` puts all ~35
-    keys back and nothing else in this file would notice."""
-    builder = _save_builder()
-    assert "const data = { settings: {} };" in builder, (
-        "the payload is no longer built from scratch")
-    assert "Object.assign(data.settings || {}" not in builder, (
-        "the payload is being seeded from the fetched configuration again")
+def _save_body() -> str:
+    src = _script()
+    i = src.index("function doSaveAllSettings(")
+    return src[i:src.index("const ldapPayload", i)]
+
+
+def _controls_read_by(section: str) -> set[str]:
+    """Every control a section's builder reads, FOLLOWING DELEGATION.
+
+    The notifications builder hands `email` to `getEmailSettingsFromForm()`
+    rather than inlining eleven getElementById calls, so a scan of the builder
+    alone sees none of them and reports eleven orphans. Expanding the helpers
+    the builder calls is the difference between checking the code and checking
+    the shape somebody happened to write it in."""
+    script = _script()
+    body = _section_builder_bodies()[section]
+    seen = set(re.findall(r"getElementById\('([^']+)'\)", body))
+    for helper_name in set(re.findall(r"\b(\w+)\(\)", body)):
+        m = re.search(rf"function {helper_name}\(\)\s*\{{(.*?)\n\}}", script, re.S)
+        if m:
+            seen |= set(re.findall(r"getElementById\('([^']+)'\)", m.group(1)))
+    return seen
+
+
+def test_every_settings_section_declares_itself():
+    """The section attribute is what the builder keys off. A section without
+    one contributes nothing to a save and shows no symptom until an operator
+    edits a field in it and the value never lands."""
+    sections = re.findall(r"<section\b[^>]*>", _markup(), re.I)
+    undeclared = [s for s in sections if "data-settings-section=" not in s]
+    assert not undeclared, (
+        "settings sections that do not declare themselves:\n  "
+        + "\n  ".join(undeclared))
+    names = re.findall(r'data-settings-section="([^"]+)"', _markup())
+    assert len(names) == len(set(names)), f"duplicate section names: {names}"
+    assert set(names) == set(_SECTION_KEYS) | {"display"}, sorted(names)
+
+
+def test_the_section_builders_cover_exactly_the_keys_the_page_owns():
+    """Union of what the builders emit, against the declared owned set."""
+    emitted = set()
+    for name, body in _section_builder_bodies().items():
+        emitted |= set(re.findall(r"^      (\w+):", body, re.M))
+    assert emitted == _OWNED_SETTINGS_KEYS, (
+        f"unexpected: {sorted(emitted - _OWNED_SETTINGS_KEYS)}, "
+        f"missing: {sorted(_OWNED_SETTINGS_KEYS - emitted)}")
+
+
+def test_each_builder_emits_its_own_section_and_nothing_else():
+    """The strong one. A key emitted by the wrong section is invisible while
+    the whole page renders — every section is present, so the payload is
+    identical — and wrong the moment the page is split, which is the entire
+    point of this change."""
+    bodies = _section_builder_bodies()
+    for name, expected in _SECTION_KEYS.items():
+        assert name in bodies, f"no builder for the {name} section"
+        emitted = set(re.findall(r"^      (\w+):", bodies[name], re.M))
+        assert emitted == expected, (
+            f"{name} emits {sorted(emitted)}, expected {sorted(expected)}")
+
+
+def test_every_control_lives_in_the_section_that_saves_it():
+    """A control moved between sections without its key moving is a field the
+    save cannot see once the page is split. Checked against the markup, so
+    moving the markup is what fails."""
+    markup = _markup()
+    for name in _SECTION_KEYS:
+        m = re.search(rf'<section\b[^>]*data-settings-section="{name}"[^>]*>(.*?)</section>',
+                      markup, re.S)
+        assert m, f"the {name} section is gone from the markup"
+        in_markup = set(re.findall(r'<(?:input|select|textarea)\b[^>]*id="([^"]+)"',
+                                   m.group(1), re.I))
+        read_by_builder = _controls_read_by(name)
+        orphans = in_markup - read_by_builder
+        assert not orphans, (
+            f"controls in the {name} section that its builder never reads: "
+            f"{sorted(orphans)}")
+        phantom = read_by_builder - in_markup
+        assert not phantom, (
+            f"the {name} builder reads controls that are not in its section: "
+            f"{sorted(phantom)}")
+
+
+def test_an_absent_section_contributes_nothing():
+    """The prerequisite for sub-pages: a builder runs only when its section is
+    on the page. Without the guard the first missing control throws inside a
+    promise chain, and the operator gets a save that never resolves."""
+    body = _builder_map() + _script()
+    m = re.search(r"function buildSettingsPayload\(current\)\s*\{(.*?)\n\}",
+                  _script(), re.S)
+    assert m, "buildSettingsPayload is gone"
+    assert "settingsSectionPresent(name)" in m.group(1), (
+        "the payload no longer checks whether a section is present")
+
+
+def test_the_ldap_side_write_is_guarded_by_its_own_section():
+    """It reads five controls from Security and fires FIRST, aborting the
+    chain on failure — so on a page without that section an unguarded write
+    would kill the save before it started."""
+    assert "!settingsSectionPresent('security') ? null" in _script(), (
+        "the LDAP write is no longer guarded by the security section")
+    assert "ldapPayload === null" in _script(), (
+        "nothing skips the LDAP request when there is no payload for it")
+
+
+def test_the_display_section_has_no_builder():
+    """Its four controls are dashboard preferences in localStorage. A builder
+    returning {} would imply it has server-side settings and it does not."""
+    assert "display" not in _section_builder_bodies()
+    assert 'data-settings-section="display"' in _markup()
+
+
+def test_the_payload_is_assembled_rather_than_hand_built():
+    """The regression: reinstating an inline `data.settings.X = ...` block
+    inside doSaveAllSettings puts the page back to posting whatever that block
+    happens to list, whether or not the section is there."""
+    save = _save_body()
+    assert "const data = buildSettingsPayload(current);" in save
+    assert not re.search(r"data\.settings\.\w+\s*=", save), (
+        "the save function assigns settings keys directly again")
+    assert not re.search(r"data\.servers\s*=", save)
 
 
 def test_the_server_list_is_not_posted_back():
     """Omitting `servers` is what puts save_config on its `settings_only`
-    path, where the list is preserved wholesale instead of being rewritten
-    from a copy this page fetched some time earlier."""
-    builder = _save_builder()
-    assert not re.search(r"data\.servers\s*=", builder)
-    assert '"servers"' not in builder and "'servers'" not in builder
+    path, where the fleet list is preserved wholesale instead of being
+    rewritten from a copy this page fetched some time earlier.
+
+    Asserted on the ASSEMBLY, not on doSaveAllSettings. The first version of
+    this test read only the save function; D1c moved the construction into
+    buildSettingsPayload, and a mutation adding `servers` back there sailed
+    through. The harness caught it."""
+    m = re.search(r"function buildSettingsPayload\(current\)\s*\{(.*?)\n\}",
+                  _script(), re.S)
+    assert m, "buildSettingsPayload is gone"
+    assert "servers" not in m.group(1), (
+        "the payload carries a server list again, which takes the save off "
+        "the settings_only path")
+    assert not re.search(r"data\.servers\s*=", _save_body())
 
 
 def test_the_auth_subtree_is_still_sent_whole():
-    """The one deliberate exception. save_config's auth validator normalises
-    that sub-tree by writing every field back, so a partial auth object
-    blanks `backup_admin` and the three `lockout_*` keys — none of which are
-    rendered on this page. It is merged over the fetched value for exactly
-    that reason, and dropping the merge would be a silent credential wipe."""
-    builder = _save_builder()
-    assert re.search(r"data\.settings\.auth\s*=\s*Object\.assign\(\{\},\s*current\.settings\?\.auth",
-                     builder), (
-        "auth is no longer merged over the fetched sub-tree; a partial auth "
-        "object blanks backup_admin and the lockout settings")
+    """The one deliberate read of the fetched config. save_config's auth
+    validator normalises that sub-tree by writing every field back, so a
+    partial auth object blanks `backup_admin` and the three `lockout_*` keys —
+    none of which are rendered anywhere. Dropping the merge is a silent
+    credential wipe."""
+    security = _section_builder_bodies()["security"]
+    assert re.search(r"auth:\s*Object\.assign\(\{\},\s*current\.settings\?\.auth",
+                     security), (
+        "auth is no longer merged over the fetched sub-tree")
 
 
 def test_a_narrowed_save_preserves_everything_it_did_not_send(config_client):

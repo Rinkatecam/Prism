@@ -14,7 +14,7 @@
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 1 — General Settings (locale + retention, NO restart needed)
      ═══════════════════════════════════════════════════════════════ -->
-<section class="mb-8">
+<section class="mb-8" data-settings-section="general">
   <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
     <i data-lucide="settings-2" class="w-5 h-5 text-info"></i>
     {{ t.general }}
@@ -108,7 +108,7 @@
      restart-confirmation modal. Moving them visually must not change those
      class names — see captureGeneralState() / hasGeneralChanged().
      ═══════════════════════════════════════════════════════════════ -->
-<section class="mb-8">
+<section class="mb-8" data-settings-section="collector">
   <div class="flex items-center gap-3 mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
       <i data-lucide="cpu" class="w-5 h-5 text-accent"></i>
@@ -211,7 +211,7 @@
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 3 — Security & Access (RESTART required)
      ═══════════════════════════════════════════════════════════════ -->
-<section class="mb-8">
+<section class="mb-8" data-settings-section="security">
   <div class="flex items-center gap-3 mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
       <i data-lucide="shield-check" class="w-5 h-5 text-accent"></i>
@@ -435,7 +435,7 @@
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 4 — Notifications (RESTART required)
      ═══════════════════════════════════════════════════════════════ -->
-<section class="mb-8">
+<section class="mb-8" data-settings-section="notifications">
   <div class="flex items-center gap-3 mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
       <i data-lucide="bell" class="w-5 h-5 text-accent"></i>
@@ -689,7 +689,7 @@
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 5 — Display Preferences (localStorage)
      ═══════════════════════════════════════════════════════════════ -->
-<section class="mb-8">
+<section class="mb-8" data-settings-section="display">
   <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
     <i data-lucide="sliders" class="w-5 h-5 text-accent"></i>
     {{ t.display_preferences }}
@@ -1191,6 +1191,124 @@ function saveAllSettings() {
 }
 
 let _settingsSaving = false;
+// --- The save payload, one builder per section ---
+//
+// D1b established the contract: post what this page owns and let the server's
+// merge preserve the rest. This makes the page able to own LESS than all of
+// it, which is what WP-4's split into sub-pages needs.
+//
+// Before, the builder read all 43 controls unconditionally. On a page
+// rendering one section that is 30-odd `getElementById(...)` calls returning
+// null, and the save dies on `.value` of the first one — a TypeError inside a
+// promise chain, so the operator gets a spinner that never resolves rather
+// than an error.
+//
+// Now each section declares itself in the markup with
+// `data-settings-section`, and a section's keys are collected only when that
+// section is present. A section is the unit because it matches the SUB-TREE
+// CONTRACT in routes/api/config.py: https / auth / email / webhooks each have
+// to be posted whole or not at all, and each of them lives entirely inside
+// one section. Splitting on anything finer would let half of `email` be
+// posted, which blanks the other half.
+//
+// The mapping is not the same as the change-detection BUCKET above and must
+// not be conflated with it. The bucket says whether a change needs a restart;
+// the section says which page the field is on. The three cadence intervals
+// are the case that makes the difference visible: they render in Collector
+// and they apply live, so they are `general-input` in the Collector section.
+const _SETTINGS_SECTION_BUILDERS = {
+  general: function () {
+    return {
+      retention_days: parseInt(document.getElementById('retention-days').value) || 30,
+      language: document.getElementById('setting-language').value,
+      timezone: document.getElementById('setting-timezone').value,
+      date_format: document.getElementById('setting-date-format').value,
+      time_format: document.getElementById('setting-time-format').value,
+    };
+  },
+  collector: function () {
+    return {
+      poll_interval_seconds: (parseInt(document.getElementById('poll-interval').value) || 1) * 60,
+      log_collection_interval_minutes: parseInt(document.getElementById('log-collection-interval').value) || 5,
+      update_check_interval_minutes: parseInt(document.getElementById('update-check-interval').value) || 30,
+      // Restart-required; see the "Requires restart" pill on its row.
+      collector_v2_num_workers: parseInt(document.getElementById('collector-v2-workers').value) || 15,
+    };
+  },
+  security: function (current) {
+    return {
+      https: {
+        enabled: document.getElementById('https-enabled').checked,
+        cert_file: document.getElementById('https-cert').value.trim(),
+        key_file: document.getElementById('https-key').value.trim(),
+      },
+      // The ldap_* keys here are STRIPPED by POST /api/config (defence in
+      // depth against directory hijack) — they are saved by POST
+      // /api/config/ldap instead, fired first below. They must still be SENT:
+      // save_config's auth validation rewrites any *missing* ldap key to "",
+      // so omitting them would wipe the directory config rather than preserve
+      // it. Sent values are replaced with the on-disk ones server-side, which
+      // by then are the newly saved ones.
+      //
+      // Merged over the FETCHED auth, and that is the one place this page
+      // still reads the current config: the same validator rewrites every
+      // field, so a partial auth object blanks `backup_admin` and the three
+      // `lockout_*` keys, none of which are rendered anywhere in the UI.
+      auth: Object.assign({}, current.settings?.auth || {}, {
+        enabled: document.getElementById('auth-enabled').checked,
+        type: document.getElementById('auth-type').value,
+        ldap_url: document.getElementById('auth-ldap-url').value.trim(),
+        ldap_base_dn: document.getElementById('auth-ldap-basedn').value.trim(),
+        ldap_user_filter: '(sAMAccountName={username})',
+        ldap_bind_user: document.getElementById('auth-ldap-bind-user').value.trim(),
+        ldap_bind_password: document.getElementById('auth-ldap-bind-pass').value.trim() || (current.settings?.auth?.ldap_bind_password || ''),
+        allowed_users: document.getElementById('auth-allowed-users').value.trim().split('\n').map(s => s.trim()).filter(Boolean),
+        session_timeout_minutes: parseInt(document.getElementById('auth-timeout').value) || 480,
+      }),
+    };
+  },
+  notifications: function () {
+    return {
+      email: getEmailSettingsFromForm(),
+      scheduled_reports: {
+        enabled: document.getElementById('sched-enabled').checked,
+        daily_enabled: document.getElementById('sched-daily-enabled').checked,
+        daily_time: document.getElementById('sched-daily-time').value || '07:00',
+        weekly_enabled: document.getElementById('sched-weekly-enabled').checked,
+        weekly_day: document.getElementById('sched-weekly-day').value || 'monday',
+        weekly_time: document.getElementById('sched-weekly-time').value || '07:00',
+        email_report: document.getElementById('sched-email-report').checked,
+        include_pdf: document.getElementById('sched-include-pdf').checked,
+      },
+      webhooks: {
+        enabled: document.getElementById('webhook-enabled').checked,
+        teams_webhook_url: document.getElementById('webhook-url').value.trim(),
+        send_on_critical: document.getElementById('webhook-send-critical').checked,
+        send_on_warning: document.getElementById('webhook-send-warning').checked,
+      },
+    };
+  },
+  // `display` has no entry on purpose: its four controls are dashboard
+  // preferences kept in localStorage and written on change. A builder
+  // returning {} would suggest it has server-side settings and does not.
+};
+
+function settingsSectionPresent(name) {
+  return !!document.querySelector('[data-settings-section="' + name + '"]');
+}
+
+function buildSettingsPayload(current) {
+  const settings = {};
+  Object.keys(_SETTINGS_SECTION_BUILDERS).forEach(function (name) {
+    if (!settingsSectionPresent(name)) return;
+    Object.assign(settings, _SETTINGS_SECTION_BUILDERS[name](current));
+  });
+  // `servers` is deliberately absent: its absence is what puts save_config on
+  // its `settings_only` path, where the server list is preserved wholesale
+  // rather than rewritten from a copy this page fetched some time ago.
+  return { settings: settings };
+}
+
 function doSaveAllSettings(needsRestart) {
   // Re-entrancy guard — a double-click must not fire two /api/config POSTs
   // (and two restarts). Cleared on every FAILURE path below; on success the
@@ -1198,101 +1316,17 @@ function doSaveAllSettings(needsRestart) {
   if (_settingsSaving) return;
   _settingsSaving = true;
   loadConfig().then(current => {
-    // POST ONLY WHAT THIS PAGE OWNS.
-    //
-    // This used to start from the fetched config and overwrite the parts the
-    // page renders — so every save posted the WHOLE configuration back,
-    // including ~20 sub-trees no control here displays: anomaly_detection,
-    // baseline_detection, drift_detection, ingest_caps, workflows,
-    // severity_model, thresholds, tls_monitoring, maintenance_windows, the
-    // restart schedules, and the server list.
-    //
-    // That is a last-write-wins clobber over data the operator never saw.
-    // /monitoring and /operations save settings too (see save_config's
-    // `settings_only` path, which exists for exactly those callers), so two
-    // tabs — or one operator and one scheduled job — are enough: change a
-    // threshold on /monitoring, press Save here, and the threshold silently
-    // goes back to whatever it was when this page loaded.
-    //
-    // The server's merge already protects omitted TOP-LEVEL keys, and that
-    // behaviour is pinned by tests/test_config_partial_save.py. So the fix is
-    // to send less: build a fresh object holding this page's keys and let the
-    // merge preserve everything else.
-    //
-    // `servers` is omitted for the same reason and with an extra benefit —
-    // its absence is what puts save_config on the `settings_only` path, so
-    // the server list is preserved wholesale rather than re-written from a
-    // copy this page fetched some time ago.
-    //
-    // THE ONE EXCEPTION IS `auth`, and it is not a lapse. save_config's auth
-    // validator normalises that sub-tree by writing every field back, so a
-    // partial auth object blanks the fields it omits — `backup_admin` and the
-    // three `lockout_*` keys, none of which are rendered here. It is merged
-    // over the fetched value for that reason. The same rule applies to
-    // https / email / webhooks, and those are safe because every one of their
-    // fields IS on this page, so the object built below is already whole.
-    const data = { settings: {} };
-
-    // General
-    data.settings.poll_interval_seconds = (parseInt(document.getElementById('poll-interval').value) || 1) * 60;
-    data.settings.log_collection_interval_minutes = parseInt(document.getElementById('log-collection-interval').value) || 5;
-    data.settings.update_check_interval_minutes = parseInt(document.getElementById('update-check-interval').value) || 30;
-    data.settings.retention_days = parseInt(document.getElementById('retention-days').value) || 30;
-    data.settings.language = document.getElementById('setting-language').value;
-    data.settings.timezone = document.getElementById('setting-timezone').value;
-    data.settings.date_format = document.getElementById('setting-date-format').value;
-    data.settings.time_format = document.getElementById('setting-time-format').value;
-
-    data.settings.https = {
-      enabled: document.getElementById('https-enabled').checked,
-      cert_file: document.getElementById('https-cert').value.trim(),
-      key_file: document.getElementById('https-key').value.trim(),
-    };
-    // NOTE: the ldap_* keys below are STRIPPED by POST /api/config (defence in
-    // depth against directory hijack) — they are saved by POST /api/config/ldap
-    // instead, fired first below. They must still be SENT here: save_config's
-    // auth validation rewrites any *missing* ldap key to "", so omitting them
-    // would wipe the directory config rather than preserve it. Sent values are
-    // replaced with the on-disk ones server-side, which by then are the newly
-    // saved ones.
-    data.settings.auth = Object.assign({}, current.settings?.auth || {}, {
-      enabled: document.getElementById('auth-enabled').checked,
-      type: document.getElementById('auth-type').value,
-      ldap_url: document.getElementById('auth-ldap-url').value.trim(),
-      ldap_base_dn: document.getElementById('auth-ldap-basedn').value.trim(),
-      ldap_user_filter: '(sAMAccountName={username})',
-      ldap_bind_user: document.getElementById('auth-ldap-bind-user').value.trim(),
-      ldap_bind_password: document.getElementById('auth-ldap-bind-pass').value.trim() || (current.settings?.auth?.ldap_bind_password || ''),
-      allowed_users: document.getElementById('auth-allowed-users').value.trim().split('\n').map(s => s.trim()).filter(Boolean),
-      session_timeout_minutes: parseInt(document.getElementById('auth-timeout').value) || 480,
-    });
-    data.settings.email = getEmailSettingsFromForm();
-    data.settings.scheduled_reports = {
-      enabled: document.getElementById('sched-enabled').checked,
-      daily_enabled: document.getElementById('sched-daily-enabled').checked,
-      daily_time: document.getElementById('sched-daily-time').value || '07:00',
-      weekly_enabled: document.getElementById('sched-weekly-enabled').checked,
-      weekly_day: document.getElementById('sched-weekly-day').value || 'monday',
-      weekly_time: document.getElementById('sched-weekly-time').value || '07:00',
-      email_report: document.getElementById('sched-email-report').checked,
-      include_pdf: document.getElementById('sched-include-pdf').checked,
-    };
-    data.settings.webhooks = {
-      enabled: document.getElementById('webhook-enabled').checked,
-      teams_webhook_url: document.getElementById('webhook-url').value.trim(),
-      send_on_critical: document.getElementById('webhook-send-critical').checked,
-      send_on_warning: document.getElementById('webhook-send-warning').checked,
-    };
-    // Collector worker pool size (restart-required). The historical
-    // collector_engine field is no longer written — v1 is gone and v2
-    // is the only collector. ``app.py`` ignores any leftover value
-    // in settings.json with a warning.
-    data.settings.collector_v2_num_workers = parseInt(document.getElementById('collector-v2-workers').value) || 15;
+    // One object per section that is actually on the page. See
+    // _SETTINGS_SECTION_BUILDERS above for why the section is the unit.
+    const data = buildSettingsPayload(current);
 
     // Directory settings get their own admin-gated, audited endpoint. Fired
     // FIRST so a rejected LDAP URL aborts before anything else is written —
     // otherwise the user would get a partial save plus an error.
-    const ldapPayload = {
+    // Only when the section that renders these five controls is on the
+    // page. Without the guard, a sub-page without Security would read
+    // five nulls and die before the main save ever fired.
+    const ldapPayload = !settingsSectionPresent('security') ? null : {
       ldap_url: document.getElementById('auth-ldap-url').value.trim(),
       ldap_base_dn: document.getElementById('auth-ldap-basedn').value.trim(),
       ldap_user_filter: '(sAMAccountName={username})',
@@ -1301,12 +1335,13 @@ function doSaveAllSettings(needsRestart) {
       ldap_bind_password: document.getElementById('auth-ldap-bind-pass').value.trim(),
     };
 
-    fetch('/api/config/ldap', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-      body: JSON.stringify(ldapPayload),
-    })
-    .then(r => r.json())
+    (ldapPayload === null
+      ? Promise.resolve({ ok: true })
+      : fetch('/api/config/ldap', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+          body: JSON.stringify(ldapPayload),
+        }).then(r => r.json()))
     .then(ldapResult => {
       if (!ldapResult.ok) {
         const msg = document.getElementById('save-message');
