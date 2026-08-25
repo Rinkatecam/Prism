@@ -32,6 +32,7 @@
     {% set label = {
          'general': t.general,
          'collector': t.get('collector_engine_section', 'Collector'),
+         'detection': t.get('settings_section_detection', 'Detection'),
          'security': t.security,
          'notifications': t.get('notifications', 'Notifications'),
          'display': t.display_preferences,
@@ -246,6 +247,22 @@
       </div>
     </div>
   </div>
+</section>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 2b — Detection & security alerts (moved from /monitoring, WP-4)
+
+     The markup is a partial because it moved between two page templates;
+     the wrapper stays here, where the routing is. See the partial's header.
+     ═══════════════════════════════════════════════════════════════ -->
+{% if section == 'detection' %}
+<section class="mb-8" data-settings-section="detection">
+  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+    <i data-lucide="radar" class="w-5 h-5 text-accent"></i>
+    {{ t.get('settings_section_detection', 'Detection') }}
+  </h2>
+  {% include "partials/settings/_detection.html" %}
 </section>
 {% endif %}
 
@@ -1282,6 +1299,64 @@ const _SETTINGS_SECTION_BUILDERS = {
       collector_v2_num_workers: parseInt(document.getElementById('collector-v2-workers').value) || 15,
     };
   },
+  detection: function () {
+    // Moved from /monitoring's saveMonitoringSettings (WP-4 D2). The two
+    // non-obvious parses came with it and are the reason this is a move
+    // rather than a rewrite: both exist because `|| default` turns a
+    // deliberate zero into the default, and a gate the operator switched OFF
+    // would switch itself back on at the next save.
+    return {
+      thresholds: {
+        enabled: document.getElementById('thresholds-enabled').checked,
+        slow_collection_ms: parseInt(document.getElementById('thresholds-slow-ms').value) || 10000,
+        exhaustion_ram: parseInt(document.getElementById('thresholds-exhaustion-ram').value) || 98,
+        exhaustion_disk: parseInt(document.getElementById('thresholds-exhaustion-disk').value) || 95,
+      },
+      anomaly_detection: {
+        enabled: document.getElementById('anomaly-enabled').checked,
+        suppression_hours: parseFloat(document.getElementById('anomaly-suppression').value) || 4,
+        rate_detection_enabled: document.getElementById('anomaly-rate-enabled').checked,
+        cpu_warning_consecutive_cycles: parseInt(document.getElementById('anomaly-cpu-consec').value) || 3,
+        // NOT `|| 5` — a deliberate 1 (gate disabled) must survive the round-trip.
+        spike_sustain_cycles: (function () {
+          const n = parseInt(document.getElementById('spike-sustain-cycles').value);
+          return Number.isNaN(n) ? 5 : n;
+        })(),
+        cpu_warning_window_cycles: parseInt(document.getElementById('anomaly-cpu-window').value) || 5,
+      },
+      baseline_detection: {
+        enabled: document.getElementById('baseline-enabled').checked,
+        sigma_warning: parseFloat(document.getElementById('baseline-sigma-warning').value) || 2.0,
+        sigma_critical: parseFloat(document.getElementById('baseline-sigma-critical').value) || 3.0,
+        min_samples: parseInt(document.getElementById('baseline-min-samples').value) || 10,
+        history_weeks: parseInt(document.getElementById('baseline-history-weeks').value) || 4,
+        recalc_hour: document.getElementById('baseline-recalc-time').value || '02:00',
+        allow_downgrade: document.getElementById('baseline-allow-downgrade').checked,
+        min_span_weeks: parseInt(document.getElementById('baseline-min-span-weeks').value) || 2,
+        min_coverage_pct: parseInt(document.getElementById('baseline-min-coverage-pct').value) || 50,
+        deviation_direction: document.getElementById('baseline-deviation-direction').value,
+        // `|| 80` would turn a deliberate 0 (gate disabled) into 80, so parse
+        // and fall back only when the value is genuinely not a number.
+        deviation_min_pct_of_warning: (function () {
+          const n = parseInt(document.getElementById('baseline-deviation-min-pct').value);
+          return Number.isNaN(n) ? 80 : n;
+        })(),
+        deviation_requires_authority: document.getElementById('baseline-deviation-requires-authority').checked,
+      },
+      security_alerts: {
+        failed_login_tracking: document.getElementById('security-failed-login-tracking').checked,
+        login_failure_threshold: parseInt(document.getElementById('security-failure-threshold').value) || 10,
+        lockout_alert: document.getElementById('security-lockout-alert').checked,
+        security_status_check: document.getElementById('sec-status-check').checked,
+        defender_check: document.getElementById('sec-defender-check').checked,
+        defender_max_sig_age_days: parseInt(document.getElementById('sec-defender-max-age').value) || 7,
+        firewall_check: document.getElementById('sec-firewall-check').checked,
+        bitlocker_check: document.getElementById('sec-bitlocker-check').checked,
+        track_local_users: document.getElementById('sec-track-users').checked,
+        track_open_ports: document.getElementById('sec-track-ports').checked,
+      },
+    };
+  },
   security: function (current) {
     return {
       https: {
@@ -1452,6 +1527,56 @@ document.addEventListener('DOMContentLoaded', () => {
     el.addEventListener('input', checkForChanges);
     el.addEventListener('change', checkForChanges);
   });
+});
+
+const PRISM_DETECTION_PRIORITY = {{ t.get('detection_priority', 'Priority') | tojson }};
+const PRISM_DETECTION_OFF = {{ t.get('detection_off', 'Off') | tojson }};
+
+// --- Detection priority: rank the enabled detectors ---
+//
+// Moved from /monitoring with the cards it dims (WP-4 D2). Baseline outranks
+// anomaly, and any smart detector outranks the plain thresholds, so a demoted
+// card is faded to say "this one only fires for what the others miss".
+//
+// Guarded on the section being present rather than on optional chaining. The
+// `?.` this arrived with meant the block ran on every page and quietly did
+// nothing on most of them — which is why it survived a page move unnoticed.
+document.addEventListener('DOMContentLoaded', () => {
+  if (!settingsSectionPresent('detection')) return;
+  const updateDetectionPriority = () => {
+    // Rank the ENABLED detectors in fixed precedence order and say so on each
+    // card. This replaced `style.opacity = '0.65'` on the demoted ones, which
+    // measured 2.39 light / 3.07 dark on their help text — the third time in
+    // this round that a dim applied over already-muted text went under AA.
+    //
+    // It is also the better answer on its own terms: the fade was the only
+    // thing saying a detector was demoted, and an opacity says nothing to a
+    // screen reader. A label states the rank rather than implying it.
+    const order = [
+      ['baseline', document.getElementById('baseline-enabled')],
+      ['anomaly', document.getElementById('anomaly-enabled')],
+      ['thresholds', document.getElementById('thresholds-enabled')],
+    ];
+    let rank = 0;
+    order.forEach(([key, toggle]) => {
+      const label = document.querySelector('[data-detection-priority="' + key + '"]');
+      if (!label || !toggle) return;
+      if (toggle.checked) {
+        rank += 1;
+        label.textContent = PRISM_DETECTION_PRIORITY + ' ' + rank;
+      } else {
+        label.textContent = PRISM_DETECTION_OFF;
+      }
+    });
+  };
+  // Re-rank on every toggle. These bindings were lost when the block above
+  // was rewritten — the labels rendered once and then never moved, which
+  // looks exactly like a working feature until you toggle something.
+  ['baseline-enabled', 'anomaly-enabled', 'thresholds-enabled'].forEach(id => {
+    const toggle = document.getElementById(id);  // detection-priority-toggles
+    if (toggle) toggle.addEventListener('change', updateDetectionPriority);
+  });
+  updateDetectionPriority();
 });
 
 // --- Email helpers ---

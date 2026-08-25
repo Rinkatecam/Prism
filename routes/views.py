@@ -408,7 +408,7 @@ def reports():
 # `display` is here despite configuring nothing server-side: its four controls
 # are dashboard preferences in localStorage, and they are still settings the
 # operator goes to this page to change.
-_SETTINGS_SECTIONS = ("general", "collector", "security", "notifications", "display")
+_SETTINGS_SECTIONS = ("general", "collector", "detection", "security", "notifications", "display")
 
 
 @views_bp.route("/settings")

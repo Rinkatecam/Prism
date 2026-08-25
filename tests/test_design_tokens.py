@@ -506,7 +506,10 @@ LITERAL_BASELINE: dict[str, int] = {
     "servers.html": 9,
     "settings.html": 10,
     "partials/active_actions.html": 0,
-    "monitoring.html": 6,
+    "monitoring.html": 4,   # 6 -> 4: two left with the detection block
+    #                           extracted to partials/settings/_detection.html
+    #                           in WP-4 D2, and were tokenised on the way
+    #                           rather than given a baseline of their own
     "partials/server_card.html": 4,
     "compliance.html": 5,
     "partials/incidents_panel.html": 5,
@@ -646,7 +649,12 @@ def test_no_colour_literal_outside_the_templates_that_already_have_one():
 # and none of them appears above, which is the rule working rather than a
 # coincidence — `test_no_colour_literal_outside_the_templates_that_already_
 # have_one` fails the build on the first literal in any of them.
-LITERAL_TOTAL = 156
+# 156 -> 154 with WP-4 D2: the detection block moved out of monitoring.html
+# into partials/settings/_detection.html, and its two violet literals became
+# `bg-brand-tint` on the way rather than arriving with a baseline. A file
+# split normally redistributes literals at a constant total; this one
+# reduced it, which is the only direction this number may move.
+LITERAL_TOTAL = 154
 
 
 def test_the_total_number_of_literals_never_rises():

@@ -44,12 +44,29 @@ SETTINGS = PROJECT_ROOT / "templates" / "settings.html"
 
 
 def _markup() -> str:
-    """settings.html with comments AND scripts removed.
+    """settings.html with comments AND scripts removed, and INCLUDES resolved.
 
     Scripts are stripped because the tracker's own source mentions the ids it
     no longer lists, and because a control built from a JS string is not part
-    of the server-rendered form this scan is about."""
+    of the server-rendered form this scan is about.
+
+    Includes are resolved because a section's markup may live in a partial —
+    the detection block does, having moved there from /monitoring. Without
+    this, every control-level assertion sees an empty section and reports the
+    builder's ids as phantoms: the test would be measuring which FILE the
+    markup sits in rather than what the page contains."""
     src = SETTINGS.read_text(encoding="utf-8")
+
+    def _inline(match):
+        target = PROJECT_ROOT / "templates" / match.group(1)
+        return target.read_text(encoding="utf-8") if target.exists() else match.group(0)
+
+    for _ in range(3):  # partials may include partials; bounded, not recursive
+        expanded = re.sub(r'\{%\s*include\s+"([^"]+)"\s*%\}', _inline, src)
+        if expanded == src:
+            break
+        src = expanded
+
     src = re.sub(r"\{#.*?#\}|<!--.*?-->", " ", src, flags=re.S)
     return re.sub(r"<script\b.*?</script>", " ", src, flags=re.S | re.I)
 
@@ -326,6 +343,8 @@ _OWNED_SETTINGS_KEYS = {
     "timezone", "date_format", "time_format",
     # Collector
     "collector_v2_num_workers",
+    # Detection (moved from /monitoring, WP-4 D2)
+    "thresholds", "anomaly_detection", "baseline_detection", "security_alerts",
     # Security & access
     "https", "auth",
     # Notifications
@@ -337,6 +356,8 @@ _SECTION_KEYS = {
     "general": {"retention_days", "language", "timezone", "date_format", "time_format"},
     "collector": {"poll_interval_seconds", "log_collection_interval_minutes",
                   "update_check_interval_minutes", "collector_v2_num_workers"},
+    "detection": {"thresholds", "anomaly_detection", "baseline_detection",
+                  "security_alerts"},
     "security": {"https", "auth"},
     "notifications": {"email", "scheduled_reports", "webhooks"},
 }
@@ -673,3 +694,70 @@ def test_the_save_validator_skips_checks_whose_section_is_absent():
     for field in ("pollField", "retentionField", "timeoutField"):
         assert re.search(rf"if \({field}\)", body), (
             f"the validator dereferences {field} without checking it is there")
+
+
+# ── the detection cards' priority labels ─────────────────────────────────
+#
+# The demoted detectors used to be shown by fading their card to
+# `opacity: 0.65`. Measured on the rendered page after the block moved here:
+# 2.39 light / 3.07 dark on the help text — the third dim-over-muted-text
+# failure in this round and the worst of them. The fade was also the only
+# thing saying a detector was demoted, and an opacity says nothing to a
+# screen reader.
+
+
+def test_no_detector_card_is_dimmed_to_say_it_is_demoted():
+    """The regression. `style.opacity` on these cards is the exact defect
+    that was removed, and it would look like a tidy re-implementation."""
+    script = _script()
+    m = re.search(r"const updateDetectionPriority = \(\) => \{(.*?)\n  \};", script, re.S)
+    assert m, "the detection-priority block is gone"
+    assert "opacity" not in m.group(1), (
+        "the demoted detector cards are being faded again")
+
+
+def test_every_detector_card_states_its_rank():
+    """Three cards, three labels. A card without one says nothing about its
+    priority, which is what two of the three did before."""
+    markup = _markup()
+    keys = set(re.findall(r'data-detection-priority="([^"]+)"', markup))
+    assert keys == {"baseline", "anomaly", "thresholds"}, sorted(keys)
+
+
+def test_the_ranks_are_recomputed_when_a_detector_is_toggled():
+    """The labels rendered once and never moved when the listeners were lost
+    in a rewrite — which looks exactly like a working feature until you
+    toggle something. Found by toggling it in the running page."""
+    script = _script()
+    m = re.search(r"\['baseline-enabled', 'anomaly-enabled', 'thresholds-enabled'\]\.forEach\((.*?)\}\);",
+                  script, re.S)
+    assert m, "nothing re-ranks the detectors when one is toggled"
+    # Guarded on the TOGGLE, not merely present. `if (false) toggle.add...`
+    # satisfies a substring check while binding nothing — the same hedge that
+    # made the initialiser-guard test blind, caught the same way.
+    assert re.search(r"if \(toggle\)\s*toggle\.addEventListener\('change', updateDetectionPriority\)",
+                     m.group(1)), (
+        "the change binding is present but not reached")
+
+
+def test_the_rank_words_come_from_the_locale_table():
+    """`Priority 1` was a hardcoded English string in the markup — visible to
+    every operator in every language, and invisible to the locale-coverage
+    tests because it never went through `t.get`."""
+    from i18n import TRANSLATIONS
+    for key in ("detection_priority", "detection_off"):
+        missing = [lang for lang in TRANSLATIONS if key not in TRANSLATIONS[lang]]
+        assert not missing, f"{key} missing from {missing}"
+    assert "Priority 1" not in _markup(), (
+        "a rank is hardcoded in English in the markup again")
+
+
+def test_the_detection_help_text_is_not_the_faintest_token():
+    """These cards sit on the PAGE surface, where `faint` measures 4.34 —
+    under AA. It read 2.39 until the dim came off, so removing the dim did
+    not fix this text; it uncovered it."""
+    partial = (PROJECT_ROOT / "templates" / "partials" / "settings"
+               / "_detection.html").read_text(encoding="utf-8")
+    partial = re.sub(r"\{#.*?#\}", " ", partial, flags=re.S)
+    assert "text-faint" not in partial, (
+        "faint text is back on the detection cards, which sit on bg-page")
