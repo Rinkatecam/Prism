@@ -557,3 +557,119 @@ def test_a_narrowed_save_preserves_everything_it_did_not_send(config_client):
     assert after["language"] == "fr"
     assert after["retention_days"] == 45
     assert after["scheduled_reports"]["daily_time"] == "06:15"
+
+
+# ── the shell: one section per page ──────────────────────────────────────
+#
+# Three things now agree about what a settings section is: the ROUTER's list,
+# the `data-settings-section` attributes in the markup, and the save payload's
+# builder map. Any two of them agreeing while the third differs produces a
+# page that is unreachable, empty, or saves nothing — none of which raises.
+
+
+def _router_sections() -> tuple:
+    from routes.views import _SETTINGS_SECTIONS
+    return _SETTINGS_SECTIONS
+
+
+def test_the_router_and_the_markup_agree_about_the_sections():
+    """A name in the router that the template does not render is a blank
+    page; a section in the template the router does not know is unreachable.
+    Neither raises, and both look like the page forgot something."""
+    in_markup = re.findall(r'data-settings-section="([^"]+)"', _markup())
+    assert list(_router_sections()) == in_markup, (
+        f"router: {list(_router_sections())}\nmarkup: {in_markup}")
+
+
+def test_the_builder_map_covers_every_section_that_has_settings():
+    """The third party to the agreement. `display` is the one section with no
+    builder, because its controls are localStorage preferences."""
+    builders = set(_section_builder_bodies())
+    assert builders | {"display"} == set(_router_sections())
+
+
+def test_every_section_renders_only_when_it_is_the_active_one():
+    """The gate itself. A section without one renders on every sub-page,
+    which is the old single-page behaviour returning quietly for that one
+    section — and it would take its controls into every other page's save."""
+    markup = _markup()
+    for name in _router_sections():
+        pattern = (r"\{%\s*if section == '" + name + r"'\s*%\}\s*"
+                   r'<section class="mb-8" data-settings-section="' + name + '">')
+        assert re.search(pattern, markup), (
+            f"the {name} section is not gated on being the active section")
+
+
+def test_the_nav_is_generated_from_the_router_list():
+    """A nav with its own hardcoded list drifts from the routes, and the
+    failure is a tab that 404s or a section nobody can reach."""
+    markup = _markup()
+    m = re.search(r'<nav id="settings-section-nav".*?</nav>', markup, re.S)
+    assert m, "the section nav is gone"
+    nav = m.group(0)
+    assert "{% for name in settings_sections %}" in nav, (
+        "the nav no longer iterates the router's list")
+    assert 'href="/settings/{{ name }}"' in nav
+    assert 'aria-current="page"' in nav, (
+        "nothing but colour says which section is active")
+
+
+def test_an_unknown_section_is_a_404_rather_than_a_silent_fallback():
+    """A stale or typo'd link that quietly shows General looks like the page
+    forgot the operator's setting."""
+    import app as prism_app
+    client = prism_app.app.test_client()
+    assert client.get("/settings").status_code == 200
+    for name in _router_sections():
+        assert client.get(f"/settings/{name}").status_code == 200, name
+    assert client.get("/settings/nonsense").status_code == 404
+
+
+def test_settings_renders_the_first_section_without_redirecting():
+    """`/settings` is the URL every operator has bookmarked. Keeping it a
+    real page means the split costs nobody a redirect."""
+    import app as prism_app
+    r = prism_app.app.test_client().get("/settings")
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    # Scripts stripped first: `settingsSectionPresent` builds the very same
+    # attribute selector from a string, so a scan of the whole response finds
+    # `data-settings-section="' + name + '"` and reports a second section that
+    # is not there. The check is about MARKUP.
+    body = re.sub(r"<script\b.*?</script>", " ", body, flags=re.S | re.I)
+    rendered = re.findall(r'data-settings-section="([^"]+)"', body)
+    assert rendered == [_router_sections()[0]], rendered
+
+
+def test_a_section_scoped_initialiser_checks_its_controls_are_there():
+    """Two DOMContentLoaded blocks bind listeners to Security controls. On
+    any other sub-page those are null, and an uncaught TypeError in a
+    DOMContentLoaded handler stops every initialiser registered after it —
+    not just the one that threw. Both were observed doing exactly that
+    before the guards went in."""
+    script = _script()
+    for handle in ("httpsToggle", "authToggle"):
+        m = re.search(rf"const {handle} = document\.getElementById\('[^']+'\);(.*?)\n\s*function ",
+                      script, re.S)
+        assert m, f"the {handle} initialiser has been reshaped"
+        # The guard must NAME the handle. `"return;" in block` was the first
+        # version and it accepted `if (false) return;` — a hedge satisfied by
+        # the absence of the thing under test (OPS-LEARNINGS #37), caught by
+        # the mutation harness rather than by re-reading it.
+        assert re.search(rf"if \([^)]*!{handle}[^)]*\)\s*return;", m.group(1)), (
+            f"the {handle} initialiser does not bail out on {handle} being "
+            "absent from this page")
+
+
+def test_the_save_validator_skips_checks_whose_section_is_absent():
+    """It validates fields from three different sections. A validator that
+    throws is worse than one that skips: the exception aborts the save with
+    no message and the operator sees a button that did nothing."""
+    m = re.search(r"function _validateBeforeSave\(\)\s*\{(.*?)\n\}", _script(), re.S)
+    assert m, "_validateBeforeSave is gone"
+    body = m.group(1)
+    for guarded in ("httpsEnabled &&", "authEnabled &&"):
+        assert guarded in body, f"the validator no longer guards on {guarded!r}"
+    for field in ("pollField", "retentionField", "timeoutField"):
+        assert re.search(rf"if \({field}\)", body), (
+            f"the validator dereferences {field} without checking it is there")

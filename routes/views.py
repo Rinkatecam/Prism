@@ -395,13 +395,46 @@ def reports():
         return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
 
 
+# The settings sub-pages, in the order they appear in the section nav.
+#
+# The list is the ROUTER's, not the template's: a name here that the template
+# does not render produces an empty page, and a section the template renders
+# that is missing here is unreachable. Both are caught by
+# tests/test_settings_change_tracking.py, which compares this list against the
+# `data-settings-section` attributes in the markup — the same attributes the
+# save payload is assembled from, so the router, the page and the save cannot
+# disagree about what a section is.
+#
+# `display` is here despite configuring nothing server-side: its four controls
+# are dashboard preferences in localStorage, and they are still settings the
+# operator goes to this page to change.
+_SETTINGS_SECTIONS = ("general", "collector", "security", "notifications", "display")
+
+
 @views_bp.route("/settings")
-def settings():
+@views_bp.route("/settings/<section>")
+def settings(section: str | None = None):
+    """One settings section per page.
+
+    `/settings` renders the first section rather than redirecting to it. The
+    URL is the one every operator has bookmarked and every existing link
+    points at; keeping it a real page means the split costs nobody a redirect,
+    and `/settings/general` is simply its deep-linkable spelling.
+
+    An unknown section is a 404 rather than a silent fallback to the first
+    one. A typo'd or stale link that quietly shows General looks like the page
+    forgot the operator's setting.
+    """
     logger.debug("Serving %s", request.path)
+    if section is None:
+        section = _SETTINGS_SECTIONS[0]
+    if section not in _SETTINGS_SECTIONS:
+        return render_template("404.html") if _template_exists("404.html") else ("Not Found", 404), 404
     try:
         servers = _config.get_servers()
         settings_data = _config.get_settings()
-        return render_template("settings.html", servers=servers, settings=settings_data)
+        return render_template("settings.html", servers=servers, settings=settings_data,
+                               section=section, settings_sections=_SETTINGS_SECTIONS)
     except Exception:
         logger.exception("Error rendering settings")
         return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)

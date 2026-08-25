@@ -11,9 +11,47 @@
 <!-- Status message (shown after save) -->
 <div id="save-message" class="hidden mb-4 rounded-lg p-3 text-sm"></div>
 
+{# ── The settings sections ───────────────────────────────────────────────
+
+   One section per page as of WP-4. `/settings` renders the first rather than
+   redirecting to it, so every existing bookmark and link stays a real page
+   and `/settings/general` is just its deep-linkable spelling.
+
+   The list comes from the ROUTER (`_SETTINGS_SECTIONS` in routes/views.py),
+   not from a copy here — a nav that names its own sections drifts from the
+   ones that exist, and the failure is a link to a 404 or a page nobody can
+   reach. The labels are the section headings' own keys, so the tab and the
+   heading below it cannot disagree.
+
+   `aria-current="page"` rather than a class alone: the active tab is the
+   only thing on the page saying which section the operator is looking at,
+   and colour is not available to everyone reading it. #}
+<nav id="settings-section-nav" class="mb-6 border-b border-line" aria-label="{{ t.settings }}">
+  <ul class="flex flex-wrap gap-1 -mb-px">
+    {% for name in settings_sections %}
+    {% set label = {
+         'general': t.general,
+         'collector': t.get('collector_engine_section', 'Collector'),
+         'security': t.security,
+         'notifications': t.get('notifications', 'Notifications'),
+         'display': t.display_preferences,
+       }[name] %}
+    <li>
+      <a href="/settings/{{ name }}"
+         {% if name == section %}aria-current="page"{% endif %}
+         class="inline-block px-4 py-2 text-sm font-medium border-b-2 transition-colors
+                {% if name == section %}border-brand text-ink{% else %}border-transparent text-muted hover:text-ink hover:border-line{% endif %}">
+        {{ label }}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</nav>
+
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 1 — General Settings (locale + retention, NO restart needed)
      ═══════════════════════════════════════════════════════════════ -->
+{% if section == 'general' %}
 <section class="mb-8" data-settings-section="general">
   <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
     <i data-lucide="settings-2" class="w-5 h-5 text-info"></i>
@@ -88,6 +126,7 @@
     </div>
   </div>
 </section>
+{% endif %}
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 2 — Collector (cadences live; worker pool needs restart)
@@ -108,6 +147,7 @@
      restart-confirmation modal. Moving them visually must not change those
      class names — see captureGeneralState() / hasGeneralChanged().
      ═══════════════════════════════════════════════════════════════ -->
+{% if section == 'collector' %}
 <section class="mb-8" data-settings-section="collector">
   <div class="flex items-center gap-3 mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
@@ -207,10 +247,12 @@
     </div>
   </div>
 </section>
+{% endif %}
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 3 — Security & Access (RESTART required)
      ═══════════════════════════════════════════════════════════════ -->
+{% if section == 'security' %}
 <section class="mb-8" data-settings-section="security">
   <div class="flex items-center gap-3 mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
@@ -431,10 +473,12 @@
     </div>
   </div>
 </section>
+{% endif %}
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 4 — Notifications (RESTART required)
      ═══════════════════════════════════════════════════════════════ -->
+{% if section == 'notifications' %}
 <section class="mb-8" data-settings-section="notifications">
   <div class="flex items-center gap-3 mb-4">
     <h2 class="text-lg font-semibold flex items-center gap-2">
@@ -685,10 +729,12 @@
     </div>
   </div>
 </section>
+{% endif %}
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 5 — Display Preferences (localStorage)
      ═══════════════════════════════════════════════════════════════ -->
+{% if section == 'display' %}
 <section class="mb-8" data-settings-section="display">
   <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
     <i data-lucide="sliders" class="w-5 h-5 text-accent"></i>
@@ -753,6 +799,7 @@
     <div id="pref-saved-msg" class="hidden text-xs text-healthy">{{ t.preferences_saved }}</div>
   </div>
 </section>
+{% endif %}
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 6 — Sticky Bottom Save Bar
@@ -1497,6 +1544,11 @@ function checkCertExpiry() {
 document.addEventListener('DOMContentLoaded', () => {
   const httpsToggle = document.getElementById('https-enabled');
   const httpsWarning = document.getElementById('https-warning');
+  // Section-scoped initialiser. Settings renders ONE section per page as of
+  // WP-4, so on /settings/collector these two are simply not here — and an
+  // unguarded `.addEventListener` on null is an uncaught TypeError that stops
+  // every initialiser registered after it, not just this one.
+  if (!httpsToggle || !httpsWarning) return;
   function updateHttpsWarning() {
     if (httpsToggle.checked) {
       httpsWarning.classList.remove('hidden');
@@ -1513,6 +1565,9 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('DOMContentLoaded', () => {
   const authToggle = document.getElementById('auth-enabled');
   const authWarning = document.getElementById('auth-warning');
+  const authLdapUrl = document.getElementById('auth-ldap-url');
+  // Section-scoped; see the https initialiser above.
+  if (!authToggle || !authWarning || !authLdapUrl) return;
   function updateAuthWarning() {
     if (!authToggle.checked) {
       authWarning.classList.add('hidden');
@@ -1533,52 +1588,74 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   authToggle.addEventListener('change', updateAuthWarning);
-  document.getElementById('auth-ldap-url').addEventListener('input', updateAuthWarning);
+  authLdapUrl.addEventListener('input', updateAuthWarning);
   updateAuthWarning();
 });
 
 // --- Enhanced save validation ---
 function _validateBeforeSave() {
-  if (document.getElementById('https-enabled').checked) {
-    const cert = document.getElementById('https-cert').value.trim();
-    const key = document.getElementById('https-key').value.trim();
+  // Every check here belongs to ONE section, and Settings renders one section
+  // per page. So each asks whether its field is on this page before
+  // validating it — a validator that throws is worse than one that skips,
+  // because the exception aborts the save with no message at all and the
+  // operator sees a button that did nothing.
+  const el = (id) => document.getElementById(id);
+  const fail = (message) => {
+    const msg = el('save-message');
+    msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
+    msg.textContent = message;
+    msg.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return false;
+  };
+
+  // ── Security ──
+  const httpsEnabled = el('https-enabled');
+  if (httpsEnabled && httpsEnabled.checked) {
+    const cert = el('https-cert').value.trim();
+    const key = el('https-key').value.trim();
     if (!cert || !key) {
-      const msg = document.getElementById('save-message');
-      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
-      msg.textContent = {{ t.get('https_cert_required', 'HTTPS is enabled but certificate or key file path is empty. Please provide both paths or disable HTTPS.') | tojson }};
-      msg.classList.remove('hidden');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return false;
+      return fail({{ t.get('https_cert_required', 'HTTPS is enabled but certificate or key file path is empty. Please provide both paths or disable HTTPS.') | tojson }});
     }
   }
-  if (document.getElementById('auth-enabled').checked) {
-    const ldapUrl = document.getElementById('auth-ldap-url').value.trim();
-    const backupSection = document.getElementById('auth-enabled').closest('.space-y-3');
+  const authEnabled = el('auth-enabled');
+  if (authEnabled && authEnabled.checked) {
+    const ldapUrl = el('auth-ldap-url').value.trim();
+    const backupSection = authEnabled.closest('.space-y-3');
     const backupAdminConfigured = backupSection && backupSection.querySelector('.badge-healthy');
     if (!ldapUrl && !backupAdminConfigured) {
-      const msg = document.getElementById('save-message');
-      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
-      msg.textContent = {{ t.get('auth_method_required', 'Authentication is enabled but no login method is configured. Set up LDAP or create an admin account first.') | tojson }};
-      msg.classList.remove('hidden');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return fail({{ t.get('auth_method_required', 'Authentication is enabled but no login method is configured. Set up LDAP or create an admin account first.') | tojson }});
+    }
+  }
+  const timeoutField = el('auth-timeout');
+  if (timeoutField) {
+    const timeout = parseInt(timeoutField.value);
+    if (isNaN(timeout) || timeout < 5 || timeout > 1440) {
+      pAlert({{ t.get('invalid_timeout', 'Session timeout must be between 5 and 1440 minutes.') | tojson }});
       return false;
     }
   }
-  const poll = parseInt(document.getElementById('poll-interval').value);
-  if (isNaN(poll) || poll < 1 || poll > 60) {
-    pAlert({{ t.get('invalid_poll', 'Poll interval must be between 1 and 60 minutes.') | tojson }});
-    return false;
+
+  // ── Collector ──
+  const pollField = el('poll-interval');
+  if (pollField) {
+    const poll = parseInt(pollField.value);
+    if (isNaN(poll) || poll < 1 || poll > 60) {
+      pAlert({{ t.get('invalid_poll', 'Poll interval must be between 1 and 60 minutes.') | tojson }});
+      return false;
+    }
   }
-  const retention = parseInt(document.getElementById('retention-days').value);
-  if (isNaN(retention) || retention < 1 || retention > 365) {
-    pAlert({{ t.get('invalid_retention', 'Retention days must be between 1 and 365.') | tojson }});
-    return false;
+
+  // ── General ──
+  const retentionField = el('retention-days');
+  if (retentionField) {
+    const retention = parseInt(retentionField.value);
+    if (isNaN(retention) || retention < 1 || retention > 365) {
+      pAlert({{ t.get('invalid_retention', 'Retention days must be between 1 and 365.') | tojson }});
+      return false;
+    }
   }
-  const timeout = parseInt(document.getElementById('auth-timeout').value);
-  if (isNaN(timeout) || timeout < 5 || timeout > 1440) {
-    pAlert({{ t.get('invalid_timeout', 'Session timeout must be between 5 and 1440 minutes.') | tojson }});
-    return false;
-  }
+
   return true;
 }
 
