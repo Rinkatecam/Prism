@@ -1,7 +1,7 @@
 """HTML page routes and HTMX partial routes for Prism."""
 
 import logging
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, redirect
 from database import Database
 from config_manager import ConfigManager
 from analytics import get_server_analytics
@@ -408,7 +408,7 @@ def reports():
 # `display` is here despite configuring nothing server-side: its four controls
 # are dashboard preferences in localStorage, and they are still settings the
 # operator goes to this page to change.
-_SETTINGS_SECTIONS = ("general", "collector", "detection", "alerts", "operations", "security", "notifications", "display")
+_SETTINGS_SECTIONS = ("general", "collector", "detection", "alerts", "operations", "security", "rbac", "notifications", "display")
 
 
 @views_bp.route("/settings")
@@ -1129,22 +1129,17 @@ def partial_updates_overview():
 
 
 @views_bp.route("/admin/rbac")
-def rbac_admin_page():
-    """Admin UI for managing per-server ACLs and tier-0 approvals.
+def rbac_admin():
+    """Moved to /settings/rbac in WP-4 D4.
 
-    Access control is server-side: the page renders for any authenticated
-    user, but the API calls it makes (/api/rbac/*) reject anyone who isn't
-    a backup admin or a wildcard-admin. We intentionally don't gate the
-    page itself so a non-admin user gets a clean 403 from the API instead
-    of a confusing redirect loop.
+    A redirect rather than a removal: this URL is in browser histories and in
+    whatever notes an operator keeps. It is written now rather than with the
+    rest of WP-4's redirects because the destination lands in the same commit
+    — the reason redirects are scheduled last is that one written before its
+    destination exists points at a 404.
     """
     logger.debug("Serving %s", request.path)
-    try:
-        servers = sorted(s.name for s in _config.get_servers())
-        return render_template("rbac.html", server_names=servers)
-    except Exception:
-        logger.exception("Error rendering /admin/rbac")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+    return redirect("/settings/rbac", code=301)
 
 
 @views_bp.route("/compliance")

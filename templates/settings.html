@@ -35,6 +35,7 @@
          'detection': t.get('settings_section_detection', 'Detection'),
          'alerts': t.get('settings_section_alerts', 'Alerts'),
          'operations': t.get('settings_section_operations', 'Operations'),
+         'rbac': t.get('settings_section_permissions', 'Permissions'),
          'security': t.security,
          'notifications': t.get('notifications', 'Notifications'),
          'display': t.display_preferences,
@@ -583,6 +584,19 @@
       </div>
     </div>
   </div>
+</section>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 3b — Permissions (moved out of the main nav, WP-4 D4)
+     ═══════════════════════════════════════════════════════════════ -->
+{% if section == 'rbac' %}
+<section class="mb-8" data-settings-section="rbac">
+  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+    <i data-lucide="shield-check" class="w-5 h-5 text-accent"></i>
+    {{ t.get('settings_section_permissions', 'Permissions') }}
+  </h2>
+  {% include "partials/settings/_rbac.html" %}
 </section>
 {% endif %}
 

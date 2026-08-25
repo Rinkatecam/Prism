@@ -501,7 +501,11 @@ LITERAL_BASELINE: dict[str, int] = {
     # `border-faint` already resolves per theme, so they were deleted rather
     # than moved), and the restart banner's four were the same story.
     "dashboard.html": 0,
-    "rbac.html": 14,
+    # rbac.html left the baseline entirely in WP-4 D4: its fourteen
+    # literals were replaced by tokens rather than relocated when the
+    # page became a settings partial. Twelve were in script-built class
+    # strings and one was an inline `style="color:"` — the shape the
+    # ratchet counts but cannot force down on its own.
     "reports.html": 12,
     "servers.html": 9,
     "settings.html": 10,
@@ -667,7 +671,10 @@ def test_no_colour_literal_outside_the_templates_that_already_have_one():
 # 151 -> 149 with WP-4 D3: four literals left operations.html with the
 # scheduled-restart block; two were redundant dark overrides of a token
 # that already flips, and two are the shared toggle idiom.
-LITERAL_TOTAL = 149
+# 149 -> 135 with WP-4 D4: rbac.html's fourteen became tokens. The
+# largest single reduction of the round, and the first file to leave
+# the baseline rather than shrink within it.
+LITERAL_TOTAL = 135
 
 
 def test_the_total_number_of_literals_never_rises():

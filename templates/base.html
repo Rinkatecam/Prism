@@ -226,10 +226,8 @@
         <i data-lucide="settings" class="w-5 h-5 flex-shrink-0"></i>
         <span class="sidebar-label">{{ t.settings }}</span>
       </a>
-      <a href="/admin/rbac" class="sidebar-link {% if request.path == '/admin/rbac' %}sidebar-link-active{% endif %}" aria-label="RBAC">
-        <i data-lucide="shield-check" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.get('rbac_admin', 'RBAC') }}</span>
-      </a>
+      {# RBAC left the sidebar in WP-4 D4: it configures rather than
+         shows, and it lives at Settings -> Permissions now. #}
       {% if compliance_enabled %}
       <a href="/compliance" class="sidebar-link {% if request.path.startswith('/compliance') %}sidebar-link-active{% endif %}" aria-label="Compliance">
         <i data-lucide="clipboard-check" class="w-5 h-5 flex-shrink-0"></i>

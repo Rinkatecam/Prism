@@ -223,7 +223,9 @@ def test_relative_time_is_not_a_registered_sort_type(js_source):
     "template",
     [
         "dashboard.html", "monitoring.html", "operations.html",
-        "partials/server_comparison.html", "rbac.html", "reports.html",
+        "partials/server_comparison.html", "reports.html",
+        # rbac.html became partials/settings/_rbac.html in WP-4 D4.
+        "partials/settings/_rbac.html",
         "servers.html", "server_detail.html", "workflows.html",
     ],
 )
@@ -825,7 +827,8 @@ EXPECTED = {
     # distinction the NOT_SORTABLE list below is drawn on.
     ("partials/services_table.html", "services-probes"):
         ["text", "text", "text", "text", "status", "number", "timestamp"],  # Name, Server, Type, Target, Status, Response, Last check
-    ("rbac.html", "rbac-acl"):
+    # The ACL table moved into Settings with the page in WP-4 D4.
+    ("partials/settings/_rbac.html", "rbac-acl"):
         ["text", "text", "status", None, None],  # User, Server, Perm, Granted, <revoke>
     ("reports.html", "reports-fleet"):
         [None, "text", "number", "number", None, None, "number", None],  # chevron, Server, Health, Degraded, Main driver, Capacity, Availability, Trend

@@ -118,6 +118,9 @@ _EXEMPT_CONTAINERS = {
     'data-settings-section="operations"': ("scheduled restarts save through "
                                            "POST /api/scheduled-restarts and "
                                            "their own button"),
+    'data-settings-section="rbac"': ("grants and revokes go straight to "
+                                     "POST /api/rbac/grant and /api/rbac/revoke "
+                                     "as individual decisions, not as a saved form"),
 }
 
 
@@ -466,7 +469,7 @@ def test_every_settings_section_declares_itself():
     # localStorage, `operations` posts its restart schedules to their own
     # endpoint. Both are real sections with real URLs, so the declaration
     # check has to know them even though no builder does.
-    assert set(names) == set(_SECTION_KEYS) | {"display", "operations"}, sorted(names)
+    assert set(names) == set(_SECTION_KEYS) | {"display", "operations", "rbac"}, sorted(names)
 
 
 def test_the_section_builders_cover_exactly_the_keys_the_page_owns():
@@ -660,7 +663,7 @@ def test_the_builder_map_covers_every_section_that_has_settings():
     # `operations` joins `display` as a section with no builder: its
     # scheduled restarts post to their own endpoint, so nothing of theirs
     # belongs in the settings payload.
-    assert builders | {"display", "operations"} == set(_router_sections())
+    assert builders | {"display", "operations", "rbac"} == set(_router_sections())
 
 
 def test_every_section_renders_only_when_it_is_the_active_one():
@@ -815,3 +818,109 @@ def test_the_detection_help_text_is_not_the_faintest_token():
     partial = re.sub(r"\{#.*?#\}", " ", partial, flags=re.S)
     assert "text-faint" not in partial, (
         "faint text is back on the detection cards, which sit on bg-page")
+
+
+# ── Permissions: the move, and what "redesign" turned out to mean ────────
+#
+# The owner asked for a real UI/UX redesign of RBAC. Measured against rules
+# this codebase already keeps rather than restyled by taste, the page failed
+# four of them — and those four are what the redesign amounted to. The layout
+# is untouched, deliberately: rearranging four sensible cards without the
+# owner would be redesign by assumption.
+
+RBAC_PARTIAL = PROJECT_ROOT / "templates" / "partials" / "settings" / "_rbac.html"
+
+
+def _rbac(code_only: bool = False) -> str:
+    """The partial, optionally with its comments blanked.
+
+    Blanking matters here: the file argues at length about the very shapes
+    these tests forbid — `style="color:"`, the word "Loading" — so a scan that
+    cannot tell code from commentary fires on its own rationale, and the
+    cheapest way to make it green is to delete the rationale. This file's
+    other helpers already blank comments; this one did not, and the
+    inline-style test duly failed on the comment explaining why inline styles
+    are wrong."""
+    src = RBAC_PARTIAL.read_text(encoding="utf-8")
+    if not code_only:
+        return src
+    src = re.sub(r"\{#.*?#\}|<!--.*?-->", " ", src, flags=re.S)
+    return re.sub(r"^[ \t]*//[^\n]*", " ", src, flags=re.M)
+
+
+def test_the_permissions_section_carries_no_colour_literal():
+    """Fourteen of them, twelve in script-built class strings and one an
+    inline `style="color:${…}"` — the shape WP-3 recorded as invisible to the
+    colour ratchet, which is why the count sat at 14 and never moved."""
+    body = _rbac(code_only=True)
+    literals = re.findall(r"#[0-9A-Fa-f]{6}\b|-\[#[0-9A-Fa-f]{3,8}\]", body)
+    assert not literals, f"colour literals are back: {literals}"
+
+
+def test_no_permission_colour_is_applied_as_an_inline_style():
+    """A class follows the theme and the ratchet can see it; an inline style
+    does neither."""
+    body = _rbac(code_only=True)
+    assert 'style="color:' not in body
+    assert ".style.color" not in body
+
+
+def test_every_loading_region_shows_a_ghost_rather_than_the_word():
+    """The owner's rule names this exactly: every loading state is a skeleton
+    or a circle, and there is no bare "Loading..." text. Three regions here
+    fetch content on load, so all three ghost."""
+    body = _rbac()
+    assert body.count("rbac-ghost") == 3, (
+        f"expected three ghosted regions, found {body.count('rbac-ghost')}")
+    assert "Loading" not in _rbac(code_only=True), (
+        "a loading state says the word instead of showing the shape")
+
+
+def test_the_ghosts_are_hidden_from_assistive_technology():
+    """A skeleton has nothing to say to a screen reader."""
+    for m in re.finditer(r'<div class="rbac-ghost"([^>]*)>', _rbac()):
+        assert 'aria-hidden="true"' in m.group(1), (
+            "a ghost is exposed to assistive technology")
+
+
+def test_the_page_uses_the_shared_escaper():
+    """It had a fourth local copy. Three days earlier the third copy caused a
+    page to break when its block moved, which is the argument."""
+    body = _rbac()
+    assert "function esc(" not in body, "a local HTML escaper is back"
+    assert "_escHtml(" in body
+
+
+def test_every_timestamp_goes_through_the_configured_timezone():
+    """Three were rendered raw. The standing rule is that a timestamp is
+    displayed in the operator's configured timezone, and `formatTs` is how
+    every other page does it."""
+    body = _rbac()
+    for field in ("granted_at", "requested_at", "expires_at"):
+        m = re.search(rf"\$\{{[^}}]*{field}[^}}]*\}}", body)
+        assert m, f"{field} is no longer rendered"
+        assert "formatTs" in m.group(0), (
+            f"{field} is rendered raw, not in the configured timezone")
+
+
+def test_the_old_rbac_url_still_resolves():
+    """It is in browser histories and in whatever notes an operator keeps.
+    A redirect, not a removal — and written now rather than with WP-4's other
+    redirects because its destination landed in the same commit."""
+    import app as prism_app
+    client = prism_app.app.test_client()
+    r = client.get("/admin/rbac")
+    assert r.status_code == 301, r.status_code
+    assert r.headers["Location"].endswith("/settings/rbac")
+    assert client.get("/settings/rbac").status_code == 200
+
+
+def test_permissions_left_the_main_navigation():
+    """It was the last top-level nav entry that configured rather than
+    showed."""
+    base = (PROJECT_ROOT / "templates" / "base.html").read_text(encoding="utf-8")
+    nav = re.search(r"<nav.*?</nav>", base, re.S)
+    assert nav, "the sidebar nav is gone"
+    assert 'href="/admin/rbac"' not in nav.group(0)
+    assert 'href="/settings/rbac"' not in nav.group(0), (
+        "Permissions is back in the main nav; it belongs under Settings")
