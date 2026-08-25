@@ -369,7 +369,9 @@ def test_cleanup_timeouts_read_dur_slow_at_runtime_not_hardcoded():
         (SERVERS_HTML, servers_html(), "function hideServerInfo(", "\n// ── Setup Guide"),
         (SETTINGS_HTML, settings_html(), "function checkForChanges(", "\nfunction cancelAllChanges("),
         (SETTINGS_HTML, settings_html(), "function doSaveAllSettings(", "\nfunction getEmailSettingsFromForm("),
-        (MONITORING_HTML, monitoring_html(), "function saveMonitoringSettings(", "\n// ── Change detection"),
+        # monitoring.html's entry is gone: WP-4 D2b moved the last editable
+        # control off that page, so it has no save bar to hide and no
+        # saveMonitoringSettings to hide it with. Three call sites remain.
     ]
     for path, html, start_marker, end_marker in checks:
         start = html.index(start_marker)

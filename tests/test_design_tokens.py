@@ -506,7 +506,11 @@ LITERAL_BASELINE: dict[str, int] = {
     "servers.html": 9,
     "settings.html": 10,
     "partials/active_actions.html": 0,
-    "monitoring.html": 4,   # 6 -> 4: two left with the detection block
+    "monitoring.html": 0,
+    # The toggle idiom's dark override, relocated with the TLS block in
+    # WP-4 D2b. settings.html carries nine identical copies; WP-8 takes
+    # them in one pass rather than leaving one fixed and nine behind.
+    "partials/settings/_tls.html": 1,   # 6 -> 4: two left with the detection block
     #                           extracted to partials/settings/_detection.html
     #                           in WP-4 D2, and were tokenised on the way
     #                           rather than given a baseline of their own
@@ -654,7 +658,10 @@ def test_no_colour_literal_outside_the_templates_that_already_have_one():
 # `bg-brand-tint` on the way rather than arriving with a baseline. A file
 # split normally redistributes literals at a constant total; this one
 # reduced it, which is the only direction this number may move.
-LITERAL_TOTAL = 154
+# 154 -> 151 with WP-4 D2b: four literals left monitoring.html with the TLS
+# and maintenance blocks; three of them were tokenised on the way and one
+# (the shared toggle idiom) took a baseline entry in the new partial.
+LITERAL_TOTAL = 151
 
 
 def test_the_total_number_of_literals_never_rises():

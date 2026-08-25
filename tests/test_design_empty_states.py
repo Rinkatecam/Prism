@@ -205,7 +205,12 @@ _HANDROLLED_ICON = re.compile(
 
 # Per-file counts, measured. May shrink, never grow.
 HANDROLLED_BASELINE: dict[str, int] = {
-    "monitoring.html": 4,
+    # 4 -> 2: two left with the TLS and maintenance blocks in WP-4 D2b,
+    # one into the partial and one into settings.html's moved script.
+    # Relocated, not created — see the totals below.
+    "monitoring.html": 2,
+    "partials/settings/_tls.html": 1,
+    "settings.html": 1,
     "servers.html": 5,
 }
 

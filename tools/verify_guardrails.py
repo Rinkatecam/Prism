@@ -2538,10 +2538,13 @@ suite(
              'config["settings"] = settings',
              "test_a_narrowed_save_preserves_everything_it_did_not_send"),
     # WP-4 D1d: one section per page.
+    # Anchored on the tuple's TAIL rather than the whole line: naming every
+    # element meant this mutation drifted each time a section was added,
+    # and a drifted anchor is reported as NOT APPLIED rather than caught.
     Mutation("the router loses a section the page still renders",
              "routes/views.py",
-             '_SETTINGS_SECTIONS = ("general", "collector", "detection", "security", "notifications", "display")',
-             '_SETTINGS_SECTIONS = ("general", "collector", "detection", "security", "notifications")',
+             ', "display")',
+             ')',
              "test_the_router_and_the_markup_agree_about_the_sections"),
     Mutation("an unknown section falls back to the first instead of 404ing",
              "routes/views.py",
@@ -2615,6 +2618,27 @@ suite(
 )
 
 
+# ── every data-action resolves to something that runs ───────────────────
+suite(
+    "action-dispatch",
+    Mutation("a moved handler is left behind and its button goes dead",
+             "templates/settings.html",
+             "function recalculateBaselines() {",
+             "function recalculateBaselines_moved_away() {",
+             "test_every_dispatched_action_resolves_to_a_handler"),
+    Mutation("the dispatcher's global-function fallback is removed",
+             "templates/base.html",
+             "        const g = window[key];",
+             "        const g = undefined;",
+             "test_the_fallback_to_a_global_function_still_exists"),
+    Mutation("base.html dispatches an attribute this scan does not know about",
+             "templates/base.html",
+             "mousedown: 'data-mousedown', mouseup: 'data-mouseup' };",
+             "mousedown: 'data-mousedown', mouseup: 'data-mouseup', dblclick: 'data-dblclick' };",
+             "test_the_dispatched_attributes_are_the_ones_base_html_lists"),
+)
+
+
 SUITE_FILES = {
     "loading": "tests/test_design_loading.py",
     "status-cache": "tests/test_status_summary_cache.py",
@@ -2656,6 +2680,7 @@ SUITE_FILES = {
     "health-overview": "tests/test_health_check_overview.py",
     "overview-pages": "tests/test_design_overview_pages.py",
     "settings-tracking": "tests/test_settings_change_tracking.py",
+    "action-dispatch": "tests/test_action_dispatch.py",
 }
 
 

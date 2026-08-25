@@ -79,9 +79,10 @@ def _script() -> str:
     return re.sub(r"^[ \t]*//[^\n]*", " ", body, flags=re.M)
 
 
-def _controls() -> list[tuple[str, set[str]]]:
+def _controls(markup: str | None = None) -> list[tuple[str, set[str]]]:
     out = []
-    for tag in re.findall(r"<(?:input|select|textarea)\b[^>]*>", _markup(), re.I):
+    for tag in re.findall(r"<(?:input|select|textarea)\b[^>]*>",
+                          _markup() if markup is None else markup, re.I):
         ident = re.search(r'id="([^"]+)"', tag)
         cls = re.search(r'class="([^"]*)"', tag)
         out.append((ident.group(1) if ident else "", set((cls.group(1) if cls else "").split())))
@@ -102,6 +103,34 @@ _EXEMPT = {
 }
 
 
+# Whole regions that save through their own endpoint rather than the settings
+# save bar. A container rule rather than a list of ids: the maintenance modal
+# holds twelve controls, two of them without an id, and a list of twelve would
+# go stale the first time one was renamed.
+_EXEMPT_CONTAINERS = {
+    "maint-modal": ("maintenance windows save one at a time from this modal, "
+                    "through POST /api/maintenance-windows"),
+}
+
+
+def _markup_outside_exempt_containers() -> str:
+    """The page's markup with the self-saving regions removed."""
+    markup = _markup()
+    for container in _EXEMPT_CONTAINERS:
+        m = re.search(rf'<div id="{container}"', markup)
+        assert m, f"the exempt container {container!r} is not on the page any more"
+        # Cut to the end of the enclosing block: the modal is the last thing
+        # in its own markup file, so the next top-level marker is enough.
+        rest = markup[m.start():]
+        end = rest.find("\n</div>\n")
+        markup = markup[:m.start()] + (rest[end:] if end != -1 else "")
+    return markup
+
+
+def test_the_container_exemptions_all_carry_a_reason():
+    assert all(reason.strip() for reason in _EXEMPT_CONTAINERS.values())
+
+
 def test_every_settings_control_is_tracked_or_deliberately_exempt():
     """The assertion the old design made impossible to write.
 
@@ -110,7 +139,7 @@ def test_every_settings_control_is_tracked_or_deliberately_exempt():
     carries neither class and is not exempt is a field whose edit will be
     silently discarded."""
     orphans = []
-    for ident, classes in _controls():
+    for ident, classes in _controls(_markup_outside_exempt_containers()):
         if "general-input" in classes or "security-input" in classes:
             continue
         if ident in _EXEMPT:
@@ -345,6 +374,8 @@ _OWNED_SETTINGS_KEYS = {
     "collector_v2_num_workers",
     # Detection (moved from /monitoring, WP-4 D2)
     "thresholds", "anomaly_detection", "baseline_detection", "security_alerts",
+    # Alerts (moved from /monitoring, WP-4 D2b)
+    "tls_monitoring",
     # Security & access
     "https", "auth",
     # Notifications
@@ -358,6 +389,7 @@ _SECTION_KEYS = {
                   "update_check_interval_minutes", "collector_v2_num_workers"},
     "detection": {"thresholds", "anomaly_detection", "baseline_detection",
                   "security_alerts"},
+    "alerts": {"tls_monitoring"},
     "security": {"https", "auth"},
     "notifications": {"email", "scheduled_reports", "webhooks"},
 }
@@ -448,7 +480,10 @@ def test_every_control_lives_in_the_section_that_saves_it():
     """A control moved between sections without its key moving is a field the
     save cannot see once the page is split. Checked against the markup, so
     moving the markup is what fails."""
-    markup = _markup()
+    # Exempt containers dropped first: their controls are inside a section but
+    # deliberately outside its builder, and the two exemption checks must read
+    # the same rule or they disagree about what a settings control is.
+    markup = _markup_outside_exempt_containers()
     for name in _SECTION_KEYS:
         m = re.search(rf'<section\b[^>]*data-settings-section="{name}"[^>]*>(.*?)</section>',
                       markup, re.S)
