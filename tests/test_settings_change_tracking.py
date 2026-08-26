@@ -58,11 +58,15 @@ def _markup() -> str:
     src = SETTINGS.read_text(encoding="utf-8")
 
     def _inline(match):
-        target = PROJECT_ROOT / "templates" / match.group(1)
+        target = PROJECT_ROOT / "templates" / (match.group(1) or match.group(2))
         return target.read_text(encoding="utf-8") if target.exists() else match.group(0)
 
+    # Either quote. Jinja accepts both, and a section written the other way
+    # used to vanish from this scan entirely — not reported as unresolved,
+    # just absent, so every control-level assertion called its ids phantoms.
+    _INCLUDE = r'\{%\s*include\s+(?:"([^"]+)"|\'([^\']+)\')\s*%\}'
     for _ in range(3):  # partials may include partials; bounded, not recursive
-        expanded = re.sub(r'\{%\s*include\s+"([^"]+)"\s*%\}', _inline, src)
+        expanded = re.sub(_INCLUDE, _inline, src)
         if expanded == src:
             break
         src = expanded
@@ -394,6 +398,9 @@ _OWNED_SETTINGS_KEYS = {
     "https", "auth",
     # Notifications
     "email", "webhooks", "scheduled_reports",
+    # Compliance (the module's feature flag, which had no control at all
+    # until WP-4 D6 — the only way to turn it on was to edit config.json)
+    "compliance",
 }
 
 
@@ -406,6 +413,7 @@ _SECTION_KEYS = {
     "alerts": {"tls_monitoring"},
     "security": {"https", "auth"},
     "notifications": {"email", "scheduled_reports", "webhooks"},
+    "compliance": {"compliance"},
 }
 
 

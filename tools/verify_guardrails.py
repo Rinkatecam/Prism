@@ -2742,6 +2742,63 @@ suite(
 )
 
 
+# ── the compliance module's enable switch ───────────────────────
+suite(
+    "settings-compliance",
+    Mutation("the toggle falls out of every tracked bucket",
+             "templates/partials/settings/_compliance.html",
+             'class="sr-only peer general-input"',
+             'class="sr-only peer"',
+             "test_the_toggle_is_tracked_by_the_save_bar"),
+    Mutation("the toggle starts demanding a restart it does not need",
+             "templates/partials/settings/_compliance.html",
+             'class="sr-only peer general-input"',
+             'class="sr-only peer security-input"',
+             "test_the_toggle_is_tracked_by_the_save_bar"),
+    Mutation("the section hides itself when the module is off",
+             "templates/settings.html",
+             "{% if section == 'compliance' %}",
+             "{% if section == 'compliance' and settings.compliance.enabled %}",
+             "test_the_section_is_reachable_whether_or_not_the_module_is_on"),
+    Mutation("the gate stops answering the flag, so the module cannot turn on",
+             "csv_compliance.py",
+             'return bool(cfg.get("enabled", False))',
+             'return False',
+             "test_when_on_the_dashboard_and_its_nav_entry_appear"),
+    Mutation("the gate opens regardless of the flag (URS-204 lost)",
+             "csv_compliance.py",
+             'return bool(cfg.get("enabled", False))',
+             'return True',
+             "test_when_off_the_view_routes_are_absent"),
+    Mutation("the nav entry loses its gate",
+             "templates/base.html",
+             "{% if compliance_enabled %}",
+             "{% if True %}",
+             "test_when_off_the_nav_entry_is_hidden"),
+    Mutation("the dashboard link is offered while the module is off",
+             "templates/partials/settings/_compliance.html",
+             "{% if settings.compliance.enabled %}\n    <div class=\"border-t border-line pt-4\">",
+             "{% if True %}\n    <div class=\"border-t border-line pt-4\">",
+             "test_the_dashboard_link_only_appears_once_the_module_is_on"),
+    Mutation("the payload builder reaches outside its own section",
+             "templates/settings.html",
+             "        enabled: document.getElementById('compliance-enabled').checked,",
+             "        enabled: document.getElementById('compliance-enabled').checked,\n"
+             "        stray: document.getElementById('retention-days').value,",
+             "test_the_section_contributes_only_its_own_subtree"),
+    Mutation("a fallback drifts away from its English entry",
+             "templates/partials/settings/_compliance.html",
+             "'Enable the compliance module'",
+             "'Enable compliance'",
+             "test_each_fallback_is_exactly_its_english_entry"),
+    Mutation("a locale loses a key and falls back to English invisibly",
+             "i18n.py",
+             "'compliance_off_means': 'Solange es deaktiviert",
+             "'compliance_off_means_disabled': 'Solange es deaktiviert",
+             "test_every_string_exists_in_every_locale"),
+)
+
+
 SUITE_FILES = {
     "loading": "tests/test_design_loading.py",
     "status-cache": "tests/test_status_summary_cache.py",
@@ -2786,6 +2843,7 @@ SUITE_FILES = {
     "action-dispatch": "tests/test_action_dispatch.py",
     "pages-render": "tests/test_pages_render.py",
     "permissions": "tests/test_design_permissions.py",
+    "settings-compliance": "tests/test_settings_compliance.py",
 }
 
 
@@ -2803,6 +2861,33 @@ def _pytest(suite_file: str, k: str = "") -> tuple[bool, str, int]:
                        encoding="utf-8", errors="replace")
     tail = (p.stdout or "").strip().splitlines()
     return p.returncode == 0, tail[-1] if tail else "(no output)", p.returncode
+
+
+# Line endings, per file. `Path.read_text` normalises CRLF to LF and
+# `write_text` translates back on Windows, so every file the harness touched
+# came back with CRLF even when it went in with LF — `git status` said
+# modified while `git diff` said nothing, because Git normalises the content.
+#
+# Reading with `newline=""` fixes the restore and breaks the matching: every
+# Mutation's `find` is written with `\n`, so a multi-line anchor stops
+# matching a CRLF file. Both halves are needed — read normalised, write in
+# whatever the file actually uses.
+_FILE_NEWLINES = {}
+
+
+def _read_exact(path):
+    with open(path, "r", encoding="utf-8") as fh:
+        text = fh.read()
+        seen = fh.newlines
+    # A tuple means mixed endings; `\n` is what the repo uses.
+    _FILE_NEWLINES[str(path)] = seen if isinstance(seen, str) else "\n"
+    return text
+
+
+def _write_exact(path, text):
+    with open(path, "w", encoding="utf-8",
+              newline=_FILE_NEWLINES.get(str(path), "\n")) as fh:
+        fh.write(text)
 
 
 def run_suite(name: str) -> tuple[int, int]:
@@ -2824,14 +2909,14 @@ def run_suite(name: str) -> tuple[int, int]:
             print(f"  !! {m.label}\n       FILE NOT FOUND: {m.path} — "
                   "the file moved or was deleted; update this mutation")
             continue
-        original = path.read_text(encoding="utf-8")
+        original = _read_exact(path)
         if m.find not in original:
             print(f"  !! {m.label}\n       ANCHOR NOT FOUND in {m.path} — "
                   "the code moved; update this mutation")
             continue
-        path.write_text(original.replace(m.find, m.replace, 1), encoding="utf-8")
+        _write_exact(path, original.replace(m.find, m.replace, 1))
         try:
-            landed = path.read_text(encoding="utf-8") != original
+            landed = _read_exact(path) != original
             passed, _, code = _pytest(suite_file, m.test)
             # A `-k` that selects NOTHING exits 5, and "not zero" was being
             # read as "the test failed" — so a mutation whose named test lives
@@ -2857,8 +2942,8 @@ def run_suite(name: str) -> tuple[int, int]:
                     why = "test still PASSED — it is blind"
                 print(f"  !!  {m.label}\n       {why}  ({m.test})")
         finally:
-            path.write_text(original, encoding="utf-8")
-            restored = path.read_text(encoding="utf-8")
+            _write_exact(path, original)
+            restored = _read_exact(path)
             if restored != original:
                 raise SystemExit(f"RESTORE FAILED for {m.path} — fix by hand before continuing")
     return caught, len(SUITES[name])

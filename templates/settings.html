@@ -36,6 +36,7 @@
          'alerts': t.get('settings_section_alerts', 'Alerts'),
          'operations': t.get('settings_section_operations', 'Operations'),
          'rbac': t.get('settings_section_permissions', 'Permissions'),
+         'compliance': t.get('compliance', 'Compliance'),
          'security': t.security,
          'notifications': t.get('notifications', 'Notifications'),
          'display': t.display_preferences,
@@ -599,6 +600,14 @@
   {% include "partials/settings/_rbac.html" %}
 </section>
 {% endif %}
+
+<!-- ══════════════════════════════════════════════════════════════
+     Compliance — the CSV / GAMP 5 module's feature flag (WP-4 D6)
+     ══════════════════════════════════════════════════════════════ -->
+{% if section == 'compliance' %}
+{% include "partials/settings/_compliance.html" %}
+{% endif %}
+
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 4 — Notifications (RESTART required)
@@ -1389,6 +1398,13 @@ let _settingsSaving = false;
 // are the case that makes the difference visible: they render in Collector
 // and they apply live, so they are `general-input` in the Collector section.
 const _SETTINGS_SECTION_BUILDERS = {
+  compliance: function () {
+    return {
+      compliance: {
+        enabled: document.getElementById('compliance-enabled').checked,
+      },
+    };
+  },
   general: function () {
     return {
       retention_days: parseInt(document.getElementById('retention-days').value) || 30,

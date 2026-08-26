@@ -1,0 +1,76 @@
+{# ── Compliance (CSV / GAMP 5) ──────────────────────────────────────────
+
+   WP-4 D6. The module has exactly one setting, `compliance.enabled`, and
+   until now it had NO surface at all: the only way to turn it on was to
+   hand-edit config.json and restart. A feature flag with no control is not
+   a deliberate design, it is a gap — and this one gates a regulated module,
+   so the people most likely to need it are the least likely to be editing
+   JSON on a server.
+
+   URS-204 pins what "off" means: the nav item is hidden, the view routes
+   404, the API endpoints 404. All three still hold — this adds a control
+   for the flag, not an exception to it. `sop_log` survives either way, which
+   is URS-204's other half: toggling the flag changes the UI surface and
+   never the evidence.
+
+   The toggle is in the `general-input` bucket, not `security-input`: it
+   changes routing and navigation, which a reload picks up. It does not
+   touch the collector, so it does not raise the restart badge. #}
+
+<section class="mb-8" data-settings-section="compliance">
+  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+    <i data-lucide="clipboard-check" class="w-5 h-5 text-brand"></i>
+    {{ t.get('compliance', 'Compliance') }}
+  </h2>
+
+  <div class="bg-card rounded-lg p-5 border border-line space-y-4">
+
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <div class="text-sm font-medium">
+          {{ t.get('compliance_enable', 'Enable the compliance module') }}
+        </div>
+        <div class="text-xs text-muted mt-1 max-w-prose">
+          {{ t.get('compliance_enable_desc',
+                   'Adds the compliance dashboard: SOP status and execution recording, audit-chain integrity, the findings register, and an in-app browser for the CSV documentation. Intended for regulated deployments (GAMP 5 / computerised system validation).') }}
+        </div>
+      </div>
+      <label class="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+        <input type="checkbox" id="compliance-enabled" class="sr-only peer general-input"
+               {% if settings.compliance.enabled %}checked{% endif %}>
+        <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white dark:after:bg-page after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+      </label>
+    </div>
+
+    {# What "off" actually means, stated rather than implied. An operator
+       turning this off in a regulated deployment needs to know that the
+       evidence is not what is being switched off. #}
+    <div class="border-t border-line pt-4 text-xs text-muted space-y-2">
+      <p class="flex items-start gap-2">
+        <i data-lucide="eye-off" class="w-3.5 h-3.5 mt-0.5 shrink-0"></i>
+        <span>{{ t.get('compliance_off_means',
+                   'While off, the dashboard is hidden from the navigation and its pages and API endpoints answer 404 — a non-regulated deployment shows no compliance surface at all.') }}</span>
+      </p>
+      <p class="flex items-start gap-2">
+        <i data-lucide="archive" class="w-3.5 h-3.5 mt-0.5 shrink-0"></i>
+        <span>{{ t.get('compliance_evidence_kept',
+                   'Recorded SOP executions are kept either way. Turning the module off hides the interface; it does not delete or alter evidence, which is append-only by design.') }}</span>
+      </p>
+    </div>
+
+    {# The dashboard is a VIEW, so it stays in the main navigation when the
+       module is on — WP-4 moves configuration into Settings, not the things
+       an operator looks at. This link is the bridge for someone who has just
+       switched it on and is looking for where it went. #}
+    {% if settings.compliance.enabled %}
+    <div class="border-t border-line pt-4">
+      <a href="/compliance"
+         class="inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline">
+        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+        {{ t.get('compliance_open_dashboard', 'Open the compliance dashboard') }}
+      </a>
+    </div>
+    {% endif %}
+
+  </div>
+</section>

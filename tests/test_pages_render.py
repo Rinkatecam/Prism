@@ -59,12 +59,18 @@ def _page_routes() -> list[str]:
     return sorted(set(out))
 
 
-# Routes that take a parameter, with a value that must resolve on any install.
-_PARAMETERISED = [
-    "/settings/general", "/settings/collector", "/settings/detection",
-    "/settings/alerts", "/settings/operations", "/settings/security",
-    "/settings/rbac", "/settings/notifications", "/settings/display",
-]
+def _settings_sections() -> list[str]:
+    """Every settings sub-page, from the router's own tuple.
+
+    Listed by hand at first, on the reasoning that the sections are the
+    parameter's whole domain — right about the contents, wrong about the
+    source. The next section added would have been invisible to the file
+    written to stop a page escaping the suite."""
+    from routes.views import _SETTINGS_SECTIONS
+    return list(_SETTINGS_SECTIONS)
+
+
+_PARAMETERISED = [f"/settings/{name}" for name in _settings_sections()]
 
 
 # Routes that legitimately 404 on an install where their module is switched
