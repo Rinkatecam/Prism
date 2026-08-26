@@ -32,6 +32,7 @@ from . import misc as _misc                # noqa: F401
 from . import compliance as _compliance    # noqa: F401
 from . import search as _search            # noqa: F401
 from . import correlations as _correlations  # noqa: F401
+from . import evidence as _evidence        # noqa: F401
 
 
 def register_api_routes(app, db: Database, config: ConfigManager, limiter=None):
