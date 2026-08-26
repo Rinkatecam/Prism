@@ -37,6 +37,7 @@ import pytest
 _ROOT = Path(__file__).resolve().parent.parent
 _PARTIAL = _ROOT / "templates" / "partials" / "settings" / "_servers.html"
 _SERVERS = _ROOT / "templates" / "servers.html"
+_DEPS = _ROOT / "templates" / "partials" / "settings" / "_dependencies.html"
 
 _MOVED = ["loadTags", "createTag", "editTag", "saveEditTag", "deleteTag"]
 _STAYED = ["loadServerTags", "renderServerTagPills", "_tagReadableInk",
@@ -141,11 +142,15 @@ def test_the_popups_carry_no_raw_colour_literals():
     #CBD5E1 — invisible to the colour ratchet, which reads templates, and a
     string assembled at runtime is not one. They also did not follow the
     theme: the values are dark-mode colours, painted in both."""
-    code = _code(_SERVERS)
-    for fn in ("showTagAssign", "showDepBrowsePopup"):
+    # Both files: showDepBrowsePopup moved to the dependencies partial in
+    # D4c, and the `if not m: continue` below quietly stopped covering it.
+    # A test that silently checks half of what it names is worse than one
+    # that fails.
+    sources = {"showTagAssign": _code(_SERVERS),
+               "showDepBrowsePopup": _code(_DEPS)}
+    for fn, code in sources.items():
         m = re.search(r"function " + fn + r".*?\n\}", code, re.S)
-        if not m:
-            continue
+        assert m, f"{fn} is gone from the file that should hold it"
         hits = [h for h in re.findall(r"#[0-9a-fA-F]{6}\b", m.group(0))
                 if h.upper() != "#6B7280"]
         # #6B7280 is the fallback for a tag that has NO colour - operator data
@@ -339,3 +344,83 @@ def test_the_health_check_hint_exists_in_every_locale():
     for lang in TRANSLATIONS:
         if lang != "en":
             assert TRANSLATIONS[lang]["no_health_checks_hint"] != english
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# D4c — dependencies, and a third dispatch shim
+# ══════════════════════════════════════════════════════════════════════════
+
+
+_DEP_MOVED = ["toggleDepForm", "onDepTypeChange", "onDepTargetModeChange",
+              "browseDepService", "browseDepProcess", "showDepBrowsePopup",
+              "loadDepsTable", "addDependency", "editDependency",
+              "removeDependency"]
+
+# Every `data-action` and `data-input` the dependency markup names. Three of
+# these are shims whose bodies live beside the functions they call, and a shim
+# left behind is a control that resolves to nothing — the dispatcher answers
+# an unknown name by doing nothing at all, silently.
+_DEP_SHIMS = ["_srvBrowseDepService", "_srvBrowseDepProcess", "_srvFilterDepBrowse"]
+
+
+def test_dependencies_left_the_servers_page():
+    code = _code(_SERVERS)
+    still = [f for f in _DEP_MOVED
+             if re.search(r"function\s+" + re.escape(f) + r"\s*\(", code)]
+    assert not still, f"dependency functions still on /servers: {still}"
+    assert 'id="dep-add-form"' not in code, "the dependency markup is still there"
+
+
+def test_the_dependency_editor_is_whole_at_its_destination():
+    code = _code(_DEPS)
+    missing = [f for f in _DEP_MOVED
+               if not re.search(r"function\s+" + re.escape(f) + r"\s*\(", code)]
+    assert not missing, f"lost in the move: {missing}"
+
+
+def test_every_dependency_shim_travelled_with_its_function():
+    """The third shim, `_srvFilterDepBrowse`, is the one I did not think to
+    look for. It filters the service/process browser popup, and left behind it
+    would have made that search box do nothing — no error, because the
+    dispatcher resolves an unknown action to a no-op. The dispatch guard found
+    it; this pins it."""
+    dest = _code(_DEPS)
+    src = _code(_SERVERS)
+    for shim in _DEP_SHIMS:
+        assert f"function {shim}(" in dest, f"{shim} did not travel"
+        assert f"function {shim}(" not in src, f"{shim} is defined twice"
+
+
+def test_no_dependency_bootstrap_call_is_left_behind():
+    code = _code(_SERVERS)
+    assert not re.search(r"^\s*loadDepsTable\(\)", code, re.M), (
+        "loadDepsTable() is still called on /servers, where it no longer exists")
+
+
+def test_the_destination_loads_its_own_table():
+    code = _code(_DEPS)
+    bootstrap = re.search(r"^(?!function)\S.*\bloadDepsTable\(\)", code, re.M)
+    assert bootstrap, (
+        "nothing calls the loader at load time on the page that owns it")
+
+
+def test_both_dependency_empty_states_use_the_shared_renderer():
+    """There were two — one in the markup, one built by `loadDepsTable` — and
+    both reproduced the renderer's markup by hand."""
+    code = _code(_DEPS)
+    assert re.search(r"\{\{\s*empty_state\(", code), "the markup one is hand-rolled"
+    assert "prismEmptyState(" in code, "the script one is hand-rolled"
+    assert "Click " not in code, "a hand-rolled hint is back"
+
+
+def test_the_dependency_hint_was_not_defined_a_second_time():
+    """`no_dependencies_hint` already existed in all five locales, saying
+    "Define dependencies in Servers settings" — written before this move and
+    already naming the place it creates. Adding a second definition would have
+    silently replaced it everywhere; the duplicate-key guard caught that, and
+    this pins the fallback to the entry so the two cannot drift."""
+    from i18n import TRANSLATIONS
+    src = _DEPS.read_text(encoding="utf-8")
+    english = TRANSLATIONS["en"]["no_dependencies_hint"]
+    assert src.count(english) == 2, (
+        "the two fallbacks do not both match the existing English entry")

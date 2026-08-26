@@ -834,7 +834,7 @@ EXPECTED = {
         [None, "text", "number", "number", None, None, "number", None],  # chevron, Server, Health, Degraded, Main driver, Capacity, Availability, Trend
     ("servers.html", "servers-list"):
         ["text", "text", "status", "text", "number", None],  # Name, Host, Status, Type, Port, Actions
-    ("servers.html", "servers-dependencies"):
+    ("partials/settings/_dependencies.html", "servers-dependencies"):
         ["text", "text", "status", "text", "text", None],
     ("server_detail.html", "server-updates"):
         ["status", "text", "status", "text", "bytes", "status", "text"],
