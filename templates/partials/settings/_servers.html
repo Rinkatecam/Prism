@@ -25,6 +25,8 @@
     {{ t.get('tag_management', 'Tag Management') }}
   </h2>
 
+  {% include "partials/settings/_server_config.html" %}
+
   <div class="bg-card rounded-lg p-5 border border-line space-y-4">
     <div class="flex items-center gap-3">
       <label for="new-tag-name" class="sr-only">{{ t.get('tag_name', 'Tag name') }}</label>

@@ -507,7 +507,7 @@ LITERAL_BASELINE: dict[str, int] = {
     # strings and one was an inline `style="color:"` — the shape the
     # ratchet counts but cannot force down on its own.
     "reports.html": 12,
-    "servers.html": 2,
+    "servers.html": 0,
     "settings.html": 10,
     "partials/active_actions.html": 0,
     "monitoring.html": 0,
@@ -674,7 +674,7 @@ def test_no_colour_literal_outside_the_templates_that_already_have_one():
 # 149 -> 135 with WP-4 D4: rbac.html's fourteen became tokens. The
 # largest single reduction of the round, and the first file to leave
 # the baseline rather than shrink within it.
-LITERAL_TOTAL = 128
+LITERAL_TOTAL = 126
 
 
 def test_the_total_number_of_literals_never_rises():

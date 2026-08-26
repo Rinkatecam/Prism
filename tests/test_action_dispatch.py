@@ -414,3 +414,63 @@ def test_the_helper_list_still_names_the_ones_that_matter():
     assert all(why.strip() for why in _BASE_OWNED_HELPERS.values()), (
         "every entry has to say why it is shared, or the list becomes a set of "
         "names nobody can prune safely")
+
+
+def _locally_declared(js: str) -> set[str]:
+    """Every name this script introduces: functions, consts, lets, vars and
+    parameters. A name it declares itself cannot be a dangling reference."""
+    names = set(re.findall(r"(?:async\s+)?function\s+(\w+)", js))
+    names |= set(re.findall(r"\b(?:const|let|var)\s+(\w+)", js))
+    for params in re.findall(r"function\s*\w*\s*\(([^)]*)\)", js):
+        names |= {p.strip().split("=")[0].strip() for p in params.split(",") if p.strip()}
+    for params in re.findall(r"\(([^)]*)\)\s*=>", js):
+        names |= {p.strip().split("=")[0].strip() for p in params.split(",") if p.strip()}
+    names |= set(re.findall(r"(\w+)\s*=>", js))
+    names |= set(re.findall(r"\bcatch\s*\(\s*(\w+)", js))
+    return names
+
+
+def _value_position_references(js: str) -> set[str]:
+    """Bare identifiers used as a VALUE rather than called.
+
+    Only the two shapes that throw at module scope, because a broader scan
+    flags every local variable sharing a name with a function elsewhere —
+    `check`, `fail`, `load` — and a guard that noisy gets exempted into
+    uselessness."""
+    found = set()
+    # addEventListener('event', handlerName)
+    found |= set(re.findall(r"addEventListener\(\s*['\"][^'\"]+['\"]\s*,\s*(\w+)\s*\)", js))
+    # const x = handlerName;   (no call, no property access)
+    found |= set(re.findall(r"=\s*(\w+)\s*;", js))
+    # Literals and keywords are values, not references to anything.
+    return found - {"null", "undefined", "true", "false", "this", "arguments",
+                    "NaN", "Infinity"} - {n for n in found if n.isdigit()}
+
+
+@pytest.mark.parametrize("page", _pages(), ids=lambda p: p.name)
+def test_no_page_references_a_function_it_does_not_define(page: Path):
+    """The other half of the bootstrap check, and the more dangerous one.
+
+    That test scans for `name()`. This catches a moved function used as a
+    VALUE — passed as a callback or assigned. WP-4 D4d produced both: the call
+    form failed a test, and the reference form failed nothing. It surfaced
+    because the setup guide stopped closing on Escape, three hundred lines
+    below the throw.
+
+    Function declarations HOIST, which is why "the function is callable" and
+    "the script tag ran" are both true even when the script threw on its
+    second statement. Neither tells you the file finished."""
+    src = _code_only(_expand_includes(page.read_text(encoding="utf-8")))
+    js = "\n".join(re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", src, re.S | re.I))
+    if not js.strip():
+        pytest.skip("no inline script")
+
+    available = (_locally_declared(js)
+                 | _defined_functions(_code_only(BASE.read_text(encoding="utf-8")))
+                 | set(re.findall(r"window\.(\w+)\s*=", _code_only(BASE.read_text(encoding="utf-8"))))
+                 | _static_js_functions() | _registry_names() | _BUILTIN_CALLS)
+
+    missing = {n for n in _value_position_references(js) if n not in available}
+    assert not missing, (
+        f"{page.name} evaluates names it does not define, which throws at "
+        f"module scope and stops the rest of the script: {sorted(missing)}")

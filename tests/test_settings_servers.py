@@ -424,3 +424,129 @@ def test_the_dependency_hint_was_not_defined_a_second_time():
     english = TRANSLATIONS["en"]["no_dependencies_hint"]
     assert src.count(english) == 2, (
         "the two fallbacks do not both match the existing English entry")
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# D4d — add / edit / delete, and the reference that hoisting hid
+# ══════════════════════════════════════════════════════════════════════════
+
+_CONFIG = _ROOT / "templates" / "partials" / "settings" / "_server_config.html"
+
+_CFG_MOVED = ["showAddForm", "editServer", "closeModal", "deleteServer",
+              "confirmDeleteServer", "closeDeleteModal", "saveServer",
+              "saveServerConfig", "testConnectionFromModal", "captureModalState",
+              "isModalDirty", "exportServersCSV", "importServersCSV",
+              "discoverServers", "addDiscoveredServers", "closeDiscoveryModal",
+              "populateCustomServerTypes", "applyDefaults"]
+
+# Stays: an action on an existing server, not a change to one.
+_CFG_STAYS = ["testConnection", "showGuide", "closeGuide", "showServerInfo",
+              "populateStatusColumn", "loadServerTags"]
+
+
+def test_the_configuration_functions_left_the_fleet_page():
+    code = _code(_SERVERS)
+    still = [f for f in _CFG_MOVED
+             if re.search(r"function\s+" + re.escape(f) + r"\s*\(", code)]
+    assert not still, f"still defined on /servers: {still}"
+
+
+def test_the_actions_and_the_view_stayed():
+    """`testConnection` is the interesting one. It is an action on an existing
+    server — "do these credentials still work" — and D3's rule is that acting
+    is not configuring. It shares three helpers with the modal's test button,
+    which is why D4d-i moved those to base.html first."""
+    code = _code(_SERVERS)
+    missing = [f for f in _CFG_STAYS
+               if not re.search(r"function\s+" + re.escape(f) + r"\s*\(", code)]
+    assert not missing, f"taken from /servers by mistake: {missing}"
+
+
+def test_no_configuration_control_is_left_on_the_fleet_page(client):
+    """Asserted against the RENDERED page: a control removed from the table
+    but left on the card view is still a control."""
+    body = client.get("/servers").get_data(as_text=True)
+    for action in ("showAddForm", "editServer", "deleteServer",
+                   "discoverServers", "exportServersCSV"):
+        assert f'data-action="{action}"' not in body, (
+            f"/servers still offers {action}")
+    assert 'data-action="testConnection"' in body, "the action button went too"
+
+
+def test_the_fleet_page_says_where_its_configuration_went(client):
+    """A page that has just lost its controls and does not say where they are
+    is worse than one that never had them."""
+    body = client.get("/servers").get_data(as_text=True)
+    assert 'href="/settings/servers"' in body
+
+
+def test_the_settings_page_has_a_table_to_act_on(client):
+    """The one part of D4 that is a build rather than a move: /servers keeps
+    its table for READING the fleet, so Settings needs its own narrow one for
+    changing it."""
+    body = client.get("/settings/servers").get_data(as_text=True)
+    assert 'id="settings-server-table"' in body
+    for action in ("showAddForm", "editServer", "deleteServer", "discoverServers"):
+        assert f'data-action="{action}"' in body, f"Settings cannot {action}"
+    assert 'id="server-modal"' in body and 'id="delete-modal"' in body
+
+
+def test_the_setup_guide_did_not_travel():
+    """It came across in the markup cut — the functions were cut by name, the
+    markup by range — and settings.html ended up with three
+    `data-action="closeGuide"` and no handler. The guide is help about adding a
+    server; /servers still offers it."""
+    assert 'id="guide-modal"' in _SERVERS.read_text(encoding="utf-8")
+    assert "closeGuide" not in _code(_CONFIG), (
+        "the guide modal is in the settings partial, whose page has no handler")
+
+
+# ── the defect hoisting hid ──────────────────────────────────────────────
+
+def test_no_moved_name_is_still_evaluated_on_the_fleet_page():
+    """The one that got through every file-level check.
+
+        document.addEventListener('DOMContentLoaded', populateCustomServerTypes);
+
+    is a REFERENCE, not a call, so the bootstrap guard — which scans for
+    `name()` — did not see it. It throws at module scope, so the rest of the
+    script never runs: the symptom was the setup guide's Escape key, three
+    hundred lines below.
+
+    Function declarations HOIST, which is why the checks I ran first said
+    nothing: `showGuide` was callable and the script tag had run. Both are
+    true of a script that threw on its second statement."""
+    code = _code(_SERVERS)
+    js = "\n".join(re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>",
+                              code, re.S | re.I))
+    moved = set(re.findall(r"function\s+(\w+)\s*\(", _code(_CONFIG)))
+    here = set(re.findall(r"function\s+(\w+)\s*\(", js))
+    dangling = sorted(
+        n for n in moved - here
+        if re.search(r"addEventListener\([^)]*,\s*" + re.escape(n) + r"\s*\)", js)
+        or re.search(r"=\s*" + re.escape(n) + r"\s*;", js))
+    assert not dangling, (
+        f"/servers evaluates names that moved away: {dangling}")
+
+
+def test_escape_still_closes_something_on_each_page():
+    """The handler that broke. On /servers it closes the guide; in Settings it
+    closes whichever modal is open. Reaching for an element that is not on the
+    page throws on the null, so neither may reference the other's."""
+    servers = _code(_SERVERS)
+    config = _code(_CONFIG)
+    assert "closeGuide()" in servers
+    assert "delete-modal" not in servers and "server-modal" not in servers, (
+        "/servers reaches for modal elements it no longer has")
+    for modal in ("delete-modal", "server-modal", "discovery-modal"):
+        assert modal in config, f"the settings handler forgot {modal}"
+
+
+def test_the_fleet_empty_state_names_the_new_place():
+    """It said 'Click "Add Server" or "Discover Servers" to get started', and
+    both buttons left in this slice. Fifth stale in-page pointer in WP-4."""
+    src = _SERVERS.read_text(encoding="utf-8")
+    assert "Add Server" not in src or "no_servers_hint_fleet" in src
+    assert 'Click "Add Server"' not in src
+    from i18n import TRANSLATIONS
+    assert "Settings" in TRANSLATIONS["en"]["no_servers_hint_fleet"]
