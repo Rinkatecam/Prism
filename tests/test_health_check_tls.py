@@ -266,7 +266,14 @@ def test_the_probe_reports_which_mode_it_ran_in():
 # hand-crafted API call. These pin the carrier.
 
 def _servers_html() -> str:
-    return (PROJECT_ROOT / "templates" / "servers.html").read_text(encoding="utf-8")
+    """The health-check form's source.
+
+    It lived in templates/servers.html until WP-4 D4b moved health checks to
+    Settings → Servers. The name is kept because every caller reads it as
+    "wherever the health-check form lives", which is what it has always
+    meant."""
+    return (PROJECT_ROOT / "templates" / "partials" / "settings"
+            / "_health_checks.html").read_text(encoding="utf-8")
 
 
 def test_the_form_offers_the_setting():

@@ -1,0 +1,452 @@
+{% from "partials/_empty_state.html" import empty_state %}
+
+{# ── Health checks ───────────────────────────────────
+
+   WP-4 D4b, moved from /servers. Included by _servers.html so Settings →
+   Servers is one section rather than two that happen to sit together.
+
+   THE ANCHOR IS LOAD-BEARING and was the trap this slice was warned about in
+   the plan: /services is a state-only page whose one route to configuration
+   is a link to `#health-checks`, and **an anchor cannot be redirected** — a
+   301 is a promise about a URL, and the fragment never reaches the server.
+   So the link, the test that asserts it, and the two vitals hints that named
+   "Servers → Health Checks" in five languages all moved in this same commit.
+   Keeping the `id` unchanged is what makes the new link work. #}
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 3b — Health Checks
+
+     `id` is load-bearing, not decoration: /services is a state-only page
+     and its one route to configuration is `/servers#health-checks`. The
+     quadrant card's empty-state hint names this section too — it named
+     Operations until WP-3, which has no such section and never had one.
+     ═══════════════════════════════════════════════════════════════ -->
+{# A div, not a section: it nests inside the Servers settings section,
+   and every <section> on a settings page has to declare which section
+   it is. This is a sub-block of one. The `id` is what /services links
+   to and is unchanged. #}
+<div class="mb-8" id="health-checks">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-semibold flex items-center gap-2">
+      <i data-lucide="activity" class="w-5 h-5 text-accent"></i>
+      {{ t.get('health_checks', 'Health Checks') }}
+    </h2>
+    <button data-action="toggleHcForm" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
+      <i data-lucide="plus" class="w-4 h-4"></i>
+      {{ t.get('add_health_check', 'Add Health Check') }}
+    </button>
+  </div>
+  <div class="bg-card rounded-lg p-5 border border-line">
+
+    <!-- Add health check form (hidden by default, matches dependency design) -->
+    <div id="hc-add-form" class="hidden mb-4 p-4 rounded-lg border border-dashed border-line bg-page dark:bg-page/50">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+        <div>
+          <label class="block text-[10px] font-medium text-muted mb-1">Name</label>
+          <input type="text" id="hc-new-name" placeholder="e.g. SQL Listener" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
+        </div>
+        <div>
+          <label class="block text-[10px] font-medium text-muted mb-1">{{ t.get('server', 'Server') }}</label>
+          <select id="hc-new-server" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
+            <option value="">--</option>
+            {% for s in servers %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-medium text-muted mb-1">{{ t.get('check_type', 'Type') }}</label>
+          <select id="hc-new-type" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field" data-change="toggleNewHcFields">
+            <option value="tcp">TCP</option>
+            <option value="http">HTTP</option>
+            <option value="https">HTTPS</option>
+            <option value="udp">UDP</option>
+            <option value="icmp">ICMP (Ping)</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+        <div>
+          <label class="block text-[10px] font-medium text-muted mb-1">{{ t.get('target_host', 'Host') }}</label>
+          <input type="text" id="hc-new-host" placeholder="hostname or IP" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field font-mono">
+        </div>
+        <div id="hc-new-port-wrap">
+          <label class="block text-[10px] font-medium text-muted mb-1">{{ t.get('port', 'Port') }}</label>
+          <input type="number" id="hc-new-port" placeholder="443" min="1" max="65535" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
+        </div>
+        <div id="hc-new-path-wrap" class="hidden">
+          <label class="block text-[10px] font-medium text-muted mb-1">HTTP Path</label>
+          <input type="text" id="hc-new-path" placeholder="/health" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field font-mono">
+        </div>
+      </div>
+      {# Only meaningful for HTTPS, so it only appears for HTTPS. A control that
+         is inert for four of the five check types teaches people to ignore it. #}
+      <div id="hc-new-verify-wrap" class="hidden mb-3">
+        <label class="flex items-start gap-2 cursor-pointer">
+          <input type="checkbox" id="hc-new-verify-tls" checked
+                 class="mt-0.5 rounded border-line">
+          <span>
+            <span class="block text-xs font-medium text-ink">{{ t.get('hc_verify_tls', 'Validate the TLS certificate') }}</span>
+            <span class="block text-[10px] text-muted">{{ t.get('hc_verify_tls_hint', 'Uncheck only for an internal endpoint with a self-signed certificate. Without it, the check proves something answered — not that it was this service.') }}</span>
+          </span>
+        </label>
+      </div>
+      <div class="flex items-center gap-2">
+        <button data-action="saveNewHealthCheck" class="px-4 py-1.5 text-sm font-medium rounded bg-healthy text-white hover:opacity-90 flex items-center gap-1">
+          <i data-lucide="save" class="w-4 h-4"></i>
+          {{ t.get('save', 'Save') }}
+        </button>
+        <button data-action="toggleHcForm" class="px-4 py-1.5 text-sm font-medium rounded border border-line hover:bg-page dark:hover:bg-line flex items-center gap-1">
+          <i data-lucide="x" class="w-4 h-4"></i>
+          {{ t.get('cancel', 'Cancel') }}
+        </button>
+        <button data-action="testNewHealthCheck" class="px-4 py-1.5 text-sm font-medium rounded border border-warning text-warning hover:bg-warning/10 flex items-center gap-1 ml-auto">
+          <i data-lucide="zap" class="w-4 h-4"></i>
+          Test
+        </button>
+        <span id="hc-new-test-result" class="text-xs"></span>
+      </div>
+    </div>
+
+    <!-- Existing health checks list -->
+    <div id="health-check-list" class="space-y-2"></div>
+    <div id="no-health-checks">
+      {{ empty_state('activity',
+                     t.get('no_health_checks', 'No health checks configured'),
+                     t.get('no_health_checks_hint',
+                           'Add one above to watch a port, a URL or a host \u2014 a probe proves the service answered, not just that the machine is up')) }}
+    </div>
+  </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+// ═══════════════════════════════════════════════════════════════
+// Health Checks
+// ═══════════════════════════════════════════════════════════════
+
+function loadHealthChecks() {
+  fetch('/api/health-checks/config', { headers: { 'X-CSRFToken': csrfToken } })
+    .then(r => r.json())
+    .then(data => {
+      const list = document.getElementById('health-check-list');
+      const noChecks = document.getElementById('no-health-checks');
+      const checks = data.config || data.checks || [];
+      list.innerHTML = '';
+      if (checks.length === 0) {
+        noChecks.classList.remove('hidden');
+      } else {
+        noChecks.classList.add('hidden');
+        checks.forEach(c => {
+          // Map DB column names to UI field names
+          addHealthCheckRow({
+            id: c.id,
+            name: c.name || '',
+            server: c.server_name || c.server,
+            check_type: c.check_type,
+            host: c.target_host || c.host,
+            port: c.target_port || c.port,
+            http_path: c.http_path,
+          });
+        });
+      }
+    })
+    .catch(err => console.error('Failed to load health checks:', err));
+}
+
+function editHealthCheck(row) {
+  const id = row.dataset.hcId;
+  if (!id) return;
+
+  // Read data from the row's display text
+  // Fetch full data from API
+  fetch('/api/health-checks/config', { headers: { 'X-CSRFToken': csrfToken } })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) return;
+      const hc = (data.config || []).find(c => String(c.id) === String(id));
+      if (!hc) return;
+
+      // Show form and populate
+      const form = document.getElementById('hc-add-form');
+      form.classList.remove('hidden');
+      lucide.createIcons({ nodes: [form] });
+
+      document.getElementById('hc-new-name').value = hc.name || '';
+      document.getElementById('hc-new-server').value = hc.server_name || '';
+      document.getElementById('hc-new-type').value = hc.check_type || 'tcp';
+      document.getElementById('hc-new-host').value = hc.target_host || '';
+      document.getElementById('hc-new-port').value = hc.target_port || '';
+      document.getElementById('hc-new-path').value = hc.http_path || '';
+      // MUST be repopulated. Editing DELETES the row and re-creates it from
+      // this form, so a checkbox left at its default would silently turn
+      // verification back on for an endpoint the operator had deliberately
+      // exempted — on any unrelated edit, such as fixing a typo in the name.
+      document.getElementById('hc-new-verify-tls').checked = hc.verify_tls !== 0;
+      toggleNewHcFields();
+
+      // Delete the old one so saving creates a fresh entry
+      fetch('/api/health-checks/config/' + id, { method: 'DELETE', headers: { 'X-CSRFToken': csrfToken } })
+        .then(() => loadHealthChecks());
+
+      form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+}
+
+function toggleHcForm() {
+  const form = document.getElementById('hc-add-form');
+  form.classList.toggle('hidden');
+  if (!form.classList.contains('hidden')) {
+    lucide.createIcons({ nodes: [form] });
+    document.getElementById('hc-new-name').focus();
+  }
+}
+
+function toggleNewHcFields() {
+  const type = document.getElementById('hc-new-type').value;
+  document.getElementById('hc-new-port-wrap').classList.toggle('hidden', type === 'icmp');
+  document.getElementById('hc-new-path-wrap').classList.toggle('hidden', type !== 'http' && type !== 'https');
+  document.getElementById('hc-new-verify-wrap').classList.toggle('hidden', type !== 'https');
+}
+
+function saveNewHealthCheck() {
+  const name = document.getElementById('hc-new-name').value.trim();
+  const server = document.getElementById('hc-new-server').value;
+  const type = document.getElementById('hc-new-type').value;
+  const host = document.getElementById('hc-new-host').value.trim();
+  const port = type === 'icmp' ? 0 : parseInt(document.getElementById('hc-new-port').value) || 0;
+  const httpPath = document.getElementById('hc-new-path').value.trim() || '/';
+  // Sent only for HTTPS. For the other types it is meaningless, and the API
+  // treats an ABSENT value as "verify", so omitting it can never weaken a
+  // check — see routes/api/health.py:_verify_tls_from_payload.
+  const verifyTls = type === 'https'
+    ? document.getElementById('hc-new-verify-tls').checked : undefined;
+
+  if (!server || !host) { pAlert('Server and Host are required'); return; }
+  if (type !== 'icmp' && !port) { pAlert('Port is required'); return; }
+
+  fetch('/api/health-checks/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({ server_name: server, check_type: type, target_host: host, target_port: port, http_path: httpPath, name: name, verify_tls: verifyTls }),
+  })
+  .then(r => r.json())
+  .then(result => {
+    if (result.ok) {
+      // Clear form and hide
+      document.getElementById('hc-new-name').value = '';
+      document.getElementById('hc-new-host').value = '';
+      document.getElementById('hc-new-port').value = '';
+      document.getElementById('hc-new-path').value = '';
+      // Back to checked, not to whatever the last check used. A form that
+      // remembers an opt-out quietly applies it to the next endpoint.
+      document.getElementById('hc-new-verify-tls').checked = true;
+      document.getElementById('hc-add-form').classList.add('hidden');
+      loadHealthChecks();
+    } else {
+      pAlert(result.error || 'Failed to save health check');
+    }
+  })
+  .catch(err => pAlert('Error: ' + err.message));
+}
+
+function testNewHealthCheck() {
+  const type = document.getElementById('hc-new-type').value;
+  const host = document.getElementById('hc-new-host').value.trim();
+  const port = type === 'icmp' ? 0 : parseInt(document.getElementById('hc-new-port').value) || 0;
+  const httpPath = document.getElementById('hc-new-path').value.trim() || '/';
+  const resultEl = document.getElementById('hc-new-test-result');
+
+  if (!host) { pAlert('Host is required to test'); return; }
+
+  resultEl.textContent = 'Testing...';
+  resultEl.className = 'text-xs text-muted';
+
+  fetch('/api/health-checks/probe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({ host, port, check_type: type, http_path: httpPath,
+      verify_tls: type === 'https' ? document.getElementById('hc-new-verify-tls').checked : undefined }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok && data.result) {
+      const r = data.result;
+      if (r.status === 'up') {
+        resultEl.textContent = '✓ Up (' + (r.response_time_ms || 0).toFixed(0) + 'ms)';
+        resultEl.className = 'text-xs text-healthy font-medium';
+      } else {
+        resultEl.textContent = '✗ Down: ' + (r.error || 'unreachable');
+        resultEl.className = 'text-xs text-critical font-medium';
+      }
+    } else {
+      resultEl.textContent = '✗ ' + (data.error || 'Probe failed');
+      resultEl.className = 'text-xs text-critical';
+    }
+  })
+  .catch(err => { resultEl.textContent = '✗ ' + err.message; resultEl.className = 'text-xs text-critical'; });
+}
+
+function addHealthCheckRow(data) {
+  // Renders a saved health check as a compact info row (not editable)
+  const list = document.getElementById('health-check-list');
+  document.getElementById('no-health-checks').classList.add('hidden');
+
+  if (!data || !data.id) return; // Only render saved items
+
+  const row = document.createElement('div');
+  row.className = 'flex items-center gap-3 px-3 py-2 rounded-lg border border-line bg-page dark:bg-page/50 hc-row';
+  row.dataset.hcId = data.id;
+
+  const name = data.name || data.check_type.toUpperCase();
+  const host = data.host || data.target_host || '';
+  const port = data.port || data.target_port || '';
+  const type = (data.check_type || 'tcp').toUpperCase();
+  const path = data.http_path || '';
+  const server = data.server || data.server_name || '';
+  const portDisplay = data.check_type === 'icmp' ? '' : ':' + port;
+  const pathDisplay = (data.check_type === 'http' || data.check_type === 'https') && path ? path : '';
+  // An HTTPS check that is NOT validating its certificate says so in the list.
+  // The whole point of making this a per-check setting was that the weaker
+  // behaviour leaves a trace; if you have to open the edit form to find out,
+  // it is exactly as invisible as the hardcoded CERT_NONE it replaced.
+  const tlsUnverified = data.check_type === 'https' && data.verify_tls === 0;
+
+  row.innerHTML = `
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-semibold text-ink">${_escHtml(name)}</span>
+        <span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-info/10 text-info dark:bg-info/20">${type}</span>
+        ${tlsUnverified ? `<span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-warning/15 text-warning-strong dark:bg-warning/25" title="{{ t.get('hc_tls_unverified_hint', 'This check does not validate the certificate, so it proves the endpoint answered — not that it is this service.') }}">{{ t.get('hc_tls_unverified', 'TLS NOT VERIFIED') }}</span>` : ''}
+      </div>
+      <div class="text-[10px] text-muted mt-0.5 font-mono">${_escHtml(server)} → ${_escHtml(host)}${portDisplay}${pathDisplay ? ' ' + _escHtml(pathDisplay) : ''}</div>
+    </div>
+    <button data-action="_srvEditHc" class="p-1.5 text-muted hover:text-info rounded hover:bg-info/10" title="Edit">
+      <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+    </button>
+    <button data-action="_srvDeleteHc" class="p-1.5 text-muted hover:text-critical rounded hover:bg-critical/10" title="Delete">
+      <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+    </button>
+  `;
+  list.appendChild(row);
+  lucide.createIcons({ nodes: [row] });
+}
+
+function toggleHcFields(row) {
+  const type = row.querySelector('.hc-type').value;
+  const pathInput = row.querySelector('.hc-http-path');
+  const portInput = row.querySelector('.hc-port');
+  // Show http_path only for HTTP/HTTPS
+  if (type === 'http' || type === 'https') pathInput.classList.remove('hidden');
+  else pathInput.classList.add('hidden');
+  // Hide port for ICMP (no port needed)
+  if (type === 'icmp') portInput.classList.add('hidden');
+  else portInput.classList.remove('hidden');
+}
+
+function saveHealthCheck(row) {
+  const id = row.dataset.hcId;
+  const checkType = row.querySelector('.hc-type').value;
+  const payload = {
+    name: row.querySelector('.hc-name').value.trim(),
+    server: row.querySelector('.hc-server').value,
+    check_type: checkType,
+    host: row.querySelector('.hc-host').value.trim(),
+    port: checkType === 'icmp' ? 0 : (parseInt(row.querySelector('.hc-port').value) || null),
+    http_path: row.querySelector('.hc-http-path').value.trim() || null,
+  };
+  if (!payload.host) { row.querySelector('.hc-host').focus(); return; }
+
+  const url = id ? '/api/health-checks/config/' + id : '/api/health-checks/config';
+  const method = id ? 'PUT' : 'POST';
+
+  fetch(url, {
+    method: method,
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify(payload),
+  })
+    .then(r => r.json())
+    .then(result => {
+      if (result.ok) {
+        if (result.id) row.dataset.hcId = result.id;
+        const res = row.querySelector('.hc-result');
+        res.innerHTML = '<span class="text-healthy">Saved</span>';
+        res.classList.remove('hidden');
+        setTimeout(() => res.classList.add('hidden'), 2000);
+      } else {
+        pAlert(result.error || 'Failed to save health check');
+      }
+    })
+    .catch(err => pAlert('Network error: ' + err.message));
+}
+
+async function deleteHealthCheck(row) {
+  const id = row.dataset.hcId;
+  if (!id) {
+    row.remove();
+    updateHcNoItemsMsg();
+    return;
+  }
+  if (!await pConfirm('Delete this health check?')) return;
+
+  fetch('/api/health-checks/config/' + id, {
+    method: 'DELETE',
+    headers: { 'X-CSRFToken': csrfToken },
+  })
+    .then(r => r.json())
+    .then(result => {
+      if (result.ok) {
+        row.remove();
+        updateHcNoItemsMsg();
+      } else {
+        pAlert(result.error || 'Failed to delete health check');
+      }
+    })
+    .catch(err => pAlert('Network error: ' + err.message));
+}
+
+function updateHcNoItemsMsg() {
+  const list = document.getElementById('health-check-list');
+  const noChecks = document.getElementById('no-health-checks');
+  if (list.children.length === 0) noChecks.classList.remove('hidden');
+  else noChecks.classList.add('hidden');
+}
+
+function testHealthCheck(row) {
+  const checkType = row.querySelector('.hc-type').value;
+  const payload = {
+    check_type: checkType,
+    host: row.querySelector('.hc-host').value.trim(),
+    port: checkType === 'icmp' ? 0 : (parseInt(row.querySelector('.hc-port').value) || null),
+    http_path: row.querySelector('.hc-http-path').value.trim() || null,
+  };
+  if (!payload.host) { row.querySelector('.hc-host').focus(); return; }
+
+  const resultEl = row.querySelector('.hc-result');
+  resultEl.textContent = 'Probing...';
+  resultEl.className = 'hc-result text-xs ml-1 text-muted';
+
+  fetch('/api/health-checks/probe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify(payload),
+  })
+    .then(r => r.json())
+    .then(result => {
+      if (result.ok && result.status === 'healthy') {
+        resultEl.innerHTML = `<span class="text-healthy">Healthy (${result.response_ms || 0}ms)</span>`;
+      } else if (result.ok) {
+        resultEl.innerHTML = `<span class="text-warning">${_escHtml(result.status || 'Unknown')}</span>`;
+      } else {
+        resultEl.innerHTML = `<span class="text-critical">${_escHtml(result.error || 'Probe failed')}</span>`;
+      }
+      resultEl.classList.remove('hidden');
+    })
+    .catch(err => {
+      resultEl.innerHTML = `<span class="text-critical">${_escHtml(err.message)}</span>`;
+      resultEl.classList.remove('hidden');
+    });
+}
+
+function _srvEditHc() { editHealthCheck(this.closest('.hc-row')); }
+function _srvDeleteHc() { deleteHealthCheck(this.closest('.hc-row')); }
+
+if (document.getElementById('health-check-list')) loadHealthChecks();
+</script>

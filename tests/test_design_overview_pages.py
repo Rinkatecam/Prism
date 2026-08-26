@@ -285,11 +285,18 @@ def test_the_route_to_configuration_is_named_and_exists():
     And the destination is checked rather than assumed: the hint this
     replaces pointed at Operations, where health checks have never lived."""
     body = _code_only(_src(SERVICES))
-    assert 'href="/servers#health-checks"' in body, (
+    # Moved with the section in WP-4 D4b. The fragment is why this had
+    # to change in the same commit rather than behind a 301: a redirect
+    # is a promise about a URL, and the browser never sends the part
+    # after the '#'.
+    assert 'href="/settings/servers#health-checks"' in body, (
         "/services does not name where probes are configured")
-    servers = _src(TEMPLATES / "servers.html")
-    assert 'id="health-checks"' in servers, (
-        "the anchor /services links to does not exist on /servers")
+    # The anchor has to exist WHERE THE LINK POINTS. A 301 cannot help here:
+    # the fragment never reaches the server, so a link to a moved section is
+    # a link to the top of some other page, silently.
+    target = _src(TEMPLATES / "partials" / "settings" / "_health_checks.html")
+    assert 'id="health-checks"' in target, (
+        "the anchor /services links to does not exist at its destination")
 
 
 def test_no_surface_still_sends_the_operator_to_operations_for_a_probe():

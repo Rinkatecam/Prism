@@ -207,3 +207,135 @@ def test_the_empty_state_is_the_shared_one():
     # is banning, so the raw version reported the documentation as the defect
     # (OPS-LEARNINGS #36).
     assert "Use the form above" not in code
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# D4b — health checks, and the anchor that could not be redirected
+# ══════════════════════════════════════════════════════════════════════════
+
+_HEALTH = _ROOT / "templates" / "partials" / "settings" / "_health_checks.html"
+
+_HC_MOVED = ["loadHealthChecks", "editHealthCheck", "saveNewHealthCheck",
+             "testNewHealthCheck", "addHealthCheckRow", "saveHealthCheck",
+             "deleteHealthCheck", "testHealthCheck"]
+
+
+def test_health_checks_left_the_servers_page():
+    code = _code(_SERVERS)
+    still = [f for f in _HC_MOVED
+             if re.search(r"function\s+" + re.escape(f) + r"\s*\(", code)]
+    assert not still, f"health-check functions still on /servers: {still}"
+    assert 'id="health-checks"' not in code, "the section markup is still there"
+
+
+def test_the_health_check_form_is_whole_at_its_destination():
+    """A move loses a function quietly: the page still renders, and only the
+    button nobody pressed during review is dead."""
+    code = _code(_HEALTH)
+    missing = [f for f in _HC_MOVED
+               if not re.search(r"function\s+" + re.escape(f) + r"\s*\(", code)]
+    assert not missing, f"lost in the move: {missing}"
+    for shim in ("_srvEditHc", "_srvDeleteHc"):
+        assert f"function {shim}(" in code, (
+            f"{shim} stayed behind, so its data-action resolves to nothing")
+
+
+def test_no_health_check_bootstrap_call_is_left_behind():
+    code = _code(_SERVERS)
+    assert not re.search(r"^\s*loadHealthChecks\(\)", code, re.M), (
+        "loadHealthChecks() is still called on /servers, where it no longer exists")
+
+
+def test_the_destination_loads_the_list_itself():
+    code = _code(_HEALTH)
+    # A BOOTSTRAP call, not any call. The loader calls itself after every
+    # save, so `"loadHealthChecks()" in code` is true even with nothing
+    # kicking it off — which is exactly the state this test exists to catch.
+    # Top level, which in this file means column zero: the loader calls
+    # itself after every save, and those calls are inside functions and
+    # therefore indented. Excluding the definition line, which also starts at
+    # column zero and also contains the name.
+    bootstrap = re.search(
+        r"^(?!function)\S.*\bloadHealthChecks\(\)", code, re.M)
+    assert bootstrap, (
+        "nothing calls the loader at load time on the page that now owns it, "
+        "so the list renders empty until something else happens to save")
+
+
+# ── the anchor trap the plan named ────────────────────────────────────────
+
+def test_the_anchor_exists_where_the_link_points():
+    """The trap, stated in the plan: "A 301 does not save an in-page anchor."
+    The fragment never reaches the server, so a link to a moved section is a
+    link to the top of whatever page answers — silently, with no 404 and
+    nothing in a log."""
+    src = _HEALTH.read_text(encoding="utf-8")
+    assert 'id="health-checks"' in src, "the anchor did not travel with the section"
+
+    services = (_ROOT / "templates" / "services.html").read_text(encoding="utf-8")
+    assert 'href="/settings/servers#health-checks"' in services, (
+        "/services still points at the old location")
+    assert 'href="/servers#health-checks"' not in services
+
+
+def test_the_anchor_resolves_on_the_rendered_page(client):
+    """Asserted against what the app SERVES, not what the template says — the
+    id could exist in a partial nobody includes."""
+    body = client.get("/settings/servers").get_data(as_text=True)
+    assert 'id="health-checks"' in body, (
+        "the anchor is not on the rendered page /services links to")
+
+
+def test_no_locale_still_names_the_old_location():
+    """The two ends the plan did not list. Both vitals hints named
+    "Servers → Health Checks" as the place to go, in five languages, and a
+    hint that sends an operator to a page which no longer has the thing is
+    worse than no hint."""
+    from i18n import TRANSLATIONS
+    stale = {
+        "en": "Servers \u2192 Health Checks",
+        "de": "Server \u2192 Gesundheitspr\u00fcfungen",
+        "fr": "Serveurs \u2192 Contr\u00f4les de sant\u00e9",
+        "es": "Servidores \u2192 Verificaciones de salud",
+        "ja": "\u30b5\u30fc\u30d0\u30fc \u2192 \u30d8\u30eb\u30b9\u30c1\u30a7\u30c3\u30af",
+    }
+    bad = []
+    for lang, phrase in stale.items():
+        for key, value in TRANSLATIONS[lang].items():
+            if isinstance(value, str) and phrase in value:
+                bad.append(f"{lang}:{key}")
+    assert not bad, "strings still naming the old location: " + ", ".join(bad)
+
+
+def test_the_health_check_empty_state_is_the_shared_one():
+    """It was hand-rolled, and its hint ('Click "Add Health Check" to monitor
+    ports and URLs') had never been offered for translation."""
+    code = _code(_HEALTH)
+    # The CALL, not the import. `"empty_state(" in code` is satisfied by the
+    # `{% from ... import empty_state %}` line, which survives the renderer
+    # being taken back out of the markup.
+    assert re.search(r"\{\{\s*empty_state\(", code), (
+        "the shared renderer is imported but never called")
+    assert "Click " not in code, "the hand-rolled hint is back"
+
+
+def test_the_health_check_block_declares_no_section_of_its_own():
+    """It is a sub-block of Settings → Servers, not a section. Every
+    `<section>` on a settings page must say which section it is, and a second
+    one here would be claiming to be a sub-page that has no route."""
+    src = _HEALTH.read_text(encoding="utf-8")
+    src = re.sub(r"\{#.*?#\}|<!--.*?-->", " ", src, flags=re.S)
+    assert "<section" not in src, (
+        "the health-check block is a <section>; it nests inside the Servers "
+        "section, which the declaration guard reads as an undeclared section")
+
+
+def test_the_health_check_hint_exists_in_every_locale():
+    from i18n import TRANSLATIONS
+    missing = [lang for lang in TRANSLATIONS
+               if "no_health_checks_hint" not in TRANSLATIONS[lang]]
+    assert not missing, f"untranslated: {missing}"
+    english = TRANSLATIONS["en"]["no_health_checks_hint"]
+    for lang in TRANSLATIONS:
+        if lang != "en":
+            assert TRANSLATIONS[lang]["no_health_checks_hint"] != english
