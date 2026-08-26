@@ -80,6 +80,14 @@ def _clickable_non_native() -> list[tuple[str, int, str, str]]:
     return found
 
 
+def _page_uses_activedescendant() -> bool:
+    """True when some template actually drives a highlight via
+    `aria-activedescendant`. Without this check, `role="option"` on a bare div
+    would be a way to opt out of the guard by claiming a pattern."""
+    return any("aria-activedescendant" in p.read_text(encoding="utf-8")
+               for p in TEMPLATES.rglob("*.html"))
+
+
 def _needs_keyboard(action: str, tag: str) -> bool:
     """A clickable non-native element needs a tab stop UNLESS it is one of the
     two shapes where a tab stop would be wrong.
@@ -92,6 +100,14 @@ def _needs_keyboard(action: str, tag: str) -> bool:
     if 'aria-hidden="true"' in tag:
         return False
     if action in ("stop-prop", "modal-backdrop", "close-mobile-sidebar"):
+        return False
+    # A listbox option is operated through its controller, not on its own. The
+    # ARIA combobox pattern REQUIRES options not to be tab stops: DOM focus
+    # stays on the input and `aria-activedescendant` names the active row, so
+    # a tabindex on each row would make Tab walk the results instead of
+    # leaving the control. Narrow on purpose — declaring the role is not
+    # enough, the page has to implement the pattern.
+    if 'role="option"' in tag and _page_uses_activedescendant():
         return False
     backdrop = ("inset-0" in tag) and (action.startswith("close") or "backdrop" in action)
     return not backdrop
@@ -190,3 +206,18 @@ def test_nothing_looks_for_an_onclick_attribute_any_more():
     assert not offenders, (
         "selecting on `[onclick]`, which the CSP migration removed — this "
         "resolves to null and throws:\n  " + "\n  ".join(offenders))
+
+
+def test_the_listbox_exemption_does_not_excuse_a_bare_div():
+    """The exemption has to be narrow enough that it cannot be used as an
+    escape hatch. A clickable div with no role is still flagged."""
+    offender = ('<div class="cursor-pointer" data-action="doSomething">')
+    assert _needs_keyboard("doSomething", offender), (
+        "the listbox exemption now excuses any clickable div")
+
+
+def test_the_listbox_exemption_covers_a_real_option_row():
+    row = '<div role="option" id="jump-opt-0" class="cursor-pointer">'
+    assert not _needs_keyboard("", row), (
+        "a combobox option row is being asked for a tab stop, which the ARIA "
+        "pattern forbids")

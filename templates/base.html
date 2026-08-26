@@ -303,7 +303,7 @@
   <header id="topbar" class="fixed top-0 left-0 right-0 z-[51] h-14 bg-card border-b border-line flex items-center gap-3 px-3 transition-colors duration-base">
     <!-- Mobile-only menu toggle (opens the off-canvas nav). Desktop uses the
          collapse control in the sidebar footer, next to the username. -->
-    <button data-action="toggle-sidebar" class="md:hidden p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted flex-shrink-0" title="Toggle sidebar" aria-label="Toggle sidebar">
+    <button data-action="toggle-sidebar" class="md:hidden p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted flex-shrink-0" title="{{ t.get('toggle_sidebar', 'Toggle sidebar') }}" aria-label="{{ t.get('toggle_sidebar', 'Toggle sidebar') }}">
       <i data-lucide="panel-left" class="w-5 h-5"></i>
     </button>
     <!-- Brand -->
@@ -311,6 +311,41 @@
       <img src="{{ url_for('static', filename='img/logo.png') }}" alt="" class="w-7 h-7 flex-shrink-0" width="28" height="28">
       <span class="prism-wordmark">Prism</span>
     </a>
+    {#── Jump-to (D8) ──────────────────────────────────────
+
+       A combobox, spelled out as one: `role="combobox"` on the input,
+       `aria-expanded` tracking the panel, `aria-activedescendant` naming the
+       highlighted row. Arrow keys moving a highlight that assistive
+       technology cannot follow is the standard way this control is built
+       wrong — the sighted user sees the selection move and nobody else
+       does. #}
+    <div class="relative flex-shrink-0 hidden sm:block" id="jump-wrap">
+      <div class="relative">
+        <i data-lucide="search" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-faint pointer-events-none"></i>
+        <input id="jump-search" type="text" autocomplete="off" spellcheck="false"
+               role="combobox" aria-expanded="false" aria-controls="jump-results"
+               aria-autocomplete="list"
+               aria-label="{{ t.get('jump_aria', 'Jump to a server, setting or page') }}"
+               placeholder="{{ t.get('jump_placeholder', 'Jump to…') }}"
+               class="w-44 lg:w-64 pl-8 pr-8 py-1.5 text-sm rounded-md border border-line bg-field
+                      text-ink placeholder:text-faint focus-visible:outline-none
+                      focus-visible:ring-2 focus-visible:ring-brand/30
+                      focus-visible:border-brand transition-colors duration-fast">
+        <kbd id="jump-hint"
+             class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-sans
+                    px-1 py-0.5 rounded border border-line text-faint pointer-events-none">/</kbd>
+      </div>
+      {# The radius and the scrolling are on different elements on purpose: a
+         rounded element that also scrolls has its scrollbar painted straight
+         across the corner. #}
+      <div id="jump-panel"
+           class="hidden absolute left-0 right-0 mt-1 rounded-md overflow-hidden
+                  border border-line bg-card shadow-lg z-[60]">
+        <div id="jump-results" role="listbox"
+             aria-label="{{ t.get('jump_aria_results', 'Jump-to results') }}"
+             class="max-h-80 overflow-y-auto py-1"></div>
+      </div>
+    </div>
     <!-- Spacer pushes the live controls to the right -->
     <div class="flex-1"></div>
     <!-- Collector pulse widget — ECG-style live heartbeat. Replaces the
@@ -331,7 +366,7 @@
     <div id="pulse-panel" class="pulse-panel" role="region"
          aria-label="{{ t.get('pulse_aria_panel', 'Collector activity detail') }}"
          style="display:none"></div>
-    <button data-action="toggle-theme" class="p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted" title="Toggle theme" aria-label="Toggle dark mode">
+    <button data-action="toggle-theme" class="p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted" title="{{ t.get('toggle_theme', 'Toggle dark mode') }}" aria-label="{{ t.get('toggle_theme', 'Toggle dark mode') }}">
       <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
       <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
     </button>
@@ -340,7 +375,7 @@
   <!-- HTMX error banner -->
   <div id="htmx-error-banner" class="htmx-error-banner" role="alert" aria-live="polite" style="display:none">
     <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0"></i>
-    <span>Connection lost. Data may be stale. Retrying...</span>
+    <span>{{ t.get('connection_lost', 'Connection lost. Data may be stale. Retrying…') }}</span>
   </div>
 
   <!-- Backdrop for the mobile off-canvas sidebar (click to close) -->
@@ -1204,5 +1239,132 @@
        the sessionStorage persistence contract, and why a MutationObserver
        is needed alongside the htmx hooks. -->
   <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/table-sort.js') }}"></script>
+
+  {# Its own tag, and that is the whole point. The first version of this block
+     was appended before the last </script> in the file — which belonged to a
+     <script src="…">. Inline content inside a src tag is ignored by the
+     browser entirely: it parsed, it carried a valid nonce, it appeared in
+     document.scripts, and it never ran once. Every file-reading test passed
+     the whole time; only opening the page found it. #}
+  <script nonce="{{ csp_nonce }}">
+  // ── Jump-to (WP-4 D8) ────────────────────────────────────────────────
+  //
+  // The index lives on the server and is built by rendering the app's own
+  // pages, so this side stays small on purpose: type, ask, draw, navigate.
+  (function () {
+    const input = document.getElementById('jump-search');
+    const panel = document.getElementById('jump-panel');    // hides/shows
+    const list = document.getElementById('jump-results');   // holds the rows
+    if (!input || !panel || !list) return;
+
+    const T = {
+      empty: {{ t.get('jump_no_results', 'Nothing matches') | tojson }},
+      hint: {{ t.get('jump_no_results_hint', 'Jump-to finds servers, settings and page sections — not page content') | tojson }},
+    };
+
+    let items = [];
+    let active = -1;
+    let seq = 0;          // only the newest response may draw
+    let timer = null;
+
+    function close() {
+      panel.classList.add('hidden');
+      input.setAttribute('aria-expanded', 'false');
+      input.removeAttribute('aria-activedescendant');
+      active = -1;
+    }
+
+    function highlight(i) {
+      const rows = list.querySelectorAll('[role="option"]');
+      rows.forEach(r => {
+        r.classList.remove('bg-raised');
+        r.setAttribute('aria-selected', 'false');
+      });
+      if (i < 0 || i >= rows.length) { input.removeAttribute('aria-activedescendant'); return; }
+      rows[i].classList.add('bg-raised');
+      rows[i].setAttribute('aria-selected', 'true');
+      // Named, not just coloured: without this the highlight moves for
+      // sighted users only.
+      input.setAttribute('aria-activedescendant', rows[i].id);
+      rows[i].scrollIntoView({ block: 'nearest' });
+    }
+
+    const ICON = { server: 'server', settings: 'sliders', page: 'file-text', heading: 'hash' };
+
+    function draw(results) {
+      items = results;
+      active = -1;
+      if (!results.length) {
+        list.innerHTML =
+          '<div class="px-3 py-3 text-xs text-muted">' +
+          '<div class="font-medium text-ink">' + _escHtml(T.empty) + '</div>' +
+          '<div class="mt-0.5">' + _escHtml(T.hint) + '</div></div>';
+      } else {
+        list.innerHTML = results.map(function (r, i) {
+          return '<div role="option" id="jump-opt-' + i + '" aria-selected="false"' +
+                 ' data-jump-url="' + _escHtml(r.url) + '"' +
+                 ' class="px-3 py-1.5 flex items-center gap-2 cursor-pointer text-sm hover:bg-raised">' +
+                 '<i data-lucide="' + _escHtml(ICON[r.kind] || 'corner-down-right') +
+                 '" class="w-3.5 h-3.5 text-faint flex-shrink-0"></i>' +
+                 '<span class="truncate">' + _escHtml(r.label) + '</span>' +
+                 '<span class="ml-auto text-[10px] text-faint truncate pl-2">' +
+                 _escHtml(r.sublabel || '') + '</span></div>';
+        }).join('');
+        if (window.lucide) lucide.createIcons();
+      }
+      panel.classList.remove('hidden');
+      input.setAttribute('aria-expanded', 'true');
+    }
+
+    function go(i) {
+      if (i < 0 || i >= items.length) return;
+      window.location.href = items[i].url;
+    }
+
+    function ask() {
+      const q = input.value.trim();
+      if (!q) { close(); return; }
+      const mine = ++seq;
+      fetch('/api/search?q=' + encodeURIComponent(q))
+        .then(r => r.json())
+        .then(d => { if (mine === seq) draw(d.results || []); })
+        // A dead search box that also logs nothing is two problems. The panel
+        // says so rather than staying blank.
+        .catch(() => { if (mine === seq) draw([]); });
+    }
+
+    input.addEventListener('input', function () {
+      clearTimeout(timer);
+      timer = setTimeout(ask, 120);
+    });
+
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { close(); input.blur(); return; }
+      if (panel.classList.contains('hidden')) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); active = Math.min(active + 1, items.length - 1); highlight(active); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(active - 1, 0); highlight(active); }
+      else if (e.key === 'Enter') { e.preventDefault(); go(active >= 0 ? active : 0); }
+    });
+
+    list.addEventListener('click', function (e) {
+      const row = e.target.closest('[data-jump-url]');
+      if (row) window.location.href = row.getAttribute('data-jump-url');
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('#jump-wrap')) close();
+    });
+
+    // `/` to focus, the convention everywhere this control exists. Guarded so
+    // it cannot steal a slash the operator is typing into another field.
+    document.addEventListener('keydown', function (e) {
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) ||
+                     document.activeElement.isContentEditable;
+      if (e.key === '/' && !typing) { e.preventDefault(); input.focus(); input.select(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); input.focus(); input.select(); }
+    });
+  })();
+  </script>
+
 </body>
 </html>
