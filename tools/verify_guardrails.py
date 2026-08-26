@@ -3226,6 +3226,52 @@ suite(
 )
 
 
+# ── attack shape vs fleet-wide fault ──────────────────────────
+suite(
+    "correlation",
+    Mutation("permanent fleet-wide chatter is reported as a fault again",
+             "correlation.py",
+             "AND p.n > b.avg_n * ?",
+             "AND p.n > 0 * ?",
+             "test_permanent_fleet_wide_chatter_is_not_a_fault"),
+    Mutation("a signature with no history is judged against one",
+             "correlation.py",
+             "AND b.hours_seen >= ?",
+             "AND b.hours_seen >= 0 * ?",
+             "test_a_signature_with_no_history_is_not_called_unusual"),
+    Mutation("Information outranks Error again",
+             "correlation.py",
+             "WHEN 'Error' THEN 1",
+             "WHEN 'Error' THEN 9",
+             "test_errors_are_ranked_above_information"),
+    Mutation("two servers is enough to call something an attack",
+             "correlation.py",
+             "MIN_ATTACK_SERVERS = 3",
+             "MIN_ATTACK_SERVERS = 2",
+             "test_many_attempts_on_one_account_from_one_source_is_not_an_attack"),
+    Mutation("a category that cannot reach a host may explain one again",
+             "correlation.py",
+             '    "maintenance",',
+             '    "maintenance", "compliance",',
+             "test_only_categories_that_touch_a_host_can_explain"),
+    Mutation("an attack verdict stops naming its targets",
+             "correlation.py",
+             'a["targets"] = attack_targets(conn, a["source_ip"], hours=hours)',
+             'a["targets"] = []',
+             "test_an_attack_verdict_names_its_targets"),
+    Mutation("loopback and unknown sources are reported as attackers",
+             "correlation.py",
+             '_IGNORED_SOURCES = ("-", "127.0.0.1", "::1", "")',
+             '_IGNORED_SOURCES = ("zzz",)',
+             "test_local_and_unknown_sources_are_ignored"),
+    Mutation("the cluster floor is dropped, so two servers is a pattern",
+             "correlation.py",
+             "MIN_CLUSTER_SERVERS = 3",
+             "MIN_CLUSTER_SERVERS = 1",
+             "test_a_two_server_coincidence_is_not_reported_at_all"),
+)
+
+
 SUITE_FILES = {
     "loading": "tests/test_design_loading.py",
     "status-cache": "tests/test_status_summary_cache.py",
@@ -3276,6 +3322,7 @@ SUITE_FILES = {
     "settings-servers": "tests/test_settings_servers.py",
     "report-exports": "tests/test_report_exports.py",
     "firewall-ingest": "tests/test_firewall_ingest.py",
+    "correlation": "tests/test_correlation.py",
     "i18n-integrity": "tests/test_i18n_fallback.py",
 }
 
