@@ -211,7 +211,7 @@ HANDROLLED_BASELINE: dict[str, int] = {
     "monitoring.html": 2,
     "partials/settings/_tls.html": 1,
     "settings.html": 1,
-    "servers.html": 5,
+    "servers.html": 4,
 }
 
 

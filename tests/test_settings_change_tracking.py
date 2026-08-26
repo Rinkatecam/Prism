@@ -125,6 +125,11 @@ _EXEMPT_CONTAINERS = {
     'data-settings-section="rbac"': ("grants and revokes go straight to "
                                      "POST /api/rbac/grant and /api/rbac/revoke "
                                      "as individual decisions, not as a saved form"),
+    'data-settings-section="servers"': ("tags are created, renamed and deleted "
+                                        "one at a time through /api/tags and "
+                                        "their own buttons; nothing here belongs "
+                                        "in the settings payload, so a builder "
+                                        "would be wrong rather than missing"),
 }
 
 
@@ -477,7 +482,8 @@ def test_every_settings_section_declares_itself():
     # localStorage, `operations` posts its restart schedules to their own
     # endpoint. Both are real sections with real URLs, so the declaration
     # check has to know them even though no builder does.
-    assert set(names) == set(_SECTION_KEYS) | {"display", "operations", "rbac"}, sorted(names)
+    assert set(names) == set(_SECTION_KEYS) | {"display", "operations", "rbac",
+                                                "servers"}, sorted(names)
 
 
 def test_the_section_builders_cover_exactly_the_keys_the_page_owns():
@@ -671,7 +677,7 @@ def test_the_builder_map_covers_every_section_that_has_settings():
     # `operations` joins `display` as a section with no builder: its
     # scheduled restarts post to their own endpoint, so nothing of theirs
     # belongs in the settings payload.
-    assert builders | {"display", "operations", "rbac"} == set(_router_sections())
+    assert builders | {"display", "operations", "rbac", "servers"} == set(_router_sections())
 
 
 def test_every_section_renders_only_when_it_is_the_active_one():

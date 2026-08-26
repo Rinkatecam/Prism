@@ -268,33 +268,9 @@
   </div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     SECTION 1b — Tag Management
-     ═══════════════════════════════════════════════════════════════ -->
-<section class="mb-8">
-  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="tags" class="w-5 h-5 text-accent"></i>
-    {{ t.get('tag_management', 'Tag Management') }}
-  </h2>
-  <div class="bg-card rounded-lg p-5 border border-line space-y-4">
-    <!-- Add tag form -->
-    <div class="flex items-center gap-3">
-      <input type="text" id="new-tag-name" placeholder="Tag name..." class="px-3 py-1.5 text-sm rounded border border-line bg-field">
-      <input type="color" id="new-tag-color" value="#6B7280" class="w-8 h-8 rounded border border-line bg-field cursor-pointer p-0.5">
-      <button data-action="createTag" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
-        <i data-lucide="plus" class="w-4 h-4"></i>
-        {{ t.get('add_tag', 'Add Tag') }}
-      </button>
-    </div>
-    <!-- Tag list -->
-    <div id="tag-list" class="space-y-2"></div>
-    <div id="no-tags" class="text-sm text-faint text-center py-8">
-      <i data-lucide="tags" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
-      <p>{{ t.get('no_tags', 'No tags created yet') }}</p>
-      <p class="text-[10px] mt-1 opacity-60">Use the form above to create your first tag</p>
-    </div>
-  </div>
-</section>
+{# Tag MANAGEMENT moved to Settings → Servers in WP-4 D4a. The pills on
+   the cards above and the assign menu stay: reading and working the fleet
+   is not configuring it. #}
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 3b — Health Checks
@@ -1738,127 +1714,12 @@ function closeDiscoveryModal() {
   discoveredServers = [];
 }
 
-// ═══════════════════════════════════════════════════════════════
-// Tag Management
-// ═══════════════════════════════════════════════════════════════
-
-function loadTags() {
-  fetch('/api/tags', { headers: { 'X-CSRFToken': csrfToken } })
-    .then(r => r.json())
-    .then(data => {
-      const list = document.getElementById('tag-list');
-      const noTags = document.getElementById('no-tags');
-      const tags = data.tags || [];
-      if (tags.length === 0) {
-        list.innerHTML = '';
-        noTags.classList.remove('hidden');
-        return;
-      }
-      noTags.classList.add('hidden');
-      list.innerHTML = tags.map(tag => `
-        <div class="flex items-center justify-between p-2 rounded border border-line bg-page" data-tag-id="${tag.id}">
-          <div class="flex items-center gap-2">
-            <span class="w-4 h-4 rounded-full flex-shrink-0" style="background-color: ${_escHtml(tag.color || '#6B7280')}"></span>
-            <span class="text-sm font-medium tag-name-display">${_escHtml(tag.name)}</span>
-            <span class="text-[10px] text-faint">${tag.server_count || 0} server${(tag.server_count || 0) !== 1 ? 's' : ''}</span>
-          </div>
-          <div class="flex items-center gap-1">
-            <button data-action="editTag" data-args='${JSON.stringify([tag.id, tag.name, tag.color || '#6B7280']).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}'
-                    class="p-1 text-accent hover:text-accent-strong" title="Edit">
-              <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
-            </button>
-            <button data-action="deleteTag" data-args="[${tag.id}]"
-                    class="p-1 text-critical hover:bg-critical/15 rounded" title="Delete">
-              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-            </button>
-          </div>
-        </div>
-      `).join('');
-      lucide.createIcons();
-    })
-    .catch(err => console.error('Failed to load tags:', err));
-}
-
-function createTag() {
-  const nameInput = document.getElementById('new-tag-name');
-  const colorInput = document.getElementById('new-tag-color');
-  const name = nameInput.value.trim();
-  if (!name) { nameInput.focus(); return; }
-
-  fetch('/api/tags', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-    body: JSON.stringify({ name: name, color: colorInput.value }),
-  })
-    .then(r => r.json())
-    .then(result => {
-      if (result.ok) {
-        nameInput.value = '';
-        colorInput.value = '#6B7280';
-        loadTags();
-      } else {
-        pAlert(result.error || 'Failed to create tag');
-      }
-    })
-    .catch(err => pAlert('Network error: ' + err.message));
-}
-
-async function deleteTag(id) {
-  if (!await pConfirm('Delete this tag? It will be removed from all servers.')) return;
-  fetch('/api/tags/' + id, {
-    method: 'DELETE',
-    headers: { 'X-CSRFToken': csrfToken },
-  })
-    .then(r => r.json())
-    .then(result => {
-      if (result.ok) loadTags();
-      else pAlert(result.error || 'Failed to delete tag');
-    })
-    .catch(err => pAlert('Network error: ' + err.message));
-}
-
-function editTag(id, currentName, currentColor) {
-  const row = document.querySelector(`[data-tag-id="${id}"]`);
-  if (!row) return;
-  const nameDisplay = row.querySelector('.tag-name-display');
-  const existingName = nameDisplay.textContent;
-
-  // Replace name display with inline edit
-  row.querySelector('.flex.items-center.gap-2').innerHTML = `
-    <input type="color" class="edit-tag-color w-6 h-6 rounded border border-line bg-field cursor-pointer p-0.5" value="${currentColor}">
-    <input type="text" class="edit-tag-name px-2 py-0.5 text-sm rounded border border-line bg-field" value="${_escHtml(existingName)}">
-  `;
-  row.querySelector('.flex.items-center.gap-1').innerHTML = `
-    <button data-action="saveEditTag" data-args="[${id}]" class="p-1 text-healthy hover:text-[#059669]" title="Save">
-      <i data-lucide="check" class="w-3.5 h-3.5"></i>
-    </button>
-    <button data-action="loadTags" class="p-1 text-muted hover:text-critical" title="Cancel">
-      <i data-lucide="x" class="w-3.5 h-3.5"></i>
-    </button>
-  `;
-  lucide.createIcons();
-  row.querySelector('.edit-tag-name').focus();
-}
-
-function saveEditTag(id) {
-  const row = document.querySelector(`[data-tag-id="${id}"]`);
-  if (!row) return;
-  const name = row.querySelector('.edit-tag-name').value.trim();
-  const color = row.querySelector('.edit-tag-color').value;
-  if (!name) return;
-
-  fetch('/api/tags/' + id, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-    body: JSON.stringify({ name: name, color: color }),
-  })
-    .then(r => r.json())
-    .then(result => {
-      if (result.ok) loadTags();
-      else pAlert(result.error || 'Failed to update tag');
-    })
-    .catch(err => pAlert('Network error: ' + err.message));
-}
+// ══════════════════════════════════════════════════════════════
+// Tag management (create / rename / recolour / delete) moved to
+// Settings → Servers in WP-4 D4a. What remains on this page is how tags
+// are READ and ASSIGNED, which is a different feature that happens to
+// share a noun.
+// ══════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════
 // Health Checks
@@ -2273,7 +2134,7 @@ function showDepBrowsePopup(items, inputId, type, btnEl) {
   const popup = document.createElement('div');
   popup.id = 'dep-browse-popup';
   popup.style.cssText = 'position:fixed;z-index:9999;left:' + rect.left + 'px;top:' + (rect.bottom+4) + 'px;' +
-    'background:#1E293B;border:1px solid #334155;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.3);' +
+    'background:rgb(var(--c-card));border:1px solid rgb(var(--c-line));border-radius:8px;box-shadow:var(--shadow-lg);' +
     'min-width:240px;max-height:300px;overflow:hidden;display:flex;flex-direction:column;';
 
   const searchHtml = '<input type="text" placeholder="Search..." data-input="_srvFilterDepBrowse"' +
@@ -2288,10 +2149,10 @@ function showDepBrowsePopup(items, inputId, type, btnEl) {
     const display = item.display_name || item.DisplayName || '';
     const status = (item.status || '').toLowerCase();
     const dot = status === 'running' ? '<span class="w-1.5 h-1.5 rounded-full bg-healthy flex-shrink-0"></span>' : '';
-    return '<div class="dep-browse-item flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-[#334155] text-xs text-[#CBD5E1]"' +
+    return '<div class="dep-browse-item flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-raised text-xs text-ink"' +
       ' data-name="' + name + '" data-action="selectDepBrowseItem" tabindex="0" role="button" data-args=\'' + JSON.stringify([name, inputId]).replace(/&/g, "&amp;").replace(/'/g, "&#39;") + '\'>' +
       dot + '<span class="font-medium">' + name + '</span>' +
-      '<span class="text-[10px] text-[#64748B] truncate ml-auto">' + display + '</span></div>';
+      '<span class="text-[10px] text-muted truncate ml-auto">' + display + '</span></div>';
   }).join('');
 
   popup.innerHTML = searchHtml + '<div class="overflow-y-auto" style="max-height:260px;">' + listHtml + '</div>';
@@ -2723,7 +2584,7 @@ function showTagAssign(serverName, idx, btnEl) {
   const available = _allTags.filter(t => !existing.includes(t.id));
 
   if (available.length === 0 && _allTags.length === 0) {
-    pAlert('Create tags first in the Tag Management section below.');
+    pAlert({{ t.get('tags_none_yet', 'No tags exist yet. Create them in Settings → Servers.') | tojson }});
     return;
   }
 
@@ -2737,7 +2598,7 @@ function showTagAssign(serverName, idx, btnEl) {
   const popup = document.createElement('div');
   popup.id = 'tag-assign-popup';
   popup.style.cssText = `position:fixed;z-index:9999;left:${rect.left}px;top:${rect.bottom + 4}px;
-    background:#1E293B;border:1px solid #334155;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.3);
+    background:rgb(var(--c-card));border:1px solid rgb(var(--c-line));border-radius:8px;box-shadow:var(--shadow-lg);
     padding:6px;min-width:160px;max-height:200px;overflow-y:auto;`;
 
   if (available.length === 0) {
@@ -2745,9 +2606,9 @@ function showTagAssign(serverName, idx, btnEl) {
   } else {
     popup.innerHTML = available.map(t =>
       `<div data-action="assignTagToServer" tabindex="0" role="button" data-args='${JSON.stringify([serverName, t.id, idx]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}'
-            class="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-[#334155] text-xs text-[#CBD5E1]">
-        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:${t.color}"></span>
-        ${t.name}
+            class="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer hover:bg-raised text-xs text-ink">
+        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:${_escHtml(t.color || '#6B7280')}"></span>
+        ${_escHtml(t.name)}
       </div>`
     ).join('');
   }
@@ -2802,7 +2663,6 @@ function removeTagFromServer(serverName, tagId, idx) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  loadTags();
   loadHealthChecks();
   loadDepsTable();
   loadServerTags();

@@ -32,6 +32,7 @@
     {% set label = {
          'general': t.general,
          'collector': t.get('collector_engine_section', 'Collector'),
+         'servers': t.get('servers_page', 'Servers'),
          'detection': t.get('settings_section_detection', 'Detection'),
          'alerts': t.get('settings_section_alerts', 'Alerts'),
          'operations': t.get('settings_section_operations', 'Operations'),
@@ -260,6 +261,10 @@
      The markup is a partial because it moved between two page templates;
      the wrapper stays here, where the routing is. See the partial's header.
      ═══════════════════════════════════════════════════════════════ -->
+{% if section == 'servers' %}
+{% include "partials/settings/_servers.html" %}
+{% endif %}
+
 {% if section == 'detection' %}
 <section class="mb-8" data-settings-section="detection">
   <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">

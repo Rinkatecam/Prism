@@ -2916,6 +2916,78 @@ suite(
 )
 
 
+# ── tag management leaves /servers ───────────────────────────
+suite(
+    "settings-servers",
+    Mutation("a management function is left behind on /servers",
+             "templates/servers.html",
+             "// Tag management (create / rename / recolour / delete) moved to",
+             "function loadTags() {}\n// Tag management (create / rename / recolour / delete) moved to",
+             "test_tag_management_left_the_servers_page"),
+    Mutation("the display half is dragged along with the move",
+             "templates/servers.html",
+             "function renderServerTagPills",
+             "function renderServerTagPillsMoved",
+             "test_the_display_side_did_not_go_with_it"),
+    Mutation("a moved function never lands in the settings partial",
+             "templates/partials/settings/_servers.html",
+             "window.saveEditTag = function",
+             "window.saveEditTagX = function",
+             "test_the_partial_defines_exactly_the_moved_functions"),
+    Mutation("the dangling bootstrap call comes back",
+             "templates/servers.html",
+             "  loadHealthChecks();",
+             "  loadTags();\n  loadHealthChecks();",
+             "test_no_bootstrap_call_is_left_behind_on_servers"),
+    Mutation("the assign menu points at the section that moved again",
+             "templates/servers.html",
+             "pAlert({{ t.get('tags_none_yet',",
+             "pAlert('Create tags first in the Tag Management section below.'); pAlert({{ t.get('tags_none_yet',",
+             "test_the_assign_menu_no_longer_points_at_a_section_that_moved"),
+    Mutation("a tag name goes back into innerHTML unescaped",
+             "templates/servers.html",
+             "        ${_escHtml(t.name)}",
+             "        ${t.name}",
+             "test_tag_names_and_colours_are_escaped_in_the_assign_menu"),
+    Mutation("a popup goes back to a raw colour literal",
+             "templates/servers.html",
+             "hover:bg-raised text-xs text-ink\"'",
+             "hover:bg-[#334155] text-xs text-[#CBD5E1]\"'",
+             "test_the_popups_carry_no_raw_colour_literals"),
+    Mutation("the empty state is hand-rolled again",
+             "templates/partials/settings/_servers.html",
+             "none.innerHTML = window.prismEmptyState('tags', TAG_T.empty, TAG_T.emptyHint);",
+             "none.innerHTML = '<p>No tags created yet</p>';",
+             "test_the_empty_state_is_the_shared_one"),
+    Mutation("the delete confirmation loses its placeholder in one locale",
+             "i18n.py",
+             "'tag_delete_confirm': \"Tag '{name}' l\u00f6schen?",
+             "'tag_delete_confirm': \"Tag l\u00f6schen?",
+             "test_the_delete_confirmation_names_the_tag_in_every_language"),
+    Mutation("a locale loses a tag string",
+             "i18n.py",
+             "'tag_create_failed': 'Tag konnte nicht erstellt werden'",
+             "'tag_create_failed_x': 'Tag konnte nicht erstellt werden'",
+             "test_every_string_exists_in_every_locale"),
+)
+
+
+# ── the locale table's own integrity ─────────────────────────
+suite(
+    "i18n-integrity",
+    Mutation("a key is defined twice and the second silently wins",
+             "i18n.py",
+             "'tags_none_yet': 'No tags exist yet.",
+             "'sign_out': 'Something else', 'tags_none_yet': 'No tags exist yet.",
+             "test_no_locale_defines_the_same_key_twice"),
+    Mutation("the duplicate baseline is widened to excuse a new one",
+             "tests/test_i18n_fallback.py",
+             '"search", "select_all", "status", "thresholds",\n}',
+             '"search", "select_all", "status", "thresholds", "sign_out",\n}',
+             "test_no_locale_defines_the_same_key_twice"),
+)
+
+
 SUITE_FILES = {
     "loading": "tests/test_design_loading.py",
     "status-cache": "tests/test_status_summary_cache.py",
@@ -2963,6 +3035,8 @@ SUITE_FILES = {
     "settings-compliance": "tests/test_settings_compliance.py",
     "navigation": "tests/test_navigation.py",
     "jump-search": "tests/test_jump_search.py",
+    "settings-servers": "tests/test_settings_servers.py",
+    "i18n-integrity": "tests/test_i18n_fallback.py",
 }
 
 
