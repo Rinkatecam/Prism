@@ -2799,6 +2799,47 @@ suite(
 )
 
 
+# ── the main navigation ─────────────────────────────────────
+suite(
+    "navigation",
+    Mutation("the order drifts back to page age",
+             "templates/base.html",
+             '<a href="/servers" class="sidebar-link',
+             '<a href="/zservers" class="sidebar-link',
+             "test_the_nav_is_in_the_order_the_plan_specifies"),
+    Mutation("Settings stops highlighting on its sub-pages",
+             "templates/base.html",
+             "{% if request.path.startswith('/settings') %}sidebar-link-active",
+             "{% if request.path == '/settings' %}sidebar-link-active",
+             "test_settings_stays_active_across_its_sub_pages"),
+    Mutation("server detail pages stop highlighting Servers",
+             "templates/base.html",
+             "request.path == '/servers' or request.path.startswith('/server/')",
+             "request.path == '/servers'",
+             "test_a_server_detail_page_keeps_servers_active"),
+    Mutation("an aria-label goes back to hardcoded English",
+             "templates/base.html",
+             'aria-label="{{ nav_settings }}"',
+             'aria-label="Settings"',
+             "test_no_nav_entry_says_one_thing_and_announces_another"),
+    Mutation("an entry announces a different string than it shows",
+             "templates/base.html",
+             'aria-label="{{ nav_reports }}"',
+             'aria-label="{{ nav_topology }}"',
+             "test_each_entry_announces_exactly_its_visible_label"),
+    Mutation("a template links a route the app does not serve",
+             "templates/base.html",
+             '<a href="/topology" class="sidebar-link',
+             '<a href="/topology-map" class="sidebar-link',
+             "test_every_internal_link_in_every_template_resolves"),
+    Mutation("the RBAC redirect stops being permanent",
+             "routes/views.py",
+             'return redirect("/settings/rbac", code=301)',
+             'return redirect("/settings/rbac", code=302)',
+             "test_the_url_that_did_move_still_redirects"),
+)
+
+
 SUITE_FILES = {
     "loading": "tests/test_design_loading.py",
     "status-cache": "tests/test_status_summary_cache.py",
@@ -2844,6 +2885,7 @@ SUITE_FILES = {
     "pages-render": "tests/test_pages_render.py",
     "permissions": "tests/test_design_permissions.py",
     "settings-compliance": "tests/test_settings_compliance.py",
+    "navigation": "tests/test_navigation.py",
 }
 
 

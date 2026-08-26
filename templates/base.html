@@ -190,50 +190,88 @@
 
     <!-- Navigation -->
     <nav class="flex-1 py-3 px-2 space-y-1 overflow-y-auto overflow-x-hidden">
-      <a href="/" class="sidebar-link {% if request.path == '/' %}sidebar-link-active{% endif %}" aria-label="Dashboard">
+      {#── D7: ordered by the daily path, not by page age ──────────────
+
+         Dashboard, then the fleet and what is happening to it, then the
+         things you act with; then the reference surfaces you visit
+         deliberately; then Settings, which is a different kind of
+         destination and gets its own rule above it.
+
+         Every `aria-label` reads the same translated string as the visible
+         label. It cannot be the English name: an aria-label REPLACES the
+         visible text for assistive technology, so a hardcoded one makes the
+         app say a different word than it shows. With the sidebar collapsed
+         the visible label is hidden and the aria-label is the only name
+         there is. #}
+      {% set nav_dashboard = t.dashboard %}
+      <a href="/" class="sidebar-link {% if request.path == '/' %}sidebar-link-active{% endif %}" aria-label="{{ nav_dashboard }}">
         <i data-lucide="layout-dashboard" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.dashboard }}</span>
-      </a>
-      <a href="/reports" class="sidebar-link {% if request.path == '/reports' %}sidebar-link-active{% endif %}" aria-label="Reports">
-        <i data-lucide="file-bar-chart" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.reports }}</span>
-      </a>
-      <a href="/topology" class="sidebar-link {% if request.path == '/topology' %}sidebar-link-active{% endif %}" aria-label="Topology">
-        <i data-lucide="network" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.topology }}</span>
+        <span class="sidebar-label">{{ nav_dashboard }}</span>
       </a>
 
       <!-- Divider -->
       <div class="border-t border-line my-2 mx-1"></div>
 
-      <a href="/servers" class="sidebar-link {% if request.path == '/servers' or request.path.startswith('/server/') %}sidebar-link-active{% endif %}" aria-label="Servers">
+      {% set nav_servers = t.get('servers_page', 'Servers') %}
+      <a href="/servers" class="sidebar-link {% if request.path == '/servers' or request.path.startswith('/server/') %}sidebar-link-active{% endif %}" aria-label="{{ nav_servers }}">
         <i data-lucide="server" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.get('servers_page', 'Servers') }}</span>
+        <span class="sidebar-label">{{ nav_servers }}</span>
       </a>
-      <a href="/monitoring" class="sidebar-link {% if request.path == '/monitoring' %}sidebar-link-active{% endif %}" aria-label="Monitoring">
+      {% set nav_monitoring = t.get('monitoring_page', 'Monitoring') %}
+      <a href="/monitoring" class="sidebar-link {% if request.path == '/monitoring' %}sidebar-link-active{% endif %}" aria-label="{{ nav_monitoring }}">
         <i data-lucide="activity" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.get('monitoring_page', 'Monitoring') }}</span>
+        <span class="sidebar-label">{{ nav_monitoring }}</span>
       </a>
-      <a href="/operations" class="sidebar-link {% if request.path == '/operations' %}sidebar-link-active{% endif %}" aria-label="Operations">
+      {% set nav_operations = t.get('operations_page', 'Operations') %}
+      <a href="/operations" class="sidebar-link {% if request.path == '/operations' %}sidebar-link-active{% endif %}" aria-label="{{ nav_operations }}">
         <i data-lucide="wrench" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.get('operations_page', 'Operations') }}</span>
+        <span class="sidebar-label">{{ nav_operations }}</span>
       </a>
-      <a href="/workflows" class="sidebar-link {% if request.path == '/workflows' %}sidebar-link-active{% endif %}" aria-label="Workflows">
+      {% set nav_workflows = t.get('workflows_page', 'Workflows') %}
+      <a href="/workflows" class="sidebar-link {% if request.path == '/workflows' %}sidebar-link-active{% endif %}" aria-label="{{ nav_workflows }}">
         <i data-lucide="git-branch" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.get('workflows_page', 'Workflows') }}</span>
+        <span class="sidebar-label">{{ nav_workflows }}</span>
       </a>
-      <a href="/settings" class="sidebar-link {% if request.path == '/settings' %}sidebar-link-active{% endif %}" aria-label="Settings">
+
+      <!-- Divider -->
+      <div class="border-t border-line my-2 mx-1"></div>
+
+      {% set nav_reports = t.reports %}
+      <a href="/reports" class="sidebar-link {% if request.path == '/reports' %}sidebar-link-active{% endif %}" aria-label="{{ nav_reports }}">
+        <i data-lucide="file-bar-chart" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="sidebar-label">{{ nav_reports }}</span>
+      </a>
+      {% set nav_topology = t.topology %}
+      <a href="/topology" class="sidebar-link {% if request.path == '/topology' %}sidebar-link-active{% endif %}" aria-label="{{ nav_topology }}">
+        <i data-lucide="network" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="sidebar-label">{{ nav_topology }}</span>
+      </a>
+      {# The compliance DASHBOARD stays in the nav (WP-4 D6): it is SOP status,
+         audit-chain integrity and a findings register — things an operator
+         reads. Its enable switch is what moved, to Settings → Compliance.
+         Gated exactly as before, which URS-204 requires. #}
+      {% if compliance_enabled %}
+      {% set nav_compliance = t.get('compliance', 'Compliance') %}
+      <a href="/compliance" class="sidebar-link {% if request.path.startswith('/compliance') %}sidebar-link-active{% endif %}" aria-label="{{ nav_compliance }}">
+        <i data-lucide="clipboard-check" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="sidebar-label">{{ nav_compliance }}</span>
+      </a>
+      {% endif %}
+
+      <!-- Divider -->
+      <div class="border-t border-line my-2 mx-1"></div>
+
+      {# `request.path == '/settings'` was written when Settings was one page.
+         D1 gave it sub-pages, and every /settings/<section> has rendered with
+         nothing highlighted since — the nav claiming the operator is not on
+         the page they are on. #}
+      {% set nav_settings = t.settings %}
+      <a href="/settings" class="sidebar-link {% if request.path.startswith('/settings') %}sidebar-link-active{% endif %}" aria-label="{{ nav_settings }}">
         <i data-lucide="settings" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.settings }}</span>
+        <span class="sidebar-label">{{ nav_settings }}</span>
       </a>
       {# RBAC left the sidebar in WP-4 D4: it configures rather than
          shows, and it lives at Settings -> Permissions now. #}
-      {% if compliance_enabled %}
-      <a href="/compliance" class="sidebar-link {% if request.path.startswith('/compliance') %}sidebar-link-active{% endif %}" aria-label="Compliance">
-        <i data-lucide="clipboard-check" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.get('compliance', 'Compliance') }}</span>
-      </a>
-      {% endif %}
     </nav>
 
     <!-- Bottom: user + collapse toggle + logout -->
