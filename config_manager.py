@@ -67,7 +67,23 @@ class ConfigManager:
                 "System/1074",   # shutdown/restart initiated by a user or process
                 "System/6006",   # event log service stopped — clean shutdown
                 "System/6008",   # the previous shutdown was UNEXPECTED
-                "System/7045",   # a new service was installed
+                "System/7045",
+                # Windows Firewall policy events. Every one of these is Level 4
+                # ("Information"), so without an entry here they are dropped at
+                # ingest — which is why `log_source='Firewall'` had zero rows
+                # while the UI promised "Policy changes, blocked apps, and
+                # service state changes will appear here".
+                #
+                # Only POLICY events are allowed through. The per-packet
+                # events (5152/5153) are deliberately absent: they are the
+                # high-volume ones, and they arrive on the Security channel.
+                "Firewall/2004",   # a rule was added
+                "Firewall/2005",   # a rule was modified
+                "Firewall/2006",   # a rule was deleted
+                "Firewall/2008",   # firewall settings changed
+                "Firewall/2009",   # profile settings changed
+                "Firewall/2010",   # active network profile changed
+                "Firewall/2033",   # all rules deleted   # a new service was installed
             ],
             # Roll identical rows up into per-signature-per-hour counts in
             # log_signatures. The raw row is still written to `logs` for

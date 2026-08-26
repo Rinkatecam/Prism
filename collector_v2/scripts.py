@@ -185,17 +185,22 @@ foreach ($ch in $channels) {
     } catch { $events = @() }
     if (-not $events -or $events.Count -eq 0) { continue }
 
-    # Firewall channel: drop the very high-volume per-packet events. Keep
-    # everything else so policy changes / blocked apps / service stops
-    # survive into the response.
-    if ($displayName -eq 'Firewall') {
+    # Drop the very high-volume per-packet events, keeping policy changes,
+    # blocked apps and service stops.
+    #
+    # This filter used to be gated on the FIREWALL channel, where 5152/5153
+    # never appear: they are Filtering Platform events and Windows writes them
+    # to the SECURITY log. So it protected a channel that did not need it and
+    # left unprotected the one that did — on a host with WFP auditing enabled
+    # they fill the Security batch and crowd out the audit failures.
+    if ($displayName -eq 'Firewall' -or $displayName -eq 'Security') {
         $events = @($events | Where-Object { $_ -and ($FIREWALL_NOISE_IDS -notcontains [int]$_.Id) })
         if ($events.Count -eq 0) { continue }
     }
 
     # Classify each event into a sort-priority bucket so we always surface
     # errors and warnings even when they're outnumbered 100:1 by info noise.
-    $buckets = @{0=@(); 1=@(); 2=@(); 3=@()}
+    $buckets = @{0=@(); 1=@(); 3=@()}
     foreach ($e in $events) {
         if (-not $e) { continue }
         $lvl = [int]$e.Level
@@ -217,7 +222,9 @@ foreach ($ch in $channels) {
     $selected = @()
     $selected += @($buckets[0] | Select-Object -First 15)
     $selected += @($buckets[1] | Select-Object -First 10)
-    $selected += @($buckets[2] | Select-Object -First 5)
+    # Bucket 2 was here and could never contribute: the classifier above only
+    # ever writes to 0, 1 and 3. Removing it changes nothing (25 either way,
+    # then topped up to 30 from bucket 3).
     if ($selected.Count -lt 30) {
         $selected += @($buckets[3] | Select-Object -First (30 - $selected.Count))
     }

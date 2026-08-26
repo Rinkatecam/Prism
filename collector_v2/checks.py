@@ -294,7 +294,7 @@ def check_logs(server, pool) -> tuple[bool, list | None, str | None, str | None]
     Returns:
         ok=True with data = list[{"source", "time", "level", "event_id",
                                    "message"}]  (top-30 prioritized by severity
-                                                 per System/Application/Security)
+                                                 per System/Application/Security/Firewall)
         ok=False with error + error_kind on any failure.
     """
     ok, raw, err, kind = _run_ps(pool, PS_COLLECT_LOGS, server)

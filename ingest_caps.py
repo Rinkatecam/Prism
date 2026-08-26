@@ -50,6 +50,10 @@ logger = logging.getLogger("prism.ingest")
 #:
 #: max_payload_chars   one check's whole response, read before `json.loads`.
 #: max_rows_per_check  rows from one check. The logs script emits 30.
+# Raised 100 -> 120 when this was found clipping the Firewall
+    # channel: the script emits 30 per channel and there are FOUR
+    # channels (System, Application, Security, Firewall), so 100 cut
+    # the last one. Firewall is last, so Firewall is what was lost.
 #: max_message_chars   any single host-controlled string field. The script
 #:                     truncates messages at 200.
 #: max_failed_logins   rows from one failed-login collection. Separate because a
@@ -57,7 +61,7 @@ logger = logging.getLogger("prism.ingest")
 #:                     failed logons in fifteen minutes than a print server.
 DEFAULTS: dict[str, int] = {
     "max_payload_chars": 512 * 1024,
-    "max_rows_per_check": 100,
+    "max_rows_per_check": 120,
     "max_message_chars": 400,
     "max_failed_logins": 200,
 }
