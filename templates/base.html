@@ -1051,6 +1051,65 @@
         return d.innerHTML;
       };
 
+  // ── Server connection test, shared ───────────────────────────────────
+  //
+  // Lifted out of servers.html in WP-4 D4d. The row button on /servers and
+  // the modal's test button in Settings → Servers are the same request with
+  // different payloads, and D4d puts them on different pages. Sharing them
+  // here BEFORE the move is what stops this repeating the `_escHtml` failure,
+  // where three copies existed until the only one a page had moved away.
+  window.loadConfig = function () {
+    return fetch('/api/config').then(r => r.json());
+  };
+
+  const TEST_T = {
+    connected: {{ t.get('test_connected', 'Connected') | tojson }},
+    failed: {{ t.get('test_failed', 'Failed') | tojson }},
+    testing: {{ t.get('test_in_progress', 'Testing connection\u2026') | tojson }},
+    requestFailed: {{ t.get('test_request_failed', 'Request failed') | tojson }},
+  };
+
+  window.showTestResult = function (container, result) {
+    const box = container.querySelector('.test-result-box');
+    if (result.ok) {
+      box.className = 'test-result-box rounded p-2 text-sm bg-healthy-tint text-healthy-strong';
+      box.innerHTML = '<strong>&#10003; <span class="test-msg"></span></strong>';
+      box.querySelector('.test-msg').textContent = result.message || TEST_T.connected;
+    } else {
+      box.className = 'test-result-box rounded p-2 text-sm bg-critical-tint text-critical-strong';
+      box.innerHTML = '<strong>&#10007; <span class="test-msg"></span></strong>'
+        + (result.detail ? '<br><span class="test-detail text-xs opacity-80"></span>' : '');
+      box.querySelector('.test-msg').textContent = result.error || TEST_T.failed;
+      if (result.detail) {
+        box.querySelector('.test-detail').textContent = result.detail;
+      }
+    }
+    container.classList.remove('hidden');
+  };
+
+  window.setTestLoading = function (container, btn) {
+    const box = container.querySelector('.test-result-box');
+    box.className = 'test-result-box rounded p-2 text-sm bg-raised dark:bg-line text-muted';
+    box.innerHTML = '<span class="inline-block animate-spin mr-2">&#9696;</span> ';
+    box.appendChild(document.createTextNode(TEST_T.testing));
+    container.classList.remove('hidden');
+    if (btn) btn.disabled = true;
+  };
+
+  window.doTestConnection = function (payload, container, btn) {
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    setTestLoading(container, btn);
+    fetch('/api/test-connection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+      body: JSON.stringify(payload),
+    })
+    .then(r => r.json())
+    .then(result => showTestResult(container, result))
+    .catch(err => showTestResult(container, { ok: false, error: TEST_T.requestFailed, detail: err.message }))
+    .finally(() => { if (btn) btn.disabled = false; });
+  };
+
       window.prismEmptyState = function (icon, message, hint, opts) {
         if (!hint) {
           throw new Error('prismEmptyState: a hint is required — say what to ' +

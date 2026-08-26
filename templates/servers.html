@@ -660,11 +660,11 @@ const _serverNames = [{% for s in servers %}'{{ s.name }}'{{ ',' if not loop.las
 // ── Config Loading ──
 let configData = null;
 
-function loadConfig() {
-  return fetch('/api/config').then(r => r.json()).then(data => { configData = data; return data; });
-}
-
-document.addEventListener('DOMContentLoaded', () => loadConfig());
+// `loadConfig` and the three connection-test helpers moved to base.html in
+// WP-4 D4d: this page and Settings → Servers both need them, and D4d splits
+// their callers across the two. `configData` stays here because only this
+// page reads it.
+document.addEventListener('DOMContentLoaded', () => loadConfig().then(d => { configData = d; }));
 
 // ── Threshold Defaults ──
 const DEFAULTS = {
@@ -981,44 +981,6 @@ function saveServerConfig(data) {
 
 // ── Test Connection ──
 
-function showTestResult(container, result) {
-  const box = container.querySelector('.test-result-box');
-  if (result.ok) {
-    box.className = 'test-result-box rounded p-2 text-sm bg-healthy-tint text-healthy-strong';
-    box.innerHTML = '<strong>&#10003; <span class="test-msg"></span></strong>';
-    box.querySelector('.test-msg').textContent = result.message || 'Connected';
-  } else {
-    box.className = 'test-result-box rounded p-2 text-sm bg-critical-tint text-critical-strong';
-    box.innerHTML = '<strong>&#10007; <span class="test-msg"></span></strong>'
-      + (result.detail ? '<br><span class="test-detail text-xs opacity-80"></span>' : '');
-    box.querySelector('.test-msg').textContent = result.error || 'Failed';
-    if (result.detail) {
-      box.querySelector('.test-detail').textContent = result.detail;
-    }
-  }
-  container.classList.remove('hidden');
-}
-
-function setTestLoading(container, btn) {
-  const box = container.querySelector('.test-result-box');
-  box.className = 'test-result-box rounded p-2 text-sm bg-raised dark:bg-line text-muted';
-  box.innerHTML = '<span class="inline-block animate-spin mr-2">&#9696;</span> Testing connection...';
-  container.classList.remove('hidden');
-  if (btn) btn.disabled = true;
-}
-
-function doTestConnection(payload, container, btn) {
-  setTestLoading(container, btn);
-  fetch('/api/test-connection', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-    body: JSON.stringify(payload),
-  })
-  .then(r => r.json())
-  .then(result => showTestResult(container, result))
-  .catch(err => showTestResult(container, { ok: false, error: 'Request failed', detail: err.message }))
-  .finally(() => { if (btn) btn.disabled = false; });
-}
 
 function testConnection(index) {
   loadConfig().then(data => {

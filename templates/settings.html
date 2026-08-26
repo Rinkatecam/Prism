@@ -1218,12 +1218,14 @@ function _doSync(btn, url) {
 // Load current config into JS
 let configData = null;
 
-function loadConfig() {
-  return fetch('/api/config').then(r => r.json()).then(data => { configData = data; return data; });
-}
+// `loadConfig` is base.html's (WP-4 D4d). It returns the config and does
+// not set page state, so the one caller that needs `configData` assigns
+// it — three identical copies of a fetch wrapper is how `_escHtml`
+// managed to be missing from the one page that needed it.
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => loadConfig());
+document.addEventListener('DOMContentLoaded',
+  () => loadConfig().then(data => { configData = data; }));
 
 // --- Settings change detection ---
 //

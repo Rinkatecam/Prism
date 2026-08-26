@@ -74,11 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
 const _serverNames = [{% for s in servers %}'{{ s.name }}'{{ ',' if not loop.last }}{% endfor %}];
 
 // ── Config data (for TLS loading) ──
-let configData = null;
 
-function loadConfig() {
-  return fetch('/api/config').then(r => r.json()).then(data => { configData = data; return data; });
-}
 
 // ═══════════════════════════════════════════════════════════════
 // Save Monitoring Settings (baseline_detection, security_alerts, tls_monitoring)

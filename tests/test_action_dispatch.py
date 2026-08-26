@@ -346,3 +346,71 @@ def test_there_are_shared_partials_to_check():
     leans on."""
     shared = _shared_partials()
     assert len(shared) >= 2, f"only {len(shared)} shared partials found"
+
+
+# ── helpers base.html owns, and pages depend on ──────────────────────────
+#
+# The mirror of the shared-partial check above. That one catches a partial
+# calling something an including page lacks; this catches a PAGE calling
+# something only base.html defines. Both are the `_escHtml` failure and only
+# one was guarded.
+#
+# WP-4 D4d created four of these on purpose: it splits `testConnection`'s
+# callers across /servers and Settings → Servers, so the helpers they share
+# had to stop belonging to either page. The day one is moved back, two pages
+# break and neither says so.
+_BASE_OWNED_HELPERS = {
+    "_escHtml": "three copies existed until a move took one page's only one",
+    "loadConfig": "D4d: /servers and Settings \u2192 Servers both read the config",
+    "doTestConnection": "D4d: the row button and the modal button share it",
+    "showTestResult": "D4d: same",
+    "setTestLoading": "D4d: same",
+    "prismEmptyState": "every page's empty states render through it",
+}
+
+
+def test_base_html_still_owns_the_helpers_pages_depend_on():
+    base_src = _code_only(BASE.read_text(encoding="utf-8"))
+    defined = _defined_functions(base_src) | set(
+        re.findall(r"window\.(\w+)\s*=\s*function", base_src))
+    missing = [f"{name} ({why})"
+               for name, why in sorted(_BASE_OWNED_HELPERS.items())
+               if name not in defined]
+    assert not missing, (
+        "base.html no longer defines helpers that page scripts call:\n  "
+        + "\n  ".join(missing))
+
+
+def test_no_page_redefines_a_helper_base_html_owns():
+    """Two definitions is how the first one became wrong. A page-local copy
+    shadows the shared one, so a fix to base.html silently does not reach that
+    page — which is the state `_escHtml` was in for a year."""
+    dupes = []
+    for page in sorted(TEMPLATES.glob("*.html")):
+        if page.name == "base.html":
+            continue
+        src = _code_only(page.read_text(encoding="utf-8"))
+        for name in _BASE_OWNED_HELPERS:
+            if re.search(r"function\s+" + re.escape(name) + r"\s*\(", src):
+                dupes.append(f"{page.name} defines its own {name}()")
+    assert not dupes, (
+        "pages shadowing a helper base.html owns:\n  " + "\n  ".join(dupes))
+
+
+def test_the_helper_list_still_names_the_ones_that_matter():
+    """"Not empty" is not enough: dropping one name leaves the rest, so the
+    guard keeps passing while that helper quietly becomes unguarded. The ones
+    with a known history are named individually.
+
+    `_escHtml` is here because it is the one that actually broke a page. The
+    four from D4d are here because that slice deliberately split their callers
+    across two pages, which is the condition that makes a shared helper
+    load-bearing rather than convenient."""
+    required = {"_escHtml", "loadConfig", "doTestConnection", "showTestResult",
+                "setTestLoading", "prismEmptyState"}
+    missing = sorted(required - set(_BASE_OWNED_HELPERS))
+    assert not missing, (
+        f"dropped from the guarded list, so nothing checks them any more: {missing}")
+    assert all(why.strip() for why in _BASE_OWNED_HELPERS.values()), (
+        "every entry has to say why it is shared, or the list becomes a set of "
+        "names nobody can prune safely")
