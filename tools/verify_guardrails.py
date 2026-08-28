@@ -174,7 +174,7 @@ suite(
              "test_every_clickable_non_native_element_is_keyboard_operable"),
     Mutation("aria-expanded left with nothing to read",
              "templates/partials/incidents_panel.html",
-             'aria-expanded="false" aria-controls="incident-detail-{{ loop.index0 }}"',
+             'aria-expanded="false" aria-controls="incident-detail-{{ key }}"',
              'aria-expanded="false"',
              "test_every_expanded_carrier_declares_what_it_controls"),
     Mutation("the keyboard bridge is removed", "templates/base.html",
