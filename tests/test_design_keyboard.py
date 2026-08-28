@@ -156,7 +156,15 @@ def test_the_keyboard_bridge_exists_and_skips_native_controls():
     filter, not on a delete confirm."""
     base = _code_only((TEMPLATES / "base.html").read_text(encoding="utf-8"))
     assert re.search(r"addEventListener\(\s*'keydown'", base), "no keyboard bridge"
-    bridge = base[base.index("addEventListener('keydown'"):]
+    # Anchored on the NATIVE list, not on the first `keydown` in the file.
+    # base.html now registers TWO keydown listeners: the tooltip's
+    # capture-phase Escape (earlier in the file) and this bridge. Locating
+    # the bridge by "the first keydown" silently retargeted this test at the
+    # Escape handler and failed on `'Enter'` — a guardrail reporting a defect
+    # in code it was never written to govern. The bridge is the listener that
+    # follows the NATIVE list, because skipping natively-interactive targets
+    # is the thing that makes it a bridge rather than a second dispatcher.
+    bridge = base[base.index("addEventListener('keydown'", base.index("const NATIVE")):]
     assert "'Enter'" in bridge[:600] and ("' '" in bridge[:600] or "'Spacebar'" in bridge[:600]), (
         "the bridge does not handle Enter and Space")
     assert "NATIVE" in bridge[:900], (

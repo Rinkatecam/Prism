@@ -101,14 +101,16 @@
           // 0..70 ladder and a 9998/9999 "on top" pair. 51 exists only to
           // beat 50, 31 only to beat 30; nothing chose any of them.
           //
-          // The live consequence: #ps-tooltip (line 147, z-index 9999) and
-          // #prism-modal (line 708, z-[9999]) TIE, so DOM order decides and
-          // the tooltip — emitted 520 lines earlier — loses. Every
-          // explanation inside a modal renders behind it.
+          // The consequence this was seeded to record: #ps-tooltip and
+          // #prism-modal (`z-[9999]`) TIED, so DOM order decided and the
+          // tooltip — emitted 520 lines earlier — lost. Every explanation
+          // inside a modal rendered behind it. Step 3 lifted #ps-tooltip to
+          // 10000 (see its rule below); the other seven 9999s are unmoved,
+          // which is why the tooltip layer is 10000 and not 90.
           //
-          // NOTHING is repointed here yet; `extend` merges, so z-0..z-50
-          // still resolve and all 54 sites keep working. The scale exists so
-          // the tooltip fix has a layer to name instead of a magic number.
+          // Nothing ELSE is repointed here; `extend` merges, so z-0..z-50
+          // still resolve and the remaining sites keep working. The scale
+          // exists so a fix has a layer to name instead of a magic number.
           // Generated; regenerate with d.render_tailwind_z()
           zIndex: {
             'base': '0',
@@ -161,9 +163,13 @@
   </script>
 
   {# Global custom tooltip — shared across every page. Any element with
-     data-tip-title (+ optional data-tip-desc) gets a styled hover popup
-     instead of the native browser title= tooltip. Page-local scripts can
-     call window.__prismBindTooltips() after injecting new tip elements. #}
+     data-tip-title (+ optional data-tip-desc) gets a styled panel instead
+     of the native browser title= tooltip. It is no longer hover-only:
+     pointer, keyboard (focus, Enter/Space, Escape) and touch (tap on a
+     .ps-tip button, long-press on anything else) all reach it — see the
+     state machine beside window.prismSetDisabled below. Page-local scripts
+     can call window.__prismBindTooltips() after injecting new tip
+     elements. #}
   <style>
     /* An overlay panel with a turquoise edge. Turquoise, not violet: the
        tooltip is the interface OFFERING something, which is the same role
@@ -173,20 +179,45 @@
        hardcoded slate values, so on the light theme it was a dark panel
        that belonged to a different application. */
     #ps-tooltip {
-      position: fixed; z-index: 9999; pointer-events: none;
-      max-width: 360px; padding: 10px 12px;
+      /* 10000, written as a literal with the layer's name beside it.
+         `z-tooltip` exists in tailwind.config's zIndex map, but that map
+         only renders Tailwind CLASSES — step 2 rendered no `--z-*` custom
+         property, so `var(--z-tooltip)` would resolve to nothing here and
+         the panel would fall to `z-index: auto`. The literal is the honest
+         form until a CSS renderer exists (Part II-a R2).
+
+         Why 10000 and not the scale's 90: eight elements sit at 9999 today
+         and #ps-tooltip is one of them; #prism-modal is another, emitted
+         520 lines later, so on the tie DOM order decides and every
+         explanation opened inside a modal renders BEHIND the modal. The
+         value carries its own exit condition — tools/design_tokens.py
+         asserts tooltip > 9999, and when the 9999s are renumbered this
+         comes down to 90 in the same commit. */
+      position: fixed; z-index: 10000;              /* z-tooltip */
+      /* `auto` while .visible — a magnifier user has to be able to move the
+         pointer ONTO the panel to read it without it closing under them
+         (WCAG 1.4.13 Content on Hover or Focus, "hoverable"). While hidden
+         it must not swallow clicks meant for the page underneath. */
+      pointer-events: none;
+      max-width: min(22.5rem, calc(100vw - 1.5rem));
+      padding: 0.625rem 0.75rem;
       background: rgb(var(--c-card));
       border: 1px solid rgb(var(--c-accent) / 0.55);
-      border-radius: 0.75rem;
+      border-radius: 0.5rem;                        /* the sm/DEFAULT radius; was 0.75rem, which is off the two-value scale */
       box-shadow: var(--shadow-lg);
+      /* 11px -> 12px: the panel is about to carry the app's primary
+         explanatory prose, not a hover afterthought. Weight and colour, not
+         size, separate the title from the body — hence 600/ink over
+         400/muted at the same 0.75rem. */
+      font-size: 0.75rem; line-height: 1.5;
+      color: rgb(var(--c-muted));
       opacity: 0; transform: translateY(4px);
       transition: opacity var(--dur-fast) var(--ease-out),
                   transform var(--dur-fast) var(--ease-out);
-      font-size: 11px; color: rgb(var(--c-muted));
     }
-    #ps-tooltip.visible { opacity: 1; transform: translateY(0); }
-    #ps-tooltip .tip-title { font-weight: 700; font-size: 12px; color: rgb(var(--c-ink)); margin-bottom: 4px; }
-    #ps-tooltip .tip-desc { line-height: 1.5; color: rgb(var(--c-muted)); white-space: pre-wrap; }
+    #ps-tooltip.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    #ps-tooltip .tip-title { font-weight: 600; font-size: 0.75rem; color: rgb(var(--c-ink)); margin-bottom: 0.25rem; }
+    #ps-tooltip .tip-desc { color: rgb(var(--c-muted)); white-space: pre-wrap; }
 
     /* The trigger answers back. Anything carrying a tip gets a turquoise
        edge on hover, so "there is more to read here" is discoverable
@@ -196,9 +227,23 @@
       box-shadow: 0 0 0 0 rgb(var(--c-accent) / 0);
       transition: box-shadow var(--dur-fast) var(--ease-standard);
     }
+    /* Three states, not two. `[data-tip-open]` is the third: the script sets
+       it on the carrier whose panel is showing, so a keyboard or touch user
+       can tell WHICH control the panel belongs to. It is also why the panel
+       needs no arrow — the anchor cue is on the trigger, where it survives
+       both the vertical flip and the horizontal clamp that an arrow would
+       have to be repositioned for. */
     [data-tip-title]:hover,
-    [data-tip-title]:focus-visible {
+    [data-tip-title]:focus-visible,
+    [data-tip-title][data-tip-open] {
       box-shadow: 0 0 0 2px rgb(var(--c-accent) / 0.45);
+    }
+    /* On touch there is no hover, so "hover to find out there is more to
+       read" has no equivalent — the ring is the only thing that says a
+       control has an explanation behind it, and it has to be there before
+       the tap. Low alpha so 38 carriers do not read as 38 focus rings. */
+    @media (hover: none) {
+      [data-tip-title] { box-shadow: 0 0 0 1px rgb(var(--c-accent) / 0.25); }
     }
 
     /* Values that change during morph (numbers, bar widths, colors) get a
@@ -489,16 +534,132 @@
       const isDark = html.classList.toggle('dark');
       localStorage.setItem('prism-theme', isDark ? 'dark' : 'light');
       lucide.createIcons();
+      // createIcons REPLACES every <i data-lucide> with a fresh <svg>, so
+      // the four Settings carriers that are both an icon and a tip trigger
+      // come back unbound — switching theme silently deleted their
+      // tooltips. See the note beside _prismIcons() below.
+      if (window.__prismBindTooltips) window.__prismBindTooltips();
     }
 
     // ── Global custom tooltip (data-tip-title / data-tip-desc) ──
+    //
+    // A three-state machine: closed / open / pinned. What it replaces was
+    // `mouseenter` + `mousemove` + `mouseleave` and nothing else — no
+    // keyboard path, no touch path, no Escape, and a panel that chased the
+    // cursor. Measured before this rewrite: `aria-describedby` returned
+    // ZERO hits across templates/ and static/js/, and all 38 carriers were
+    // bare <i>/<span>/<div> elements that cannot take focus.
+    //
+    // PINNED is the load-bearing idea. Hover is the only input method that
+    // has a "leave", so a panel that always closes on pointerleave is a
+    // panel only a mouse can hold open. Focus, click and long-press all
+    // open PINNED; a pinned panel ignores pointerleave and closes on
+    // Escape, on a pointerdown outside it, on scroll/wheel/touchmove, on
+    // resize, or on the next click of its own trigger.
     (function initGlobalTooltip() {
       const tip = document.getElementById('ps-tooltip');
       if (!tip) return;
+
+      let current = null;        // the carrier whose panel is showing, or null
+      let pinned = false;        // immune to pointerleave
+      let overPanel = false;     // pointer is on the panel itself (WCAG 1.4.13)
+      let openTimer = 0, closeTimer = 0;
+      let pressTimer = 0, pressX = 0, pressY = 0, longPressed = false;
+
+      // 8px between the trigger's edge and the panel; 12px is the closest
+      // the panel may come to a viewport edge. Both are placement geometry,
+      // not spacing tokens — the spacing scale governs gaps between things
+      // in the layout, and this panel is outside the layout entirely.
+      const GAP = 8;
+      const EDGE = 12;
+      // The platform long-press convention and the slop that separates a
+      // press from the beginning of a scroll. Deliberately NOT on the
+      // --dur-* scale: that scale governs how long it takes to GET
+      // somewhere, which is a different question from how long a finger has
+      // to rest before it means something.
+      const PRESS_MS = 600;
+      const PRESS_SLOP = 10;
+
+      // The open/close delays are declared ONCE, on :root in app.css, and
+      // read from there. A millisecond literal in this file would be a
+      // second timing scale that no stylesheet can see and no test that
+      // reads app.css can govern — which is exactly how the app ended up
+      // with 123 transitions on Tailwind's numbers and a token scale beside
+      // them. They compute to `320ms` / `120ms` because custom properties
+      // are var()-substituted at computed-value time.
+      function delay(name) {
+        let raw = '';
+        try {
+          raw = getComputedStyle(document.documentElement)
+                  .getPropertyValue(name).trim();
+        } catch (err) { raw = ''; }
+        const n = parseFloat(raw);
+        if (!isFinite(n)) return 0;
+        return /ms$/.test(raw) ? n : n * 1000;
+      }
+
+      function cancelTimers() {
+        if (openTimer) { clearTimeout(openTimer); openTimer = 0; }
+        if (closeTimer) { clearTimeout(closeTimer); closeTimer = 0; }
+      }
+
+      // Anchored to the TRIGGER's box, never to the cursor. The cursor-
+      // derived version is deleted outright: a panel that follows the
+      // pointer cannot be produced by a keyboard or a finger, and carrying
+      // two positioning models is how the two input paths drift apart.
+      function anchor(el) {
+        // Reset before measuring. A fixed-position box with `left` set and
+        // `width: auto` shrink-to-fits into (viewport - left), so a stale
+        // left from the previous open silently narrows THIS measurement and
+        // the panel comes out taller than it will actually be.
+        tip.style.left = '0px';
+        tip.style.top = '0px';
+        tip.style.maxHeight = '';
+        tip.style.overflowY = '';
+
+        const a = el.getBoundingClientRect();
+        const vw = window.innerWidth, vh = window.innerHeight;
+        let r = tip.getBoundingClientRect();
+        const below = vh - a.bottom - GAP - EDGE;
+        const above = a.top - GAP - EDGE;
+        let top;
+        if (r.height <= below) {
+          // Preferred: below, centred. On touch this also keeps the panel
+          // out from under the finger that opened it.
+          top = a.bottom + GAP;
+        } else if (r.height <= above) {
+          top = a.top - GAP - r.height;
+        } else {
+          // Neither side fits: take the larger one and let the panel
+          // scroll rather than run off the screen.
+          tip.style.overflowY = 'auto';
+          if (below >= above) {
+            tip.style.maxHeight = Math.max(0, below) + 'px';
+            top = a.bottom + GAP;
+          } else {
+            tip.style.maxHeight = Math.max(0, above) + 'px';
+            r = tip.getBoundingClientRect();
+            top = a.top - GAP - r.height;
+          }
+        }
+        // CLAMP horizontally, never flip. A centred panel that jumps to the
+        // other side of its trigger on a 2px scroll is worse than one that
+        // slides along the edge. max-width already caps the panel at
+        // 100vw - 1.5rem, so maxLeft can never fall below EDGE.
+        const maxLeft = vw - EDGE - r.width;
+        let left = a.left + a.width / 2 - r.width / 2;
+        left = Math.min(Math.max(left, EDGE), Math.max(EDGE, maxLeft));
+        tip.style.left = Math.round(left) + 'px';
+        tip.style.top = Math.round(top) + 'px';
+      }
+
+      // `e` is the CARRIER ELEMENT, not an event — the parameter name is
+      // pinned by tests/test_design_disabled.py, which locates this body by
+      // the exact string `function show(e)` and asserts the panel is never
+      // assembled with innerHTML between here and `function hide()`.
       function show(e) {
-        const el = e.currentTarget;
-        const title = el.getAttribute('data-tip-title') || '';
-        const desc  = el.getAttribute('data-tip-desc') || '';
+        const title = e.getAttribute('data-tip-title') || '';
+        const desc  = e.getAttribute('data-tip-desc') || '';
         // Bail on an empty title rather than showing an empty panel. A
         // control that has been re-enabled has its reason removed, but the
         // listener stays bound (`__tipBound` is one-way), so without this
@@ -521,31 +682,270 @@
           d.textContent = desc;
           tip.appendChild(d);
         }
-        tip.classList.add('visible');
-        position(e);
+        if (current && current !== e) current.removeAttribute('data-tip-open');
+        current = e;
+        e.setAttribute('data-tip-open', '');
+        // MEASURE AFTER WRITING THE CONTENT AND BEFORE SHOWING IT. The old
+        // code positioned from a rect taken before the text was in the
+        // panel, which is why the first open of every tooltip landed in the
+        // wrong quadrant — the panel it measured was empty. `visibility:
+        // hidden` keeps the measured box out of the frame the user sees;
+        // anchor() forces the layout it needs by reading a rect.
+        //
+        // An ALREADY-VISIBLE panel is measured in place and never hidden:
+        // hiding it and re-showing it in one task is a fade-out/fade-in, and
+        // sweeping a row of info icons would strobe. Only left/top change on
+        // that path, and neither is transitioned.
+        const wasVisible = tip.classList.contains('visible');
+        if (!wasVisible) tip.style.visibility = 'hidden';
+        anchor(e);
+        if (!wasVisible) {
+          tip.style.visibility = '';
+          tip.classList.add('visible');
+        }
       }
-      function hide() { tip.classList.remove('visible'); }
-      function position(e) {
-        const pad = 12;
-        const r = tip.getBoundingClientRect();
-        let x = e.clientX + 14;
-        let y = e.clientY + 14;
-        if (x + r.width + pad > window.innerWidth) x = e.clientX - r.width - 14;
-        if (y + r.height + pad > window.innerHeight) y = e.clientY - r.height - 14;
-        tip.style.left = Math.max(pad, x) + 'px';
-        tip.style.top  = Math.max(pad, y) + 'px';
+      function hide() {
+        cancelTimers();
+        tip.classList.remove('visible');
+        tip.style.visibility = '';
+        if (current) current.removeAttribute('data-tip-open');
+        current = null;
+        pinned = false;
+        overPanel = false;
       }
+
+      function openTip(el, pin) {
+        cancelTimers();
+        show(el);
+        // Only pin if something actually opened — show() bails on a carrier
+        // whose reason has been cleared, and a pinned nothing would swallow
+        // the next outside pointerdown.
+        pinned = !!(current && pin);
+      }
+      function closeTip() { hide(); }
+
+      function scheduleOpen(el) {
+        cancelTimers();
+        // Swapping between two adjacent carriers must not re-animate: with
+        // a panel already up, the content changes in place instead of
+        // fading out and back in. Scanning a row of info icons should not
+        // strobe.
+        if (current) { openTip(el, false); return; }
+        openTimer = setTimeout(function () {
+          openTimer = 0;
+          openTip(el, false);
+        }, delay('--tip-delay-open'));
+      }
+      function scheduleClose() {
+        cancelTimers();
+        closeTimer = setTimeout(function () {
+          closeTimer = 0;
+          // Cancelled if the pointer landed on the panel in the meantime —
+          // WCAG 1.4.13 "hoverable": a magnifier user has to be able to
+          // move onto the panel to read it.
+          if (!overPanel) closeTip();
+        }, delay('--tip-delay-close'));
+      }
+
+      // ── carrier events ────────────────────────────────────────────────
+      function onEnter(ev) {
+        // Mark the carrier as pointer-event-capable BEFORE the pointerType
+        // gate, so the compatibility-mouse fallback below stays off for
+        // every element that does deliver pointer events.
+        ev.currentTarget.__tipPointer = true;
+        if (ev.pointerType !== 'mouse') return;
+        const el = ev.currentTarget;
+        if (current === el) { cancelTimers(); return; }
+        scheduleOpen(el);
+      }
+      function onLeave(ev) {
+        ev.currentTarget.__tipPointer = true;
+        if (ev.pointerType !== 'mouse') return;
+        if (openTimer) { clearTimeout(openTimer); openTimer = 0; }
+        if (pinned || current !== ev.currentTarget) return;
+        scheduleClose();
+      }
+
+      // Compatibility-mouse FALLBACK, per carrier and only where pointer
+      // events never arrived. Whether a `disabled` <button> receives
+      // `pointerenter` differs by engine; `mouseenter` on one was measured
+      // in this app and does fire, and a disabled control's reason is the
+      // only thing explaining why it cannot be pressed. Pointer events
+      // always precede their compatibility mouse events, so on any carrier
+      // that delivers both, `__tipPointer` is already set and these no-op —
+      // which is what keeps a tap on touch out of the hover path.
+      // ITEMISED FOR STEP 10: confirm which of the two a disabled <button>
+      // actually delivers, in each engine, and delete the loser.
+      function onMouseEnter(ev) {
+        if (ev.currentTarget.__tipPointer) return;
+        const el = ev.currentTarget;
+        if (current === el) { cancelTimers(); return; }
+        scheduleOpen(el);
+      }
+      function onMouseLeave(ev) {
+        if (ev.currentTarget.__tipPointer) return;
+        if (openTimer) { clearTimeout(openTimer); openTimer = 0; }
+        if (pinned || current !== ev.currentTarget) return;
+        scheduleClose();
+      }
+
+      function onFocusIn(ev) {
+        const el = ev.currentTarget;
+        // :focus-visible only. A mouse click on a <button> carrier focuses
+        // it too, and opening on that path would fight the click toggle
+        // below — click would pin, focusin would immediately re-open.
+        let visible = true;
+        try { visible = el.matches(':focus-visible'); } catch (err) { visible = true; }
+        if (!visible) return;
+        // Zero delay: a keyboard user has already committed by arriving.
+        // The open delay exists to stop a pointer sweeping across a row of
+        // icons from opening any of them, and Tab does not sweep.
+        openTip(el, true);
+      }
+      function onFocusOut(ev) {
+        if (current === ev.currentTarget) closeTip();
+      }
+
+      function onClick(ev) {
+        const el = ev.currentTarget;
+        // The long press already opened this one; the synthesized click
+        // that some platforms send afterwards must not toggle it shut.
+        if (longPressed) { longPressed = false; return; }
+        if (current === el && pinned) { closeTip(); return; }
+        openTip(el, true);
+      }
+
+      function cancelPress() {
+        if (pressTimer) { clearTimeout(pressTimer); pressTimer = 0; }
+      }
+      function onPointerDown(ev) {
+        ev.currentTarget.__tipPointer = true;
+        longPressed = false;
+        if (ev.pointerType === 'mouse') return;
+        // A `.ps-tip` carrier is a real <button>: a tap fires `click`,
+        // which pins, on the same code path as Enter and Space. Long-press
+        // is for the carriers that are NOT dedicated tip buttons — a
+        // truncated reason, a status dot.
+        if (ev.currentTarget.classList.contains('ps-tip')) return;
+        const el = ev.currentTarget;
+        pressX = ev.clientX;
+        pressY = ev.clientY;
+        pressTimer = setTimeout(function () {
+          pressTimer = 0;
+          longPressed = true;
+          openTip(el, true);
+        }, PRESS_MS);
+      }
+      function onPointerMove(ev) {
+        if (!pressTimer) return;
+        if (Math.abs(ev.clientX - pressX) > PRESS_SLOP ||
+            Math.abs(ev.clientY - pressY) > PRESS_SLOP) cancelPress();
+      }
+      function onPointerUp() { cancelPress(); }
+      function onContextMenu(ev) {
+        // Suppressed for the whole press, not just after it fires: Android
+        // raises `contextmenu` at ~500ms, before our 600ms threshold, and
+        // the OS selection callout would land over the panel.
+        if (pressTimer || longPressed) ev.preventDefault();
+      }
+
+      // ── the panel itself ──────────────────────────────────────────────
+      tip.addEventListener('pointerenter', function () {
+        overPanel = true;
+        cancelTimers();
+      });
+      tip.addEventListener('pointerleave', function (ev) {
+        overPanel = false;
+        if (ev.pointerType !== 'mouse') return;
+        // `pinned` MEANS immune to pointerleave. Closing a click- or
+        // focus-opened panel because the mouse drifted off it would make
+        // click-to-pin useless on the input methods it exists for.
+        if (pinned) return;
+        scheduleClose();
+      });
+
+      // ── document-level dismissal ──────────────────────────────────────
+      //
+      // Capture phase, and deliberately NOT stopPropagation: a tooltip open
+      // on a control inside a modal must close without swallowing the
+      // modal's own Escape. Focus is not moved either — Escape dismisses a
+      // panel the user never focused, and yanking focus out of the field
+      // they were typing in would be a bigger surprise than the panel was.
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key !== 'Escape' && ev.key !== 'Esc') return;
+        if (!current) return;
+        closeTip();
+      }, true);
+
+      // Anchored to a rect, so any movement of that rect invalidates the
+      // position. Closing beats repositioning: a panel that follows a
+      // scrolling row is a panel the reader is chasing. Passive so none of
+      // these can delay a scroll.
+      function closeOnMovement(ev) {
+        if (!current) return;
+        // A panel whose height was capped scrolls ITSELF (overflow-y: auto
+        // in anchor()). A capture listener sees that scroll too, so without
+        // this the panel closed on the first wheel notch of the long
+        // explanations this mechanism exists to carry.
+        const t = ev && ev.target;
+        if (t && t.nodeType === 1 && tip.contains(t)) return;
+        closeTip();
+      }
+      document.addEventListener('scroll', closeOnMovement, { capture: true, passive: true });
+      document.addEventListener('wheel', closeOnMovement, { capture: true, passive: true });
+      document.addEventListener('touchmove', closeOnMovement, { capture: true, passive: true });
+      window.addEventListener('resize', closeOnMovement);
+
+      // Tap outside — the touch dismissal. Containment is tested against
+      // BOTH the trigger and the panel: testing only the trigger closes the
+      // panel the moment the user touches the text they are trying to read.
+      document.addEventListener('pointerdown', function (ev) {
+        if (!current || !pinned) return;
+        const t = ev.target;
+        if (!t) return;
+        if (current.contains(t) || tip.contains(t)) return;
+        closeTip();
+      }, true);
+
+      // ── binding, and htmx ─────────────────────────────────────────────
       function bindAll() {
         document.querySelectorAll('[data-tip-title]').forEach(el => {
           if (el.__tipBound) return;
           el.__tipBound = true;
-          el.addEventListener('mouseenter', show);
-          el.addEventListener('mousemove', position);
-          el.addEventListener('mouseleave', hide);
+          el.addEventListener('pointerenter', onEnter);
+          el.addEventListener('pointerleave', onLeave);
+          el.addEventListener('mouseenter', onMouseEnter);
+          el.addEventListener('mouseleave', onMouseLeave);
+          el.addEventListener('focusin', onFocusIn);
+          el.addEventListener('focusout', onFocusOut);
+          el.addEventListener('click', onClick);
+          el.addEventListener('pointerdown', onPointerDown);
+          el.addEventListener('pointermove', onPointerMove);
+          el.addEventListener('pointerup', onPointerUp);
+          el.addEventListener('pointercancel', onPointerUp);
+          el.addEventListener('contextmenu', onContextMenu);
         });
       }
       document.addEventListener('DOMContentLoaded', bindAll);
-      document.body.addEventListener('htmx:afterSwap', bindAll);
+      // A swap can take the open carrier out of the document — with
+      // innerHTML swaps it always does, and even under idiomorph a removed
+      // row is really removed. The panel would then be anchored to a rect
+      // that no longer exists, explaining an element the operator can no
+      // longer see. beforeSwap catches it while the carrier is still
+      // reachable; afterSwap is the backstop for anything that reached the
+      // DOM another way.
+      document.body.addEventListener('htmx:beforeSwap', function (ev) {
+        if (current && ev.target && ev.target.contains && ev.target.contains(current)) closeTip();
+      });
+      document.body.addEventListener('htmx:afterSwap', function () {
+        bindAll();
+        if (!current) return;
+        if (!current.isConnected) { closeTip(); return; }
+        // Idiomorph morphs attributes as well as nodes, so a surviving
+        // carrier can come back without the marker that says its panel is
+        // open — leaving the panel up with no ring pointing at its trigger.
+        current.setAttribute('data-tip-open', '');
+      });
       // Expose for page scripts that inject new tip elements dynamically
       window.__prismBindTooltips = bindAll;
       window.__rebindTooltips = bindAll; // legacy alias used by server_detail.html
@@ -580,6 +980,14 @@
           el.removeAttribute('aria-disabled');
           el.removeAttribute('data-tip-title');
           el.removeAttribute('data-tip-desc');
+          el.removeAttribute('data-tip-open');
+          // New in the state machine: a PINNED panel outlives the condition
+          // it explains. Before pinning existed the panel could only be up
+          // while the pointer was on the control, so re-enabling it closed
+          // the tip as a side effect; now a click- or focus-opened panel
+          // would sit there saying why a control that is pressable again
+          // cannot be pressed.
+          if (current === el) closeTip();
           return;
         }
         el.disabled = true;
@@ -616,9 +1024,30 @@
       silent_for:       {{ t.get("pulse_silent_for",     "silent for")                | tojson }},
     };
 
-    // Initialize Lucide icons
-    document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
-    document.body.addEventListener('htmx:afterSwap', () => lucide.createIcons());
+    // Initialize Lucide icons.
+    //
+    // The rebind is not belt-and-braces. `lucide.createIcons()` does not
+    // decorate an `<i data-lucide>` — it builds a NEW <svg>, copies the
+    // source element's ATTRIBUTES onto it (`getAttrs` + `replaceChild`, read
+    // in static/vendor/lucide-0.344.0.js:51) and swaps the original out. The
+    // attributes survive; every listener and every expando on the original
+    // does not.
+    //
+    // Both DOMContentLoaded handlers fire in registration order, and the
+    // tooltip binds ~100 lines above this one, so the four
+    // `<i data-lucide="info" data-tip-title=…>` carriers on the Settings
+    // pages (settings.html:176, 198, 219, 242 — the only elements in the
+    // tree that are BOTH an icon and a tip carrier) were bound and then
+    // replaced by an unbound copy on every load, every htmx swap, and every
+    // theme toggle. Tooltip attributes present, listeners gone, no error
+    // anywhere. `bindAll` is idempotent, so re-running it costs a
+    // querySelectorAll and skips everything already bound.
+    function _prismIcons() {
+      lucide.createIcons();
+      if (window.__prismBindTooltips) window.__prismBindTooltips();
+    }
+    document.addEventListener('DOMContentLoaded', _prismIcons);
+    document.body.addEventListener('htmx:afterSwap', _prismIcons);
 
     // ── Safe JSON fetch helper ─────────────────────────────────────────
     // Many fetch() calls do .then(r => r.json()) which crashes when the
@@ -1317,7 +1746,22 @@
       window.registerActions({
         // Generic reusable actions.
         'stop-prop': function (el, e) { e.stopPropagation(); },
-        'goto': function (el) { const h = el.getAttribute('data-href'); if (h) window.location.href = h; },
+        // A row-sized `goto` target is also a text-selection target. On
+        // /servers the Host column is a monospace address an operator drags
+        // across to copy, and the mouseup at the end of that drag IS a click:
+        // navigating away mid-copy is worse than the row not being clickable.
+        // Measured on the shape, not guessed — a plain click collapses the
+        // selection during mousedown, so the selection is empty by the time
+        // `click` fires and only a real drag leaves anything to read here.
+        // Modifier clicks are handed back to the browser for the same reason:
+        // ctrl/cmd/shift+click means "open it somewhere else", and forcing
+        // this tab there instead is the one outcome the reader did not ask
+        // for. (Middle-click never arrives — it fires `auxclick`.)
+        'goto': function (el, e) {
+          if (e && (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey)) return;
+          try { if (String(window.getSelection() || '').trim()) return; } catch (_) { /* no Selection API */ }
+          const h = el.getAttribute('data-href'); if (h) window.location.href = h;
+        },
         'toggle-detail': function (el) {
           const d = el.querySelector('.incident-detail');
           if (!d) return;

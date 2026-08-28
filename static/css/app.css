@@ -208,6 +208,27 @@
      in tests/test_design_vitals.py, which fails if it stops. */
 }
 
+/* ── Tooltip delays — one scale, read by the panel script ────────────────
+   The open/close delays are DECLARED here and read by the #ps-tooltip
+   script in base.html via getComputedStyle, so there is exactly one place
+   a delay is written. The alternative — a millisecond literal in the JS —
+   is how a second, invisible timing scale gets built beside the first.
+
+   They compose from --dur-slow / --dur-fast rather than restating numbers:
+   open is deliberately the SLOW one (320ms) so sweeping the pointer across
+   a row of info icons opens nothing, and close is the FAST one (120ms) so
+   the panel does not linger over the thing it was explaining.
+
+   These are DELAYS, not transitions. `test_no_transition_uses_a_duration_
+   off_the_scale`'s `_TIMED` regex matches only `transition:`/`animation:`
+   declarations, so it never sees these — verified against the test source
+   before relying on it, which is why they are composed from the tokens
+   anyway: the guardrail is not what makes this right. */
+:root {
+  --tip-delay-open: var(--dur-slow);
+  --tip-delay-close: var(--dur-fast);
+}
+
 /* Status colors as CSS custom properties */
 :root {
   --color-healthy: rgb(var(--c-healthy));

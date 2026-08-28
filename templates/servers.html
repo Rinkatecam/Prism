@@ -86,7 +86,44 @@
           <tbody class="server-group border-b border-line"
                  data-index="{{ loop.index0 }}" data-server-name="{{ s.name }}"
                  data-mouseenter="_srvShowInfo" data-mouseleave="_srvHideInfo">
-          <tr class="hover:bg-page dark:hover:bg-page/50 cursor-default">
+          {# ── The row IS the way through to /server/<name> ──────────────
+             Owner request: "click on one server and it sends me to the
+             overview". The whole row, not just the name, because the row is
+             what the pointer is already over when the question is asked.
+
+             `data-action="goto"` + `data-href` is base.html's registered
+             navigation. An inline `onclick` would need `'unsafe-inline'` in
+             script-src, which the delegated dispatcher exists to make
+             unnecessary — see tests/test_csp.py.
+
+             THE NESTED CONTROLS ARE NOT SWALLOWED, and that is a property of
+             the dispatcher rather than a guard added here: base.html resolves
+             a click with `e.target.closest('[data-action]')`, which returns
+             the NEAREST carrier. The tag button, the JS-rendered tag pills
+             (`_srvRemoveTag`) and the test-connection button each carry their
+             own `data-action`, so `closest` stops at them and this row's
+             `goto` is never even looked up. Nothing here has to re-implement
+             that, and a `stop-prop` on each of them would be a second
+             mechanism saying the same thing.
+
+             `tabindex="0"` is what makes it operable without a mouse: the
+             same bridge in base.html keys on `[data-action][tabindex]` and
+             runs the action on Enter and Space, and app.css's global
+             `[tabindex]:focus-visible` ring makes the focused row visible.
+
+             NO `role` is declared, deliberately. A `<tr>` is a `row`;
+             overriding that to `link` removes it from the table's
+             accessibility tree, and all six cells lose their column-header
+             association — a bigger loss than the label is a gain. The three
+             clickable rows already in this app (workflows.html:1203,
+             server_detail.html:1177 and :1378) take exactly this shape.
+
+             The name comes FIRST in the accessible label because the label is
+             translated into five locales and Japanese puts the verb last; an
+             "Open overview for …" prefix reads correctly in four of them. #}
+          <tr class="hover:bg-page dark:hover:bg-page/50 cursor-pointer"
+              data-action="goto" data-href="/server/{{ s.name }}" tabindex="0"
+              aria-label="{{ s.name }}, {{ t.get('servers_row_open', 'open overview') }}">
             <td class="px-4 py-2">
               <span class="font-medium">{{ s.name }}</span>
               <span class="server-tags-{{ loop.index0 }} inline-flex flex-wrap gap-1 ml-2"></span>
