@@ -1259,11 +1259,44 @@
           if (data.ok) { document.body.dispatchEvent(new CustomEvent('prismRefresh')); }
         }).catch(function () { /* network error — leave the incident open */ });
       };
+      // Which incident details the operator has opened, by incident id.
+      // Client-side only and deliberately not persisted: it answers "what did
+      // this person just open", which does not outlive the page.
+      const _openIncidents = new Set();
+
+      // Re-apply that after the incidents panel is swapped back in. The
+      // server cannot know what is open, so it always renders everything
+      // closed; this is the only place the operator's choice survives.
+      // Resolved incidents simply stop arriving, and their keys go stale
+      // harmlessly — the loop only ever reads keys that came back.
+      document.body.addEventListener('htmx:afterSwap', function () {
+        if (!_openIncidents.size) return;
+        document.querySelectorAll('[data-incident-key]').forEach(function (el) {
+          if (!_openIncidents.has(el.getAttribute('data-incident-key'))) return;
+          const d = el.querySelector('.incident-detail');
+          if (!d) return;
+          d.classList.remove('hidden');
+          el.setAttribute('aria-expanded', 'true');
+        });
+      });
+
       window.registerActions({
         // Generic reusable actions.
         'stop-prop': function (el, e) { e.stopPropagation(); },
         'goto': function (el) { const h = el.getAttribute('data-href'); if (h) window.location.href = h; },
-        'toggle-detail': function (el) { const d = el.querySelector('.incident-detail'); if (d) d.classList.toggle('hidden'); },
+        'toggle-detail': function (el) {
+          const d = el.querySelector('.incident-detail');
+          if (!d) return;
+          const open = d.classList.toggle('hidden') === false;
+          // Remember it. The incidents panel is re-fetched and morph-swapped
+          // on every prismRefresh — which fires whenever a server updates —
+          // and the incoming markup hardcodes `hidden`, so without this the
+          // detail an operator deliberately opened closes under them a few
+          // seconds later. Keyed by incident id so the right one re-opens
+          // even when the list has reordered.
+          const key = el.getAttribute('data-incident-key');
+          if (key) { if (open) _openIncidents.add(key); else _openIncidents.delete(key); }
+        },
         'toggle-sidebar': function () { toggleSidebar(); },
         'toggle-theme': function () { toggleTheme(); },
         'close-mobile-sidebar': function () { closeMobileSidebar(); },
