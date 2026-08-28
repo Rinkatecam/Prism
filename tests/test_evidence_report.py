@@ -86,6 +86,17 @@ def conn():
     return c
 
 
+def _ago(minutes=0, hours=0):
+    """A timestamp relative to now, in the stored shape.
+
+    Absolute dates in seeded test data are time-bombs: they pass on the day
+    they are written and expire silently once the window moves past them."""
+    from datetime import datetime, timedelta, timezone
+    return (datetime.now(timezone.utc)
+            - timedelta(minutes=minutes, hours=hours)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+
 def _posture(c, name, **kw):
     row = dict(defender_enabled=1, defender_rt_protection=1,
                defender_sig_age_days=2, defender_engine_version="1.1.24010.1",
@@ -99,7 +110,7 @@ def _posture(c, name, **kw):
          firewall_domain_enabled, firewall_private_enabled, firewall_public_enabled,
          bitlocker_encrypted_pct, bitlocker_status)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
-        (name, "2026-08-26T12:00:00Z", row["defender_enabled"],
+        (name, _ago(minutes=1), row["defender_enabled"],
          row["defender_rt_protection"], row["defender_sig_age_days"],
          row["defender_engine_version"], row["firewall_service_running"],
          row["firewall_domain_enabled"], row["firewall_private_enabled"],
@@ -222,8 +233,8 @@ def test_an_empty_firewall_section_says_which_kind_of_empty(conn):
 
 def test_a_firewall_section_with_events_carries_no_excuse(conn):
     conn.execute("INSERT INTO logs (server_name, timestamp, log_source, level, "
-                 "event_id, message) VALUES ('SRV1','2026-08-26T11:00:00Z',"
-                 "'Firewall','Information',2004,'rule added')")
+                 "event_id, message) VALUES ('SRV1',?,"
+                 "'Firewall','Information',2004,'rule added')", (_ago(minutes=2),))
     f = evidence.firewall_changes(conn, hours=24)
     assert f["total_ever"] == 1
     assert f["note"] is None
@@ -240,7 +251,7 @@ def test_the_common_failure_reasons_are_named_not_left_as_hex(conn):
     for i, code in enumerate(("0xc000006e", "0xc0000064")):
         conn.execute("INSERT INTO failed_logins (server_name, timestamp, source_ip,"
                      " account_name, event_id, sub_status) VALUES "
-                     "('SRV1','2026-08-26T11:00:00Z','10.0.0.1','u',4625,?)", (code,))
+                     "('SRV1',?,'10.0.0.1','u',4625,?)", (_ago(minutes=2), code))
     reasons = evidence.authentication(conn, hours=24)["by_reason"]
     assert all(r["meaning"] != "unrecognised" for r in reasons), reasons
 
@@ -287,8 +298,8 @@ def test_the_pdf_survives_markup_in_stored_text(conn):
     """Exercised end to end, not asserted about."""
     pytest.importorskip("pypdf")
     conn.execute("INSERT INTO audit_log (timestamp, username, action, category,"
-                 " details) VALUES ('2026-08-26T11:00:00Z','a<b>','x & y',"
-                 "'system','<injected>&amp;')")
+                 " details) VALUES (?,'a<b>','x & y',"
+                 "'system','<injected>&amp;')", (_ago(minutes=1),))
     pdf = reports_evidence.generate_evidence_pdf(_doc(conn))
     assert pdf[:5] == b"%PDF-"
 

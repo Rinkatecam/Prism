@@ -69,6 +69,21 @@ def db():
     return conn
 
 
+def _ago(minutes=0, hours=0):
+    """A timestamp relative to now, in the stored shape.
+
+    Absolute dates in seeded test data are time-bombs: they pass on the day
+    they are written and expire silently once the window moves past them."""
+    from datetime import datetime, timedelta, timezone
+    return (datetime.now(timezone.utc)
+            - timedelta(minutes=minutes, hours=hours)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _hour_ago(hours=0):
+    """An `hour_utc` bucket relative to now."""
+    return _ago(hours=hours)[:13]
+
+
 def _sig(conn, *, servers, hour, count, msg_hash="h1", source="Application",
          level="Error", event_id=1511, sample="profile not found"):
     for i in range(servers):
@@ -81,7 +96,7 @@ def _sig(conn, *, servers, hour, count, msg_hash="h1", source="Application",
 def _baseline(conn, *, hours, servers, count, msg_hash="h1", **kw):
     """Quiet history, so a spike has something to be unusual against."""
     for h in range(hours):
-        _sig(conn, servers=servers, hour=f"2026-07-{h % 28 + 1:02d}T03",
+        _sig(conn, servers=servers, hour=_hour_ago(24 * (h + 2)),
              count=count, msg_hash=msg_hash, **kw)
 
 
@@ -89,7 +104,7 @@ def _baseline(conn, *, hours, servers, count, msg_hash="h1", **kw):
 
 def test_a_signature_on_most_of_the_fleet_that_spiked_is_a_fleet_fault(db):
     _baseline(db, hours=10, servers=2, count=5)
-    _sig(db, servers=20, hour="2026-08-26T07", count=500)
+    _sig(db, servers=20, hour=_hour_ago(0), count=500)
     found = correlation.fleet_faults(db, hours=24 * 365, fleet_size=29)
     assert found, "a 20-of-29 spike was not reported"
     assert found[0]["kind"] == "fleet-fault"
@@ -100,7 +115,7 @@ def test_permanent_fleet_wide_chatter_is_not_a_fault(db):
     """`System/3` is on 29 of 29 servers every hour. Breadth alone would
     report it for ever; only a spike against its own history is news."""
     for h in range(40):
-        _sig(db, servers=29, hour=f"2026-08-{h % 26 + 1:02d}T{h % 24:02d}",
+        _sig(db, servers=29, hour=_hour_ago(h + 1),
              count=100, msg_hash="chatter", source="System", event_id=3)
     found = correlation.fleet_faults(db, hours=24 * 365, fleet_size=29)
     assert not [f for f in found if f["signature"] == "chatter"], (
@@ -119,8 +134,8 @@ def test_a_signature_with_no_history_is_not_called_unusual(db):
     arithmetic and leaves only the baseline gate standing: `hours_seen = 4` is
     under `MIN_BASELINE_HOURS = 5`."""
     for h in range(3):
-        _sig(db, servers=2, hour=f"2026-08-2{h}T03", count=1)
-    _sig(db, servers=20, hour="2026-08-26T07", count=100)
+        _sig(db, servers=2, hour=_hour_ago(24 * (h + 1)), count=1)
+    _sig(db, servers=20, hour=_hour_ago(0), count=100)
 
     assert correlation.MIN_BASELINE_HOURS > 4, (
         "this test is calibrated against a baseline requirement of 5 hours")
@@ -131,7 +146,7 @@ def test_a_signature_with_no_history_is_not_called_unusual(db):
 
 def test_a_narrow_burst_is_a_cluster_not_a_fleet_fault(db):
     _baseline(db, hours=10, servers=1, count=5)
-    _sig(db, servers=4, hour="2026-08-26T07", count=400)
+    _sig(db, servers=4, hour=_hour_ago(0), count=400)
     found = correlation.fleet_faults(db, hours=24 * 365, fleet_size=29)
     assert found and found[0]["kind"] == "cluster-fault"
 
@@ -144,7 +159,7 @@ def test_a_two_server_coincidence_is_not_reported_at_all(db):
     Two machines sharing a signature is a coincidence. Three is where it
     starts to be a pattern."""
     _baseline(db, hours=10, servers=1, count=5, msg_hash="pair")
-    _sig(db, servers=2, hour="2026-08-26T07", count=400, msg_hash="pair")
+    _sig(db, servers=2, hour=_hour_ago(0), count=400, msg_hash="pair")
     found = correlation.fleet_faults(db, hours=24 * 365, fleet_size=29)
     assert not [f for f in found if f["signature"] == "pair"], (
         "two servers sharing a signature was reported as a pattern")
@@ -157,8 +172,8 @@ def test_errors_are_ranked_above_information(db):
     _baseline(db, hours=10, servers=2, count=5, msg_hash="err")
     _baseline(db, hours=10, servers=2, count=5, msg_hash="info",
               source="System", level="Information", event_id=7036)
-    _sig(db, servers=15, hour="2026-08-26T07", count=500, msg_hash="err")
-    _sig(db, servers=25, hour="2026-08-26T07", count=500, msg_hash="info",
+    _sig(db, servers=15, hour=_hour_ago(0), count=500, msg_hash="err")
+    _sig(db, servers=25, hour=_hour_ago(0), count=500, msg_hash="info",
          source="System", level="Information", event_id=7036)
     found = correlation.fleet_faults(db, hours=24 * 365, fleet_size=29)
     assert found[0]["level"] == "Error", (
@@ -178,7 +193,7 @@ def _login(conn, ip, server, account, when, sub_status="0xc000006a"):
 def test_one_source_against_many_servers_is_an_attack(db):
     for i in range(4):
         for n in range(4):
-            _login(db, "10.0.0.9", f"SRV{i}", "admin", f"2026-08-26T10:0{n}:00Z")
+            _login(db, "10.0.0.9", f"SRV{i}", "admin", _ago(minutes=n))
     found = [a for a in correlation.auth_attacks(db, hours=24)
              if a["source_ip"] == "10.0.0.9"]
     assert found and found[0]["kind"] == "targeted-attack"
@@ -192,7 +207,7 @@ def test_many_attempts_on_one_account_from_one_source_is_not_an_attack(db):
     ignore the report."""
     for n in range(40):
         _login(db, "10.0.0.5", "SRV1" if n % 2 else "SRV2", "svc_backup",
-               f"2026-08-26T10:{n:02d}:00Z")
+               _ago(minutes=n))
     found = [a for a in correlation.auth_attacks(db, hours=24)
              if a["source_ip"] == "10.0.0.5"]
     assert found and found[0]["kind"] == "stale-credential", (
@@ -202,7 +217,7 @@ def test_many_attempts_on_one_account_from_one_source_is_not_an_attack(db):
 def test_one_source_trying_many_accounts_is_a_spray(db):
     for i in range(6):
         for n in range(2):
-            _login(db, "10.0.0.7", "SRV1", f"user{i}", f"2026-08-26T10:{i}{n}:00Z")
+            _login(db, "10.0.0.7", "SRV1", f"user{i}", _ago(minutes=i * 10 + n))
     found = [a for a in correlation.auth_attacks(db, hours=24)
              if a["source_ip"] == "10.0.0.7"]
     assert found and "spray" in found[0]["shapes"]
@@ -212,7 +227,7 @@ def test_repeated_unknown_usernames_are_enumeration(db):
     """"Wrong password" has innocent explanations. "That user does not
     exist", repeatedly, from one host, has approximately none."""
     for i in range(6):
-        _login(db, "10.0.0.8", "SRV1", f"ghost{i}", f"2026-08-26T10:0{i}:00Z",
+        _login(db, "10.0.0.8", "SRV1", f"ghost{i}", _ago(minutes=i),
                sub_status=correlation.STATUS_NO_SUCH_USER)
     found = [a for a in correlation.auth_attacks(db, hours=24)
              if a["source_ip"] == "10.0.0.8"]
@@ -222,7 +237,7 @@ def test_repeated_unknown_usernames_are_enumeration(db):
 def test_local_and_unknown_sources_are_ignored(db):
     for src in ("-", "127.0.0.1", "::1"):
         for n in range(20):
-            _login(db, src, "SRV1", "admin", f"2026-08-26T10:{n:02d}:00Z")
+            _login(db, src, "SRV1", "admin", _ago(minutes=n))
     assert not correlation.auth_attacks(db, hours=24), (
         "a source carrying no attacker information was reported")
 
@@ -232,7 +247,7 @@ def test_an_attack_verdict_names_its_targets(db):
     security report is worse than silence."""
     for i in range(4):
         for n in range(4):
-            _login(db, "10.0.0.9", f"SRV{i}", "admin", f"2026-08-26T10:0{n}:00Z")
+            _login(db, "10.0.0.9", f"SRV{i}", "admin", _ago(minutes=n))
     result = correlation.analyse(db, hours=24)
     assert result["attacks"], "no attack found to check"
     targets = result["attacks"][0]["targets"]
@@ -243,10 +258,10 @@ def test_an_attack_verdict_names_its_targets(db):
 
 def test_a_burst_prism_caused_is_labelled_with_what_caused_it(db):
     _baseline(db, hours=10, servers=2, count=5)
-    _sig(db, servers=20, hour="2026-08-26T07", count=500)
+    _sig(db, servers=20, hour=_hour_ago(0), count=500)
     db.execute("INSERT INTO audit_log (timestamp, username, action, category, details) "
-               "VALUES ('2026-08-26T07:05:00Z','svc_patch','restart_executed',"
-               "'restart_schedule','monthly patch window')")
+               "VALUES (?,'svc_patch','restart_executed',"
+               "'restart_schedule','monthly patch window')", (_ago(minutes=1),))
     found = correlation.analyse(db, hours=24 * 365)["fleet_faults"]
     assert found[0]["explained_by"], "a scheduled restart did not explain the burst"
 
@@ -255,9 +270,9 @@ def test_an_explanation_does_not_erase_the_finding(db):
     """Overwriting the verdict with `explained-change` hid what happened
     behind why it happened."""
     _baseline(db, hours=10, servers=2, count=5)
-    _sig(db, servers=20, hour="2026-08-26T07", count=500)
+    _sig(db, servers=20, hour=_hour_ago(0), count=500)
     db.execute("INSERT INTO audit_log (timestamp, username, action, category, details) "
-               "VALUES ('2026-08-26T07:05:00Z','svc','restart_executed','restart_schedule','x')")
+               "VALUES (?,'svc','restart_executed','restart_schedule','x')", (_ago(minutes=1),))
     found = correlation.analyse(db, hours=24 * 365)["fleet_faults"]
     assert found[0]["kind"] == "fleet-fault", (
         f"the verdict was replaced by its explanation: {found[0]['kind']}")
@@ -269,10 +284,10 @@ def test_an_sop_record_does_not_explain_anything_on_a_server(db):
     Recording an SOP execution is a note that a human did something; it does
     not touch 29 Windows hosts."""
     _baseline(db, hours=10, servers=2, count=5)
-    _sig(db, servers=20, hour="2026-08-26T07", count=500)
+    _sig(db, servers=20, hour=_hour_ago(0), count=500)
     db.execute("INSERT INTO audit_log (timestamp, username, action, category, details) "
-               "VALUES ('2026-08-26T07:05:00Z','alice','sop_execution_recorded',"
-               "'compliance','SOP-004')")
+               "VALUES (?,'alice','sop_execution_recorded',"
+               "'compliance','SOP-004')", (_ago(minutes=1),))
     found = correlation.analyse(db, hours=24 * 365)["fleet_faults"]
     assert not found[0]["explained_by"], (
         "an SOP record was accepted as the cause of a fleet-wide log burst")
@@ -295,5 +310,38 @@ def test_the_summary_can_say_that_nothing_happened(db):
 def test_the_summary_leads_with_an_attack_when_there_is_one(db):
     for i in range(4):
         for n in range(4):
-            _login(db, "10.0.0.9", f"SRV{i}", "admin", f"2026-08-26T10:0{n}:00Z")
+            _login(db, "10.0.0.9", f"SRV{i}", "admin", _ago(minutes=n))
     assert "attack" in correlation.analyse(db, hours=24)["summary"].lower()
+
+
+def test_no_seeded_timestamp_is_a_fixed_date():
+    """Seeded data must move with the clock.
+
+    Both this file and the evidence tests originally wrote rows at
+    `2026-08-26T10:00:00Z`, because that was the day they were written. The
+    code under test computes its window as `now - hours`, so two days later
+    six tests failed for a reason that had nothing to do with the behaviour
+    they guard.
+
+    That failure mode is worse than a plain bug: the suite went red on its
+    own, on a day nobody had touched it, which is exactly how a team learns
+    to ignore red.
+
+    Docstrings are stripped before the scan — this one names the offending
+    date, and a guard that reads its own explanation as the defect is a
+    mistake this project has made repeatedly."""
+    import re
+    from pathlib import Path
+
+    here = Path(__file__).resolve().parent
+    offenders = []
+    for name in ("test_correlation.py", "test_evidence_report.py"):
+        text = (here / name).read_text(encoding="utf-8")
+        code = re.sub(r'"""(?:.|\n)*?"""', '""', text)
+        for lineno, line in enumerate(code.splitlines(), 1):
+            if re.search(r"\d{4}-\d{2}-\d{2}T\d{2}", line):
+                offenders.append(f"{name}:{lineno}: {line.strip()[:70]}")
+
+    assert not offenders, (
+        "test data seeded at a fixed timestamp; use a clock-relative helper "
+        "so the window keeps reaching it:\n  " + "\n  ".join(offenders[:8]))
