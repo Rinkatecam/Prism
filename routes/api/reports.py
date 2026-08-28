@@ -79,19 +79,6 @@ def _csv_zone_label() -> str:
         return "UTC"
 
 
-def _csv_safe(value):
-    """Neutralise a cell Excel would evaluate as a formula.
-
-    Measured as zero occurrences in the metrics and events exports today, and
-    added anyway: the evidence report carries operator-supplied text (account
-    names, log messages, audit details), where a leading `=` is reachable by
-    anyone who can name a server."""
-    s = "" if value is None else str(value)
-    if s[:1] in ("=", "+", "@", "\t", "\r"):
-        return "'" + s
-    return s
-
-
 def _csv_response(csv_text: str, filename: str):
     """A CSV response Excel opens correctly.
 

@@ -506,7 +506,16 @@ LITERAL_BASELINE: dict[str, int] = {
     # page became a settings partial. Twelve were in script-built class
     # strings and one was an inline `style="color:"` — the shape the
     # ratchet counts but cannot force down on its own.
-    "reports.html": 12,
+    # 12 -> 0. WP-5 rewrote the page around questions rather than file
+    # formats, and the rewrite tokenised every literal on the way through:
+    # four hand-rolled `text-[#hex] dark:text-[#hex]` pairs became the
+    # `text-healthy` / `-warning` / `-critical` / `-muted` tokens, which are
+    # contrast-tested against the card in both themes where the raw pairs
+    # were not, and four saturated button fills became the canonical
+    # `bg-accent hover:bg-accent-strong` idiom. The four bare hexes that
+    # remain are SVG stroke and bar-fill values, not class utilities, and
+    # are invisible to this ratchet by design: a mark needs 3:1, not 4.5:1.
+    "reports.html": 0,
     "servers.html": 0,
     "settings.html": 10,
     "partials/active_actions.html": 0,
@@ -674,7 +683,11 @@ def test_no_colour_literal_outside_the_templates_that_already_have_one():
 # 149 -> 135 with WP-4 D4: rbac.html's fourteen became tokens. The
 # largest single reduction of the round, and the first file to leave
 # the baseline rather than shrink within it.
-LITERAL_TOTAL = 126
+# 126 -> 114: the twelve reports.html literals removed in the WP-5 rewrite.
+# Lowering this in the same commit is the point of the pair — a baseline that
+# keeps the headroom after the literals are gone lets the next change spend it
+# again without anything failing.
+LITERAL_TOTAL = 114
 
 
 def test_the_total_number_of_literals_never_rises():

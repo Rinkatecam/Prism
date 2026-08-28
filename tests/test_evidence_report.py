@@ -175,7 +175,8 @@ def test_the_spreadsheet_says_not_read_rather_than_zero(conn):
              defender_engine_version="0.0.0.0")
     doc = _doc(conn)
     rows = list(csv.reader(io.StringIO(reports_evidence.generate_evidence_csv(doc))))
-    i = next(i for i, r in enumerate(rows) if r and r[0].startswith("== Security posture"))
+    i = next(i for i, r in enumerate(rows)
+             if r and r[0].lstrip("'").startswith("== Security posture"))
     header, data = rows[i + 1], rows[i + 2]
     assert data[header.index("DefenderEnabled")] == "not read"
     assert data[header.index("BitLockerPct")] != "0"
@@ -304,11 +305,25 @@ def test_the_pdf_survives_markup_in_stored_text(conn):
     assert pdf[:5] == b"%PDF-"
 
 
+def _is_banner(cell: str) -> bool:
+    """A section banner, with or without the formula guard's prefix.
+
+    The banner is literally `== Name ==`, so it STARTS WITH `=` — which means
+    a spreadsheet treats it as a formula and shows an error where the heading
+    should be. It did exactly that for as long as this file has existed. The
+    CSV guard neutralises it like any other formula-leading cell, which fixes
+    the heading as a side effect of a change made for a different reason.
+
+    So the prefix is expected here, and stripping it is what lets these tests
+    assert about the heading rather than about the escaping."""
+    return cell.lstrip("'").startswith("== ")
+
+
 def test_the_csv_carries_every_section(conn):
     _posture(conn, "SRV1")
     rows = list(csv.reader(io.StringIO(
         reports_evidence.generate_evidence_csv(_doc(conn)))))
-    banners = {r[0] for r in rows if r and r[0].startswith("== ")}
+    banners = {r[0].lstrip("'") for r in rows if r and _is_banner(r[0])}
     for expected in ("Verdict", "Security posture", "Failed logons by source",
                      "Firewall policy events", "Audit trail"):
         assert any(expected in b for b in banners), f"{expected} missing: {banners}"

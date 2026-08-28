@@ -21,9 +21,10 @@ malformed XML and take the document down.
 
 from __future__ import annotations
 
-import csv
 import io
 import logging
+
+from reports import evidence_csv_writer
 
 logger = logging.getLogger(__name__)
 
@@ -316,7 +317,12 @@ def generate_evidence_csv(doc: dict, ts_fmt=None, ts_label: str = "UTC") -> str:
     """
     fmt = ts_fmt or (lambda v: v)
     out = io.StringIO()
-    w = csv.writer(out)
+    # NOT csv.writer: this document is the one export built from
+    # operator-supplied text — account names, log messages, audit details —
+    # so a leading `=` is reachable by anyone who can name a server. The
+    # escaping lives in the writer rather than at each `writerow` below,
+    # because there are about forty of them.
+    w = evidence_csv_writer(out)
 
     def section(name, header, rows):
         w.writerow([])

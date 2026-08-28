@@ -49,6 +49,8 @@ import re
 
 import pytest
 
+import reports_evidence
+
 
 @pytest.fixture(scope="module")
 def client():
@@ -62,6 +64,13 @@ _CSV_ROUTES = [
     "/api/reports/csv/events",
     "/api/reports/csv/fleet?hours=24",
 ]
+
+#: The formula guard runs over one route MORE than the two column-shaped
+#: tests above. Those read `rows[0]` as a header and need a rectangular sheet;
+#: evidence.csv is stacked sections under banner rows, so its first row is a
+#: title and it has no single header. Formula injection does not care about
+#: shape, and evidence.csv is the file that carries operator-supplied text.
+_FORMULA_ROUTES = _CSV_ROUTES + ["/api/reports/evidence.csv?hours=168"]
 
 
 # ── the two real defects ──────────────────────────────────────────────────
@@ -117,20 +126,78 @@ def test_the_timestamp_column_names_its_timezone(client, route):
             f"{route}: {h!r} does not name its timezone")
 
 
-@pytest.mark.parametrize("route", _CSV_ROUTES)
+@pytest.mark.parametrize("route", _FORMULA_ROUTES)
 def test_no_cell_would_be_evaluated_as_a_formula(client, route):
-    """Measured as zero today. Kept because the evidence report will carry
+    """Measured as zero today. Kept because the evidence report carries
     account names and log messages, where a leading `=` is reachable by
     anyone who can name a server.
 
     `-` is deliberately not treated as dangerous on its own: `-1.0` is a
     negative number, and flagging it produced 4,130 false positives on the
-    first pass."""
+    first pass.
+
+    The evidence route was the stated REASON for the guard, in this
+    docstring and in `csv_safe`'s, and was the one route the guard did not
+    cover — it ran over metrics, events and fleet, which the same docstring
+    records as carrying nothing dangerous. So the check that was measured as
+    zero was measured on the three files that could not fail it, while the
+    file built from operator-supplied text went unchecked and unescaped.
+    That is why `_FORMULA_ROUTES` is a separate list from `_CSV_ROUTES`
+    rather than the same one: evidence.csv opens with a title banner instead
+    of a header row, so the two column-shaped tests above cannot read it."""
     for row in _rows(client, route)[1:]:
         for cell in row:
             if cell[:1] in ("=", "+", "@", "\t", "\r"):
                 assert cell.startswith("'"), (
                     f"{route}: {cell[:40]!r} would be evaluated by Excel")
+
+
+#: A formula that is inert in this file and hostile in a spreadsheet. The
+#: `cmd|` DDE form is the one that runs a program rather than merely reading
+#: a cell, which is why it is the one worth planting.
+_HOSTILE = "=cmd|'/c calc'!A1"
+
+
+def test_a_hostile_account_name_is_escaped_in_the_evidence_csv(client):
+    """The route-level guard above cannot fail on live data, and that is the
+    point of this one.
+
+    Every cell in the estate today is benign, so the parametrised check
+    passes whether or not any escaping exists — it passed for months while
+    `generate_evidence_csv` wrote raw values through `csv.writer`. A guard
+    that cannot distinguish a fix from its absence is not measuring the fix.
+
+    The planted value goes into `authentication.by_account[].account`
+    deliberately. Most injection vectors need an insider: a server name, an
+    audit detail, a SOP id are all typed by someone who already has Prism.
+    An account name in `failed_logins` is typed by whoever is ATTEMPTING the
+    logon — so it is the one field in this document a remote party chooses,
+    and it lands in a file whose entire purpose is to be opened in Excel by
+    an administrator.
+    """
+    payload = client.get("/api/reports/evidence.json?hours=168").get_json()
+    assert payload["ok"], payload
+    doc = {k: v for k, v in payload.items() if k != "ok"}
+
+    doc["authentication"]["by_account"] = [{
+        "account": _HOSTILE, "servers": 1, "sources": 1,
+        "attempts": 3, "first_seen": None, "last_seen": None,
+    }]
+    doc["audit"]["entries"] = [{
+        "timestamp": None, "username": _HOSTILE, "action": "login_failed",
+        "category": "auth", "details": "@SUM(1+1)", "source_ip": None,
+    }]
+
+    text = reports_evidence.generate_evidence_csv(doc)
+
+    planted = [c for row in csv.reader(io.StringIO(text)) for c in row
+               if c.lstrip("'").startswith(("=cmd", "@SUM"))]
+    assert len(planted) == 3, (
+        f"expected the three planted cells to reach the file, saw {planted}")
+    for cell in planted:
+        assert cell.startswith("'"), (
+            f"{cell[:40]!r} reached the CSV unescaped and Excel would "
+            f"evaluate it")
 
 
 # ── what was already right, and must stay right ──────────────────────────

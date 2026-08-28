@@ -420,7 +420,13 @@ def test_field_name_contract(tmp_db):
     single ``const F = {...}`` map, which this test extracts and checks.
     """
     template = (PROJECT_ROOT / "templates" / "reports.html").read_text(encoding="utf-8")
-    block = re.search(r"const F = \{(.*?)\n\};", template, re.S)
+    # The closing brace may be indented: the page's script is wrapped in an
+    # IIFE so it declares nothing globally, which puts every top-level const
+    # one level in. Non-greedy, so it still stops at THIS map's brace and does
+    # not swallow the EV and CR maps declared after it — and the field-count
+    # assertion immediately below is what catches this regex silently matching
+    # less than the whole map.
+    block = re.search(r"const F = \{(.*?)\n\s*\};", template, re.S)
     assert block, "templates/reports.html must declare the `const F = {...}` field map"
 
     declared = set(re.findall(r":\s*'([a-z_]+)'", block.group(1)))

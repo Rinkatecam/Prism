@@ -150,6 +150,62 @@ def _gather_events_rows(db: Database, server_name: str | None = None,
     return result
 
 
+# ── CSV cell safety ──────────────────────────────────────────────────────
+
+#: The four leading characters Excel and LibreOffice treat as the start of a
+#: formula, plus the two whitespace characters that let one hide behind them.
+#: `-` is deliberately absent: `-1.0` is a negative number, and flagging it
+#: produced 4,130 false positives when this was first measured.
+_FORMULA_LEADS = ("=", "+", "@", "\t", "\r")
+
+
+def csv_safe(value):
+    """Neutralise a cell a spreadsheet would evaluate as a formula.
+
+    Measured as zero occurrences in the metrics and events exports, and
+    written anyway for the evidence report, which carries operator-supplied
+    text — account names, log messages, audit details — where a leading `=`
+    is reachable by anyone who can name a server.
+
+    It then spent its whole life uncalled: defined in `routes/api/reports.py`,
+    imported by nothing, while `generate_evidence_csv` wrote raw values. That
+    is the failure shape in HANDOFF §3 — installed, reporting success, doing
+    no work — so it now lives here, beside the writers that need it, and
+    `evidence_csv_writer` makes using it the default rather than a step
+    someone has to remember at forty call sites.
+    """
+    s = "" if value is None else str(value)
+    return "'" + s if s[:1] in _FORMULA_LEADS else s
+
+
+class _SafeCsvWriter:
+    """A `csv.writer` that cannot forget to escape a cell.
+
+    Deliberately a wrapper rather than a `map(csv_safe, row)` at each call
+    site: `generate_evidence_csv` writes rows from about forty places, and a
+    guard that has to be repeated forty times is a guard that will be missed
+    on the forty-first. This is the same reasoning as `_csv_response` owning
+    the BOM instead of each route remembering it.
+    """
+
+    __slots__ = ("_w",)
+
+    def __init__(self, fileobj):
+        self._w = csv.writer(fileobj)
+
+    def writerow(self, row):
+        self._w.writerow([csv_safe(c) for c in row])
+
+    def writerows(self, rows):
+        for r in rows:
+            self.writerow(r)
+
+
+def evidence_csv_writer(fileobj) -> _SafeCsvWriter:
+    """The writer every evidence CSV section goes through."""
+    return _SafeCsvWriter(fileobj)
+
+
 def generate_csv_metrics(db: Database, server_name: str | None = None,
                          hours: int = 24, ts_fmt=None, ts_label: str = "UTC") -> str:
     """Generate CSV of metric history with anomaly indicators.
