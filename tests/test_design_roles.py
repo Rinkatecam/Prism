@@ -36,6 +36,19 @@ from tools import migrate_brand_roles as mbr   # noqa: E402
 
 TEMPLATES = PROJECT_ROOT / "templates"
 
+# The two scans every rule below is built on, hoisted out of the individual
+# tests so there is ONE definition of "an icon" to narrow — and so the
+# positive control at the bottom of this file is guarding the same regex the
+# assertions use rather than a copy of it.
+#
+# `[a-z0-9-]+`, not `[a-z-]+`: 11 of the 139 distinct lucide names in this
+# tree end in a digit (settings-2, trash-2, bar-chart-3, grid-3x3, edit-3,
+# undo-2, volume-2, loader-2, table-2, file-code-2, bar-chart-2), covering 34
+# of 472 icon sites. See test_the_icon_scan_can_see_a_digit_in_the_name.
+_TITLE_ICON = re.compile(
+    r"<h1[^>]*>\s*<i data-lucide=\"[a-z0-9-]+\" class=\"([^\"]*)\"", re.S)
+_ICON = re.compile(r"<i data-lucide=\"([a-z0-9-]+)\" class=\"([^\"]*)\"")
+
 
 def _templates() -> list[Path]:
     return sorted(TEMPLATES.rglob("*.html"))
@@ -57,11 +70,9 @@ def test_the_assignment_is_idempotent():
 
 def test_every_page_title_icon_is_violet():
     """The one icon per page that says which page this is."""
-    pattern = re.compile(
-        r"<h1[^>]*>\s*<i data-lucide=\"[a-z-]+\" class=\"([^\"]*)\"", re.S)
     seen, wrong = 0, []
     for path in _templates():
-        for m in pattern.finditer(path.read_text(encoding="utf-8")):
+        for m in _TITLE_ICON.finditer(path.read_text(encoding="utf-8")):
             seen += 1
             if "text-brand" not in m.group(1):
                 colour = re.search(r"text-[a-z-]+", m.group(1))
@@ -74,9 +85,8 @@ def test_no_decorative_icon_is_left_on_the_informational_blue():
     """`text-info` on an icon meant "blue", not "information". The single
     `data-lucide="info"` is exempt because there it means exactly that."""
     offenders = []
-    pattern = re.compile(r"<i data-lucide=\"([a-z-]+)\" class=\"([^\"]*)\"")
     for path in _templates():
-        for m in pattern.finditer(path.read_text(encoding="utf-8")):
+        for m in _ICON.finditer(path.read_text(encoding="utf-8")):
             if m.group(1) == "info":
                 continue
             if re.search(r"\btext-info\b", m.group(2)):
@@ -84,6 +94,49 @@ def test_no_decorative_icon_is_left_on_the_informational_blue():
     assert not offenders, (
         "decorative icons take text-accent, page titles text-brand:\n  "
         + "\n  ".join(offenders))
+
+
+def test_the_icon_scan_can_see_a_digit_in_the_name():
+    """The guard on the guard above: `[a-z-]+` cannot match `settings-2`.
+
+    Measured on this tree 2026-08-28, before the character class was widened:
+    the scan saw 438 icon sites and there are 472. The 34 it was blind to
+    included settings.html:63's `<i data-lucide="settings-2" class="w-5 h-5
+    text-info">`, monitoring.html's `volume-2` and server_comparison.html's
+    `bar-chart-3` — three text-info icons sitting in plain sight while
+    test_no_decorative_icon_is_left_on_the_informational_blue passed and
+    `migrate_brand_roles.py --check` reported nothing to do. A narrow
+    character class does not fail; it shrinks what the rules govern and
+    reports green over the part it dropped.
+
+    So this asserts a MATCH rather than an absence: narrow the class back and
+    this test goes red, instead of every other test in the file going quiet.
+
+    The migrator's two patterns are asserted alongside the tests' own,
+    because a rule the converter cannot see is only enforced until someone
+    runs the converter — and the converter is what rewrites the tree.
+    """
+    sample = ('<h1 class="x"><i data-lucide="settings-2" '
+              'class="w-5 h-5 text-brand"></i>Settings</h1>')
+    assert _ICON.search(sample), "the icon scan cannot see a digit in a name"
+    assert _TITLE_ICON.search(sample), "the page-title scan cannot see a digit"
+    assert mbr._ICON.search(sample), "the migrator cannot see a digit in a name"
+    assert mbr._PAGE_TITLE_ICON.search(sample), (
+        "the migrator's page-title scan cannot see a digit")
+
+    names, sites = set(), 0
+    for path in _templates():
+        for m in _ICON.finditer(path.read_text(encoding="utf-8")):
+            names.add(m.group(1))
+            sites += 1
+    assert "settings-2" in names, (
+        "settings-2 is in templates/settings.html but the scan does not "
+        "report it — the character class has been narrowed")
+    digits = sorted(n for n in names if any(c.isdigit() for c in n))
+    assert len(digits) >= 11, (
+        f"only {len(digits)} digit-bearing icon names visible: {digits} — "
+        "measured 11 across 34 sites")
+    assert sites >= 470, f"only {sites} icon sites scanned — measured 472"
 
 
 def test_no_primary_button_is_left_on_the_informational_blue():

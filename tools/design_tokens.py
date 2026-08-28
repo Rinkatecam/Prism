@@ -602,6 +602,74 @@ ELEVATION: dict[str, tuple[str, str]] = {
            "0 20px 48px -12px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(255 255 255 / 0.06)"),
 }
 
+# ── stacking ─────────────────────────────────────────────────────────────
+#
+# Measured 2026-08-28 over templates/**/*.html and static/css/app.css: **54**
+# z-index sites holding **19** distinct values, on two number systems that
+# were never reconciled — a hand-nudged chrome ladder
+# (0,1,2,3,10,20,25,30,31,35,40,50,51,55,60,65,70) and a two-rung "on top"
+# pair (9998/9999, 9 sites). Nothing chose any of them. The gaps prove it:
+# 51 exists only to beat the sidebar's 50, 31 only to beat the palette's 30,
+# 25 only to sit under it.
+#
+# The reason this is a bug and not untidiness: `#ps-tooltip` (base.html:147,
+# `z-index: 9999`) and `#prism-modal` (base.html:708, `z-[9999]`) TIE, so DOM
+# order decides — and the tooltip node is emitted 520 lines earlier. Every
+# explanation opened inside a modal therefore renders BEHIND the modal.
+#
+# Ordering is read off the tree, not off convention. Measured, ascending:
+#
+#     0,1,2,3   inside a component that only has to beat its own siblings:
+#               `.wf-ripple` under `#drawflow` (which sets `isolation:
+#               isolate`), the drawflow connections/nodes, and
+#               `.vitals-core` / `.vitals-detail` over the quadrant cards.
+#               This is the half of the "second scale" that is not app-level
+#               at all, which is why it looks incompatible with the other.
+#        10     `partials/server_analytics.html:96` — a chart menu that
+#               lifts above its own card and nothing else.
+#  20,25,30,31  the workflow editor's private chrome: toolbar, marquee,
+#               palette/properties/zoom, guide popover. All four live inside
+#               `#workflow-editor`, which is `position: fixed; z-index: 60`
+#               and therefore its own stacking context — these numbers never
+#               meet the app's.
+#        35     `.htmx-error-banner` — the one sticky strip in the document
+#               flow; must clear page content and sit under the chrome.
+#        40     `#sidebar-backdrop` (mobile) and settings' `#save-bar`.
+#     50,51     `#sidebar`, `.pulse-panel`, `.restart-overlay` — and
+#               `#topbar` one rung above, because the topbar spans the
+#               sidebar's full width.
+#  55,60,65,70  every dialog in the app, at four different heights for no
+#               stated reason: exec slideout 55, the full-screen workflow
+#               editor / `#jump-panel` / `#wf-context-menu` 60, two template
+#               modals 65, eight more modals 70.
+# 9998,9999     the shared modal backdrop and panel, the three tooltip
+#               panels, both toast containers, two JS-built popups.
+#
+# The names below are the occupants, one per measured stratum. Nothing is
+# repointed at them in this step — this only makes the scale exist, so that
+# the next thing that needs a layer has one to ask for instead of a number.
+#
+# WHY 10000 AND NOT 90 for the tooltip: the scale is aspirational until the
+# rest of the tree moves onto it, and in the meantime a tooltip has to BEAT
+# the eight live 9999s it currently ties and loses to. When those are
+# renumbered, `tooltip` comes down to 90 and `toast` goes above it (a toast
+# is the app interrupting you; a tooltip is you asking) in the SAME commit —
+# otherwise the named scale is a fiction with one exception in it.
+Z_LAYERS: dict[str, int] = {
+    "base":     0,      # floor of a private stacking context (.wf-ripple)
+    "raised":   10,     # lifts above its own card only (a chart's menu)
+    "canvas":   30,     # in-editor chrome, inside the editor's own context
+    "sticky":   35,     # the sticky error strip in the document flow
+    "chrome":   40,     # save bar, mobile sidebar backdrop
+    "sidebar":  50,     # sidebar, pulse panel, restart overlay
+    "topbar":   55,     # spans the sidebar, so it sits above it
+    "dropdown": 60,     # jump panel, context menu, the Settings menu (step 22)
+    "overlay":  70,     # a dialog's backdrop
+    "modal":    71,     # its panel — one rung up, the relation 9998/9999 has
+    "toast":    80,     # the toast container
+    "tooltip":  10000,  # #ps-tooltip (step 3) — see the note above
+}
+
 # Everything generated into app.css sits between these, so the CSS converter
 # knows to leave it alone. The previous marker was a REGEX matching the shape
 # of the colour block — `--c-name: <digits>` — which silently stopped
@@ -668,4 +736,21 @@ def render_tailwind_shadows() -> str:
     return ("          boxShadow: {\n"
             + ",\n".join(f"            '{n}': 'var(--shadow-{n})'"
                          for n in ELEVATION)
+            + "\n          }")
+
+
+def render_tailwind_z() -> str:
+    """`zIndex` for base.html — the named layers of Z_LAYERS.
+
+    Values are emitted as QUOTED strings, not bare numbers, for the same
+    reason every colour key is quoted: this config is an inline <script>, and
+    one syntax error there means `tailwind.config` is never assigned at all
+    and the application loses its whole theme rather than one layer.
+
+    `extend` merges, so Tailwind's own `z-0`..`z-50` and `z-auto` still
+    resolve. That is deliberate for this step — 54 sites still spell a number
+    and none of them may break while the scale is only being introduced.
+    """
+    return ("          zIndex: {\n"
+            + ",\n".join(f"            '{n}': '{v}'" for n, v in Z_LAYERS.items())
             + "\n          }")

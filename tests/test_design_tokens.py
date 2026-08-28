@@ -736,6 +736,232 @@ def test_base_html_tailwind_map_matches_the_python_table():
             f"{name} missing from tailwind.config in base.html"
 
 
+def test_base_html_tailwind_z_map_matches_the_python_table():
+    """The same guarantee for the stacking scale, and it fails harder.
+
+    A colour name Tailwind never emits leaves an element uncoloured, which is
+    visible the first time anyone opens the page. A LAYER name Tailwind never
+    emits leaves the element at `z-index: auto`, where it looks correct until
+    the one moment something else happens to overlap it — and the whole
+    reason `Z_LAYERS` exists is that exact failure, live: `#ps-tooltip`
+    (base.html, `z-index: 9999`) and `#prism-modal` (`z-[9999]`) tie, so DOM
+    order decides and the tooltip, emitted 520 lines earlier, loses. Every
+    explanation opened inside a modal renders behind the modal.
+
+    Asserting the VALUE and not just the key is the point: `z-tooltip`
+    rendering as some other number is the same defect with a name on it.
+    """
+    base = (PROJECT_ROOT / "templates" / "base.html").read_text(encoding="utf-8")
+    for name, value in dt.Z_LAYERS.items():
+        assert f"'{name}': '{value}'" in base, (
+            f"z-{name} is {value} in tools/design_tokens.Z_LAYERS but not in "
+            "tailwind.config in base.html. Regenerate the zIndex block with "
+            "design_tokens.render_tailwind_z()")
+
+
+# ── the z-scale, and a ratchet on the literals it does not own yet ───────
+#
+# Same shape as the colour ratchet above, for the same reason: three colour
+# abstractions existed and were referenced by nothing, because typing a hex
+# was easier and nothing failed. A z-scale nothing is obliged to use would be
+# the fourth.
+#
+# `Z_LAYERS` deliberately repoints NOTHING when it lands — the tooltip moves
+# onto `z-tooltip` in the next step, the Settings menu onto `z-dropdown`
+# later — so on the day this was seeded every one of the sites below was
+# still a bare number, and the baseline is the honest size of the debt rather
+# than a target.
+#
+# Measured 2026-08-28 by RUNNING the detector below, not by copying a number:
+# **54** sites over 14 files, holding **19** distinct values on two number
+# systems that were never reconciled. The clusters:
+#
+#   19  workflows.html, most of it the editor's private in-canvas ladder
+#       (0,1,2,20,25,30,31) which sits inside `#workflow-editor` —
+#       `position: fixed; z-index: 60`, i.e. its own stacking context — and
+#       therefore never actually competes with the app's chrome.
+#    8  the value 9999: the three rival tooltip panels (`#ps-tooltip`,
+#       `#topo-tooltip`, workflows'), `#prism-modal`, two toast containers
+#       and two JS-built popups. `#prism-modal-overlay` sits one below at
+#       9998, which is the only ordered pair in the whole band.
+#    8  the value 70: eight modals, at the top of a 55/60/65/70 dialog
+#       ladder whose four heights have no stated reason.
+#
+# Keys are PROJECT-relative, unlike LITERAL_BASELINE's templates/-relative
+# ones, because this detector reads two roots: a bare "app.css" sitting next
+# to "base.html" would not say which tree it came from.
+
+Z_LITERAL_BASELINE: dict[str, int] = {
+    "static/css/app.css": 6,
+    "templates/base.html": 7,
+    "templates/compliance_doc.html": 1,
+    "templates/compliance_sop.html": 1,
+    "templates/operations.html": 2,
+    "templates/partials/server_analytics.html": 1,
+    "templates/partials/settings/_dependencies.html": 1,
+    "templates/partials/settings/_maintenance.html": 1,
+    "templates/partials/settings/_server_config.html": 3,
+    "templates/server_detail.html": 4,
+    "templates/servers.html": 2,
+    "templates/settings.html": 5,
+    "templates/topology.html": 1,
+    "templates/workflows.html": 19,
+}
+
+# A `z-index:` declaration — in a <style> block, in an inline `style=`, or in
+# a cssText string a script assembles at runtime (4 of the 54 are that last
+# shape, which is why this reads the raw text rather than parsed markup) —
+# plus the Tailwind class in BOTH spellings, arbitrary `z-[70]` and built-in
+# `z-50`. Both are live: 25 of the 54 sites are declarations and 29 are
+# classes, and those 29 split 19 arbitrary / 10 built-in — so a detector that
+# knew only declarations would miss more than half, and one that knew only
+# the arbitrary spelling would still miss ten.
+#
+# The lookbehind is what stops `data-z-50` and `--vitals-z-2` matching; the
+# leading `-?` is what keeps a negative utility (`-z-10`) in scope even
+# though the tree has none today. `z-auto` is deliberately NOT counted: it
+# names no number, and an element that says it has no layer is not the debt
+# this ratchet is measuring.
+_Z_LITERAL = re.compile(
+    r"z-index\s*:\s*-?\d+"
+    r"|(?<![\w-])-?z-\[-?\d+\]"
+    r"|(?<![\w-])-?z-\d+(?![\w-])"
+)
+
+
+def _z_literal_counts() -> dict[str, int]:
+    paths = sorted((PROJECT_ROOT / "templates").rglob("*.html"))
+    paths.append(PROJECT_ROOT / "static" / "css" / "app.css")
+    return {p.relative_to(PROJECT_ROOT).as_posix(): n
+            for p in paths
+            if (n := len(_Z_LITERAL.findall(
+                _code_only(p.read_text(encoding="utf-8")))))}
+
+
+def test_the_z_counter_reads_both_spellings_and_not_the_prose():
+    """Positive control for `_Z_LITERAL`, in both directions.
+
+    A detector that misses a spelling under-reports, and the ratchet then
+    buys headroom that was never won. One that matches prose fires on its own
+    documentation, and the cheapest way to make that green is to delete the
+    explanation — the wrong repair (docs/OPS-LEARNINGS.md §2.2).
+
+    The prose case is not hypothetical here: the zIndex block in base.html
+    carries a comment naming the literals it is replacing, and without the
+    shared `_code_only()` stripper this file's own measured total would be 57
+    instead of 54.
+    """
+    assert len(_Z_LITERAL.findall('style="z-index: 20; position: relative;"')) == 1
+    assert len(_Z_LITERAL.findall("'position:fixed;z-index:9999;top:16px'")) == 1
+    assert len(_Z_LITERAL.findall('class="fixed inset-0 z-[70] hidden"')) == 1
+    assert len(_Z_LITERAL.findall('class="fixed top-14 left-0 z-50 flex"')) == 1
+
+    assert not _Z_LITERAL.findall('class="relative z-auto"'), (
+        "z-auto is being counted; it names no number and is not the debt "
+        "this ratchet measures")
+    assert not _Z_LITERAL.findall('<div data-z-50 style="--vitals-z-2: 1">'), (
+        "the class rule is matching inside a longer word")
+
+    quoted = "          // 51 exists only to beat the sidebar's z-50 — z-[9999]"
+    assert len(_Z_LITERAL.findall(quoted)) == 2, (
+        "the sample no longer contains the two shapes it is meant to quote")
+    assert not _Z_LITERAL.findall(_code_only(quoted)), (
+        "a literal quoted inside the comment that explains it is being "
+        "counted; the ratchet is reading its own documentation")
+
+
+def test_z_index_literals_never_increase():
+    """19 values, two number systems, and one of them is a functional bug —
+    `#ps-tooltip` and `#prism-modal` both at 9999, so DOM order decides and
+    the tooltip loses. Use a layer from `tools/design_tokens.Z_LAYERS`."""
+    counts = _z_literal_counts()
+    grew = [f"{f}: {n} literal(s), baseline {Z_LITERAL_BASELINE.get(f, 0)}"
+            for f, n in counts.items() if n > Z_LITERAL_BASELINE.get(f, 0)]
+    assert not grew, (
+        "raw z-index values increased. Name the layer instead — the keys of "
+        "tools/design_tokens.Z_LAYERS are rendered as `z-*` classes by "
+        "tailwind.config in base.html:\n  " + "\n  ".join(grew))
+
+
+def test_the_z_baseline_is_not_left_behind_when_literals_are_removed():
+    """A ratchet that is never tightened is a ratchet in name only. Steps 3
+    and 22 each take a handful of these; if the baseline stays where it was,
+    the headroom they won is immediately available to spend again."""
+    counts = _z_literal_counts()
+    slack = {f: (b, counts.get(f, 0))
+             for f, b in Z_LITERAL_BASELINE.items() if counts.get(f, 0) < b}
+    assert not slack, (
+        "these files now hold FEWER raw z-index values than the baseline; "
+        "lower it:\n  "
+        + "\n  ".join(f"{f}: baseline {b} -> {n}" for f, (b, n) in slack.items()))
+
+
+def test_no_z_index_literal_outside_the_files_that_already_have_one():
+    """A file that has never needed a raw z-index does not get to start now:
+    the scale exists, and a new number in a new file is precisely how 19 of
+    them accumulated. The baseline records history, not permission."""
+    new = sorted(set(_z_literal_counts()) - set(Z_LITERAL_BASELINE))
+    assert not new, f"new file(s) with a raw z-index: {new}"
+
+
+# The sum of the per-file baseline, written out rather than computed from it,
+# for the same reason LITERAL_TOTAL is: computing it makes the assertion
+# tautological, and the one move the per-file ratchets permit — ADDING an
+# entry, which a template split legitimately needs — would then be silent.
+#
+# 54 at the moment Z_LAYERS landed. Nothing was migrated in that step, so
+# this is the full size of the debt on day one and every later movement of
+# this number is a real removal.
+Z_LITERAL_TOTAL = 54
+
+
+def test_the_total_number_of_z_literals_never_rises():
+    """Per-file ratchets miss one move: adding a NEW baseline entry. A file
+    split redistributes literals at a constant total; it does not create
+    them, and the total does not care what the new entry is called."""
+    counts = _z_literal_counts()
+    total = sum(counts.values())
+    assert total <= Z_LITERAL_TOTAL, (
+        f"total raw z-index values rose to {total} (was {Z_LITERAL_TOTAL}):\n  "
+        + "\n  ".join(f"{f}: {n} (baseline {Z_LITERAL_BASELINE.get(f, 0)})"
+                      for f, n in sorted(counts.items())
+                      if n != Z_LITERAL_BASELINE.get(f, 0)))
+    assert total == Z_LITERAL_TOTAL, (
+        f"total fell to {total}; lower Z_LITERAL_TOTAL to match, or the "
+        "headroom just won is silently available to spend again")
+
+
+def test_every_named_layer_is_distinct_and_ordered():
+    """The scale's only real job is that two things which must not tie, do
+    not. `#ps-tooltip` and `#prism-modal` tying at 9999 is the live defect
+    behind this whole step, so a duplicate value here is that bug reissued
+    with names on it.
+
+    Ordering is asserted against the dict order because the dict IS the
+    ladder — reading it top to bottom is how anyone decides which layer a new
+    element belongs on, and a key that sorts differently from where it is
+    written would make that reading wrong.
+    """
+    values = list(dt.Z_LAYERS.values())
+    assert len(set(values)) == len(values), (
+        f"two layers share a value: {dt.Z_LAYERS}")
+    assert values == sorted(values), (
+        "Z_LAYERS is not written in stacking order; the table reads as a "
+        f"ladder and must be one: {dt.Z_LAYERS}")
+    assert dt.Z_LAYERS["tooltip"] > dt.Z_LAYERS["dropdown"], (
+        "a tooltip explaining a menu item must not open behind the menu")
+    assert dt.Z_LAYERS["modal"] > dt.Z_LAYERS["overlay"], (
+        "a dialog panel behind its own backdrop")
+    assert dt.Z_LAYERS["topbar"] > dt.Z_LAYERS["sidebar"], (
+        "the topbar spans the sidebar's full width and must sit over it — "
+        "measured today as z-[51] against z-50")
+    assert dt.Z_LAYERS["tooltip"] > 9999, (
+        "z-tooltip must BEAT the eight live 9999s it currently ties and, on "
+        "DOM order, loses to. When those are renumbered it comes down to 90 "
+        "and z-toast goes above it — in the same commit, or the scale is a "
+        "fiction with one exception in it")
+
+
 # ── contrast is a build failure, not a matter of taste ───────────────────
 
 def _relative_luminance(hex_value: str) -> float:

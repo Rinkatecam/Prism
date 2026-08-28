@@ -22,6 +22,10 @@ warning triangle that turned turquoise for consistency would be a lie. The
 one `data-lucide="info"` icon is exempt for the same reason — it is an
 information indicator, not decoration.
 
+A class list holding a Jinja `{%` block is left alone entirely — see
+`_is_static`. It is not statically known, and its branches are where status
+colour lives.
+
 WHY BUTTONS ARE THE SECONDARY COLOUR
 ------------------------------------
 It looks inverted written down. It is not: violet marks where you ARE and
@@ -48,15 +52,51 @@ from tools import design_tokens as dt  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # The icon at the top of a page: the first <i> inside an <h1>.
+#
+# `[a-z0-9-]+`, not `[a-z-]+`: 11 of the 139 distinct lucide names this tree
+# uses end in a digit — settings-2, volume-2, trash-2, undo-2, table-2,
+# loader-2, file-code-2, bar-chart-2, bar-chart-3, grid-3x3, edit-3.
+# Measured 2026-08-28: 34 of the 472 icon sites in templates/**/*.html carry
+# one, and the narrow class silently skipped every one of them. Three were
+# sitting on `text-info` while `--check` reported the tree clean — a scanner
+# that cannot see a rule's subjects reports success, it does not report that
+# it looked at less than it was asked to.
+#
+# Three more digit-bearing icons live in templates/partials/settings/*.js,
+# which neither this tool nor tests/test_design_roles.py scans (both glob
+# `*.html`). They carry no colour class today, so nothing is wrong there yet.
 _PAGE_TITLE_ICON = re.compile(
-    r"(<h1[^>]*>\s*<i data-lucide=\"[a-z-]+\" class=\")([^\"]*)(\")", re.S)
+    r"(<h1[^>]*>\s*<i data-lucide=\"[a-z0-9-]+\" class=\")([^\"]*)(\")", re.S)
 # Any other decorative icon.
-_ICON = re.compile(r"(<i data-lucide=\"(?P<name>[a-z-]+)\" class=\")(?P<cls>[^\"]*)(\")")
+_ICON = re.compile(r"(<i data-lucide=\"(?P<name>[a-z0-9-]+)\" class=\")(?P<cls>[^\"]*)(\")")
 
 # Icons whose colour is information, not decoration.
 _MEANINGFUL = {"info"}
 
 _SECONDARY = re.compile(r"\btext-(?:info|brand)\b")
+
+
+def _is_static(classes: str) -> bool:
+    """Whether this class list is known at authoring time.
+
+    A Jinja control block inside a class attribute means it is not:
+    `{% if … %}text-critical{% else %}text-info{% endif %}` is a set of
+    alternatives of which exactly one renders, and this tool cannot evaluate
+    the condition that picks. Rewriting one branch recolours a state the tool
+    never saw — and the branches are precisely where status colour lives.
+
+    Measured on the tree 2026-08-28: 35 class lists across 10 templates carry
+    `{%`. The two that sit on an `<i>` are tls_overview.html and
+    updates_overview.html, and both switch between `text-critical` /
+    `text-warning` and a neutral. Sweeping either into `text-accent` for
+    consistency would paint an expired certificate turquoise — the exact lie
+    the rule at the top of this file exists to prevent.
+
+    This is a property of the class list, not a carve-out for two files: any
+    class list assembled at render time is out of this tool's reach, wherever
+    it appears. Such a site has to be converted by hand, branch by branch.
+    """
+    return "{%" not in classes
 
 
 def _swap(classes: str, frm: str, to: str) -> str:
@@ -71,6 +111,8 @@ def convert(text: str) -> tuple[str, Counter]:
     #    previous run wrongly turned turquoise is corrected rather than
     #    frozen — which is exactly what happened.
     def title(m: re.Match) -> str:
+        if not _is_static(m.group(2)):
+            return m.group(0)
         cls = re.sub(r"\btext-(?:info|accent)\b", "text-brand", m.group(2))
         if cls != m.group(2):
             counts["page-title icon -> violet"] += 1
@@ -88,6 +130,8 @@ def convert(text: str) -> tuple[str, Counter]:
     def icon(m: re.Match) -> str:
         if m.start("cls") in titles or m.group("name") in _MEANINGFUL:
             return m.group(0)
+        if not _is_static(m.group("cls")):
+            return m.group(0)
         cls = _SECONDARY.sub("text-accent", m.group("cls"))
         if cls != m.group("cls"):
             counts["card icon -> turquoise"] += 1
@@ -100,6 +144,8 @@ def convert(text: str) -> tuple[str, Counter]:
     out = text
     for start, end in reversed(dt.class_scopes(text)):
         body = new = text[start:end]
+        if not _is_static(body):
+            continue
 
         # A toggle's ON state is a selection, like a checked checkbox — the
         # blue was arbitrary. The 4 that use `healthy`/`critical` are left

@@ -94,6 +94,35 @@
             'sm': 'var(--shadow-sm)',
             'md': 'var(--shadow-md)',
             'lg': 'var(--shadow-lg)'
+          },
+          // The named stacking order. Measured across templates/** and
+          // app.css on 2026-08-28: 54 z-index sites holding 19 distinct
+          // values on two unreconciled number systems — a hand-nudged
+          // 0..70 ladder and a 9998/9999 "on top" pair. 51 exists only to
+          // beat 50, 31 only to beat 30; nothing chose any of them.
+          //
+          // The live consequence: #ps-tooltip (line 147, z-index 9999) and
+          // #prism-modal (line 708, z-[9999]) TIE, so DOM order decides and
+          // the tooltip — emitted 520 lines earlier — loses. Every
+          // explanation inside a modal renders behind it.
+          //
+          // NOTHING is repointed here yet; `extend` merges, so z-0..z-50
+          // still resolve and all 54 sites keep working. The scale exists so
+          // the tooltip fix has a layer to name instead of a magic number.
+          // Generated; regenerate with d.render_tailwind_z()
+          zIndex: {
+            'base': '0',
+            'raised': '10',
+            'canvas': '30',
+            'sticky': '35',
+            'chrome': '40',
+            'sidebar': '50',
+            'topbar': '55',
+            'dropdown': '60',
+            'overlay': '70',
+            'modal': '71',
+            'toast': '80',
+            'tooltip': '10000'
           }
         }
       }
@@ -881,8 +910,13 @@
         _prismModalResolve = resolve;
         const modal = document.getElementById('prism-modal');
         const overlay = document.getElementById('prism-modal-overlay');
-        document.getElementById('prism-modal-icon').innerHTML = '<i data-lucide="edit-3" class="w-5 h-5 text-brand"></i>';
-        document.getElementById('prism-modal-icon').className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-brand/10';
+        // The disc follows the glyph. Its two siblings above pair info with
+        // bg-info/10 and warning with bg-warning/10; this one read text-brand
+        // on bg-brand/10 until the icon moved to the decorative role, and a
+        // disc left on the old hue is the kind of mismatch that survives for
+        // months because each half looks deliberate on its own.
+        document.getElementById('prism-modal-icon').innerHTML = '<i data-lucide="edit-3" class="w-5 h-5 text-accent"></i>';
+        document.getElementById('prism-modal-icon').className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-accent/10';
         document.getElementById('prism-modal-title').textContent = title || 'Input';
         document.getElementById('prism-modal-message').innerHTML = message;
         const input = document.getElementById('prism-modal-input');
