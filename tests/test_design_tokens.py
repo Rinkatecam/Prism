@@ -804,8 +804,19 @@ Z_LITERAL_BASELINE: dict[str, int] = {
     "templates/server_detail.html": 4,
     "templates/servers.html": 2,
     "templates/settings.html": 5,
-    "templates/topology.html": 1,
-    "templates/workflows.html": 19,
+    # 1 -> 0. WP-6 step 8 deleted #topo-tooltip along with the rest of its
+    # CSS, including its own `z-index: 9999;` declaration — one of the eight
+    # 9999 sites named in the cluster comment above. Nothing else in this
+    # file used a raw z-index, so the count reaches zero rather than merely
+    # falling.
+    "templates/topology.html": 0,
+    # 19 -> 18. WP-6 step 8 deleted #block-tooltip along with the rest of
+    # its CSS, including its own `z-index: 9999;` declaration — the OTHER
+    # rival-panel 9999 named in the cluster comment above. The editor's own
+    # private in-canvas ladder (0,1,2,20,25,30,31) is untouched — it never
+    # competed with the app's chrome in the first place — so the eighteen
+    # that remain are all still that ladder.
+    "templates/workflows.html": 18,
 }
 
 # A `z-index:` declaration — in a <style> block, in an inline `style=`, or in
@@ -912,7 +923,14 @@ def test_no_z_index_literal_outside_the_files_that_already_have_one():
 # 54 at the moment Z_LAYERS landed. Nothing was migrated in that step, so
 # this is the full size of the debt on day one and every later movement of
 # this number is a real removal.
-Z_LITERAL_TOTAL = 54
+# 54 -> 52 with WP-6 step 8: deleting #block-tooltip and #topo-tooltip took
+# their own `z-index: 9999;` declarations with them — two of the eight 9999
+# sites the seeding comment above counted, and the first real removal since
+# the scale was seeded. Lowered in the same commit as the two per-file
+# entries above, or the headroom just won would be silently available to
+# spend again (the property test_the_z_baseline_is_not_left_behind_when_
+# literals_are_removed exists to catch).
+Z_LITERAL_TOTAL = 52
 
 
 def test_the_total_number_of_z_literals_never_rises():

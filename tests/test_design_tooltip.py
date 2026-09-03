@@ -5,8 +5,12 @@ touch/Escape state machine (step 4), and the authoring macros in
 `partials/_tip.html` (step 5) — `tip()`, `tip_button()`, `tip_mirror()`,
 `tip_overflow()`. Step 7 retrofitted the (measured, not the stale planned
 "38") carrier estate onto them — see TIP_CARRIER_BASELINE's own comment for
-the corrected count and what it does/doesn't include. This file is what
-governs every tooltip written from here on.
+the corrected count and what it does/doesn't include. Step 8 deleted the two
+long-standing rival panels that predated all of this — `#block-tooltip`
+(workflows.html) and `#topo-tooltip` (topology.html) — and repointed their
+call sites at the same mechanism, leaving `#ps-tooltip` as the only tooltip
+panel anywhere in the tree (T-7). This file is what governs every tooltip
+written from here on.
 
 WHAT THIS FILE CANNOT SEE — read before trusting a green run:
 
@@ -64,17 +68,51 @@ with `XPASS(strict)` the moment the retrofit made them genuinely pass,
 which was the signal to take the markers off rather than leave them as
 quietly-inert decoration.
 
-── TWO MORE EXPECTED FAILURES, NOT NAMED BY THIS STEP'S BRIEF ────────────
+── T-7 — DELETED BY STEP 8, MARKER REMOVED ───────────────────────────────
 
-Measuring the tree turned up two more tests in the T-1..T-15 set that also
-cannot pass today, for the same reason as T-1..T-4 (a later step, not this
-one, does the work) — found by running the checks, not assumed:
+T-7 (`test_exactly_one_tooltip_panel_exists`) asserts `id="ps-tooltip"`
+appears exactly once in the tree and `id="block-tooltip"`/`id="topo-tooltip"`
+appear zero times. Before step 8 the latter two both existed — a bespoke
+dark popup in workflows.html (icon + category + monospace example, positioned
+from the cursor) and a second one in topology.html (status badge, CPU/RAM/
+disk bars, a dependency list, also cursor-positioned) — both with their own
+hardcoded slate hexes, and the test was `xfail(strict=True)` for exactly
+that reason. Step 8 deleted both panels' markup, CSS and bind/show/hide JS
+outright and repointed every call site at the same data-tip-title/
+data-tip-desc pair `#ps-tooltip` already reads everywhere else:
+workflows.html's palette items and canvas nodes both read a shared
+BLOCK_DEFS table via a new `applyBlockTip()`, and topology.html's SVG graph
+nodes read the fetched node data via a new `applyNodeTip()` — JS
+`setAttribute` in both cases, since neither carrier is a Jinja-authored
+static element (see `_tip_carrier_counts()`'s own header comment on why a
+`setAttribute`-built carrier is invisible to T-9's ratchet, not just this
+test). Unlike T-5's heading-mirror scan, T-7's own assertion is a direct
+count of real ids in real files — there is no vacuous-pass risk to guard
+against separately. `strict=True` did its job again: the run failed with
+`XPASS(strict)` the moment the deletion made it genuinely pass, which was
+the signal to take the marker off.
 
-  * T-7 (`test_exactly_one_tooltip_panel_exists`) requires `#block-tooltip`
-    (workflows.html) and `#topo-tooltip` (topology.html) to be GONE. They
-    are both still in the tree. DESIGN_SYSTEM_SPEC.md's own step 8 verify
-    line reads "T-7 green (one panel, zero rivals)" — i.e. step 8 deletes
-    the rivals, not step 6. Marked `xfail(strict=True)` naming step 8.
+Deleting both panels' CSS also removed each one's own `z-index: 9999;`
+declaration — two of the eight 9999 sites `tests/test_design_tokens.py`'s
+`Z_LITERAL_BASELINE` counted when it was seeded. That ratchet (and its
+`Z_LITERAL_TOTAL`) is lowered in the same commit as this file's changes, for
+the same "not left behind" reason as every other baseline in this codebase.
+The OTHER ratchet in that file, `LITERAL_BASELINE`/`LITERAL_TOTAL` (raw hex
+colours), does NOT move: both panels' colours were plain CSS `property:
+#hex` declarations, not the Tailwind arbitrary-value bracket syntax
+(`-[#hex]`) that ratchet's detector matches, so measuring it — per this
+codebase's own "run the detector, don't copy a number" rule — found zero
+change in either file. Reported rather than forced, exactly like every
+other baseline in this suite that measured different from what a brief
+assumed.
+
+── ONE MORE EXPECTED FAILURE, NOT NAMED BY THIS STEP'S BRIEF ─────────────
+
+Measuring the tree turned up one more test in the T-1..T-15 set that also
+cannot pass today, for the same reason as T-1..T-4 before step 7 (a later
+step, not this one, does the work) — found by running the checks, not
+assumed:
+
   * T-15 (`test_a_control_with_a_reason_is_aria_disabled_not_disabled`)
     requires `prismSetDisabled(el, title, desc)` to take an `aria-disabled`
     + `data-inert` path instead of the native `disabled` attribute, and the
@@ -82,15 +120,15 @@ one, does the work) — found by running the checks, not assumed:
     exist anywhere in this tree yet (checked: zero hits, any file, any
     form); `prismSetDisabled` still sets `el.disabled = true`. The spec's
     own step 9 text is "change `prismSetDisabled`... and add T-15" — T-15
-    is step 9's test to make pass, not step 6's. Marked `xfail(strict=True)`
-    naming step 9.
+    is step 9's test to make pass, not step 6's or step 8's. Marked
+    `xfail(strict=True)` naming step 9.
 
-Both are DEVIATIONS from this step's brief, which named only T-1..T-4 for
-xfail. Flagged here (and in the implementing session's report) rather than
-silently either forcing them green (they cannot be, honestly) or leaving
-them as unmarked failures (which would break "green with N xfails" for
-every run from here to when steps 8/9 land). `strict=True` on both, exactly
-like T-1..T-4, so the day each lands is the day its marker must come off.
+This is a DEVIATION from step 6's brief, which named only T-1..T-4 for
+xfail — flagged here (and in that step's own report) rather than silently
+either forcing it green (it cannot be, honestly) or leaving it as an
+unmarked failure (which would break "green with N xfails" for every run
+from here to when step 9 lands). `strict=True`, exactly like T-1..T-4 and
+T-7, so the day it lands is the day its marker must come off.
 
 ── THE Z_LITERAL_BASELINE RATCHET IS NOT HERE ────────────────────────────
 
@@ -499,13 +537,6 @@ def _panel_id_counts() -> tuple[int, int]:
     return ps, rivals
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "T-7 DEVIATION from this step's brief (see module docstring — the brief "
-    "named only T-1..T-4): #block-tooltip (workflows.html) and #topo-tooltip "
-    "(topology.html) are both still in the tree. DESIGN_SYSTEM_SPEC.md's own "
-    "step 8 verify text reads 'T-7 green (one panel, zero rivals)' — step 8 "
-    "deletes the rivals, not step 6. strict=True so step 8 landing is the "
-    "signal, exactly like T-1..T-4 and step 7."))
 def test_exactly_one_tooltip_panel_exists():
     ps, rivals = _panel_id_counts()
     assert ps == 1, f'id="ps-tooltip" appears {ps} time(s), expected exactly 1'

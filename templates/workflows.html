@@ -17,26 +17,6 @@
 .drag-block:hover { border-color: #8B5CF6; transform: translateX(2px); }
 .drag-block:active { cursor: grabbing; }
 
-/* Rich tooltip popup */
-#block-tooltip {
-  position: fixed; z-index: 9999; pointer-events: none;
-  max-width: 280px; padding: 12px 14px;
-  background: #1E293B; border: 1px solid #334155; border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-  opacity: 0; transform: translateY(4px);
-  transition: opacity var(--dur-fast), transform var(--dur-fast);
-  font-size: 11px; color: #CBD5E1;
-}
-#block-tooltip.visible { opacity: 1; transform: translateY(0); }
-#block-tooltip .tip-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-#block-tooltip .tip-icon { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; }
-#block-tooltip .tip-icon svg { width: 16px; height: 16px; color: white; }
-#block-tooltip .tip-title { font-weight: 700; font-size: 12px; color: #F9FAFB; }
-#block-tooltip .tip-category { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; }
-#block-tooltip .tip-desc { margin-bottom: 8px; line-height: 1.5; color: #94A3B8; }
-#block-tooltip .tip-example { padding: 6px 8px; border-radius: 6px; background: #0F172A; border: 1px solid #1E293B; font-family: monospace; font-size: 10px; color: #8B5CF6; line-height: 1.4; }
-#block-tooltip .tip-example-label { font-size: 9px; font-weight: 600; color: #64748B; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
-
 /* Drawflow overrides */
 /* canvas bg is set in n8n-style block below */
 
@@ -3388,9 +3368,6 @@ document.addEventListener('DOMContentLoaded', () => {
   </div>
 </div>
 
-<!-- Rich tooltip popup (reused for palette + canvas blocks) -->
-<div id="block-tooltip"></div>
-
 <!-- Right-click context menu (nodes + connections). Single element,
      repositioned + repopulated each open. See setupContextMenu(). -->
 {# role="menu" is what makes the `role="menuitem"` on each row below valid —
@@ -3398,72 +3375,109 @@ document.addEventListener('DOMContentLoaded', () => {
 <div id="wf-context-menu" role="menu"></div>
 
 <script nonce="{{ csp_nonce }}">
-// ── Rich Tooltip System ──
-const _tooltip = document.getElementById('block-tooltip');
-let _tipTimer = null;
+// ── Tip carriers for palette + canvas blocks (DESIGN_SYSTEM_SPEC.md step 8) ──
+//
+// This used to be a bespoke #block-tooltip panel: its own dark floating
+// <div>, positioned from the cursor (mousemove math) and refilled with
+// innerHTML on every hover — a second, rival implementation of exactly what
+// #ps-tooltip (base.html) already provides app-wide, with its own
+// hardcoded slate hexes instead of the token scale. Deleted outright; every
+// call site below now sets the same data-tip-title/data-tip-desc pair
+// base.html's bindAll() already knows how to read, so the SAME panel opens
+// here as everywhere else in the app.
+//
+// BLOCK_DEFS stays the single source of truth for a block's label/icon/
+// category/tip content — palette items and canvas nodes (on drop, on
+// saved-canvas import, on rebuild) all already read it for other purposes.
+// applyBlockTip() below is the one place that turns a BLOCK_DEFS entry into
+// a tip, so the palette and the canvas can never say something different
+// about the same block type. The icon and the per-category colour do not
+// carry into a plain-text tooltip — there is nowhere in title/desc to put a
+// colour — and the monospace "Example" block folds onto its own line:
+// #ps-tooltip's .tip-desc is white-space: pre-wrap (base.html), so a
+// literal \n survives as a real line break without the old panel's
+// separate .tip-example-label/.tip-example markup.
+const BLOCK_TIP_CATEGORY_LABELS = { trigger: 'Trigger', check: 'Check', action: 'Action', flow: 'Flow Control', notification: 'Notification' };
 
-function showBlockTooltip(e, blockType) {
+// `el` is the element a pointer, keyboard or long-press actually reaches —
+// a palette .drag-block or a canvas .drawflow-node. Both already show
+// their own visible label (the block's name), so per Sec5.3 this needs
+// only aria-describedby, never aria-label: the trigger already has a name.
+// `idSuffix` must be unique per ELEMENT, not per block type — the same
+// block type can appear on the canvas more than once — so callers pass
+// either the palette's own data-type (one of each, by construction) or
+// Drawflow's own "node-<n>" id (freshly minted per dropped/loaded node).
+function applyBlockTip(el, blockType, idSuffix) {
   const def = BLOCK_DEFS[blockType];
   if (!def || !def.tip) return;
-
-  clearTimeout(_tipTimer);
-  const color = CATEGORY_COLORS[def.category] || '#8B5CF6';
-  const catLabel = { trigger: 'Trigger', check: 'Check', action: 'Action', flow: 'Flow Control', notification: 'Notification' }[def.category] || def.category;
-
-  _tooltip.innerHTML = `
-    <div class="tip-header">
-      <div class="tip-icon" style="background:${color}"><i data-lucide="${def.icon}"></i></div>
-      <div>
-        <div class="tip-title">${def.label}</div>
-        <div class="tip-category" style="color:${color}">${catLabel}</div>
-      </div>
-    </div>
-    <div class="tip-desc">${def.tip.desc}</div>
-    <div class="tip-example-label">Example</div>
-    <div class="tip-example">${def.tip.example}</div>`;
-
-  if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [_tooltip] });
-
-  // Position near cursor
-  const x = e.clientX + 16;
-  const y = e.clientY + 8;
-  _tooltip.style.left = Math.min(x, window.innerWidth - 300) + 'px';
-  _tooltip.style.top = Math.min(y, window.innerHeight - 200) + 'px';
-
-  _tipTimer = setTimeout(() => _tooltip.classList.add('visible'), 100);
+  const catLabel = BLOCK_TIP_CATEGORY_LABELS[def.category] || def.category;
+  const title = catLabel + ': ' + def.label;
+  const desc = def.tip.example ? def.tip.desc + '\n' + def.tip.example : def.tip.desc;
+  const mirrorId = 'block-tip-' + idSuffix;
+  el.setAttribute('tabindex', el.getAttribute('tabindex') || '0');
+  el.setAttribute('aria-describedby', mirrorId);
+  el.setAttribute('data-tip-title', title);
+  el.setAttribute('data-tip-desc', desc);
+  let mirror = document.getElementById(mirrorId);
+  if (!mirror) {
+    mirror = document.createElement('span');
+    mirror.className = 'sr-only';
+    mirror.id = mirrorId;
+    el.appendChild(mirror);
+  }
+  mirror.textContent = desc;
 }
 
-function hideBlockTooltip() {
-  clearTimeout(_tipTimer);
-  _tooltip.classList.remove('visible');
-}
-
-// Attach to palette blocks
+// Attach to palette blocks — static markup, bound once.
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.drag-block').forEach(block => {
-    block.addEventListener('mouseenter', (e) => showBlockTooltip(e, block.dataset.type));
-    block.addEventListener('mouseleave', hideBlockTooltip);
-    block.addEventListener('dragstart', hideBlockTooltip);
-    // Remove native title tooltip
+    applyBlockTip(block, block.dataset.type, 'palette-' + block.dataset.type);
+    // The native title= attribute was only ever a no-JS/loading-race
+    // fallback; leaving it in place would show the browser's own tooltip
+    // stacked on top of #ps-tooltip.
     block.removeAttribute('title');
+    // dragstart used to call hideBlockTooltip() directly — native HTML5
+    // drag-and-drop is inconsistent about firing pointerleave/mouseleave
+    // once the OS drag takes over, so the old code closed the panel
+    // explicitly rather than trust that event. blur() is the equivalent
+    // here: a no-op unless this block is the one currently focused (pinned
+    // open), in which case focusout closes the panel immediately per the
+    // state machine in base.html.
+    block.addEventListener('dragstart', () => block.blur());
   });
+  if (window.__prismBindTooltips) window.__prismBindTooltips();
 });
 
-// Attach to canvas nodes (delegated via mutation observer since nodes are added dynamically)
+// Attach to canvas nodes (delegated via mutation observer since nodes are
+// added dynamically — dropped from the palette, or imported from a saved
+// canvas; see addNodeToCanvas/importCanvasWithStyledNodes above, both of
+// which create nodes through Drawflow's own addNode() and therefore both
+// fire this observer, regardless of which function built the HTML.
+// rebuildNodeHtml() above replaces a node's inner content directly instead
+// of calling addNode() again, so it would NOT re-fire this observer if
+// anything called it — moot today, since nothing in this tree calls it).
+function bindCanvasNodeTip(node) {
+  const n8nNode = node.querySelector('.n8n-node');
+  const blockType = n8nNode?.dataset?.type;
+  if (!blockType) return;
+  // node.id is Drawflow's own "node-<n>" id (set synchronously when it
+  // creates the element, before insertion — confirmed in
+  // drawflow-0.0.59.min.js), already unique and stable for this element's
+  // lifetime, so it is reused here instead of minting a second counter.
+  applyBlockTip(node, blockType, node.id || blockType);
+}
+
 const _canvasObserver = new MutationObserver((mutations) => {
+  let added = false;
   mutations.forEach(m => {
     m.addedNodes.forEach(node => {
       if (node.nodeType === 1 && node.classList?.contains('drawflow-node')) {
-        node.addEventListener('mouseenter', (e) => {
-          const n8nNode = node.querySelector('.n8n-node');
-          const blockType = n8nNode?.dataset?.type;
-          if (blockType) showBlockTooltip(e, blockType);
-        });
-        node.addEventListener('mouseleave', hideBlockTooltip);
-        node.addEventListener('mousedown', hideBlockTooltip);
+        bindCanvasNodeTip(node);
+        added = true;
       }
     });
   });
+  if (added && window.__prismBindTooltips) window.__prismBindTooltips();
 });
 
 // Start observing once Drawflow is initialized
@@ -3472,15 +3486,8 @@ const _startTooltipObserver = setInterval(() => {
   if (precanvas) {
     _canvasObserver.observe(precanvas, { childList: true, subtree: true });
     // Also attach to existing nodes
-    precanvas.querySelectorAll('.drawflow-node').forEach(node => {
-      node.addEventListener('mouseenter', (e) => {
-        const n8nNode = node.querySelector('.n8n-node');
-        const blockType = n8nNode?.dataset?.type;
-        if (blockType) showBlockTooltip(e, blockType);
-      });
-      node.addEventListener('mouseleave', hideBlockTooltip);
-      node.addEventListener('mousedown', hideBlockTooltip);
-    });
+    precanvas.querySelectorAll('.drawflow-node').forEach(bindCanvasNodeTip);
+    if (window.__prismBindTooltips) window.__prismBindTooltips();
     clearInterval(_startTooltipObserver);
   }
 }, 500);

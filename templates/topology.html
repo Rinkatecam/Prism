@@ -34,18 +34,6 @@
   .topo-chip:hover { background: #F3F4F6; }
   .dark .topo-chip:hover { background: #1E293B; }
   .topo-chip.active { background: #2563EB; color: white; border-color: #2563EB; }
-
-  /* Rich hover tooltip */
-  #topo-tooltip {
-    position: fixed; z-index: 9999; pointer-events: none;
-    max-width: 360px; padding: 12px 14px;
-    background: #1E293B; border: 1px solid #334155; border-radius: 10px;
-    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
-    opacity: 0; transform: translateY(4px);
-    transition: opacity var(--dur-fast), transform var(--dur-fast);
-    font-size: 11px; color: #CBD5E1;
-  }
-  #topo-tooltip.visible { opacity: 1; transform: translateY(0); }
 </style>
 
 <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
@@ -114,8 +102,13 @@
   <svg id="topology-canvas"></svg>
 </div>
 
-<!-- Rich tooltip (populated by topology.js on node hover) -->
-<div id="topo-tooltip"></div>
+<!-- Tip mirrors (DESIGN_SYSTEM_SPEC.md step 8): one sr-only span per graph
+     node, holding its tooltip description text so aria-describedby has
+     somewhere to point. Lives outside the SVG because an HTML <span> is not
+     a valid child of an SVG element without a <foreignObject> wrapper — see
+     topology.js's applyNodeTip(). Cleared and rebuilt by render() every time
+     the graph itself is, so a refresh never leaves a stale mirror behind. -->
+<div id="topo-tip-mirrors" class="sr-only"></div>
 
 <!-- Legend + blast radius results -->
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
