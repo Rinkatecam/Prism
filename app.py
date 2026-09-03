@@ -241,6 +241,10 @@ def inject_locale():
         "fmt_time": lambda iso: _format_time_only(iso, s),
         "csp_nonce": getattr(_g_mod, "csp_nonce", ""),
         "compliance_enabled": _compliance_enabled,
+        # partials/_tip.html's macros mint ids through this — see
+        # _next_tip_id's docstring for why the counter lives on flask.g
+        # rather than as a local closed over by this function.
+        "next_tip_id": _next_tip_id,
     }
 
 # ── Startup summary ──
@@ -280,6 +284,30 @@ def _emit_request_id(response):
     if rid:
         response.headers["X-Request-ID"] = rid
     return response
+
+
+def _next_tip_id():
+    """Unique id for one tooltip's sr-only mirror <span>, referenced by its
+    trigger's aria-describedby (DESIGN_SYSTEM_SPEC.md §5.6).
+
+    inject_locale is a context PROCESSOR, and Flask calls it on every
+    render_template() call, not once per request — so a counter closed over
+    by inject_locale itself would restart at 0 the moment one view rendered
+    a second template or partial in the same request, handing out an id
+    that already exists earlier in the page. flask.g is allocated fresh per
+    REQUEST and torn down at teardown, so a counter parked there survives
+    every render_template() call within one request and starts clean on the
+    next — the same lifetime csp_nonce and request_id already rely on
+    above, hence reusing _g_mod rather than importing g under its own name.
+
+    Prefixed `ps-` (not a bare number) because an HTML id consumed as a CSS
+    id selector — `#123` — needs escaping if it starts with a digit; every
+    other hand-authored id in this app already avoids that trap by not
+    being all-numeric.
+    """
+    n = getattr(_g_mod, "_tip_id_seq", 0) + 1
+    _g_mod._tip_id_seq = n
+    return f"ps-tip-{n}"
 
 
 # ── Security headers ──

@@ -1326,6 +1326,13 @@ TRANSLATIONS = {
         "how_this_is_decided": "How this is decided",
         "csv_latest_500": "This export accepts no window and no row limit — it always returns the most recent 500 events.",
         "row_limit": "Row limit",
+        # ── Tooltip authoring surface (WP-6 step 5, DESIGN_SYSTEM_SPEC.md
+        # §5.6) — partials/_tip.html's generic aria-label fallback chain.
+        # Not yet referenced by any template: step 7 retrofits the 38
+        # hand-written data-tip-* carriers onto tip()/tip_button(), which is
+        # what will actually put these on screen.
+        "tip_about": "Explain",
+        "tip_about_named": "About {title}",
     },
     "de": {
         "dashboard": "Dashboard",
@@ -2583,6 +2590,8 @@ TRANSLATIONS = {
         "how_this_is_decided": "Wie das entschieden wird",
         "csv_latest_500": "Dieser Export akzeptiert weder einen Zeitraum noch eine Zeilenbegrenzung — er liefert immer die neuesten 500 Ereignisse.",
         "row_limit": "Zeilenbegrenzung",
+        "tip_about": "Erklären",
+        "tip_about_named": "Über {title}",
     },
     "fr": {
         "dashboard": "Tableau de bord",
@@ -3840,6 +3849,8 @@ TRANSLATIONS = {
         "how_this_is_decided": "Comment cela est déterminé",
         "csv_latest_500": "Cet export n'accepte ni période ni limite de lignes — il renvoie toujours les 500 événements les plus récents.",
         "row_limit": "Limite de lignes",
+        "tip_about": "Expliquer",
+        "tip_about_named": "À propos de {title}",
     },
     "es": {
         "dashboard": "Panel",
@@ -5097,6 +5108,8 @@ TRANSLATIONS = {
         "how_this_is_decided": "Cómo se decide esto",
         "csv_latest_500": "Esta exportación no admite ni intervalo ni límite de filas: siempre devuelve los 500 eventos más recientes.",
         "row_limit": "Límite de filas",
+        "tip_about": "Explicar",
+        "tip_about_named": "Acerca de {title}",
     },
     "ja": {
         "dashboard": "ダッシュボード",
@@ -6354,6 +6367,8 @@ TRANSLATIONS = {
         "how_this_is_decided": "判定の仕組み",
         "csv_latest_500": "このエクスポートは期間指定にも行数上限にも対応しておらず、常に最新 500 件のイベントを返します。",
         "row_limit": "行数上限",
+        "tip_about": "説明",
+        "tip_about_named": "{title}について",
     },
 }
 
