@@ -1,0 +1,909 @@
+"""The tooltip mechanism — DESIGN_SYSTEM_SPEC.md §5 and §8.3 (T-1..T-15).
+
+Steps 1-5 of WP-6 landed the pinned-scale panel CSS (step 3), the keyboard/
+touch/Escape state machine (step 4), and the authoring macros in
+`partials/_tip.html` (step 5) — `tip()`, `tip_button()`, `tip_mirror()`,
+`tip_overflow()`. Nothing calls those macros yet. This file is what step 7
+(retrofitting the 38-carrier estate onto them) is graded against, and what
+governs every tooltip written from here on.
+
+WHAT THIS FILE CANNOT SEE — read before trusting a green run:
+
+  * PROSE CLASSIFICATION. No regex can tell "explanatory" (tooltip-worthy,
+    §5.7 gate 5) from "status" (must stay inline, gates 1-4). That is a
+    human judgement call, checked in review against the five gates in §5.7,
+    not something T-9 or T-14 can verify. Both ratchets pin a COUNT; neither
+    can tell a good migration from a bad one.
+  * ESCAPE, LONG-PRESS AND OUTSIDE-TAP BEHAVIOUR. T-6 proves the LISTENERS
+    are registered (`document.addEventListener('keydown', ...)` exists).
+    It cannot press Escape and observe the panel actually close, hold a
+    finger down for 600ms, or tap outside a panel on a real touchscreen.
+    That needs a live browser — step 10, not this file.
+  * RENDERED CONTRAST. T-11 pins the panel to the token scale (border-radius,
+    transition, no stray `!important`). It cannot read a pixel off a
+    rendered page in either theme. Also step 10.
+  * CARRIERS BUILT BY CLIENT-SIDE JAVASCRIPT AFTER THE PAGE LOADS. T-2/T-3/
+    T-4 render every route through Flask's test client, which executes
+    Jinja but no JavaScript — so a carrier that only exists after a script
+    runs (`chip.setAttribute('data-tip-title', 'Detection Mode')` and the
+    fusion status dot's `el.setAttribute('data-tip-title', ...)`, both in
+    server_detail.html) is invisible to every test in this file, not just
+    the rendered ones. T-9's ratchet is narrower still — see its own
+    comment for why those two are a named, deliberate blind spot of the
+    baseline itself, not just of T-1..T-4.
+
+── THE FOUR EXPECTED FAILURES (T-1..T-4) ─────────────────────────────────
+
+Per this step's own brief: T-1 through T-4 assert that every hand-written
+`data-tip-*` carrier is focusable and properly named, and today's carriers
+are bare `<i>`/`<span>`/`<div>` elements — not focusable, most with no
+`aria-label`, none with `aria-describedby`. All four are marked
+`xfail(strict=True)`: `strict=True` means the SUITE fails the moment any of
+them unexpectedly passes, which is exactly the signal step 7 (the carrier
+retrofit) is supposed to produce when it removes the marker.
+
+── TWO MORE EXPECTED FAILURES, NOT NAMED BY THIS STEP'S BRIEF ────────────
+
+Measuring the tree turned up two more tests in the T-1..T-15 set that also
+cannot pass today, for the same reason as T-1..T-4 (a later step, not this
+one, does the work) — found by running the checks, not assumed:
+
+  * T-7 (`test_exactly_one_tooltip_panel_exists`) requires `#block-tooltip`
+    (workflows.html) and `#topo-tooltip` (topology.html) to be GONE. They
+    are both still in the tree. DESIGN_SYSTEM_SPEC.md's own step 8 verify
+    line reads "T-7 green (one panel, zero rivals)" — i.e. step 8 deletes
+    the rivals, not step 6. Marked `xfail(strict=True)` naming step 8.
+  * T-15 (`test_a_control_with_a_reason_is_aria_disabled_not_disabled`)
+    requires `prismSetDisabled(el, title, desc)` to take an `aria-disabled`
+    + `data-inert` path instead of the native `disabled` attribute, and the
+    `[data-action]` dispatcher to refuse `data-inert`. `data-inert` does not
+    exist anywhere in this tree yet (checked: zero hits, any file, any
+    form); `prismSetDisabled` still sets `el.disabled = true`. The spec's
+    own step 9 text is "change `prismSetDisabled`... and add T-15" — T-15
+    is step 9's test to make pass, not step 6's. Marked `xfail(strict=True)`
+    naming step 9.
+
+Both are DEVIATIONS from this step's brief, which named only T-1..T-4 for
+xfail. Flagged here (and in the implementing session's report) rather than
+silently either forcing them green (they cannot be, honestly) or leaving
+them as unmarked failures (which would break "green with N xfails" for
+every run from here to when steps 8/9 land). `strict=True` on both, exactly
+like T-1..T-4, so the day each lands is the day its marker must come off.
+
+── THE Z_LITERAL_BASELINE RATCHET IS NOT HERE ────────────────────────────
+
+DESIGN_SYSTEM_SPEC.md §9's ratchet registry lists `Z_LITERAL_BASELINE` as
+living in this file. It does not: step 2 already built it, seeded and
+tested, in `tests/test_design_tokens.py` (`Z_LITERAL_BASELINE`,
+`Z_LITERAL_TOTAL`, and their "not left behind" / "no new file" / "total
+never rises" companions) — see that file. Duplicating it here would give
+the same ratchet two independent, driftable copies. T-8 below
+(`test_the_tooltip_outranks_every_other_layer`) is a different assertion —
+ordering/dominance, not a literal count — and lives here on its own.
+
+── TWO BASELINES THAT MEASURED DIFFERENT FROM THIS STEP'S BRIEF ──────────
+
+Per DESIGN_SYSTEM_SPEC.md's "Seeding rule (C28)": every baseline here comes
+from RUNNING its detector against this tree, never from copying a number
+out of a planning document. Both ran different from what was expected:
+
+  * TIP_CARRIER_BASELINE. Expected 38 (base.html 10, server_detail.html 13,
+    settings.html 4, server_card.html 4, server_comparison.html 2,
+    vitals_quadrant.html 2, _server_config.html 2, operations.html 1).
+    Measured: 25 (base.html 0, server_detail.html 10, the other six
+    unchanged). base.html carries ZERO hand-written `data-tip-title=`
+    carriers today — checked three independent ways (raw grep, a
+    comment-aware substring scan, and a tag-aware scan; all three agree).
+    The gap is not a detector bug: base.html's sidebar nav (WP-4 D7, "the
+    sidebar stopped lying about where you are") now explains itself with
+    visible labels and `aria-label`, not hover tooltips, and that commit
+    landed before this one. Two more real carriers exist in
+    server_detail.html via `el.setAttribute('data-tip-title', ...)` (the
+    detection-mode chip and the status-dot fusion reason) that this
+    baseline's detector — matching §9's literal wording, "hand-written
+    `data-tip-title=`" — does not count, because a regex broad enough to
+    catch `setAttribute(...)` calls also matches `prismSetDisabled`'s own
+    generic implementation (`el.setAttribute('data-tip-title', title)`,
+    where `title` is a parameter, not a carrier) as a false positive, and
+    there is no reliable regex-only way to tell "a specific literal reason"
+    from "a parameter being forwarded". Named here so step 7 does not get
+    silently let off the hook for those two.
+  * DESC_LINE_BASELINE. Expected "225 broad / 50-63 narrow ... depending on
+    which detector variant you build" (§9) — deliberately not a precise
+    target. Measured: 114 across 33 templates (41 in the Settings family).
+    This is bookkeeping for the later content-migration steps (25-26), not
+    something this step fixes; the detector variant and its trade-offs are
+    documented at `_desc_line_counts()` below.
+
+Every number above was reported to the coordinator rather than adjusted to
+match the brief — "do not force the number" per the spec's own instruction.
+"""
+
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+import pytest
+
+from tools import design_tokens as dt
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+TEMPLATES = PROJECT_ROOT / "templates"
+BASE = TEMPLATES / "base.html"
+APP_CSS = PROJECT_ROOT / "static" / "css" / "app.css"
+TIP_PARTIAL = "partials/_tip.html"
+
+
+# ── the comment stripper, and its positive control ────────────────────────
+#
+# Identical to tests/test_design_tokens.py and tests/test_design_disabled.py
+# — same regexes, same function body — because a third independent
+# reimplementation is a third place for the same bug (or the same fix) to
+# drift out of step. What it strips: Jinja `{# #}`, HTML `<!-- -->`, JS
+# block comments `/* */`, and `//` line comments anchored at the start of a
+# line. What it must NOT strip: real code that merely contains
+# comment-LIKE substrings — a `https://` URL, or a trailing `// note` after
+# real code on the same line.
+#
+# Not hypothetical here: base.html:1038 carries
+#   // `<i data-lucide="info" data-tip-title=…>` carriers on the Settings
+# — a comment that quotes the exact fake-tag shape this file's carrier scan
+# looks for. Without stripping, that one line is a false positive in BOTH
+# directions at once: it fabricates a non-focusable `<i>` carrier for T-1's
+# static scan, and (because base.html's whole <script> block is rendered
+# verbatim into every page) the same fake tag reappears in T-2/T-3/T-4's
+# rendered HTML on every route.
+_COMMENTS = re.compile(r"{#.*?#}|<!--.*?-->|/\*.*?\*/", re.S)
+_LINE_COMMENT = re.compile(r"^[ \t]*//[^\n]*", re.M)
+
+
+def _code_only(text: str) -> str:
+    blanked = _COMMENTS.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), text)
+    return _LINE_COMMENT.sub(lambda m: " " * len(m.group(0)), blanked)
+
+
+def test_the_counter_reads_code_and_not_the_comments_about_it():
+    """Positive control for `_code_only`, in both directions — a stripper
+    that strips nothing reports fake carriers out of its own documentation
+    (under-stripping in the OTHER sense: over-REPORTING); a stripper that
+    strips too much hides real ones. Both are asserted, over the exact fake
+    tag base.html's own comment quotes."""
+    quoted = ('    // `<i data-lucide="info" data-tip-title=…>` carriers on '
+              'the Settings pages')
+    assert "data-tip-title" in quoted, "the sample no longer contains what it quotes"
+    assert "data-tip-title" not in _code_only(quoted), (
+        "a fake carrier quoted inside a `//` comment is surviving the strip "
+        "— T-1/T-2 will fabricate a violation out of this exact line")
+
+    real = ('       <i data-lucide="info" class="w-3.5 h-3.5 text-faint"\n'
+            '          data-tip-title="Real title" data-tip-desc="Real desc"></i>')
+    assert "data-tip-title" in _code_only(real), (
+        "the stripper is eating real code, not just comments — a genuine "
+        "carrier would go uncounted")
+
+    url_line = "  const u = 'https://example.test/a'; // trailing note"
+    assert "https://example.test/a" in _code_only(url_line), (
+        "a `//` line-comment rule anchored to mid-line would eat the "
+        "`https://` in this URL and everything after it on the line")
+
+
+# ── shared carrier extraction — used by T-1 through T-5 ───────────────────
+#
+# One element definition, reused everywhere a "carrier" needs inspecting:
+# its tag name, its attributes (by value, not just by presence), the raw
+# body between its open and close tag, and a whitespace-collapsed
+# tags-stripped "visible text" derived from that body. Quote-aware ("…"/'…'
+# treated as atomic units that may contain `>`) so a Jinja comparison
+# embedded in an attribute value does not end the tag match early — the
+# same class of bug tests/test_design_disabled.py's `_defuse` exists to
+# avoid for `${…}` interpolations.
+#
+# Known blind spot, accepted rather than chased: a carrier built by
+# concatenating a JS template literal across a ternary — `${atFirst ? '...'
+# : ''}` — nests a JS single-quoted string containing HTML double-quoted
+# attributes inside a `${}` interpolation. The quote-aware matcher generally
+# survives this (the nested string has no OTHER single quote inside it in
+# every case measured), but it is not guaranteed for an arbitrary future
+# one, and T-1 is explicitly the static, best-effort half of the pair —
+# T-2 catches what rendering exposes; step 10 is the real backstop for
+# anything JavaScript composes at runtime.
+_TAG_OPEN = re.compile(r"<([a-zA-Z][\w:-]*)\b((?:\"[^\"]*\"|'[^']*'|[^>\"'])*)>", re.S)
+_HAS_TIP_ATTR = re.compile(r"\bdata-tip-(?:title|desc)\s*=")
+_ATTR_VALUE = re.compile(r"""([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')""")
+
+
+def _attrs_of(attr_text: str) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for m in _ATTR_VALUE.finditer(attr_text):
+        out[m.group(1)] = m.group(2) if m.group(2) is not None else m.group(3)
+    return out
+
+
+def _carrier_elements(text: str) -> list[dict]:
+    """Every element in `text` carrying data-tip-title or data-tip-desc, as
+    {tag, attrs, body, visible, start}. Matches the FIRST same-named close
+    tag after the open tag, which is wrong for a carrier that nests another
+    element of the same tag name — a shape none of today's carriers use
+    (checked by hand against every one of the 25 in TIP_CARRIER_BASELINE)."""
+    out = []
+    for m in _TAG_OPEN.finditer(text):
+        tag, attr_text = m.group(1), m.group(2)
+        if not _HAS_TIP_ATTR.search(attr_text):
+            continue
+        attrs = _attrs_of(attr_text)
+        close = re.search(rf"</{re.escape(tag)}\s*>", text[m.end():], re.I)
+        body = text[m.end():m.end() + close.start()] if close else ""
+        visible = re.sub(r"\s+", " ", re.sub(r"<[^>]*>", " ", body)).strip()
+        out.append({"tag": tag.lower(), "attrs": attrs, "body": body,
+                    "visible": visible, "start": m.start()})
+    return out
+
+
+def _is_focusable(el: dict) -> bool:
+    """T-1/T-2's shape check: <button>, <a href>, <summary>, or tabindex="0".
+    A shape check, not a "reachable right now" check — a `<button disabled>`
+    counts (it IS a button); whether `disabled` also makes it unreachable is
+    tests/test_design_disabled.py's and T-15's concern, not this one's."""
+    if el["tag"] in ("button", "summary"):
+        return True
+    if el["tag"] == "a" and el["attrs"].get("href"):
+        return True
+    return el["attrs"].get("tabindex") == "0"
+
+
+def _static_carrier_violations() -> list[str]:
+    violations = []
+    for p in sorted(TEMPLATES.rglob("*.html")):
+        rel = p.relative_to(TEMPLATES).as_posix()
+        text = _code_only(p.read_text(encoding="utf-8"))
+        for el in _carrier_elements(text):
+            if not _is_focusable(el):
+                violations.append(
+                    f"{rel}: <{el['tag']}> carries data-tip-* but is not a "
+                    'button/a[href]/summary and has no tabindex="0"')
+    return violations
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    "T-1: hand-written carriers (bare <i>/<span>/<div>, e.g. server_detail."
+    "html's #status-badge <span>) are not focusable until step 7 retrofits "
+    "them onto partials/_tip.html's tip()/tip_button()/tip_overflow(), "
+    "which emit a real <button> or tabindex=\"0\""))
+def test_every_tip_carrier_is_focusable():
+    violations = _static_carrier_violations()
+    assert not violations, (
+        "tip carrier(s) a keyboard cannot reach:\n  " + "\n  ".join(violations))
+
+
+# ── rendered fixtures — used by T-2, T-3, T-4 ─────────────────────────────
+#
+# Same client/route-discovery idiom as tests/test_pages_render.py: derive
+# every GET route from the app's own URL map rather than hand-listing pages,
+# so a route added without exercising this file is not a route silently
+# unseen. Rendered once per test session (module-scoped) and shared across
+# T-2/T-3/T-4 rather than re-rendered per test.
+
+@pytest.fixture(scope="module")
+def client():
+    import app as prism_app
+    prism_app.app.config["TESTING"] = True
+    return prism_app.app.test_client()
+
+
+def _page_routes() -> list[str]:
+    import app as prism_app
+    out = []
+    for rule in prism_app.app.url_map.iter_rules():
+        if "GET" not in (rule.methods or set()):
+            continue
+        path = rule.rule
+        if path.startswith(("/api/", "/static/", "/partials/")):
+            continue
+        if path in ("/logout", "/login", "/setup"):
+            continue  # auth flows: redirect by design
+        if "<" in path:
+            continue  # parameterised — handled by _server_detail_route below
+        out.append(path)
+    return sorted(set(out))
+
+
+def _settings_sections() -> list[str]:
+    from routes.views import _SETTINGS_SECTIONS
+    return [f"/settings/{name}" for name in _SETTINGS_SECTIONS]
+
+
+def _server_detail_route() -> str | None:
+    """One real server's detail page, opportunistically — server_detail.html
+    and server_card.html carry 14 of the 25 measured carriers, and skipping
+    every parameterised route (test_pages_render.py's own approach) would
+    leave T-2/T-3/T-4 blind to more than half the estate. Not required: an
+    install with zero configured servers (or CI without config.json) must
+    still pass every OTHER route, so this returns None rather than failing
+    when there is nothing to look at. Reads the name at test time rather
+    than hardcoding one — config.json is gitignored and its server names are
+    this installation's own inventory, not something to commit."""
+    import app as prism_app
+    try:
+        servers = prism_app.config.get_servers()
+    except Exception:
+        return None
+    return f"/server/{servers[0].name}" if servers else None
+
+
+def _rendered_bodies(client) -> dict[str, str]:
+    routes = _page_routes() + _settings_sections()
+    extra = _server_detail_route()
+    if extra:
+        routes = routes + [extra]
+    bodies = {}
+    for path in routes:
+        r = client.get(path)
+        if r.status_code == 200:
+            bodies[path] = r.get_data(as_text=True)
+    return bodies
+
+
+@pytest.fixture(scope="module")
+def rendered_pages(client) -> dict[str, str]:
+    return _rendered_bodies(client)
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    "T-2: the same non-focusable carriers as T-1, re-run on rendered HTML "
+    "so a carrier Jinja composes conditionally is caught too — step 7 fixes "
+    "both together"))
+def test_every_rendered_tip_carrier_is_focusable(rendered_pages):
+    violations = []
+    for path, html in rendered_pages.items():
+        for el in _carrier_elements(_code_only(html)):
+            if not _is_focusable(el):
+                violations.append(f"{path}: <{el['tag']}>")
+    assert not violations, (
+        "rendered tip carrier(s) a keyboard cannot reach:\n  "
+        + "\n  ".join(violations))
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    "T-3: icon-only carriers (settings.html's four <i data-lucide=\"info\"> "
+    "tips — poll interval, log collection interval, update check interval, "
+    "worker pool size) carry NO aria-label at all today — step 7's "
+    "tip()/tip_button() mint one from the title automatically (_tip_label "
+    "in partials/_tip.html)"))
+def test_every_icon_only_carrier_has_an_accessible_name(rendered_pages):
+    violations = []
+    for path, html in rendered_pages.items():
+        for el in _carrier_elements(_code_only(html)):
+            if el["visible"]:
+                continue  # has visible text of its own — not this check's concern
+            label = el["attrs"].get("aria-label", "").strip()
+            desc = el["attrs"].get("data-tip-desc", "")
+            if not label:
+                violations.append(f"{path}: icon-only <{el['tag']}> has no aria-label")
+            elif desc and len(label) >= len(desc):
+                violations.append(
+                    f"{path}: <{el['tag']}> aria-label is as long as or longer "
+                    "than its data-tip-desc — the explanation may have been "
+                    "pasted into the label")
+    assert not violations, "\n  ".join(violations)
+
+
+# `[^>]*` (not `.*?`) inside the lookaheads: sr-only spans never span
+# multiple lines in this codebase, and bounding the lookahead to one line
+# keeps a stray earlier/later `<span>` on another line from being pulled in.
+_SR_ONLY_BY_ID = re.compile(
+    r'<span\b(?=[^>]*\bclass="[^"]*\bsr-only\b)(?=[^>]*\bid="(?P<id>[^"]*)")'
+    r'[^>]*>(?P<text>.*?)</span>', re.S)
+
+
+def _sr_only_spans(text: str) -> dict[str, str]:
+    return {m.group("id"): m.group("text") for m in _SR_ONLY_BY_ID.finditer(text)}
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    "T-4: aria-describedby is 0 hits outside partials/_tip.html today "
+    "(DESIGN_SYSTEM_SPEC.md §5.1 — verified again here) — step 7's tip() "
+    "emits the sr-only mirror and aria-describedby together, so the two "
+    "cannot come apart once it lands"))
+def test_every_tip_desc_is_mirrored_in_an_sr_only_span(rendered_pages):
+    violations = []
+    for path, html in rendered_pages.items():
+        text = _code_only(html)
+        mirrors = _sr_only_spans(text)
+        for el in _carrier_elements(text):
+            if "ps-tip-overflow" in el["attrs"].get("class", ""):
+                continue  # §5.6: text already visible — no mirror, no describedby
+            desc = el["attrs"].get("data-tip-desc", "")
+            described_by = el["attrs"].get("aria-describedby", "")
+            if not described_by:
+                violations.append(
+                    f"{path}: <{el['tag']}> has data-tip-desc but no aria-describedby")
+                continue
+            if described_by not in mirrors:
+                violations.append(
+                    f"{path}: aria-describedby={described_by!r} resolves to nothing "
+                    "in the same document")
+                continue
+            if mirrors[described_by] != desc:
+                violations.append(
+                    f"{path}: sr-only mirror for {described_by!r} does not equal "
+                    "data-tip-desc character for character")
+    assert not violations, "\n  ".join(violations)
+
+
+# ── T-5 — the mirror is never a heading's child (C17) ─────────────────────
+
+_HEADING_BLOCK = re.compile(r"<(h[1-4])\b[^>]*>.*?</\1>", re.S | re.I)
+_SR_ONLY_ANY = re.compile(r'<span\b[^>]*\bclass="[^"]*\bsr-only\b', re.I)
+
+
+def test_no_tip_mirror_sits_inside_a_heading():
+    """Nothing calls tip_button()/tip_mirror() from a real page yet (step 7),
+    so this passes vacuously today — see the positive control below for
+    proof the scan would catch a violation, not just that none exists."""
+    violations = []
+    for p in sorted(TEMPLATES.rglob("*.html")):
+        text = _code_only(p.read_text(encoding="utf-8"))
+        for hm in _HEADING_BLOCK.finditer(text):
+            if _SR_ONLY_ANY.search(hm.group(0)):
+                violations.append(
+                    f"{p.relative_to(TEMPLATES)}: sr-only span nested inside <{hm.group(1)}>")
+    assert not violations, (
+        "a tip mirror sits inside a heading (C17) — search_index._headings "
+        "strips tags and drops any heading over 80 characters, so a nested "
+        "mirror either pollutes the index label or deletes the jump "
+        "target:\n  " + "\n  ".join(violations))
+
+
+def test_the_heading_mirror_scan_actually_catches_a_violation():
+    """Positive control: a scan that passes because nothing calls the macro
+    yet is indistinguishable from a scan that is broken. Prove it fires."""
+    sample = ('<h2 class="flex items-center gap-2">Title '
+              '<span class="sr-only" id="ps-tip-1">desc</span></h2>')
+    match = _HEADING_BLOCK.search(sample)
+    assert match and _SR_ONLY_ANY.search(match.group(0)), (
+        "the heading/mirror scan no longer catches a mirror nested in a heading")
+
+
+# ── T-6 — the panel script binds keyboard and touch, not the cursor ───────
+
+def _tooltip_iife() -> str:
+    src = _code_only(BASE.read_text(encoding="utf-8"))
+    start = src.index("function initGlobalTooltip")
+    end = src.index("\n    })();", start)
+    return src[start:end]
+
+
+def test_the_panel_script_binds_the_keyboard_and_touch_paths():
+    body = _tooltip_iife()
+    for kind in ("focusin", "focusout", "click", "pointerenter", "pointerdown", "keydown"):
+        assert f"'{kind}'" in body, f"{kind!r} is no longer bound anywhere in initGlobalTooltip"
+    assert re.search(r"addEventListener\('scroll',\s*\w+,\s*\{[^}]*capture:\s*true", body), (
+        "the document-level scroll listener is no longer registered on the capture phase")
+    assert "mousemove" not in body, (
+        "mousemove is back in the tooltip script — a panel that follows the "
+        "cursor cannot be produced by a keyboard or a finger, and carrying "
+        "two positioning models is how the two input paths drift (§5.5)")
+
+
+# ── T-7 — exactly one tooltip panel, zero rivals ──────────────────────────
+
+def _panel_id_counts() -> tuple[int, int]:
+    ps = rivals = 0
+    for p in TEMPLATES.rglob("*.html"):
+        text = _code_only(p.read_text(encoding="utf-8"))
+        ps += len(re.findall(r'id="ps-tooltip"', text))
+        rivals += len(re.findall(r'id="(?:block-tooltip|topo-tooltip)"', text))
+    return ps, rivals
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    "T-7 DEVIATION from this step's brief (see module docstring — the brief "
+    "named only T-1..T-4): #block-tooltip (workflows.html) and #topo-tooltip "
+    "(topology.html) are both still in the tree. DESIGN_SYSTEM_SPEC.md's own "
+    "step 8 verify text reads 'T-7 green (one panel, zero rivals)' — step 8 "
+    "deletes the rivals, not step 6. strict=True so step 8 landing is the "
+    "signal, exactly like T-1..T-4 and step 7."))
+def test_exactly_one_tooltip_panel_exists():
+    ps, rivals = _panel_id_counts()
+    assert ps == 1, f'id="ps-tooltip" appears {ps} time(s), expected exactly 1'
+    assert rivals == 0, f"{rivals} rival tooltip panel id(s) still present"
+
+
+# ── T-8 — the tooltip outranks every other layer ──────────────────────────
+#
+# A DIFFERENT assertion from test_design_tokens.py's Z_LITERAL_BASELINE
+# ratchet (which counts raw z-index literals per file and drives the count
+# down). This one proves ORDERING: whatever the tooltip's value is, nothing
+# else in the tree may sit at or above it. That is the actual property that
+# stops the #ps-tooltip/#prism-modal 9999 tie (DESIGN_SYSTEM_SPEC.md §5.1)
+# from being re-created by some other pair of literals landing on the same
+# number in the future — a per-file literal COUNT never rising says nothing
+# about whether two of them still collide.
+_Z_VALUE = re.compile(
+    r"z-index\s*:\s*(?P<v1>-?\d+)"
+    r"|(?<![\w-])-?z-\[(?P<v2>-?\d+)\]"
+    r"|(?<![\w-])-?z-(?P<v3>\d+)(?![\w-])"
+)
+
+
+def _all_z_values() -> list[tuple[str, int]]:
+    paths = sorted(TEMPLATES.rglob("*.html"))
+    paths.append(APP_CSS)
+    out = []
+    for p in paths:
+        text = _code_only(p.read_text(encoding="utf-8"))
+        for m in _Z_VALUE.finditer(text):
+            out.append((p.name, int(m.group("v1") or m.group("v2") or m.group("v3"))))
+    return out
+
+
+def test_the_tooltip_outranks_every_other_layer():
+    values = _all_z_values()
+    tooltip_value = dt.Z_LAYERS["tooltip"]
+    assert any(v == tooltip_value for _, v in values), (
+        f"no z-index literal of {tooltip_value} (dt.Z_LAYERS['tooltip']) found "
+        "in the tree — has #ps-tooltip's declaration moved, or the scale's "
+        "value changed without this test noticing?")
+    others = [v for _, v in values if v != tooltip_value]
+    assert others, "the z-index scan found nothing else to compare against — it has stopped matching"
+    worst = max(others)
+    assert worst < tooltip_value, (
+        f"something in the tree sits at z-index {worst}, which the tooltip's "
+        f"{tooltip_value} does not beat — the exact kind of DOM-order tie "
+        "this scale exists to end")
+
+
+# ── T-9 — the macro is the only way a tip is authored ─────────────────────
+#
+# "hand-written `data-tip-title=` outside partials/_tip.html" (DESIGN_SYSTEM
+# _SPEC.md §9), read literally: the attribute-equals textual form, wherever
+# it occurs (a Jinja template attribute, or the same text assembled inside a
+# JS template literal or string concatenation — server_detail.html does
+# both). Deliberately NOT extended to `el.setAttribute('data-tip-title', …)`
+# calls: a regex broad enough to catch those also matches
+# `window.prismSetDisabled`'s own generic implementation in base.html
+# (`el.setAttribute('data-tip-title', title)`, where `title` is a parameter
+# supplied by every DIFFERENT caller, not a carrier in its own right) as a
+# false positive, and there is no reliable way to tell "a specific literal
+# reason" from "a parameter forwarded through" with a regex alone. The two
+# real setAttribute-built carriers this misses (server_detail.html's
+# detection-mode chip and status-dot fusion reason) are named in the module
+# docstring so step 7 does not get a free pass on them.
+#
+# Measured against this tree: 25, not the expected 38 — base.html
+# specifically measures 0 where 10 were expected. See the module docstring
+# for the full account; this is not adjusted to match the expectation.
+TIP_CARRIER_BASELINE: dict[str, int] = {
+    # Expected 10 (DESIGN_SYSTEM_SPEC.md §5.1 and this step's own brief).
+    # Measured 0, three ways (raw grep, code-only substring, code-only
+    # tag-aware scan — all agree). base.html's sidebar nav explains itself
+    # with visible labels + aria-label since WP-4 D7 ("the sidebar stopped
+    # lying about where you are"), which predates this step; there is no
+    # data-tip-title anywhere in the file today, hand-written or otherwise.
+    "base.html": 0,
+    "operations.html": 1,
+    "partials/server_card.html": 4,
+    "partials/server_comparison.html": 2,
+    "partials/settings/_server_config.html": 2,
+    "partials/vitals_quadrant.html": 2,
+    # Expected 13. Measured 10 — the gap is the two setAttribute()-built
+    # carriers this detector's scope deliberately excludes (see above).
+    "server_detail.html": 10,
+    "settings.html": 4,
+}
+
+_TIP_TITLE_ATTR = re.compile(r"\bdata-tip-title\s*=")
+
+
+def _tip_carrier_counts() -> dict[str, int]:
+    out: dict[str, int] = {}
+    for p in sorted(TEMPLATES.rglob("*.html")):
+        rel = p.relative_to(TEMPLATES).as_posix()
+        if rel == TIP_PARTIAL:
+            continue  # the macro's own definition, not a carrier
+        n = len(_TIP_TITLE_ATTR.findall(_code_only(p.read_text(encoding="utf-8"))))
+        if n:
+            out[rel] = n
+    return out
+
+
+def test_the_macro_is_the_only_way_a_tip_is_authored():
+    """T-9. Baseline 38 -> 0 per the spec; measured baseline here is 25 -> 0
+    (see the comment on TIP_CARRIER_BASELINE for why)."""
+    counts = _tip_carrier_counts()
+    grew = [f"{f}: {n} (baseline {TIP_CARRIER_BASELINE.get(f, 0)})"
+            for f, n in counts.items() if n > TIP_CARRIER_BASELINE.get(f, 0)]
+    assert not grew, (
+        "hand-written data-tip-title= appeared outside partials/_tip.html — "
+        "use tip()/tip_button()/tip_overflow() instead:\n  " + "\n  ".join(grew))
+
+
+def test_the_tip_carrier_baseline_is_not_left_behind_when_carriers_are_removed():
+    counts = _tip_carrier_counts()
+    slack = {f: (b, counts.get(f, 0))
+             for f, b in TIP_CARRIER_BASELINE.items() if counts.get(f, 0) < b}
+    assert not slack, (
+        "these files now carry FEWER hand-written tips than the baseline; "
+        "lower it (step 7's own job for all of them):\n  "
+        + "\n  ".join(f"{f}: baseline {b} -> {n}" for f, (b, n) in slack.items()))
+
+
+def test_no_tip_carrier_outside_the_templates_that_already_have_one():
+    new = sorted(set(_tip_carrier_counts()) - set(TIP_CARRIER_BASELINE))
+    assert not new, f"new template(s) with hand-written tip carriers: {new}"
+
+
+TIP_CARRIER_TOTAL = 25
+
+
+def test_the_total_number_of_tip_carriers_never_rises():
+    counts = _tip_carrier_counts()
+    total = sum(counts.values())
+    assert total <= TIP_CARRIER_TOTAL, (
+        f"total hand-written tip carriers rose to {total} (was {TIP_CARRIER_TOTAL})")
+    assert total == TIP_CARRIER_TOTAL, (
+        f"total fell to {total}; lower TIP_CARRIER_TOTAL to match, or the "
+        "headroom step 7 just won is silently available to spend again")
+
+
+# ── T-10 — every tip() key exists in English ──────────────────────────────
+
+_TIP_CALL = re.compile(r"\b(?:tip|tip_button|tip_mirror)\(\s*(['\"])(?P<key>[\w.]+)\1")
+_TIP_KWARG_KEY = re.compile(r"(?:title_key|label_key)\s*=\s*(['\"])(?P<key>[\w.]+)\1")
+
+
+def _tip_macro_keys(text: str) -> set[str]:
+    keys = {m.group("key") for m in _TIP_CALL.finditer(text)}
+    keys |= {m.group("key") for m in _TIP_KWARG_KEY.finditer(text)}
+    return keys
+
+
+def test_every_tip_key_exists_in_english():
+    """Nothing calls tip()/tip_button()/tip_mirror() from a real page yet
+    (step 7), so this passes vacuously today on an empty key set — see the
+    positive control below for proof the extractor itself works. With the
+    existing test_all_real_locales_cover_every_english_key
+    (tests/test_i18n_fallback.py), this is what proves every tooltip string
+    step 7 introduces is translated in all five locales, not just English."""
+    import i18n
+    en = i18n.TRANSLATIONS["en"]
+    missing = []
+    for p in sorted(TEMPLATES.rglob("*.html")):
+        rel = p.relative_to(TEMPLATES).as_posix()
+        text = _code_only(p.read_text(encoding="utf-8"))
+        for key in sorted(_tip_macro_keys(text)):
+            if key not in en:
+                missing.append(f"{rel}: {key!r}")
+    assert not missing, (
+        "tip()/tip_button()/tip_mirror() call(s) reference a key missing from "
+        "i18n.TRANSLATIONS['en']:\n  " + "\n  ".join(missing))
+
+
+def test_the_tip_key_scan_finds_a_call_when_one_exists():
+    """Positive control: a vacuous pass (zero calls today) is indistinguishable
+    from a broken extractor without this."""
+    sample = "{{ tip('made_up_test_key_xyz', 'fallback text', title_key='another_key') }}"
+    assert _tip_macro_keys(sample) == {"made_up_test_key_xyz", "another_key"}, (
+        "the tip()-call key extractor no longer finds a real call")
+
+
+# ── T-11 — the panel stays on the pinned scales ───────────────────────────
+
+def _tooltip_css_block() -> str:
+    src = BASE.read_text(encoding="utf-8")
+    start = src.index("#ps-tooltip {")
+    end = src.index("[data-tip-title] {", start)
+    return src[start:end]
+
+
+def test_the_panel_stays_on_the_pinned_scales():
+    block = _tooltip_css_block()
+    assert "border-radius: 0.5rem" in block, (
+        "#ps-tooltip's border-radius left the two-value scale "
+        "(0.5rem sm/DEFAULT, 1rem md/lg — tests/test_design_radii.py)")
+    assert re.search(r"transition:\s*[^;]*var\(--dur-", block), (
+        "the panel's transition no longer reads a duration token")
+    assert re.search(r"transition:\s*[^;]*var\(--ease-", block), (
+        "the panel's transition no longer reads an easing token")
+    assert "animation" not in block, (
+        "the panel declares an animation; §5.5 pins it to a plain transition")
+    assert "!important" not in block, (
+        "an !important here could out-rank app.css's global reduced-motion "
+        "block depending on cascade/source order, defeating "
+        "prefers-reduced-motion for the one component deliberately left off "
+        "the exemption list (§5.5: 'a tooltip that does not animate is "
+        "complete, not degraded')")
+
+
+# ── T-12 — the delays compose from the motion tokens ──────────────────────
+
+def test_the_delays_compose_from_the_motion_tokens():
+    css = APP_CSS.read_text(encoding="utf-8")
+    assert re.search(r"--tip-delay-open:\s*var\(--dur-slow\)", css), (
+        "--tip-delay-open is no longer var(--dur-slow) — a raw millisecond "
+        "literal here would be a second, invisible timing scale")
+    assert re.search(r"--tip-delay-close:\s*var\(--dur-fast\)", css), (
+        "--tip-delay-close is no longer var(--dur-fast)")
+
+
+# ── T-13 — the panel is reachable by a pointer when visible (C15) ─────────
+
+def test_the_panel_is_reachable_by_a_pointer_when_visible():
+    css_src = BASE.read_text(encoding="utf-8")
+    assert re.search(r"#ps-tooltip\.visible\s*\{[^}]*pointer-events:\s*auto", css_src), (
+        "#ps-tooltip.visible no longer sets pointer-events: auto — a "
+        "magnifier user could not move onto the panel to read it "
+        "(WCAG 1.4.13 hoverable)")
+    js = _code_only(css_src)
+    assert re.search(r"current\.contains\(t\)\s*\|\|\s*tip\.contains\(t\)", js), (
+        "the outside-close listener no longer tests containment against "
+        "both the trigger and #ps-tooltip")
+
+
+# ── T-14 — the description-line ratchet (§9; not driven to 0 here) ───────
+#
+# "element whose class carries a small size (text-xs/text-sm/text-[10px]/
+# text-[11px]) AND text-muted/text-faint, whose body is a single Jinja
+# expression or >=5 words, not in an empty-state region" — the spec itself
+# says several detector variants are legitimate ("225 broad / 50-63 narrow
+# ... depending on which detector variant you build") and that the target
+# is NOT zero at this step. This is the "narrow" end of that range:
+#
+#   * Tag whitelist: p, span, div, small, li, dd, td — the shapes actually
+#     used for a description line in this tree. A `<label>`-wrapped one
+#     would be missed; none were found by hand-checking a sample.
+#   * Non-greedy body matching stops at the FIRST same-named close tag, so a
+#     description `<div>` that nests another `<div>` undercounts — the same
+#     trade-off _carrier_elements makes above, for the same reason (a
+#     regex-based scan of arbitrarily-nested HTML always has this edge).
+#   * "Not in an empty-state region": partials/_empty_state.html is
+#     excluded by filename, and a `data-empty-state` attribute is excluded
+#     wherever present. `data-empty-state` does not exist anywhere in this
+#     tree today (checked), so that half of the exclusion is currently a
+#     no-op — kept for forward compatibility with H-13's ratchet in
+#     tests/test_design_headings.py, which uses the same marker.
+#
+# This is content-migration bookkeeping for wave B (steps 25-26), not a gate
+# this step closes — the ratchet only has to stop the count getting WORSE.
+DESC_LINE_BASELINE: dict[str, int] = {
+    "500.html": 1,
+    "compliance.html": 3,
+    "compliance_sop.html": 1,
+    "dashboard.html": 1,
+    "login.html": 2,
+    "network.html": 2,
+    "operations.html": 5,
+    "partials/active_actions.html": 1,
+    "partials/activity_feed.html": 1,
+    "partials/critical_issues.html": 1,
+    "partials/server_analytics.html": 7,
+    "partials/server_card.html": 3,
+    "partials/server_comparison.html": 1,
+    "partials/services_table.html": 1,
+    "partials/settings/_compliance.html": 2,
+    "partials/settings/_detection.html": 11,
+    "partials/settings/_health_checks.html": 1,
+    "partials/settings/_maintenance.html": 1,
+    "partials/settings/_rbac.html": 2,
+    "partials/settings/_restarts.html": 2,
+    "partials/settings/_server_config.html": 2,
+    "partials/settings/_tls.html": 1,
+    "partials/tls_overview.html": 1,
+    "partials/updates_overview.html": 2,
+    "reports.html": 16,
+    "scan.html": 2,
+    "server_detail.html": 13,
+    "servers.html": 4,
+    "services.html": 1,
+    "settings.html": 19,
+    "setup.html": 1,
+    "topology.html": 1,
+    "workflows.html": 2,
+}
+
+_DESC_SMALL_SIZE = r"text-xs|text-sm|text-\[1[01]px\]"
+_DESC_MUTED_FAINT = r"text-muted|text-faint"
+_DESC_TAG_WITH_CLASS = re.compile(
+    r'<(?P<tag>p|span|div|small|li|dd|td)\b[^>]*class="(?P<cls>[^"]*)"[^>]*>'
+    r'(?P<body>.*?)</(?P=tag)>', re.S)
+_DESC_SINGLE_JINJA = re.compile(r"^\s*\{\{[^{}]*\}\}\s*$", re.S)
+_DESC_WORD = re.compile(r"[A-Za-z][A-Za-z']*")
+
+
+def _is_desc_line(cls: str, body: str) -> bool:
+    if not (re.search(_DESC_SMALL_SIZE, cls) and re.search(_DESC_MUTED_FAINT, cls)):
+        return False
+    if _DESC_SINGLE_JINJA.match(body.strip()):
+        return True
+    words = _DESC_WORD.findall(re.sub(r"<[^>]*>", " ", body))
+    return len(words) >= 5
+
+
+def _desc_line_counts() -> dict[str, int]:
+    out: dict[str, int] = {}
+    for p in sorted(TEMPLATES.rglob("*.html")):
+        rel = p.relative_to(TEMPLATES).as_posix()
+        if rel == "partials/_empty_state.html":
+            continue
+        text = _code_only(p.read_text(encoding="utf-8"))
+        n = 0
+        for m in _DESC_TAG_WITH_CLASS.finditer(text):
+            if "data-empty-state" in m.group(0):
+                continue
+            if _is_desc_line(m.group("cls"), m.group("body")):
+                n += 1
+        if n:
+            out[rel] = n
+    return out
+
+
+def test_no_description_line_remains():
+    """T-14. Per §9 the target is NOT 0 at this step — only that the count
+    never exceeds the measured baseline."""
+    counts = _desc_line_counts()
+    grew = [f"{f}: {n} (baseline {DESC_LINE_BASELINE.get(f, 0)})"
+            for f, n in counts.items() if n > DESC_LINE_BASELINE.get(f, 0)]
+    assert not grew, (
+        "new description-line(s) appeared — D3 says explanatory prose "
+        "becomes a tooltip (§5.7), not a new small-muted line:\n  "
+        + "\n  ".join(grew))
+
+
+def test_the_desc_line_baseline_is_not_left_behind_when_lines_are_removed():
+    counts = _desc_line_counts()
+    slack = {f: (b, counts.get(f, 0))
+             for f, b in DESC_LINE_BASELINE.items() if counts.get(f, 0) < b}
+    assert not slack, (
+        "these files now hold FEWER description lines than the baseline; "
+        "lower it so the headroom cannot be silently respent:\n  "
+        + "\n  ".join(f"{f}: baseline {b} -> {n}" for f, (b, n) in slack.items()))
+
+
+def test_no_description_line_outside_the_templates_that_already_have_one():
+    new = sorted(set(_desc_line_counts()) - set(DESC_LINE_BASELINE))
+    assert not new, f"new template(s) with a description line: {new}"
+
+
+DESC_LINE_TOTAL = 114
+
+
+def test_the_total_number_of_description_lines_never_rises():
+    counts = _desc_line_counts()
+    total = sum(counts.values())
+    assert total <= DESC_LINE_TOTAL, (
+        f"total description lines rose to {total} (was {DESC_LINE_TOTAL})")
+    assert total == DESC_LINE_TOTAL, (
+        f"total fell to {total}; lower DESC_LINE_TOTAL to match, or the "
+        "headroom just won is silently available to spend again")
+
+
+# ── T-15 — a control with a reason is aria-disabled, not disabled ────────
+
+@pytest.mark.xfail(strict=True, reason=(
+    "T-15 DEVIATION from this step's brief (see module docstring): "
+    "prismSetDisabled still sets the native `disabled` attribute whenever a "
+    "reason is supplied, and `data-inert` exists nowhere in this tree "
+    "(checked). DESIGN_SYSTEM_SPEC.md's step 9 text is 'change "
+    "prismSetDisabled ... and add T-15' — that change, and this test passing, "
+    "are step 9's job. strict=True so step 9 landing is the signal."))
+def test_a_control_with_a_reason_is_aria_disabled_not_disabled():
+    src = _code_only(BASE.read_text(encoding="utf-8"))
+    start = src.index("window.prismSetDisabled = function")
+    end = src.index("\n      };", start) + len("\n      };")
+    body = src[start:end]
+
+    assert "data-inert" in body, (
+        "prismSetDisabled never sets data-inert — a control given a reason "
+        "is unreachable by keyboard/touch while disabled")
+    assert "aria-disabled" in body, "prismSetDisabled never sets aria-disabled"
+    assert not re.search(r"\bel\.disabled\s*=\s*true\b", body), (
+        "prismSetDisabled still sets the native disabled attribute when given "
+        "a reason — that is what makes the control unfocusable, which T-15 "
+        "exists to end")
+
+    m = re.search(r"function run\(el, e, key\)\s*\{(.*?)\n      \}", src, re.S)
+    assert m, "the [data-action] dispatcher's run() has been reshaped"
+    assert "data-inert" in m.group(1), (
+        "the [data-action] dispatcher never checks data-inert — an inert "
+        "control's action would still run")
