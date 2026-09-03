@@ -21,14 +21,33 @@ WHAT THESE ARE BLIND TO:
 
   * Whether a reason is TRUE. Nothing here can tell that "Pick at least two
     servers" is the actual enabling condition.
-  * Whether the tooltip is reachable without a mouse. It is not — the
-    mechanism is hover-only, so these reasons are invisible to keyboard and
-    screen-reader users. That is a real gap, inherited from the tooltip
-    component, and it belongs to the tooltip-coverage session scoped in
-    DESIGN_PHASE_3_SCOPE.md §1, not to this one.
+  * Whether a WAITING ON YOU reason is reachable by keyboard or screen
+    reader. Until DESIGN_SYSTEM_SPEC.md's step 9 it was not — every WAITING
+    ON YOU control disabled the same way MACHINE WORKING ones still do,
+    native `disabled`, which is pulled out of the tab order and fires no
+    `click`, so a reason attached to it was invisible to keyboard and
+    screen-reader users. That gap was real, inherited from the tooltip
+    component, and was parked on the tooltip-coverage session scoped in
+    DESIGN_PHASE_3_SCOPE.md §1.
+
+    Step 9 closed it for WAITING ON YOU controls specifically (T-15 in
+    tests/test_design_tooltip.py): `prismSetDisabled` now gives a reasoned
+    control `aria-disabled="true"` + `data-inert="1"` instead of `disabled`,
+    which stays a genuine tab stop — `focusin` opens the tooltip and
+    `aria-describedby` already names the reason regardless of focus, per
+    §5.2/§5.3 — while the `[data-action]` dispatcher's own `data-inert`
+    check keeps a focusable-but-unavailable control from also being
+    operable. Neither this file nor T-15 presses Tab in a real browser,
+    though; that measurement is step 10's, per DESIGN_SYSTEM_SPEC.md's own
+    step-10 entry ("(a) Tab reaches every tip button"). MACHINE WORKING
+    controls are unaffected by any of this — they carry no reason to make
+    reachable in the first place (see above) — and stay hover/pointer-only
+    by design; nothing here claims otherwise for them.
   * That a real pointer reaches a disabled <button> at all. Measured in the
     browser instead: mouseover and mouseenter both fire and the tip renders.
-    The `pointer-events` test below is what keeps that true.
+    The `pointer-events` test below is what keeps that true — for
+    `[aria-disabled="true"]` as well as `[disabled]`, since step 9 put
+    WAITING ON YOU controls on the former instead of the latter.
 """
 
 from __future__ import annotations
@@ -130,7 +149,15 @@ def test_pointer_events_are_never_removed_from_disabled_controls():
     Measured: it does, and `pointer-events` computes to `auto`. A single
     `pointer-events: none` on `[disabled]` — a common reflex, and one that
     looks like a tidy-up — would silently remove every reason in the app
-    while leaving all the markup in place and every other test green."""
+    while leaving all the markup in place and every other test green.
+
+    The `"disabled" not in selector` check below already catches
+    `[aria-disabled="true"]` too (it is a substring match, not an exact one)
+    — load-bearing since step 9, now that WAITING ON YOU controls use that
+    selector instead of `[disabled]` and still need their hover to survive.
+    Unchanged by step 9: this guard covered both selectors before that step
+    as an accident of how the match works, not because anything needed it
+    to yet."""
     css = _code_only(APP_CSS.read_text(encoding="utf-8"))
     for m in re.finditer(r"([^{}]*)\{([^}]*)\}", css):
         selector, body = m.group(1), m.group(2)

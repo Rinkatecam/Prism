@@ -968,16 +968,34 @@
       // becomes
       //   prismSetDisabled(el, someCondition && 'Why not', 'What to do')
       //
+      // A truthy `title` is DESIGN_SYSTEM_SPEC.md §5.2's "waiting on you" —
+      // confirm-word boxes, "pick at least two servers", the comparison cap
+      // — as distinct from "machine working" (disabled for the duration of
+      // a fetch, e.g. setTestLoading's bare `btn.disabled = true` beside
+      // "Testing connection…"), which has no reason and never reaches this
+      // function at all. Both used to disable the same way: native
+      // `disabled`, which is pulled out of the tab order and fires no
+      // click, so the reason just written was unreachable by keyboard or
+      // touch (T-15, tests/test_design_tooltip.py). Step 9 changed the
+      // mechanism for THIS branch only — `aria-disabled="true"` +
+      // `data-inert="1"` instead, leaving the control a genuine tab stop —
+      // and left "machine working" exactly as it was, since it never had a
+      // reason to make reachable in the first place. `data-inert` is what
+      // the [data-action] dispatcher's run() reads to refuse the click a
+      // real `disabled` used to swallow for free.
+      //
       // Verified in the browser: a real pointer DOES reach a disabled
       // <button> — mouseover and mouseenter both fire and the tip renders.
       // That holds only while nothing sets `pointer-events: none` on
-      // [disabled]; a test guards it, because that one declaration would
-      // silently remove every reason in the app.
+      // [disabled] (or, since step 9, [aria-disabled="true"]); a test
+      // guards both selectors, because that one declaration would silently
+      // remove every reason in the app.
       window.prismSetDisabled = function (el, title, desc) {
         if (!el) return;
         if (!title) {
           el.disabled = false;
           el.removeAttribute('aria-disabled');
+          el.removeAttribute('data-inert');
           el.removeAttribute('data-tip-title');
           el.removeAttribute('data-tip-desc');
           el.removeAttribute('data-tip-open');
@@ -990,8 +1008,17 @@
           if (current === el) closeTip();
           return;
         }
-        el.disabled = true;
+        // Never native-disable a reasoned control — Tab must still reach
+        // it, which is the entire point of this branch. `el.disabled =
+        // false` matters even though nothing above this call would have set
+        // it true: every current call site's carrier starts `disabled` in
+        // its own markup for the pre-JS paint (e.g. server_detail.html's
+        // power-modal-confirm), and without this line that native attribute
+        // would outlive the first call into this branch, leaving the
+        // control exactly as unfocusable as before step 9.
+        el.disabled = false;
         el.setAttribute('aria-disabled', 'true');
+        el.setAttribute('data-inert', '1');
         el.setAttribute('data-tip-title', title);
         if (desc) el.setAttribute('data-tip-desc', desc);
         else el.removeAttribute('data-tip-desc');
@@ -1437,6 +1464,16 @@
       const A = window._prismActions = window._prismActions || {};
       window.registerActions = function (map) { Object.assign(A, map); };
       function run(el, e, key) {
+        // Step 9: a "waiting on you" control (prismSetDisabled given a
+        // reason) stays a genuine tab stop, which means the browser no
+        // longer refuses its click the way a native `disabled` button did —
+        // `data-inert` stands in for that refusal instead. Checked once
+        // here rather than per action, because every data-action/
+        // data-change/data-submit/data-input/data-mousedown/data-mouseup
+        // carrier dispatches through this one function (see _evtAttr
+        // below), and so does the keyboard bridge's Enter/Space — one
+        // guard covers all seven paths in, not just the click a mouse sends.
+        if (el.hasAttribute('data-inert')) return;
         const fn = A[key];
         if (fn) { fn(el, e); return; }
         // Fallback: data-action names a GLOBAL function; data-args is a JSON

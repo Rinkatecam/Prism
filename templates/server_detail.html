@@ -490,9 +490,20 @@
       {# Real <button> with its own visible label — needs the §5.3 mirror/
          describedby pairing, not a second tip() trigger. Kept in sync on
          every input keystroke by __prismSyncTipMirror (see the 'input'
-         listener on power-modal-input below); the native `disabled` stays
-         untouched (step 9's job, not this one's). #}
-      <button id="power-modal-confirm" disabled
+         listener on power-modal-input below).
+
+         Step 9 switches this from native `disabled` to aria-disabled +
+         data-inert the first time prismSetDisabled runs — the FIRST
+         keystroke in the input below, since powerAction() only sets the
+         markup's plain `disabled` on open and never calls prismSetDisabled
+         itself (focus goes to the input, not here, so nothing yet needs a
+         reason). That is also why `data-action` had to be added here in
+         the same step: this button used to run executePowerAction from a
+         bare addEventListener, which native `disabled` blocked for free,
+         but data-inert only blocks a click that goes through the
+         [data-action] dispatcher — verified no other confirm-word button in
+         this codebase used a bare listener like this one did. #}
+      <button id="power-modal-confirm" disabled data-action="executePowerAction"
               aria-describedby="power-modal-confirm-desc-mirror"
               data-tip-title="{{ t.get('disabled_type_server_name_title', 'Type the server name first') }}"
               data-tip-desc="{{ t.get('disabled_type_server_name_desc', 'A power action interrupts everything running on the machine. Type its name exactly to confirm.') }}"
@@ -1784,7 +1795,13 @@
     }
   });
 
-  document.getElementById('power-modal-confirm').addEventListener('click', executePowerAction);
+  // power-modal-confirm's click is no longer wired here: step 9 gave it
+  // data-action="executePowerAction" instead (see the markup comment above
+  // the button), so it runs through the [data-action] dispatcher and gets
+  // that dispatcher's data-inert refusal along with every other action —
+  // a bare listener here would run unconditionally, since data-inert (not
+  // native disabled) is what marks this button unavailable once the typed
+  // name stops matching.
 
   // Close modal on backdrop click
   document.getElementById('power-modal').addEventListener('click', function(e) {

@@ -106,29 +106,30 @@ change in either file. Reported rather than forced, exactly like every
 other baseline in this suite that measured different from what a brief
 assumed.
 
-── ONE MORE EXPECTED FAILURE, NOT NAMED BY THIS STEP'S BRIEF ─────────────
+── T-15 — LANDED BY STEP 9, MARKER REMOVED ───────────────────────────────
 
-Measuring the tree turned up one more test in the T-1..T-15 set that also
-cannot pass today, for the same reason as T-1..T-4 before step 7 (a later
-step, not this one, does the work) — found by running the checks, not
-assumed:
+T-15 (`test_a_control_with_a_reason_is_aria_disabled_not_disabled`) turned
+up already failing when step 6 measured the tree for its xfail set — one
+more than that step's own brief named (T-1..T-4 only), found by running the
+checks rather than assumed. At that point `prismSetDisabled` still set the
+native `disabled` attribute whenever a reason was supplied, and
+`data-inert` existed nowhere in the tree (checked: zero hits, any file, any
+form). DESIGN_SYSTEM_SPEC.md's own step 9 text is "change
+`prismSetDisabled`... and add T-15", naming this test as step 9's to make
+pass, not step 6's or step 8's — so step 6 marked it `xfail(strict=True)`
+naming step 9, a DEVIATION from that step's brief flagged there (and in its
+own report) rather than either forced green (it could not honestly be) or
+left as an unmarked failure, which would have broken "green with N
+xfails" for every run from step 6 to step 9.
 
-  * T-15 (`test_a_control_with_a_reason_is_aria_disabled_not_disabled`)
-    requires `prismSetDisabled(el, title, desc)` to take an `aria-disabled`
-    + `data-inert` path instead of the native `disabled` attribute, and the
-    `[data-action]` dispatcher to refuse `data-inert`. `data-inert` does not
-    exist anywhere in this tree yet (checked: zero hits, any file, any
-    form); `prismSetDisabled` still sets `el.disabled = true`. The spec's
-    own step 9 text is "change `prismSetDisabled`... and add T-15" — T-15
-    is step 9's test to make pass, not step 6's or step 8's. Marked
-    `xfail(strict=True)` naming step 9.
-
-This is a DEVIATION from step 6's brief, which named only T-1..T-4 for
-xfail — flagged here (and in that step's own report) rather than silently
-either forcing it green (it cannot be, honestly) or leaving it as an
-unmarked failure (which would break "green with N xfails" for every run
-from here to when step 9 lands). `strict=True`, exactly like T-1..T-4 and
-T-7, so the day it lands is the day its marker must come off.
+Step 9 made the change T-15 was written for: a truthy `title` now takes the
+`aria-disabled="true"` + `data-inert="1"` path instead of native `disabled`
+— see `prismSetDisabled`'s own header comment in base.html for the full
+"machine working" vs "waiting on you" split — and the `[data-action]`
+dispatcher's `run()` refuses to act on a carrier caught by `data-inert`.
+`strict=True` did its job a third time: the run failed with `XPASS(strict)`
+the moment the change made it genuinely pass, which was the signal to take
+the marker off, exactly like T-1..T-4 and T-7 before it.
 
 ── THE Z_LITERAL_BASELINE RATCHET IS NOT HERE ────────────────────────────
 
@@ -952,14 +953,13 @@ def test_the_total_number_of_description_lines_never_rises():
 
 # ── T-15 — a control with a reason is aria-disabled, not disabled ────────
 
-@pytest.mark.xfail(strict=True, reason=(
-    "T-15 DEVIATION from this step's brief (see module docstring): "
-    "prismSetDisabled still sets the native `disabled` attribute whenever a "
-    "reason is supplied, and `data-inert` exists nowhere in this tree "
-    "(checked). DESIGN_SYSTEM_SPEC.md's step 9 text is 'change "
-    "prismSetDisabled ... and add T-15' — that change, and this test passing, "
-    "are step 9's job. strict=True so step 9 landing is the signal."))
 def test_a_control_with_a_reason_is_aria_disabled_not_disabled():
+    """Step 9. Extracts prismSetDisabled's body by the same string-boundary
+    convention window.__prismSyncTipMirror's own comment describes (up to
+    step 8 that boundary was untested directly; this is the first test to
+    rely on it), so a future refactor that folds another function inside
+    those boundaries breaks this test loudly rather than corrupting a scan
+    silently."""
     src = _code_only(BASE.read_text(encoding="utf-8"))
     start = src.index("window.prismSetDisabled = function")
     end = src.index("\n      };", start) + len("\n      };")
