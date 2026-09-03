@@ -185,19 +185,47 @@ END;
 -- It fires only on NEW rows, so the historic fork at 1671/1672 is
 -- grandfathered automatically: no cutoff constant to hardcode, and none to
 -- widen on the next restart.
+--
+-- Both id-guards are gated `NEW.id <> -1`, not `NEW.id > 0` (the first
+-- version of this trigger, caught in code review before it shipped further).
+-- Verified empirically against SQLite 3.49.1 on a scratch DB: inside a
+-- BEFORE INSERT trigger, NEW.id for a TRUE auto-assigned row (id omitted, or
+-- explicit NULL) is always exactly -1 — SQLite's own "not yet resolved"
+-- placeholder, not the real final id. Every OTHER supplied value — 0, and
+-- any negative id other than -1 — reads back as its own literal value and is
+-- fully distinguishable from that placeholder. `NEW.id > 0` wrongly treated
+-- the entire non-positive range (0, -1, -2, ...) as "auto-assign, skip the
+-- checks": a row planted at id=0 could be rewritten via INSERT OR REPLACE
+-- with this trigger completely silent — reopening the exact hole it exists
+-- to close, one digit away from a legal id.
+--
+-- id=-1 itself is a genuine, irreducible exception, not an oversight: an
+-- explicit -1 is indistinguishable from a true auto-assign at BEFORE-trigger
+-- time on this SQLite version, confirmed empirically — no WHERE clause here
+-- can tell them apart. It is still caught on every connection Prism opens,
+-- because _get_conn sets `recursive_triggers = ON`: a SECOND INSERT OR
+-- REPLACE against an existing id=-1 row has its implicit delete routed
+-- through audit_log_no_delete, which refuses unconditionally (also verified
+-- empirically — see tests/test_audit_chain.py). Closing id=-1 at the schema
+-- level needs a `CHECK (id >= 1)` column constraint, which is evaluated
+-- against the committed value rather than this trigger-time placeholder —
+-- but SQLite has no ALTER TABLE ADD CONSTRAINT, so retrofitting one onto the
+-- existing 1840+-row audit_log means the full new-table/copy/drop/rename
+-- dance. That is a separate, larger migration; not this trigger's job.
 CREATE INDEX IF NOT EXISTS idx_audit_prev_hash ON audit_log(prev_hash);
 
 CREATE TRIGGER IF NOT EXISTS audit_log_no_overwrite
-BEFORE INSERT ON audit_log BEGIN
-  SELECT RAISE(ABORT,'audit_log is append-only — overwriting an existing row is not allowed')
-  WHERE NEW.id > 0 AND EXISTS (SELECT 1 FROM audit_log WHERE id = NEW.id);
+BEFORE INSERT ON audit_log
+BEGIN
+    SELECT RAISE(ABORT, 'audit_log is append-only — overwriting an existing row is not allowed')
+    WHERE NEW.id <> -1 AND EXISTS (SELECT 1 FROM audit_log WHERE id = NEW.id);
 
-  SELECT RAISE(ABORT,'audit_log is append-only — an explicit id must be the next id')
-  WHERE NEW.id > 0 AND NEW.id <> (SELECT COALESCE(MAX(id),0)+1 FROM audit_log);
+    SELECT RAISE(ABORT, 'audit_log is append-only — an explicit id must be the next id')
+    WHERE NEW.id <> -1 AND NEW.id <> (SELECT COALESCE(MAX(id),0)+1 FROM audit_log);
 
-  SELECT RAISE(ABORT,'audit_log chain fork refused — prev_hash is already used by another row')
-  WHERE NEW.prev_hash IS NOT NULL
-    AND EXISTS (SELECT 1 FROM audit_log WHERE prev_hash = NEW.prev_hash);
+    SELECT RAISE(ABORT, 'audit_log chain fork refused — prev_hash is already used by another row')
+    WHERE NEW.prev_hash IS NOT NULL
+      AND EXISTS (SELECT 1 FROM audit_log WHERE prev_hash = NEW.prev_hash);
 END;
 
 -- ---------------------------------------------------------------------------
@@ -767,14 +795,23 @@ class Database:
         # REPLACE never fires a BEFORE DELETE trigger, because recursive_triggers
         # is 0 by default. That is exactly how INSERT OR REPLACE bypassed
         # audit_log_no_delete and rewrote an audit row in place (measured against
-        # a copy of production, see tests/test_audit_chain.py). The new
-        # audit_log_no_overwrite BEFORE INSERT trigger already closes that hole on
-        # its own; this is a second, redundant line of defence, verified safe by
-        # checking every trigger in SCHEMA_SQL (audit_log_no_update/no_delete/
-        # no_overwrite, sop_log_no_update/no_delete): each body is only
-        # `SELECT RAISE(ABORT, ...)` — none contains an INSERT/UPDATE/DELETE that
-        # writes to another table — so turning this on cannot trigger unexpected
-        # cascades.
+        # a copy of production, see tests/test_audit_chain.py).
+        #
+        # NOT purely redundant with audit_log_no_overwrite. That trigger's own
+        # id-guards use `NEW.id <> -1` because a true auto-assigned row's NEW.id
+        # is always exactly -1 inside a BEFORE INSERT trigger (SQLite's "not yet
+        # resolved" placeholder, confirmed empirically on 3.49.1) — which means
+        # an explicit, hostile id=-1 is genuinely indistinguishable from a real
+        # auto-assign at that point and the overwrite guard is blind to it. This
+        # pragma is what catches that one residual case: a SECOND INSERT OR
+        # REPLACE against an existing id=-1 row has its implicit delete routed
+        # through audit_log_no_delete instead, which refuses unconditionally
+        # (also verified empirically — see tests/test_audit_chain.py). Every
+        # other trigger in SCHEMA_SQL was checked before turning this on
+        # (audit_log_no_update/no_delete/no_overwrite, sop_log_no_update/
+        # no_delete): each body is only `SELECT RAISE(ABORT, ...)` — none
+        # contains an INSERT/UPDATE/DELETE that writes to another table — so
+        # this cannot trigger unexpected cascades elsewhere.
         conn.execute("PRAGMA recursive_triggers = ON")
         self._thread_local.conn = conn
         return conn

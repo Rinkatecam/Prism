@@ -153,7 +153,7 @@ def test_insert_or_ignore_overwrite_is_refused(tmp_db):
     tmp_db.log_audit("alice", "login", "auth", "first")
     conn = tmp_db._get_conn()
     rid = conn.execute("SELECT MIN(id) AS i FROM audit_log").fetchone()["i"]
-    with pytest.raises(sqlite3.IntegrityError):
+    with pytest.raises(sqlite3.IntegrityError, match="overwriting an existing row"):
         conn.execute(
             "INSERT OR IGNORE INTO audit_log (id, timestamp, username, action, category)"
             " VALUES (?, '2020-01-01T00:00:00Z', 'mallory', 'x', 'system')", (rid,))
@@ -241,3 +241,82 @@ def test_an_existing_duplicate_prev_hash_does_not_block_new_appends(tmp_db):
     tmp_db.log_audit("bob", "after", "auth", "still works")
     assert conn.execute(
         "SELECT COUNT(*) AS c FROM audit_log WHERE username='bob'").fetchone()["c"] == 1
+
+
+def test_explicit_id_zero_is_refused(tmp_db):
+    """id=0 used to read as `NEW.id > 0` false, wrongly classified as
+    auto-assign and exempted from every check. It is NOT ambiguous with the
+    auto-assign placeholder (that is exactly -1, verified empirically) — 0 is
+    a real explicit value the old guard misclassified."""
+    tmp_db.log_audit("alice", "login", "auth", "first")
+    conn = tmp_db._get_conn()
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute(
+            "INSERT INTO audit_log (id, timestamp, username, action, category)"
+            " VALUES (0, '2020-01-01T00:00:00Z', 'mallory', 'x', 'system')")
+        conn.commit()
+
+
+def test_explicit_negative_id_other_than_minus_one_is_refused(tmp_db):
+    """Any negative id except exactly -1 reads as its own literal value
+    inside the trigger (verified: -2, -5, -999 all distinguishable from the
+    auto-assign placeholder), so all of them must be caught."""
+    tmp_db.log_audit("alice", "login", "auth", "first")
+    conn = tmp_db._get_conn()
+    for bad_id in (-2, -5, -999):
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO audit_log (id, timestamp, username, action, category)"
+                " VALUES (?, '2020-01-01T00:00:00Z', 'mallory', 'x', 'system')", (bad_id,))
+            conn.commit()
+        conn.rollback()
+
+
+def test_explicit_id_negative_one_is_a_known_accepted_gap(tmp_db):
+    """DOCUMENTS a real, narrow, irreducible limitation rather than hiding it.
+
+    NEW.id for a genuine auto-assigned row (id omitted, or explicit NULL) is
+    ALWAYS exactly -1 inside a BEFORE INSERT trigger on SQLite — confirmed
+    empirically, not an assumption. An attacker who explicitly supplies
+    id=-1 is therefore indistinguishable from a legitimate auto-assign at
+    the point this trigger runs, and the row is accepted.
+
+    This is caught ANYWAY on every connection Prism itself opens, because
+    _get_conn sets `recursive_triggers = ON`: on a SECOND INSERT OR REPLACE
+    at id=-1, REPLACE's implicit delete now reaches `audit_log_no_delete`,
+    which unconditionally refuses it. The residual gap is narrower than it
+    looks: exploitable only by a caller with raw SQL access on a connection
+    that does NOT set recursive_triggers=ON (the design doc is explicit that
+    this pragma must never be treated as the primary control — see
+    docs/plans/AUDIT_CHAIN_REBASELINE.md).
+
+    Closing this completely needs a `CHECK (id >= 1)` column constraint,
+    which is evaluated against the committed value rather than the
+    BEFORE-trigger placeholder — verified to work and to not interfere with
+    real auto-assigns. SQLite has no ALTER TABLE ADD CONSTRAINT, so adding it
+    to the live 1840+-row audit_log requires a full table rebuild (new table,
+    copy, drop, rename). That is a separate, higher-risk phase, not this one.
+
+    If this test ever starts FAILING, it means the gap has been closed —
+    update this docstring and either delete the test or repurpose it to
+    assert the new, tighter behaviour.
+    """
+    tmp_db.log_audit("alice", "login", "auth", "first")
+    conn = tmp_db._get_conn()
+    conn.execute(
+        "INSERT INTO audit_log (id, timestamp, username, action, category)"
+        " VALUES (-1, '2020-01-01T00:00:00Z', 'planted', 'x', 'system')")
+    conn.commit()
+    row = conn.execute("SELECT username FROM audit_log WHERE id=-1").fetchone()
+    assert row["username"] == "planted", (
+        "if this now raises IntegrityError, the -1 gap has been closed "
+        "(likely by a CHECK constraint) — update this test's docstring")
+
+
+def test_recursive_triggers_pragma_is_on(tmp_db):
+    """Pins the actual pragma value on every connection Prism opens. Without
+    this, a future _get_conn refactor could drop the PRAGMA believing it
+    'redundant' per the (now-corrected) comment, silently reopening the id=-1
+    residual with no test catching it."""
+    conn = tmp_db._get_conn()
+    assert conn.execute("PRAGMA recursive_triggers").fetchone()[0] == 1
