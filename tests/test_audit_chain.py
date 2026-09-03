@@ -281,14 +281,17 @@ def test_explicit_id_negative_one_is_a_known_accepted_gap(tmp_db):
     id=-1 is therefore indistinguishable from a legitimate auto-assign at
     the point this trigger runs, and the row is accepted.
 
-    This is caught ANYWAY on every connection Prism itself opens, because
-    _get_conn sets `recursive_triggers = ON`: on a SECOND INSERT OR REPLACE
-    at id=-1, REPLACE's implicit delete now reaches `audit_log_no_delete`,
-    which unconditionally refuses it. The residual gap is narrower than it
-    looks: exploitable only by a caller with raw SQL access on a connection
-    that does NOT set recursive_triggers=ON (the design doc is explicit that
-    this pragma must never be treated as the primary control — see
-    docs/plans/AUDIT_CHAIN_REBASELINE.md).
+    CORRECTED (3rd review round): `recursive_triggers = ON` does NOT catch
+    this. It only refuses a FOLLOW-UP `INSERT OR REPLACE` against a row
+    already sitting at id=-1 (routed through `audit_log_no_delete`'s
+    unconditional refusal on REPLACE's implicit delete). A rational attacker
+    never needs that second write — the one-shot plant below already delivers
+    the forged content on the FIRST attempt, using `tmp_db._get_conn()`,
+    which has the pragma already ON (every connection in this process does).
+    It still succeeds. So this is not "exploitable only on a connection
+    without the pragma" — it is exploitable on every connection, pragma or
+    not; the pragma's only effect is on a second write this attack does not
+    need. Do not cite `recursive_triggers` as mitigating this case.
 
     Closing this completely needs a `CHECK (id >= 1)` column constraint,
     which is evaluated against the committed value rather than the

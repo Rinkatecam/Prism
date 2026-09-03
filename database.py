@@ -202,16 +202,25 @@ END;
 -- id=-1 itself is a genuine, irreducible exception, not an oversight: an
 -- explicit -1 is indistinguishable from a true auto-assign at BEFORE-trigger
 -- time on this SQLite version, confirmed empirically — no WHERE clause here
--- can tell them apart. It is still caught on every connection Prism opens,
--- because _get_conn sets `recursive_triggers = ON`: a SECOND INSERT OR
--- REPLACE against an existing id=-1 row has its implicit delete routed
--- through audit_log_no_delete, which refuses unconditionally (also verified
--- empirically — see tests/test_audit_chain.py). Closing id=-1 at the schema
--- level needs a `CHECK (id >= 1)` column constraint, which is evaluated
--- against the committed value rather than this trigger-time placeholder —
--- but SQLite has no ALTER TABLE ADD CONSTRAINT, so retrofitting one onto the
--- existing 1840+-row audit_log means the full new-table/copy/drop/rename
--- dance. That is a separate, larger migration; not this trigger's job.
+-- can tell them apart.
+--
+-- CORRECTED (3rd review round): `_get_conn`'s `recursive_triggers = ON` does
+-- NOT catch the attack that matters. It only refuses a FOLLOW-UP INSERT OR
+-- REPLACE against a row already sitting at id=-1 (routed through
+-- audit_log_no_delete's unconditional refusal). A one-shot INSERT with
+-- pre-forged, self-consistent content at id=-1 lands on the FIRST attempt,
+-- verified directly on a connection with the pragma already ON — exactly how
+-- every connection in this process is configured. So this trigger's id=-1
+-- gap is open on every connection, pragma or not; the pragma is not a
+-- mitigation for it. Closing id=-1 at the schema level needs a
+-- `CHECK (id >= 1)` column constraint, which is evaluated against the
+-- committed value rather than this trigger-time placeholder — but SQLite has
+-- no ALTER TABLE ADD CONSTRAINT, so retrofitting one onto the existing
+-- 1840+-row audit_log means the full new-table/copy/drop/rename dance. That
+-- is a separate, larger migration; not this trigger's job. Separately,
+-- verify_audit_chain() currently cannot see a row planted at id<=0 with
+-- row_hash left NULL either — filed as a required Phase 3 item, see
+-- docs/plans/AUDIT_CHAIN_REBASELINE.md.
 CREATE INDEX IF NOT EXISTS idx_audit_prev_hash ON audit_log(prev_hash);
 
 CREATE TRIGGER IF NOT EXISTS audit_log_no_overwrite
@@ -802,12 +811,24 @@ class Database:
         # is always exactly -1 inside a BEFORE INSERT trigger (SQLite's "not yet
         # resolved" placeholder, confirmed empirically on 3.49.1) — which means
         # an explicit, hostile id=-1 is genuinely indistinguishable from a real
-        # auto-assign at that point and the overwrite guard is blind to it. This
-        # pragma is what catches that one residual case: a SECOND INSERT OR
-        # REPLACE against an existing id=-1 row has its implicit delete routed
-        # through audit_log_no_delete instead, which refuses unconditionally
-        # (also verified empirically — see tests/test_audit_chain.py). Every
-        # other trigger in SCHEMA_SQL was checked before turning this on
+        # auto-assign at that point and the overwrite guard is blind to it.
+        #
+        # CORRECTED (3rd review round): this pragma does NOT catch the actual
+        # attack. It only routes a FOLLOW-UP `INSERT OR REPLACE` against a row
+        # ALREADY sitting at id=-1 through audit_log_no_delete's unconditional
+        # refusal (implicit delete-then-insert; verified empirically — see
+        # tests/test_audit_chain.py). A rational attacker never needs that
+        # second write: a single one-shot `INSERT ... VALUES (-1, ...)` with
+        # pre-forged, self-consistent content lands on the FIRST attempt,
+        # identically whether this pragma is ON or OFF, on a connection that
+        # already has it set — i.e. exactly how every connection in this
+        # process is configured. Verified directly: planting id=-1 in one
+        # INSERT on a connection with `PRAGMA recursive_triggers` already at 1
+        # succeeds every time. So on Prism's own connections this pragma gives
+        # ZERO protection against the real, one-shot version of the id=-1 gap;
+        # its only effect is on an unnecessary second write. It is kept for the
+        # narrower REPLACE-based case it does close, and because every other
+        # trigger in SCHEMA_SQL was checked before turning this on
         # (audit_log_no_update/no_delete/no_overwrite, sop_log_no_update/
         # no_delete): each body is only `SELECT RAISE(ABORT, ...)` — none
         # contains an INSERT/UPDATE/DELETE that writes to another table — so
