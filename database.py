@@ -168,6 +168,38 @@ BEGIN
     SELECT RAISE(ABORT, 'audit_log is append-only — DELETE not allowed');
 END;
 
+-- The third leg of append-only, and the one that was missing.
+--
+-- UPDATE and DELETE were blocked; INSERT OR REPLACE was not. REPLACE deletes
+-- the conflicting row and inserts a new one, and with PRAGMA
+-- recursive_triggers at its default 0 that implicit delete never reaches
+-- audit_log_no_delete. Measured on a copy of production: UPDATE, DELETE and
+-- UPDATE OR REPLACE all refused, INSERT OR REPLACE rewrote row 128 in place.
+-- So the table advertised a guarantee it did not have.
+--
+-- This is a STRICTER trigger, not an exception to append-only. It also
+-- refuses AUTOINCREMENT id reservation (an explicit id in a free range), and
+-- turns a concurrent chain fork into a refused write instead of a permanent
+-- break.
+--
+-- It fires only on NEW rows, so the historic fork at 1671/1672 is
+-- grandfathered automatically: no cutoff constant to hardcode, and none to
+-- widen on the next restart.
+CREATE INDEX IF NOT EXISTS idx_audit_prev_hash ON audit_log(prev_hash);
+
+CREATE TRIGGER IF NOT EXISTS audit_log_no_overwrite
+BEFORE INSERT ON audit_log BEGIN
+  SELECT RAISE(ABORT,'audit_log is append-only — overwriting an existing row is not allowed')
+  WHERE NEW.id > 0 AND EXISTS (SELECT 1 FROM audit_log WHERE id = NEW.id);
+
+  SELECT RAISE(ABORT,'audit_log is append-only — an explicit id must be the next id')
+  WHERE NEW.id > 0 AND NEW.id <> (SELECT COALESCE(MAX(id),0)+1 FROM audit_log);
+
+  SELECT RAISE(ABORT,'audit_log chain fork refused — prev_hash is already used by another row')
+  WHERE NEW.prev_hash IS NOT NULL
+    AND EXISTS (SELECT 1 FROM audit_log WHERE prev_hash = NEW.prev_hash);
+END;
+
 -- ---------------------------------------------------------------------------
 -- S2-1 (BL3) — session containment primitives
 --
@@ -730,6 +762,20 @@ class Database:
         # before the caller sees a "database is locked" error and silently
         # drops an audit/metric row.
         conn.execute("PRAGMA busy_timeout = 5000")
+        # Phase 1 of the audit-chain remediation (docs/plans/AUDIT_CHAIN_REBASELINE.md):
+        # without this, SQLite's implicit delete-then-insert inside INSERT OR
+        # REPLACE never fires a BEFORE DELETE trigger, because recursive_triggers
+        # is 0 by default. That is exactly how INSERT OR REPLACE bypassed
+        # audit_log_no_delete and rewrote an audit row in place (measured against
+        # a copy of production, see tests/test_audit_chain.py). The new
+        # audit_log_no_overwrite BEFORE INSERT trigger already closes that hole on
+        # its own; this is a second, redundant line of defence, verified safe by
+        # checking every trigger in SCHEMA_SQL (audit_log_no_update/no_delete/
+        # no_overwrite, sop_log_no_update/no_delete): each body is only
+        # `SELECT RAISE(ABORT, ...)` — none contains an INSERT/UPDATE/DELETE that
+        # writes to another table — so turning this on cannot trigger unexpected
+        # cascades.
+        conn.execute("PRAGMA recursive_triggers = ON")
         self._thread_local.conn = conn
         return conn
 
