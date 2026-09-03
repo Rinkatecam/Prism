@@ -425,6 +425,15 @@ else:
     logger.info("Pytest detected — skipping collector_v2 background startup")
 
 # ── Start restart scheduler daemon thread ──
+#
+# Constructed unconditionally so the name exists under pytest too (the
+# watchdog below reads `restart_thread.is_alive()` regardless), but NOT
+# started: this loop polls the real restart schedule in config.json and
+# EXECUTES a real fleet restart when one is due. Before this guard, every
+# `pytest` invocation — including from any of the ~30 test files that import
+# `app` — started it for real, against the real config and the real 29-server
+# fleet, unconditionally. Unlike collector_v2's startup above, nothing here
+# checked `_under_pytest` at all.
 from restart_scheduler import restart_scheduler_loop  # noqa: E402
 restart_thread = threading.Thread(
     target=restart_scheduler_loop,
@@ -432,20 +441,35 @@ restart_thread = threading.Thread(
     daemon=True,
     name="prism-restart-scheduler",
 )
-restart_thread.start()
+if not _under_pytest:
+    restart_thread.start()
 
 # Seed workflow templates
+#
+# Left unconditional: idempotent (checks existing template names first,
+# INSERTs only what's missing) and writes only inert, trigger_type="manual"
+# template rows — it doesn't run anything, so it carries none of the risk the
+# scheduler threads do.
 from workflow_engine import seed_workflow_templates, workflow_scheduler_loop  # noqa: E402
 seed_workflow_templates(db)
 
 # Start workflow scheduler thread
+#
+# Same reasoning as restart_thread: this loop checks real workflows for
+# event-type triggers and EXECUTES them against the real fleet when one
+# fires. Constructed unconditionally (watchdog needs the name), started only
+# outside pytest.
 workflow_thread = threading.Thread(
     target=workflow_scheduler_loop,
     args=(config.get_settings, db, config.get_servers),
     daemon=True,
     name="prism-workflow-scheduler",
 )
-workflow_thread.start()
+if not _under_pytest:
+    workflow_thread.start()
+
+if _under_pytest:
+    logger.info("Pytest detected — skipping restart/workflow scheduler background startup")
 
 
 # ── Background-thread watchdog (S2-11 / P10 from AUDIT-2026-05) ──
@@ -614,9 +638,23 @@ watchdog_thread = threading.Thread(
     daemon=True,
     name="prism-watchdog",
 )
-watchdog_thread.start()
+if not _under_pytest:
+    watchdog_thread.start()
+else:
+    logger.info("Pytest detected — skipping watchdog background startup")
 
-logger.info("Prism started. Collector + restart scheduler + workflow scheduler + watchdog running. Dashboard at http://localhost:5000")
+# _watchdog_loop treats a never-started restart/workflow thread exactly like
+# a dead one: `is_alive()` is False either way, and it writes a real
+# `thread_dead_*` row to the real audit_log the first time it notices. Gating
+# only the two scheduler threads and leaving THIS one running under pytest
+# would have replaced "pytest silently restarts your fleet" with "pytest
+# silently writes fake tamper-looking rows into the real audit trail" —
+# a smaller hazard, but still a real one, and still not what a test run
+# should ever do to production data.
+
+if not _under_pytest:
+    logger.info("Prism started. Collector + restart scheduler + workflow scheduler + "
+                "watchdog running. Dashboard at http://localhost:5000")
 
 if __name__ == "__main__":
     import sys
