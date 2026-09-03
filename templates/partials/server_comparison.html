@@ -18,6 +18,7 @@
 
    Chart.js is loaded globally by base.html, so no extra <script> is needed.
 #}
+{% from "partials/_tip.html" import tip_mirror with context %}
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 4 — Server Comparison
@@ -56,18 +57,30 @@
           <option value="720">{{ t.hours_720 }}</option>
         </select>
       </div>
+      {# Both buttons already are real <button>s with their own visible
+         labels (T-1/T-2/T-3 all satisfied by the tag + text alone) — tip()
+         would only add a redundant second trigger. What was missing is the
+         sr-only mirror + aria-describedby pairing (§5.3), added here without
+         touching the native-disabled/"waiting on you" mechanism, which is
+         step 9's job (prismSetDisabled + the [data-action] dispatcher). #}
+      {% set _cmp_tip_id = next_tip_id() %}
       <button id="btn-compare" data-action="loadComparison" disabled
+              aria-describedby="{{ _cmp_tip_id }}"
               data-tip-title="{{ t.get('disabled_pick_two_title', 'Pick at least two servers') }}"
               data-tip-desc="{{ t.get('disabled_pick_two_desc', 'A comparison needs something to compare against — tick two or more servers in the list below.') }}"
               class="text-xs font-medium px-4 py-1.5 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-accent">
         {{ t.compare }} <span id="btn-compare-count"></span>
       </button>
+      {{ tip_mirror('disabled_pick_two_desc', 'A comparison needs something to compare against — tick two or more servers in the list below.', _cmp_tip_id) }}
+      {% set _cmp_events_tip_id = next_tip_id() %}
       <button id="btn-compare-events" data-action="loadEventComparison" disabled
+              aria-describedby="{{ _cmp_events_tip_id }}"
               data-tip-title="{{ t.get('disabled_pick_two_title', 'Pick at least two servers') }}"
               data-tip-desc="{{ t.get('disabled_pick_two_events_desc', 'Event comparison looks for what these servers share — tick two or more in the list below.') }}"
               class="text-xs font-medium px-4 py-1.5 rounded bg-brand hover:bg-[#7C3AED] text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-brand">
         {{ t.compare_events | default('Compare Windows Events') }} <span id="btn-compare-events-count"></span>
       </button>
+      {{ tip_mirror('disabled_pick_two_events_desc', 'Event comparison looks for what these servers share — tick two or more in the list below.', _cmp_events_tip_id) }}
       <!-- Presets -->
       <div class="flex items-center gap-2">
         <select id="preset-select" class="text-xs rounded border border-line bg-field px-2 py-1.5">
@@ -323,8 +336,14 @@ function updateCompareButtonState() {
   const why = checked < 2
     ? ['Pick at least two servers', 'A comparison needs something to compare against — tick two or more in the list below.']
     : ['Too many servers selected', `Untick some — ${MAX_COMPARE} is the most that can be compared at once.`];
-  prismSetDisabled(btnCompare, !enabled && why[0], why[1]);
-  prismSetDisabled(btnCompareEvents, !enabled && why[0], why[1]);
+  const _cmpReason = !enabled && why[0];
+  prismSetDisabled(btnCompare, _cmpReason, why[1]);
+  prismSetDisabled(btnCompareEvents, _cmpReason, why[1]);
+  // See window.__prismSyncTipMirror's comment in base.html: these two
+  // buttons carry a static tip_mirror() (step 7), which prismSetDisabled
+  // itself does not know about.
+  __prismSyncTipMirror(btnCompare, _cmpReason, why[1]);
+  __prismSyncTipMirror(btnCompareEvents, _cmpReason, why[1]);
   countSpan.textContent = checked > 0 ? `(${checked})` : '';
   countSpanEvents.textContent = checked > 0 ? `(${checked})` : '';
 

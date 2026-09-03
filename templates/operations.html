@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/_tip.html" import tip_mirror with context %}
 {% block content %}
 
 <div class="flex items-center justify-between mb-6">
@@ -321,13 +322,26 @@
       </div>
       <div class="flex justify-end gap-2 p-4 border-t border-line">
         <button data-action="closeDataActionModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
+        {# This is already a real <button> (T-1/T-2's focusability check passes
+           on tag alone) with its own visible label, so tip() would be the
+           wrong tool here — it always mints a SEPARATE bare-icon trigger,
+           and this button does not need a second one glued on. What it was
+           missing is §5.3's other half: the sr-only mirror + aria-describedby
+           pairing, added here without disturbing the disabled/confirm-word
+           mechanism itself (that native-disabled-with-a-reason pattern is
+           §5.2's "waiting on you" case; converting it to aria-disabled +
+           data-inert is step 9's job — prismSetDisabled/the [data-action]
+           dispatcher are untouched by this step). #}
+        {% set _keyword_tip_id = next_tip_id() %}
         <button id="data-action-confirm-btn" disabled data-action="executeDataAction"
+                aria-describedby="{{ _keyword_tip_id }}"
                 data-tip-title="{{ t.get('disabled_type_keyword_title', 'Type the confirmation word first') }}"
                 data-tip-desc="{{ t.get('disabled_type_keyword_desc', 'This action cannot be undone. Type the word shown above to confirm.') }}"
                 class="px-4 py-1.5 text-sm font-medium rounded bg-critical text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
           <i data-lucide="check" class="w-4 h-4"></i>
           {{ t.confirm_action }}
         </button>
+        {{ tip_mirror('disabled_type_keyword_desc', 'This action cannot be undone. Type the word shown above to confirm.', _keyword_tip_id) }}
       </div>
     </div>
   </div>
@@ -710,7 +724,14 @@ function showDataActionModal(action) {
   document.getElementById('data-action-desc').textContent = _dataActionDescs[action] || '';
   document.getElementById('data-action-keyword').textContent = _dataActionKeywords[action] || '';
   document.getElementById('data-action-confirm-input').value = '';
+  // The mirror-sync call takes the SAME title/desc as prismSetDisabled just
+  // above it — see window.__prismSyncTipMirror's comment in base.html for
+  // why this is a second call rather than folded into prismSetDisabled
+  // itself.
   prismSetDisabled(document.getElementById('data-action-confirm-btn'),
+    '{{ t.get("disabled_type_keyword_title", "Type the confirmation word first") }}',
+    '{{ t.get("disabled_type_keyword_desc", "This action cannot be undone. Type the word shown above to confirm.") }}');
+  __prismSyncTipMirror(document.getElementById('data-action-confirm-btn'),
     '{{ t.get("disabled_type_keyword_title", "Type the confirmation word first") }}',
     '{{ t.get("disabled_type_keyword_desc", "This action cannot be undone. Type the word shown above to confirm.") }}');
   document.getElementById('data-action-result').classList.add('hidden');
@@ -728,8 +749,10 @@ function checkDataActionConfirm() {
   // Case-insensitive comparison so the user doesn't have to perfectly match capitalization.
   const input = document.getElementById('data-action-confirm-input').value.trim().toLowerCase();
   const keyword = (_dataActionKeywords[_dataActionType] || '').toLowerCase();
-  prismSetDisabled(document.getElementById('data-action-confirm-btn'),
-    input !== keyword && '{{ t.get("disabled_type_keyword_title", "Type the confirmation word first") }}',
+  const _keywordOk = input !== keyword && '{{ t.get("disabled_type_keyword_title", "Type the confirmation word first") }}';
+  prismSetDisabled(document.getElementById('data-action-confirm-btn'), _keywordOk,
+    '{{ t.get("disabled_type_keyword_desc", "This action cannot be undone. Type the word shown above to confirm.") }}');
+  __prismSyncTipMirror(document.getElementById('data-action-confirm-btn'), _keywordOk,
     '{{ t.get("disabled_type_keyword_desc", "This action cannot be undone. Type the word shown above to confirm.") }}');
 }
 

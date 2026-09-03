@@ -8,6 +8,7 @@
    functions sit between the modal's save path and its dirty check. #}
 
 {% from "partials/_empty_state.html" import empty_state %}
+{% from "partials/_tip.html" import tip_mirror with context %}
 
 <div class="mb-8" id="server-list">
   <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
@@ -298,13 +299,21 @@
       </div>
       <div class="flex justify-end gap-2 p-4 border-t border-line">
         <button data-action="closeDeleteModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
+        {# Real <button> with its own visible label already — needs the §5.3
+           mirror/describedby pairing, not a second tip() trigger. The native
+           `disabled` stays: converting "waiting on you" reasons to
+           aria-disabled + data-inert is step 9's job (prismSetDisabled +
+           the [data-action] dispatcher), not this one's. #}
+        {% set _delete_tip_id = next_tip_id() %}
         <button id="delete-confirm-btn" data-action="confirmDeleteServer" disabled
+                aria-describedby="{{ _delete_tip_id }}"
                 data-tip-title="{{ t.get('disabled_type_name_title', 'Type the server name first') }}"
                 data-tip-desc="{{ t.get('disabled_type_name_desc', 'Deleting a server removes its history. Type the name exactly as shown above to confirm.') }}"
                 class="px-4 py-1.5 text-sm font-medium rounded bg-critical text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
           <i data-lucide="trash-2" class="w-4 h-4"></i>
           {{ t.delete }}
         </button>
+        {{ tip_mirror('disabled_type_name_desc', 'Deleting a server removes its history. Type the name exactly as shown above to confirm.', _delete_tip_id) }}
       </div>
     </div>
   </div>
@@ -582,6 +591,9 @@ function deleteServer(index) {
     prismSetDisabled(document.getElementById('delete-confirm-btn'),
       '{{ t.get("disabled_type_name_title", "Type the server name first") }}',
       '{{ t.get("disabled_type_name_desc", "Deleting a server removes its history. Type the name exactly as shown above to confirm.") }}');
+    __prismSyncTipMirror(document.getElementById('delete-confirm-btn'),
+      '{{ t.get("disabled_type_name_title", "Type the server name first") }}',
+      '{{ t.get("disabled_type_name_desc", "Deleting a server removes its history. Type the name exactly as shown above to confirm.") }}');
     document.getElementById('delete-modal').classList.remove('hidden');
     lucide.createIcons();
     document.getElementById('delete-confirm-input').focus();
@@ -593,8 +605,10 @@ function checkDeleteConfirmation() {
   // control is enabled. The markup carries the same reason for first paint,
   // and a plain assignment would leave "Type the server name first" hovering
   // over a button that is now perfectly clickable.
-  prismSetDisabled(document.getElementById('delete-confirm-btn'),
-    input !== deleteServerName && '{{ t.get("disabled_type_name_title", "Type the server name first") }}',
+  const _deleteNameOk = input !== deleteServerName && '{{ t.get("disabled_type_name_title", "Type the server name first") }}';
+  prismSetDisabled(document.getElementById('delete-confirm-btn'), _deleteNameOk,
+    '{{ t.get("disabled_type_name_desc", "Deleting a server removes its history. Type the name exactly as shown above to confirm.") }}');
+  __prismSyncTipMirror(document.getElementById('delete-confirm-btn'), _deleteNameOk,
     '{{ t.get("disabled_type_name_desc", "Deleting a server removes its history. Type the name exactly as shown above to confirm.") }}');
 }
 function confirmDeleteServer() {
@@ -800,6 +814,17 @@ function discoverServers() {
       return;
     }
 
+    // Step 7 (WP-6): this tip is JS-built -- the data-tip-* text exists only
+    // in the string .map() below emits, never in this file's static Jinja
+    // markup -- so tip()/tip_mirror() cannot literally be called here (Jinja
+    // macros render at template-render time; this HTML is built client-side,
+    // per-row, from a fetch response). What's replicated by hand is the
+    // macro's OUTPUT SHAPE: a matching sr-only mirror + aria-describedby,
+    // giving a keyboard/screen-reader user the same section-5.3 guarantee
+    // every other carrier now has. t.get() runs once here, outside the
+    // per-row loop, since this string is the same for every monitored row.
+    const discoveryTipTitle = {{ t.get('discovery_already_monitored_title', 'Already monitored') | tojson }};
+    const discoveryTipDesc = {{ t.get('discovery_already_monitored_desc', 'This host is already in Prism — remove it from the Servers list first if you want to re-add it.') | tojson }};
     list.innerHTML = discoveredServers.map((s, i) => {
       // `disabled` and its reason are written into the tag together rather
       // than hidden behind one interpolated variable. Both forms behave the
@@ -808,13 +833,18 @@ function discoverServers() {
       const monitored = !!s.already_monitored;
       const opacity = s.already_monitored ? 'opacity-50' : '';
       const badge = s.already_monitored ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-raised dark:bg-line text-muted">Monitored</span>' : '';
+      const tipId = 'discovery-tip-' + i;
+      const tipAttrs = monitored
+        ? 'disabled tabindex="0" aria-describedby="' + tipId + '" data-tip-title="' + discoveryTipTitle + '" data-tip-desc="' + discoveryTipDesc + '"'
+        : '';
+      const mirror = monitored ? '<span class="sr-only" id="' + tipId + '">' + discoveryTipDesc + '</span>' : '';
       return `<label class="flex items-center gap-3 p-2 rounded hover:bg-page dark:hover:bg-page/50 cursor-pointer ${opacity}">
-        <input type="checkbox" class="discovery-cb rounded border-gray-300" data-index="${i}" ${monitored ? 'disabled' : ''} ${monitored ? 'data-tip-title="Already monitored" data-tip-desc="This host is already in Prism — remove it from the Servers list first if you want to re-add it."' : ''}>
+        <input type="checkbox" class="discovery-cb rounded border-gray-300" data-index="${i}" ${tipAttrs}>
         <div class="flex-1 min-w-0">
           <div class="text-sm font-medium truncate">${s.name} ${badge}</div>
           <div class="text-xs text-muted truncate">${s.host} ${s.os ? '\u2014 ' + s.os : ''}</div>
         </div>
-      </label>`;
+      </label>${mirror}`;
     }).join('');
 
     // Update selected count on change

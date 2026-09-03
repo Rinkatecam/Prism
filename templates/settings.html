@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/_tip.html" import tip with context %}
 {% block content %}
 
 <div class="flex items-center justify-between mb-6">
@@ -173,9 +174,9 @@
       <div>
         <div class="text-sm font-medium flex items-center gap-1.5">
           {{ t.poll_interval }}
-          <i data-lucide="info" class="w-3.5 h-3.5 text-faint cursor-help"
-             data-tip-title="{{ t.get('per_server_cadence_title', 'Per-server cadence') }}"
-             data-tip-desc="{{ t.get('poll_interval_tip_desc', 'Every server is polled on its own schedule, offset by a hash so the fleet does not stampede on a tick boundary. Setting 60s means each server is polled every ~60s independently — not that all servers are polled together once per minute.') }}"></i>
+          {{ tip('poll_interval_tip_desc',
+                 'Every server is polled on its own schedule, offset by a hash so the fleet does not stampede on a tick boundary. Setting 60s means each server is polled every ~60s independently — not that all servers are polled together once per minute.',
+                 title_key='per_server_cadence_title', title_fallback='Per-server cadence') }}
         </div>
         <div class="text-xs text-muted">{{ t.poll_interval_desc }}</div>
       </div>
@@ -195,9 +196,9 @@
       <div>
         <div class="text-sm font-medium flex items-center gap-1.5">
           {{ t.get('log_collection_interval', 'Log Collection Interval') }}
-          <i data-lucide="info" class="w-3.5 h-3.5 text-faint cursor-help"
-             data-tip-title="{{ t.get('per_server_cadence_title', 'Per-server cadence') }}"
-             data-tip-desc="{{ t.get('log_collection_tip_desc', 'Event-log scrape runs on each server independently at this cadence. Higher value = lower WinRM load on the targets, but event-log warnings take longer to surface in the dashboard. Decoupled from the metrics interval — these run on their own clock.') }}"></i>
+          {{ tip('log_collection_tip_desc',
+                 'Event-log scrape runs on each server independently at this cadence. Higher value = lower WinRM load on the targets, but event-log warnings take longer to surface in the dashboard. Decoupled from the metrics interval — these run on their own clock.',
+                 title_key='per_server_cadence_title', title_fallback='Per-server cadence') }}
         </div>
         <div class="text-xs text-muted">{{ t.get('log_collection_interval_desc', 'How often to pull Windows event logs + failed login events from each server. Higher = less load on the targets.') }}</div>
       </div>
@@ -216,9 +217,9 @@
       <div>
         <div class="text-sm font-medium flex items-center gap-1.5">
           {{ t.get('update_check_interval', 'Update Check Interval') }}
-          <i data-lucide="info" class="w-3.5 h-3.5 text-faint cursor-help"
-             data-tip-title="{{ t.get('per_server_cadence_title', 'Per-server cadence') }}"
-             data-tip-desc="{{ t.get('update_check_tip_desc', 'Windows Update queries are spread across the fleet — at any given time only a small subset of servers is hitting the WU COM API, not all of them at once. This cadence is the per-server interval; the scheduler shards calls so collector load stays flat.') }}"></i>
+          {{ tip('update_check_tip_desc',
+                 'Windows Update queries are spread across the fleet — at any given time only a small subset of servers is hitting the WU COM API, not all of them at once. This cadence is the per-server interval; the scheduler shards calls so collector load stays flat.',
+                 title_key='per_server_cadence_title', title_fallback='Per-server cadence') }}
         </div>
         <div class="text-xs text-muted">{{ t.get('update_check_interval_desc', 'How often to check each server for pending Windows Updates.') }}</div>
       </div>
@@ -239,9 +240,9 @@
           {# Restart pill lives on THIS row, not the section header — it is the
              only field in the Collector section that needs one. #}
           <span class="text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong font-normal">{{ t.get('requires_restart', 'Requires restart') }}</span>
-          <i data-lucide="info" class="w-3.5 h-3.5 text-faint cursor-help"
-             data-tip-title="{{ t.get('collector_v2_workers_tip_title', 'Concurrent WinRM probes') }}"
-             data-tip-desc="{{ t.get('collector_v2_workers_tip_desc', 'Number of worker threads pulling check items from the queue and executing WinRM probes against your servers. Default 15 handles ~150 servers with comfortable headroom (each worker can sit on a slow Windows Update query for up to 120 s). Increase for larger fleets or if the operations page shows workers active_count consistently near the pool size.') }}"></i>
+          {{ tip('collector_v2_workers_tip_desc',
+                 'Number of worker threads pulling check items from the queue and executing WinRM probes against your servers. Default 15 handles ~150 servers with comfortable headroom (each worker can sit on a slow Windows Update query for up to 120 s). Increase for larger fleets or if the operations page shows workers active_count consistently near the pool size.',
+                 title_key='collector_v2_workers_tip_title', title_fallback='Concurrent WinRM probes') }}
         </div>
         <div class="text-xs text-muted mt-1">{{ t.get('collector_v2_workers_desc', 'Concurrent WinRM probes. Default 15 handles ~150 servers with headroom. Increase for larger fleets.') }}</div>
       </div>

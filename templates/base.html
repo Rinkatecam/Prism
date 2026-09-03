@@ -997,6 +997,27 @@
         else el.removeAttribute('data-tip-desc');
         bindAll();
       };
+
+      // Companion to prismSetDisabled, deliberately NOT folded into it: T-15
+      // (step 9) extracts prismSetDisabled's body by string boundaries
+      // ("window.prismSetDisabled = function" to the next "\n      };"), and
+      // a second function sitting after that boundary is invisible to that
+      // extraction — so this can evolve without touching what T-15 parses.
+      // Most of prismSetDisabled's 23+ call sites predate step 7 and carry
+      // no mirror at all; this only matters for the handful of "waiting on
+      // you" buttons step 7 gave a static tip_mirror() to (the reason lives
+      // in the mirror's aria-describedby, not the disabled/aria-disabled
+      // mechanism itself, so prismSetDisabled has no reason to know about
+      // it generally). Call it right after prismSetDisabled with the SAME
+      // title used there, since only a truthy title means "there is a
+      // reason" — an empty mirror when enabled beats a stale one.
+      window.__prismSyncTipMirror = function (el, title, desc) {
+        if (!el) return;
+        const id = el.getAttribute('aria-describedby');
+        if (!id) return;
+        const mirror = document.getElementById(id);
+        if (mirror) mirror.textContent = title ? (desc || '') : '';
+      };
     })();
 
     // Translation strings for the collector-pulse ECG widget. The

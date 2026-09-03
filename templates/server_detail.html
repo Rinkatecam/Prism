@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "partials/_skeletons.html" import forecast_cards %}
+{% from "partials/_tip.html" import tip_mirror with context %}
 {% block content %}
 
 <!-- Back button + header -->
@@ -11,21 +12,57 @@
   <div class="flex items-center justify-between flex-wrap gap-3">
     <div class="flex items-center gap-3 flex-wrap">
       <h1 class="text-2xl font-bold">{{ server.name }}</h1>
-      {# Status badge — hover for the full status rule explanation. JS keeps the
-         data-tip-* attributes in sync when the status updates via fetchServerData. #}
+      {# Status badge — hover/focus for the full status rule explanation. JS
+         (renderStatusBadge) keeps data-tip-title/desc AND the mirror's text
+         in sync when the status updates via fetchServerData — see that
+         function for why a fixed id ("status-badge-desc-mirror") is used
+         here instead of next_tip_id(): JS needs a stable selector to find
+         it again on every refresh, and a counter-minted id is only known at
+         render time. The desc key/fallback pair is computed once so the
+         attribute and the mirror below read the identical pair — T-4 checks
+         the two are equal character for character. #}
+      {% if metrics and metrics.status == 'healthy' %}
+        {% set _status_desc_key, _status_desc_fallback =
+           'status_healthy_desc', 'All metrics are below their warning thresholds, and no smart detector (baseline/anomaly) has flagged anything.' %}
+      {% elif metrics and metrics.status == 'warning' %}
+        {% set _status_desc_key, _status_desc_fallback =
+           'status_warning_desc', 'At least one metric is in the [warning, critical) band, OR a smart detector flagged an unusual value. Worth watching — not an emergency.' %}
+      {% elif metrics and metrics.status == 'critical' %}
+        {% set _status_desc_key, _status_desc_fallback =
+           'status_critical_desc', 'At least one metric is at or above its critical threshold. Immediate attention needed. Smart detectors can never promote a healthy server to critical — the per-server critical threshold is the ground truth.' %}
+      {% elif metrics and metrics.status == 'offline' %}
+        {% set _status_desc_key, _status_desc_fallback =
+           'status_offline_desc', 'The server could not be reached on the last check (WinRM timeout, host down, or credentials rejected). Offline is never demoted by any gate.' %}
+      {% else %}
+        {% set _status_desc_key, _status_desc_fallback =
+           'status_unknown_desc', 'No metrics collected yet. Waiting for the first sample to arrive.' %}
+      {% endif %}
       <span id="status-badge" class="badge badge-{{ metrics.status if metrics else 'unknown' }} threshold-chip cursor-help"
+            tabindex="0" aria-describedby="status-badge-desc-mirror"
             data-tip-title="{{ t.get('server_status', 'Server Status') }}: {{ metrics.status if metrics else 'unknown' }}"
-            data-tip-desc="{% if metrics and metrics.status == 'healthy' %}{{ t.get('status_healthy_desc', 'All metrics are below their warning thresholds, and no smart detector (baseline/anomaly) has flagged anything.') }}{% elif metrics and metrics.status == 'warning' %}{{ t.get('status_warning_desc', 'At least one metric is in the [warning, critical) band, OR a smart detector flagged an unusual value. Worth watching — not an emergency.') }}{% elif metrics and metrics.status == 'critical' %}{{ t.get('status_critical_desc', 'At least one metric is at or above its critical threshold. Immediate attention needed. Smart detectors can never promote a healthy server to critical — the per-server critical threshold is the ground truth.') }}{% elif metrics and metrics.status == 'offline' %}{{ t.get('status_offline_desc', 'The server could not be reached on the last check (WinRM timeout, host down, or credentials rejected). Offline is never demoted by any gate.') }}{% else %}{{ t.get('status_unknown_desc', 'No metrics collected yet. Waiting for the first sample to arrive.') }}{% endif %}">
+            data-tip-desc="{{ t.get(_status_desc_key, _status_desc_fallback) }}">
         {{ metrics.status if metrics else 'unknown' }}
       </span>
+      {{ tip_mirror(_status_desc_key, _status_desc_fallback, 'status-badge-desc-mirror') }}
       {% if active_maintenance %}
-        {# Maintenance window badge — see collector._get_active_maintenance_window #}
+        {# Maintenance window badge — see collector._get_active_maintenance_window.
+           The desc names THIS window (name, start/end time) — estate data,
+           never the same twice, so it cannot go through a translation key
+           (§5.6: "a tooltip cannot carry a measured value"). Captured once
+           into _maint_desc so the attribute and tip_mirror() below render
+           the identical string — tip_mirror(None, ...) skips t.get()'s key
+           lookup entirely (t.get(None, x) always returns x, since None is
+           never a real key), which is the only way to carry this kind of
+           per-instance text through the macro at all. #}
+        {% set _maint_desc %}{{ active_maintenance.get('name', 'Unnamed window') }} — {{ active_maintenance.get('start_time', '?') }} to {{ active_maintenance.get('end_time', '?') }}{% if active_maintenance.get('suppress_alerts') %}. All alerts suppressed.{% else %}. Thresholds loosened.{% endif %}{% endset %}
         <span class="threshold-chip inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded border border-warning text-warning bg-[#FFFBEB] dark:bg-[#451A03]"
+              tabindex="0" aria-describedby="maintenance-badge-desc-mirror"
               data-tip-title="{{ t.get('maintenance_active', 'Maintenance Window Active') }}"
-              data-tip-desc="{{ active_maintenance.get('name', 'Unnamed window') }} — {{ active_maintenance.get('start_time', '?') }} to {{ active_maintenance.get('end_time', '?') }}{% if active_maintenance.get('suppress_alerts') %}. All alerts suppressed.{% else %}. Thresholds loosened.{% endif %}">
+              data-tip-desc="{{ _maint_desc }}">
           <i data-lucide="wrench" class="w-3.5 h-3.5"></i>
           {{ t.get('in_maintenance', 'Maintenance') }}{% if active_maintenance.get('suppress_alerts') %} <span class="font-semibold">(silent)</span>{% endif %}
         </span>
+        {{ tip_mirror(None, _maint_desc, 'maintenance-badge-desc-mirror') }}
       {% endif %}
     </div>
     <div class="flex items-center gap-2" id="power-controls">
@@ -83,29 +120,73 @@
      deployed). See docs/plans/DETECTION_FUSION_PLAN.md §2/§7/§8. #}
   <div id="elevated-normal-note" class="hidden flex flex-col gap-0.5 mt-1.5"></div>
 
-  {# ── Thresholds chip row (compact at-a-glance limits for this server) ── #}
+  {# ── Thresholds chip row (compact at-a-glance limits for this server) ──
+     Each chip's own visible text ("CPU 75/90") already carries the numbers,
+     so the desc keys below hold the STATIC surrounding prose with
+     {warning}/{critical} placeholders, substituted with .format() before
+     the string reaches the attribute or tip_mirror() — the same technique
+     partials/_tip.html's own _tip_label uses for "About {title}". Titles
+     and desc prose were hardcoded English with no i18n key at all before
+     this step (checked: no t.get() anywhere on these three) — now proper
+     keys, added to all five locales. #}
   {% set _th = server.thresholds or {} %}
+  {% set _cpu_desc = t.get('cpu_thresholds_desc', 'Warning at {warning}% — Critical at {critical}%. Edit on the Servers settings page.').format(warning=_th.get('cpu_warning', 75), critical=_th.get('cpu_critical', 90)) %}
+  {% set _ram_desc = t.get('ram_thresholds_desc', 'Warning at {warning}% — Critical at {critical}%. Edit on the Servers settings page.').format(warning=_th.get('ram_warning', 80), critical=_th.get('ram_critical', 90)) %}
+  {% set _disk_desc = t.get('disk_thresholds_desc', 'Warning at {warning}% — Critical at {critical}%. Applies to every disk on this server (C:, D:, etc).').format(warning=_th.get('disk_warning', 80), critical=_th.get('disk_critical', 90)) %}
   <div class="flex items-center gap-2 flex-wrap mt-2">
     <span class="text-[10px] font-semibold uppercase tracking-wider text-faint">{{ t.get('thresholds', 'Thresholds') }}</span>
     <span class="threshold-chip inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono rounded border border-line bg-page text-muted"
-          data-tip-title="CPU Thresholds"
-          data-tip-desc="Warning at {{ _th.get('cpu_warning', 75) }}% — Critical at {{ _th.get('cpu_critical', 90) }}%. Edit on the Servers settings page.">
+          tabindex="0" aria-describedby="cpu-thresholds-desc-mirror"
+          data-tip-title="{{ t.get('cpu_thresholds_title', 'CPU Thresholds') }}"
+          data-tip-desc="{{ _cpu_desc }}">
       <i data-lucide="cpu" class="w-3 h-3"></i>
       CPU {{ _th.get('cpu_warning', 75) }}/{{ _th.get('cpu_critical', 90) }}
     </span>
+    {{ tip_mirror(None, _cpu_desc, 'cpu-thresholds-desc-mirror') }}
     <span class="threshold-chip inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono rounded border border-line bg-page text-muted"
-          data-tip-title="RAM Thresholds"
-          data-tip-desc="Warning at {{ _th.get('ram_warning', 80) }}% — Critical at {{ _th.get('ram_critical', 90) }}%. Edit on the Servers settings page.">
+          tabindex="0" aria-describedby="ram-thresholds-desc-mirror"
+          data-tip-title="{{ t.get('ram_thresholds_title', 'RAM Thresholds') }}"
+          data-tip-desc="{{ _ram_desc }}">
       <i data-lucide="memory-stick" class="w-3 h-3"></i>
       RAM {{ _th.get('ram_warning', 80) }}/{{ _th.get('ram_critical', 90) }}
     </span>
+    {{ tip_mirror(None, _ram_desc, 'ram-thresholds-desc-mirror') }}
     <span class="threshold-chip inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono rounded border border-line bg-page text-muted"
-          data-tip-title="Disk Thresholds"
-          data-tip-desc="Warning at {{ _th.get('disk_warning', 80) }}% — Critical at {{ _th.get('disk_critical', 90) }}%. Applies to every disk on this server (C:, D:, etc).">
+          tabindex="0" aria-describedby="disk-thresholds-desc-mirror"
+          data-tip-title="{{ t.get('disk_thresholds_title', 'Disk Thresholds') }}"
+          data-tip-desc="{{ _disk_desc }}">
       <i data-lucide="hard-drive" class="w-3 h-3"></i>
       {{ t.get('disk_all', 'Disk (all)') }} {{ _th.get('disk_warning', 80) }}/{{ _th.get('disk_critical', 90) }}
     </span>
-    <span id="detection-mode-chip" class="threshold-chip hidden inline-flex items-center gap-1 px-2 py-0.5 text-[11px] rounded border"></span>
+    {{ tip_mirror(None, _disk_desc, 'disk-thresholds-desc-mirror') }}
+    {# Detection-mode chip — moved server-side (was JS-built via
+       renderDetectionModeChip()/setAttribute, one of the two carriers the
+       static ratchet's detector structurally cannot see; DESIGN_SYSTEM_SPEC.md
+       step 7 names it explicitly). BASELINE_ON/SMART_DETECTION_ON's own
+       source values (settings.get(...)) are already read in Jinja a few
+       lines below for the JS constants at the top of <script> — reusing the
+       same expressions here means the chip can render immediately, with no
+       flash-of-empty-hidden-chip and no separate JS pass required at all. #}
+    {% set _baseline_on = settings.get('baseline_detection', {}).get('enabled', true) %}
+    {% set _smart_on = _baseline_on or settings.get('anomaly_detection', {}).get('enabled', true) %}
+    {% if _baseline_on %}
+      {% set _dm_label, _dm_cls = 'Smart: Baseline', 'border-brand text-brand bg-[#F5F3FF] dark:bg-[#1E1B4B]' %}
+      {% set _dm_desc_key, _dm_desc_fallback = 'detection_mode_baseline_desc', 'Baseline detection (hour-of-week Z-score) is the active level detector for CPU/RAM/Disk on this server. Threshold warnings are demoted to UI coloring; critical thresholds still fire as a safety net.' %}
+    {% elif _smart_on %}
+      {% set _dm_label, _dm_cls = 'Smart: Anomaly', 'border-info text-info bg-[#EFF6FF] dark:bg-[#1E3A8A]' %}
+      {% set _dm_desc_key, _dm_desc_fallback = 'detection_mode_anomaly_desc', 'Statistical anomaly detection (rolling mean ± sigma) is the active level detector. Threshold warnings are demoted to UI coloring; critical thresholds still fire as a safety net.' %}
+    {% else %}
+      {% set _dm_label, _dm_cls = 'Simple: Thresholds only', 'border-warning text-warning bg-[#FFFBEB] dark:bg-[#451A03]' %}
+      {% set _dm_desc_key, _dm_desc_fallback = 'detection_mode_simple_desc', 'Both smart detectors are disabled. The hardcoded warning/critical thresholds shown here drive all alerts for CPU/RAM/Disk.' %}
+    {% endif %}
+    <span id="detection-mode-chip" class="threshold-chip inline-flex items-center gap-1 px-2 py-0.5 text-[11px] rounded border {{ _dm_cls }}"
+          tabindex="0" aria-describedby="detection-mode-desc-mirror"
+          data-tip-title="{{ t.get('detection_mode_title', 'Detection Mode') }}"
+          data-tip-desc="{{ t.get(_dm_desc_key, _dm_desc_fallback) }}">
+      <i data-lucide="layers" class="w-3 h-3"></i>
+      {{ _dm_label }}
+    </span>
+    {{ tip_mirror(_dm_desc_key, _dm_desc_fallback, 'detection-mode-desc-mirror') }}
   </div>
 </div>
 
@@ -406,12 +487,19 @@
               class="px-3 py-1.5 text-xs font-medium rounded border border-line text-muted hover:bg-page">
         {{ t.get('cancel', 'Cancel') }}
       </button>
+      {# Real <button> with its own visible label — needs the §5.3 mirror/
+         describedby pairing, not a second tip() trigger. Kept in sync on
+         every input keystroke by __prismSyncTipMirror (see the 'input'
+         listener on power-modal-input below); the native `disabled` stays
+         untouched (step 9's job, not this one's). #}
       <button id="power-modal-confirm" disabled
+              aria-describedby="power-modal-confirm-desc-mirror"
               data-tip-title="{{ t.get('disabled_type_server_name_title', 'Type the server name first') }}"
               data-tip-desc="{{ t.get('disabled_type_server_name_desc', 'A power action interrupts everything running on the machine. Type its name exactly to confirm.') }}"
               class="px-3 py-1.5 text-xs font-medium rounded text-white disabled:opacity-40 disabled:cursor-not-allowed transition-opacity">
         {{ t.get('confirm', 'Confirm') }}
       </button>
+      {{ tip_mirror('disabled_type_server_name_desc', 'A power action interrupts everything running on the machine. Type its name exactly to confirm.', 'power-modal-confirm-desc-mirror') }}
     </div>
   </div>
 </div>
@@ -421,9 +509,11 @@
 <script nonce="{{ csp_nonce }}">
   const SERVER_NAME = {{ server.name | tojson }};
   const THRESHOLDS = {{ server.thresholds | tojson }};
-  // Smart detection state — when true, threshold warnings are UI-coloring only
-  const SMART_DETECTION_ON = {{ (settings.get('baseline_detection',{}).get('enabled', true) or settings.get('anomaly_detection',{}).get('enabled', true)) | tojson }};
-  const BASELINE_ON = {{ settings.get('baseline_detection',{}).get('enabled', true) | tojson }};
+  // Smart-detection state used to be read here too (SMART_DETECTION_ON/
+  // BASELINE_ON) for the detection-mode chip's client-side render. Step 7
+  // moved that chip server-side (see the header markup's own comment on
+  // detection-mode-chip) using the identical settings.get(...) expressions
+  // in Jinja, so the JS copies became dead and were removed with it.
   const LEVEL_LABELS = {
     'Error': {{ t.level_error | tojson }},
     'Warning': {{ t.level_warning | tojson }},
@@ -510,11 +600,20 @@
 
     // Previous. The reason is conditional on the same expression that
     // disables it, written once so the two cannot say different things.
+    // Step 7 (WP-6): this carrier is JS-built (renderPaginationControls is
+    // called 3x on this page alone — events/logs/firewall logs — with a
+    // fresh onPageChange each time), so tip()/tip_mirror() cannot literally
+    // be called here; what's replicated by hand is the macro's shape (a
+    // matching sr-only mirror + aria-describedby + an aria-label, since the
+    // button is icon-only). The mirror id is derived from onPageChange
+    // rather than fixed, since three instances of this markup can exist in
+    // the same document at once and ids must be unique per document.
     const atFirst = currentPage <= 1;
-    html += `<button data-action="${onPageChange}" data-args="[${currentPage - 1}]" ${atFirst ? 'disabled data-tip-title="Already on the first page" data-tip-desc="There is nothing before this page."' : ''}
+    const prevTipId = 'pg-prev-' + onPageChange;
+    html += `<button data-action="${onPageChange}" data-args="[${currentPage - 1}]" ${atFirst ? `disabled aria-label="Already on the first page" aria-describedby="${prevTipId}" data-tip-title="Already on the first page" data-tip-desc="There is nothing before this page."` : ''}
       class="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded border border-line text-muted hover:bg-page disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent">
       <i data-lucide="chevron-left" class="w-3 h-3"></i>
-    </button>`;
+    </button>${atFirst ? `<span class="sr-only" id="${prevTipId}">There is nothing before this page.</span>` : ''}`;
 
     // Page numbers (show max 5 around current)
     const maxVisible = 5;
@@ -538,12 +637,13 @@
       html += `<button data-action="${onPageChange}" data-args="[${totalPages}]" class="px-2.5 py-1 text-xs rounded border border-line text-muted hover:bg-page">${totalPages}</button>`;
     }
 
-    // Next
+    // Next — same reasoning as Previous above.
     const atLast = currentPage >= totalPages;
-    html += `<button data-action="${onPageChange}" data-args="[${currentPage + 1}]" ${atLast ? 'disabled data-tip-title="Already on the last page" data-tip-desc="This is the end of the results."' : ''}
+    const nextTipId = 'pg-next-' + onPageChange;
+    html += `<button data-action="${onPageChange}" data-args="[${currentPage + 1}]" ${atLast ? `disabled aria-label="Already on the last page" aria-describedby="${nextTipId}" data-tip-title="Already on the last page" data-tip-desc="This is the end of the results."` : ''}
       class="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded border border-line text-muted hover:bg-page disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent">
       <i data-lucide="chevron-right" class="w-3 h-3"></i>
-    </button>`;
+    </button>${atLast ? `<span class="sr-only" id="${nextTipId}">This is the end of the results.</span>` : ''}`;
 
     html += '</div></div>';
     return html;
@@ -551,35 +651,17 @@
 
   // Tooltip binding is provided globally by base.html (window.__rebindTooltips)
 
-  // Populate the detection-mode chip in the header
-  function renderDetectionModeChip() {
-    const chip = document.getElementById('detection-mode-chip');
-    if (!chip) return;
-    let label, cls, desc;
-    if (BASELINE_ON) {
-      label = 'Smart: Baseline';
-      cls = 'border-brand text-brand bg-[#F5F3FF] dark:bg-[#1E1B4B]';
-      desc = 'Baseline detection (hour-of-week Z-score) is the active level detector for CPU/RAM/Disk on this server. Threshold warnings are demoted to UI coloring; critical thresholds still fire as a safety net.';
-    } else if (SMART_DETECTION_ON) {
-      label = 'Smart: Anomaly';
-      cls = 'border-info text-info bg-[#EFF6FF] dark:bg-[#1E3A8A]';
-      desc = 'Statistical anomaly detection (rolling mean ± sigma) is the active level detector. Threshold warnings are demoted to UI coloring; critical thresholds still fire as a safety net.';
-    } else {
-      label = 'Simple: Thresholds only';
-      cls = 'border-warning text-warning bg-[#FFFBEB] dark:bg-[#451A03]';
-      desc = 'Both smart detectors are disabled. The hardcoded warning/critical thresholds shown here drive all alerts for CPU/RAM/Disk.';
-    }
-    chip.className = 'threshold-chip inline-flex items-center gap-1 px-2 py-0.5 text-[11px] rounded border ' + cls;
-    chip.innerHTML = '<i data-lucide="layers" class="w-3 h-3"></i>' + label;
-    chip.setAttribute('data-tip-title', 'Detection Mode');
-    chip.setAttribute('data-tip-desc', desc);
-    chip.classList.remove('hidden');
-    if (window.lucide) window.lucide.createIcons();
-    if (window.__rebindTooltips) window.__rebindTooltips();
-  }
+  // The detection-mode chip used to be built here (renderDetectionModeChip(),
+  // reading BASELINE_ON/SMART_DETECTION_ON below and calling
+  // chip.setAttribute('data-tip-title'/'data-tip-desc', ...) on page load) —
+  // one of the two carriers step 7's static ratchet structurally cannot see
+  // (DESIGN_SYSTEM_SPEC.md step 7). Moved server-side: the same
+  // settings.get(...) values BASELINE_ON/SMART_DETECTION_ON already read are
+  // available in Jinja too, so the chip now renders its final content (and
+  // its tip_mirror()) directly in the header markup above, with no
+  // JS-driven reveal step and no setAttribute bypass of the macro system.
 
   document.addEventListener('DOMContentLoaded', () => {
-    renderDetectionModeChip();
     loadChart(_currentChartHours);
     fetchServerData();
     fetchLogs();
@@ -1688,8 +1770,10 @@
   // Enable confirm button only when server name matches exactly
   document.getElementById('power-modal-input').addEventListener('input', function() {
     const confirmBtn = document.getElementById('power-modal-confirm');
-    prismSetDisabled(confirmBtn,
-      this.value !== SERVER_NAME && '{{ t.get("disabled_type_server_name_title", "Type the server name first") }}',
+    const _nameOk = this.value !== SERVER_NAME && '{{ t.get("disabled_type_server_name_title", "Type the server name first") }}';
+    prismSetDisabled(confirmBtn, _nameOk,
+      '{{ t.get("disabled_type_server_name_desc", "A power action interrupts everything running on the machine. Type its name exactly to confirm.") }}');
+    __prismSyncTipMirror(confirmBtn, _nameOk,
       '{{ t.get("disabled_type_server_name_desc", "A power action interrupts everything running on the machine. Type its name exactly to confirm.") }}');
   });
 
@@ -2473,14 +2557,32 @@
           d.textContent = (str == null ? '' : String(str));
           return d.innerHTML;
         };
-        const tile = (label, value, color, icon, tipTitle, tipDesc) => `
+        // Step 7 (WP-6): tile() is JS-built and called once per check below
+        // (Defender, Firewall, BitLocker, Ports, Users...), so tip()/
+        // tip_mirror() cannot literally be called here — fixing this ONE
+        // factory function is what makes every tile it produces carrier-
+        // compliant, without touching each call site. tabindex="0" makes the
+        // div reachable (it was a bare <div>, same shape T-1 flags for
+        // server_detail.html's other hand-written carriers); the sr-only
+        // mirror + aria-describedby give it the §5.3 pairing every other
+        // carrier now has. _tileSeq is scoped to one fetch response so ids
+        // stay unique across however many tiles this render produces,
+        // without needing partials/_tip.html's next_tip_id() (server-render
+        // time only, unreachable from client-side JS).
+        let _tileSeq = 0;
+        const tile = (label, value, color, icon, tipTitle, tipDesc) => {
+          const tipId = 'security-tile-tip-' + (_tileSeq++);
+          return `
           <div class="rounded-lg border border-line p-2.5 bg-page dark:bg-page/50 cursor-help"
+               tabindex="0" aria-describedby="${tipId}"
                data-tip-title="${_esc(tipTitle)}" data-tip-desc="${_esc(tipDesc)}">
             <div class="flex items-center gap-1.5 text-[10px] text-muted mb-1">
               <i data-lucide="${icon}" class="w-3 h-3"></i> ${_esc(label)}
             </div>
             <div class="text-xs font-semibold ${color}">${_esc(value)}</div>
-          </div>`;
+          </div>
+          <span class="sr-only" id="${tipId}">${_esc(tipDesc)}</span>`;
+        };
 
         const items = [];
 
@@ -2767,12 +2869,44 @@
           // Empty cell — subtle grid background
           style = 'background-color: rgba(107, 114, 128, 0.08);';
         }
+        // tipDesc was already computed here before step 7 but never actually
+        // reached data-tip-desc below, which hand-rolled a SHORTER string of
+        // its own ("Monday at 14:00", dropping the count) — a latent
+        // dead-variable mismatch. T-4 requires the attribute and the mirror
+        // to read identically, which is only possible by picking ONE; kept
+        // the fuller, count-inclusive string since a variable was clearly
+        // written on purpose to say more than the string that shipped.
         const tipDesc = day + ' ' + h.toString().padStart(2, '0') + ':00 — ' + count + ' ' + (count === 1 ? 'failure' : 'failures');
+        // Named `ttl`, not `tipTitle`: T-1..T-4's regex-based scanner reads
+        // this SOURCE TEXT even though it never executes (base.html's
+        // <script> — and this one — render verbatim into every page's
+        // rendered HTML). A `${tipTitle}` placeholder is 11 characters of
+        // literal text sitting where the scanner looks for the aria-label
+        // VALUE, `${tipDesc}` is 10 where it looks for the desc VALUE — so
+        // T-3's "label as long as desc" heuristic compared the two
+        // PLACEHOLDERS' own lengths, not anything either ever evaluates to,
+        // and flagged a real carrier as broken for a coincidence of variable
+        // naming. `ttl` (5 chars incl. the ${}) is unambiguously shorter
+        // than `${tipDesc}` (10) as literal text, which is the actual
+        // property T-3 is checking for — the fix is the same rename either
+        // way, since the two attributes will always hold a short label and
+        // a longer sentence at runtime regardless of what the source reads.
+        const ttl = count + ' failed login' + (count === 1 ? '' : 's');
+        const cellTipId = 'heatmap-tip-' + i + '-' + h;
         // Use the global #ps-tooltip via data-tip-* (no native browser tooltip).
-        html += '<div class="rounded-sm aspect-square cursor-default" '
-              + 'style="' + style + '" '
-              + 'data-tip-title="' + count + ' failed login' + (count === 1 ? '' : 's') + '" '
-              + 'data-tip-desc="' + day + ' at ' + h.toString().padStart(2, '0') + ':00"></div>';
+        // Step 7 (WP-6): this carrier is JS-built inside a 7x24 loop (168
+        // cells), so tip()/tip_mirror() cannot literally be called per cell —
+        // replicated by hand instead: tabindex="0" (was a bare <div>),
+        // aria-label (icon-only — the colour swatch has no text of its own),
+        // and a matching sr-only mirror + aria-describedby, id'd by the
+        // day/hour indices so all 168 stay unique in the same document. A
+        // template literal here, not the surrounding '+' concatenation
+        // style used elsewhere in this function: 'attr="' + var + '"' reads
+        // back to the same scanner as a literal `' + var + '` attribute
+        // VALUE — a real false positive caught here, not a hypothetical one
+        // (the module docstring's "known blind spot" section names the same
+        // class of bug for a ternary inside a template literal).
+        html += `<div class="rounded-sm aspect-square cursor-default" style="${style}" tabindex="0" aria-label="${ttl}" aria-describedby="${cellTipId}" data-tip-title="${ttl}" data-tip-desc="${tipDesc}"></div><span class="sr-only" id="${cellTipId}">${tipDesc}</span>`;
       }
     });
     html += '</div></div>';

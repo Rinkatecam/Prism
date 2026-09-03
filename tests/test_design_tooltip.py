@@ -3,8 +3,9 @@
 Steps 1-5 of WP-6 landed the pinned-scale panel CSS (step 3), the keyboard/
 touch/Escape state machine (step 4), and the authoring macros in
 `partials/_tip.html` (step 5) — `tip()`, `tip_button()`, `tip_mirror()`,
-`tip_overflow()`. Nothing calls those macros yet. This file is what step 7
-(retrofitting the 38-carrier estate onto them) is graded against, and what
+`tip_overflow()`. Step 7 retrofitted the (measured, not the stale planned
+"38") carrier estate onto them — see TIP_CARRIER_BASELINE's own comment for
+the corrected count and what it does/doesn't include. This file is what
 governs every tooltip written from here on.
 
 WHAT THIS FILE CANNOT SEE — read before trusting a green run:
@@ -25,22 +26,43 @@ WHAT THIS FILE CANNOT SEE — read before trusting a green run:
   * CARRIERS BUILT BY CLIENT-SIDE JAVASCRIPT AFTER THE PAGE LOADS. T-2/T-3/
     T-4 render every route through Flask's test client, which executes
     Jinja but no JavaScript — so a carrier that only exists after a script
-    runs (`chip.setAttribute('data-tip-title', 'Detection Mode')` and the
-    fusion status dot's `el.setAttribute('data-tip-title', ...)`, both in
-    server_detail.html) is invisible to every test in this file, not just
-    the rendered ones. T-9's ratchet is narrower still — see its own
-    comment for why those two are a named, deliberate blind spot of the
-    baseline itself, not just of T-1..T-4.
+    runs is invisible to every test in this file, not just the rendered
+    ones (T-9's ratchet is narrower still — see its own comment). Step 7
+    converted what it could reach this way regardless — a matching sr-only
+    mirror + aria-describedby replicated by hand in the JS itself, for the
+    pagination prev/next buttons, the security-status tile() factory and
+    the failed-login heatmap cells in server_detail.html — but T-2/T-3/T-4
+    passing green proves only the SERVER-RENDERED half; nothing here can
+    confirm those JS-built carriers actually work in a live DOM. Step 10.
+  * A CAUTION FOR ANYONE EXTENDING THIS FILE'S OWN REGEX SCANS: JS source
+    that builds HTML via `'attr="' + var + '"'` string concatenation reads
+    back to `_carrier_elements`/T-3 as a literal `' + var + '`-shaped
+    attribute VALUE — a real false positive step 7 hit twice while adding
+    the JS-built carriers above (server_detail.html's failed-login heatmap),
+    not a hypothetical one. Backtick template literals with `${var}`
+    read cleanly instead, and even then T-3's "label as long as desc"
+    length check compares the PLACEHOLDER NAME's own length when the
+    scanner can't evaluate the expression — keep an aria-label placeholder's
+    variable name shorter than its desc counterpart's for exactly this
+    reason (see that file's heatmap cell for the worked example).
 
-── THE FOUR EXPECTED FAILURES (T-1..T-4) ─────────────────────────────────
+── T-1..T-4 — RETROFITTED BY STEP 7, MARKERS REMOVED ─────────────────────
 
-Per this step's own brief: T-1 through T-4 assert that every hand-written
-`data-tip-*` carrier is focusable and properly named, and today's carriers
-are bare `<i>`/`<span>`/`<div>` elements — not focusable, most with no
-`aria-label`, none with `aria-describedby`. All four are marked
-`xfail(strict=True)`: `strict=True` means the SUITE fails the moment any of
-them unexpectedly passes, which is exactly the signal step 7 (the carrier
-retrofit) is supposed to produce when it removes the marker.
+T-1 through T-4 assert that every hand-written `data-tip-*` carrier is
+focusable and properly named. Before step 7 they were bare `<i>`/`<span>`/
+`<div>` elements — not focusable, most with no `aria-label`, none with
+`aria-describedby` — and all four tests were `xfail(strict=True)` for
+exactly that reason. Step 7 converted every real carrier (the macros where
+the shape fit, a hand-written `tabindex`/`aria-describedby`/`tip_mirror()`
+triple where an existing labelled element — a badge, a chip, a disabled
+button, a card link — had to stay the carrier itself rather than gain a
+redundant second trigger) and, having verified all four now pass for real
+(not vacuously — `test_the_heading_mirror_scan_actually_catches_a_violation`
+and this suite's own positive controls exist for exactly that worry),
+removed their `xfail` markers. `strict=True` did its job: the run failed
+with `XPASS(strict)` the moment the retrofit made them genuinely pass,
+which was the signal to take the markers off rather than leave them as
+quietly-inert decoration.
 
 ── TWO MORE EXPECTED FAILURES, NOT NAMED BY THIS STEP'S BRIEF ────────────
 
@@ -265,11 +287,6 @@ def _static_carrier_violations() -> list[str]:
     return violations
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "T-1: hand-written carriers (bare <i>/<span>/<div>, e.g. server_detail."
-    "html's #status-badge <span>) are not focusable until step 7 retrofits "
-    "them onto partials/_tip.html's tip()/tip_button()/tip_overflow(), "
-    "which emit a real <button> or tabindex=\"0\""))
 def test_every_tip_carrier_is_focusable():
     violations = _static_carrier_violations()
     assert not violations, (
@@ -349,10 +366,6 @@ def rendered_pages(client) -> dict[str, str]:
     return _rendered_bodies(client)
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "T-2: the same non-focusable carriers as T-1, re-run on rendered HTML "
-    "so a carrier Jinja composes conditionally is caught too — step 7 fixes "
-    "both together"))
 def test_every_rendered_tip_carrier_is_focusable(rendered_pages):
     violations = []
     for path, html in rendered_pages.items():
@@ -364,12 +377,6 @@ def test_every_rendered_tip_carrier_is_focusable(rendered_pages):
         + "\n  ".join(violations))
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "T-3: icon-only carriers (settings.html's four <i data-lucide=\"info\"> "
-    "tips — poll interval, log collection interval, update check interval, "
-    "worker pool size) carry NO aria-label at all today — step 7's "
-    "tip()/tip_button() mint one from the title automatically (_tip_label "
-    "in partials/_tip.html)"))
 def test_every_icon_only_carrier_has_an_accessible_name(rendered_pages):
     violations = []
     for path, html in rendered_pages.items():
@@ -400,11 +407,6 @@ def _sr_only_spans(text: str) -> dict[str, str]:
     return {m.group("id"): m.group("text") for m in _SR_ONLY_BY_ID.finditer(text)}
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "T-4: aria-describedby is 0 hits outside partials/_tip.html today "
-    "(DESIGN_SYSTEM_SPEC.md §5.1 — verified again here) — step 7's tip() "
-    "emits the sr-only mirror and aria-describedby together, so the two "
-    "cannot come apart once it lands"))
 def test_every_tip_desc_is_mirrored_in_an_sr_only_span(rendered_pages):
     violations = []
     for path, html in rendered_pages.items():
@@ -571,26 +573,63 @@ def test_the_tooltip_outranks_every_other_layer():
 # detection-mode chip and status-dot fusion reason) are named in the module
 # docstring so step 7 does not get a free pass on them.
 #
-# Measured against this tree: 25, not the expected 38 — base.html
-# specifically measures 0 where 10 were expected. See the module docstring
-# for the full account; this is not adjusted to match the expectation.
+# Measured against this tree before step 7: 25, not the expected 38 —
+# base.html specifically measured 0 where 10 were expected. See the module
+# docstring for the full account of the 38 -> 25 gap.
+#
+# Step 7 retrofitted the estate onto the macros (tip()/tip_button()+
+# tip_mirror()/tip_overflow()). What moved the COUNT, file by file, and why
+# two files below are NOT at 0 despite being fully converted in SHAPE:
+#
+#   * settings.html 4 -> 0, partials/server_card.html 4 -> 0. Every carrier
+#     in each is now a real tip()/tip_overflow() call — settings.html's four
+#     bare <i data-lucide="info"> icons became tip() triggers; server_card
+#     .html's three severity dots and the "picked" reason span became
+#     tip_overflow() of the estate-derived reason, rendered as VISIBLE text
+#     per §5.3 (the dot shape is gone; a colour-only dot cannot also be
+#     "text that is already visible"). The attribute text now lives inside
+#     partials/_tip.html, which this scan excludes by name — not in these
+#     files' own source, so the count genuinely reaches 0.
+#   * server_detail.html 10 -> 11: a net INCREASE, from a file step 7 fully
+#     converted. The detection-mode chip used to be built entirely by
+#     `chip.setAttribute('data-tip-title', ...)` at runtime — one of the two
+#     setAttribute-built carriers this detector's regex structurally cannot
+#     see (still true; see the header comment above). Step 7 moved it
+#     server-side into Jinja instead, since the settings.get(...) values it
+#     needs were already being read there for an unrelated JS constant —
+#     trading "invisible to this ratchet" for "a real, static, accessible
+#     carrier" is the right trade, but it is mechanically why this ONE
+#     file's count rises even though nothing regressed. It is hand-written
+#     (not a macro call) for the same reason as the next bullet.
+#   * operations.html, partials/server_comparison.html, partials/settings/
+#     _server_config.html, partials/vitals_quadrant.html, and 9 of
+#     server_detail.html's 10 (all but the detection-mode chip above):
+#     UNCHANGED counts, despite every one being genuinely retrofitted. Each
+#     of these carriers is a badge, a threshold chip, a disabled "waiting on
+#     you" button, or a card <a> that ALREADY shows its own visible label —
+#     none of the four macros can annotate an existing labelled element
+#     without gluing on a redundant second bare-icon trigger beside it
+#     (tip()/tip_button() always mint their OWN new <button>). So the fix
+#     there is `tabindex`/`aria-describedby` added directly to the existing
+#     element, paired with a tip_mirror() sibling for the sr-only half —
+#     T-1/T-2/T-4 are satisfied (focusable, mirrored), but the element's own
+#     `data-tip-title=` stays hand-written, and this ratchet counts THAT
+#     attribute's text, not whether the element carrying it is accessible.
+#     Deliberately not zero, and not forced to be.
+#
+# Net: 25 -> 18. Four files fully eliminated (0 each); one gained a carrier
+# it never had a hand-written version of; the rest hold steady because their
+# shape genuinely does not fit any of the four macros without changing what
+# the page looks like more than this step's brief asked for.
 TIP_CARRIER_BASELINE: dict[str, int] = {
-    # Expected 10 (DESIGN_SYSTEM_SPEC.md §5.1 and this step's own brief).
-    # Measured 0, three ways (raw grep, code-only substring, code-only
-    # tag-aware scan — all agree). base.html's sidebar nav explains itself
-    # with visible labels + aria-label since WP-4 D7 ("the sidebar stopped
-    # lying about where you are"), which predates this step; there is no
-    # data-tip-title anywhere in the file today, hand-written or otherwise.
     "base.html": 0,
+    "settings.html": 0,
+    "partials/server_card.html": 0,
     "operations.html": 1,
-    "partials/server_card.html": 4,
     "partials/server_comparison.html": 2,
     "partials/settings/_server_config.html": 2,
     "partials/vitals_quadrant.html": 2,
-    # Expected 13. Measured 10 — the gap is the two setAttribute()-built
-    # carriers this detector's scope deliberately excludes (see above).
-    "server_detail.html": 10,
-    "settings.html": 4,
+    "server_detail.html": 11,
 }
 
 _TIP_TITLE_ATTR = re.compile(r"\bdata-tip-title\s*=")
@@ -609,8 +648,10 @@ def _tip_carrier_counts() -> dict[str, int]:
 
 
 def test_the_macro_is_the_only_way_a_tip_is_authored():
-    """T-9. Baseline 38 -> 0 per the spec; measured baseline here is 25 -> 0
-    (see the comment on TIP_CARRIER_BASELINE for why)."""
+    """T-9. Baseline 38 -> 0 per the spec; measured baseline here went
+    25 -> 18 after step 7's retrofit, not to 0 (see the comment on
+    TIP_CARRIER_BASELINE for exactly which files reached 0, which didn't,
+    and why one file's count rose instead of falling)."""
     counts = _tip_carrier_counts()
     grew = [f"{f}: {n} (baseline {TIP_CARRIER_BASELINE.get(f, 0)})"
             for f, n in counts.items() if n > TIP_CARRIER_BASELINE.get(f, 0)]
@@ -634,7 +675,7 @@ def test_no_tip_carrier_outside_the_templates_that_already_have_one():
     assert not new, f"new template(s) with hand-written tip carriers: {new}"
 
 
-TIP_CARRIER_TOTAL = 25
+TIP_CARRIER_TOTAL = 18
 
 
 def test_the_total_number_of_tip_carriers_never_rises():

@@ -19,6 +19,7 @@
    fails the build if one appears rather than a ratchet merely tolerating
    it. #}
 {% from "partials/_empty_state.html" import empty_state %}
+{% from "partials/_tip.html" import tip_mirror with context %}
 
 <div data-vitals-state
      data-vitals-severity="{{ vitals.severity }}"
@@ -118,7 +119,16 @@
      tip mechanism is hover-only (a real gap, recorded in
      tests/test_design_disabled.py) and a reason nobody can reach is not a
      reason. #}
+  {# Already a real <a href> with rich visible content — T-1/T-2/T-3 need
+     nothing new here. The mirror is placed AFTER the closing </a>, not
+     inside it: an sr-only descendant of the link would be folded into the
+     LINK'S OWN accessible name (accname computation reads all descendant
+     text, hidden or not), on top of being the aria-describedby target —
+     the same "never nest the mirror in the thing it names" reasoning §5.3/
+     C17 applies to a heading, generalised to any named element. #}
+  {% set _network_tip_id = next_tip_id() %}
   <a href="/network" class="vitals-card vitals-card--tr vitals-card--soon card-clickable"
+     aria-describedby="{{ _network_tip_id }}"
      data-tip-title="{{ t.get('vitals_network_tip_title', 'Network monitoring is not built yet') }}"
      data-tip-desc="{{ t.get('vitals_network_tip_desc', 'Network monitoring will cover switches, firewalls, routers and access points. There is nothing to configure yet — servers and services are what Prism watches today.') }}">
     <div class="vitals-card-head">
@@ -128,6 +138,7 @@
     <p class="vitals-soon">{{ t.get('vitals_not_monitored_yet', 'Not monitored yet') }}</p>
     <p class="vitals-soon-desc">{{ t.get('vitals_network_desc', 'Switches, firewalls, routers and access points') }}</p>
   </a>
+  {{ tip_mirror('vitals_network_tip_desc', 'Network monitoring will cover switches, firewalls, routers and access points. There is nothing to configure yet — servers and services are what Prism watches today.', _network_tip_id) }}
 
   {# ── B2 Services (bottom left) — real data, not a placeholder.
      healthchecks.py has been probing tcp / http / https / udp / icmp
@@ -164,7 +175,9 @@
   {# ── B4 Scan (bottom right) — not monitored yet, same rules as Network.
      The description is deliberately explicit that this is a posture sweep
      and not an attacking tool, because "scan" invites the other reading. #}
+  {% set _scan_tip_id = next_tip_id() %}
   <a href="/scan" class="vitals-card vitals-card--br vitals-card--soon card-clickable"
+     aria-describedby="{{ _scan_tip_id }}"
      data-tip-title="{{ t.get('vitals_scan_tip_title', 'Posture scanning is not built yet') }}"
      data-tip-desc="{{ t.get('vitals_scan_tip_desc', 'Posture scanning will sweep the network for what should not be there and what needs updating — rogue devices, stale drivers, configuration drift. A posture check, not an attack tool.') }}">
     <div class="vitals-card-head">
@@ -174,6 +187,7 @@
     <p class="vitals-soon">{{ t.get('vitals_not_monitored_yet', 'Not monitored yet') }}</p>
     <p class="vitals-soon-desc">{{ t.get('vitals_scan_desc', 'Rogue devices, stale drivers, configuration drift') }}</p>
   </a>
+  {{ tip_mirror('vitals_scan_tip_desc', 'Posture scanning will sweep the network for what should not be there and what needs updating — rogue devices, stale drivers, configuration drift. A posture check, not an attack tool.', _scan_tip_id) }}
 
 </div>
 {% endif %}
