@@ -13,12 +13,10 @@
    reading, and an on-prem admin evaluating a monitoring product is exactly
    the reader who will assume the worst of the word. #}
 
-{% block content %}
+{% block page_title %}{{ t.get('vitals_scan', 'Scan') }}{% endblock %}
+{% block page_icon %}shield{% endblock %}
 
-<h1 class="text-2xl font-bold flex items-center gap-2 mb-1">
-  <i data-lucide="shield" class="w-6 h-6 text-brand" aria-hidden="true"></i>
-  {{ t.get('vitals_scan', 'Scan') }}
-</h1>
+{% block content %}
 
 <p class="text-sm text-muted mb-6 max-w-2xl">
   {{ t.get('scan_lede',

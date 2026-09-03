@@ -125,3 +125,35 @@ def test_the_error_path_answers_with_an_error_status():
     assert wrapped >= 10, (
         f"only {wrapped} views wrap their error page with a status; the "
         "pattern has drifted and this test is measuring the wrong thing")
+
+
+# ── the chrome-page exemption (WP-6 D8) ──────────────────────────────────
+#
+# login.html, 404.html, 500.html and setup.html render the full application
+# shell — top bar, pulse widget, jump box — while nobody is signed in (or,
+# for setup, before an admin account exists), and a title chip there would
+# imply the operator is already inside the application. Every OTHER template
+# extending base.html declares `page_title`; these four additionally set
+# `page_chrome = true` right after `{% extends %}`, and base.html skips the
+# H1-chip markup entirely when it sees the flag.
+#
+# The rule cannot be keyed on request.endpoint or request.path: 404.html and
+# 500.html are rendered from many call sites throughout app.py and
+# routes/views.py (any view that hits an error can
+# `return render_template("500.html")`), so at render time
+# request.endpoint/request.path reflect the ORIGINAL route that failed, not
+# "this is a 404/500 page" — there is no reliable request-level signal.
+def test_the_chrome_page_exemption_is_exhaustive():
+    """The exemption set has to be a list, not a silent gap, so a fifth page
+    cannot join it unnoticed. Grep every top-level template for the literal
+    flag and pin the resulting file set exactly — adding `page_chrome = true`
+    to a fifth template fails this test until it is added here on purpose,
+    and removing it from one of the four fails it the same way."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent / "templates"
+    flagged = {tpl.name for tpl in sorted(root.glob("*.html"))
+               if "page_chrome = true" in tpl.read_text(encoding="utf-8")}
+
+    assert flagged == {"login.html", "404.html", "500.html", "setup.html"}, (
+        f"the page_chrome exemption set drifted from D8's four: {sorted(flagged)}")

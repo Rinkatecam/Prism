@@ -1,4 +1,11 @@
 {% extends "base.html" %}
+{# WP-6 D8 — one of the four "chrome" pages: it renders the full app shell
+   while nobody is signed in, and a title chip would imply otherwise. See
+   setup.html's comment for the full rationale; tests/test_pages_render.py
+   keeps this exemption list exhaustive. #}
+{% set page_chrome = true %}
+{% block page_title %}{{ t.sign_in }}{% endblock %}
+{% block page_icon %}log-in{% endblock %}
 {% block content %}
 
 <div class="flex items-center justify-center min-h-[70vh]">

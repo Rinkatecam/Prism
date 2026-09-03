@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% block page_title %}{{ t.get('workflows_page', 'Workflows') }}{% endblock %}
+{% block page_icon %}git-branch{% endblock %}
 {% block content %}
 
 <!-- Drawflow — self-hosted (LAN-resilient) -->
@@ -378,10 +380,6 @@
 
 <!-- Page header -->
 <div class="flex items-center justify-between mb-6">
-  <h1 class="text-2xl font-bold flex items-center gap-2">
-    <i data-lucide="git-branch" class="w-6 h-6 text-brand"></i>
-    {{ t.get('workflows_page', 'Workflows') }}
-  </h1>
   <div class="flex items-center gap-2">
     <button data-action="openTemplateGallery" class="px-3 py-1.5 text-sm font-medium rounded border border-line hover:bg-page flex items-center gap-1">
       <i data-lucide="copy" class="w-4 h-4"></i>

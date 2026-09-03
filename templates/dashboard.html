@@ -7,17 +7,25 @@
    number and why it is capped rather than unbounded. #}
 {% block content_width %}page-dashboard{% endblock %}
 
+{% block page_title %}{{ t.dashboard }}{% endblock %}
+{% block page_icon %}layout-dashboard{% endblock %}
+
 {% block content %}
 
-{# The page's only <h1>, and it is deliberately invisible.
-
-   It used to live inside the verdict banner — which now renders ONLY when
-   something is wrong, so a healthy dashboard would have had no h1 at all.
-   A visible "Dashboard" title is not worth the vertical space on a wall
-   screen (the nav already says where you are), and the alternative of
-   promoting the hero banner's heading back to h1 would mean the document's
-   outline changed depending on whether the fleet was healthy. #}
-<h1 class="sr-only">{{ t.dashboard }}</h1>
+{# WP-6 D2/C22 — this page no longer has its own top-level heading. base.html's
+   topbar H1 (`#page-title`, filled in by the page_title/page_icon blocks above)
+   is now the ONLY h1 on every page, present in the DOM always. Here on '/'
+   it is visually clipped by the `#page-title[data-home="true"]` rule in
+   app.css — CSS on an element that stays in the accessibility tree, not a
+   deleted heading — because the brand mark already names this destination
+   and a visible "Dashboard" chip would repeat it back 400px below the
+   logo. A visible title is also not worth the vertical space on a wall
+   screen (the nav already says where you are). This used to be a second,
+   `sr-only` h1 of its own; two h1s on one page is a worse document outline
+   than a single one that CSS hides, and keeping base's h1 in the DOM on
+   every page — rather than the dashboard omitting one entirely — is what
+   keeps search_index.build()'s "/" -> path fallback provably dead (§6.1)
+   instead of merely unexercised. #}
 
 {# Hero banner — CONDITIONAL: renders only when something is wrong. Painted
    server-side on first paint via {% include %}, AND refreshed on every

@@ -17,13 +17,12 @@
    server-side on first paint, so there is no gap between paint and data. See
    the partial's header. #}
 
+{% block page_title %}{{ t.get('vitals_services', 'Services') }}{% endblock %}
+{% block page_icon %}activity{% endblock %}
+
 {% block content %}
 
 <div class="flex items-start justify-between gap-4 flex-wrap mb-1">
-  <h1 class="text-2xl font-bold flex items-center gap-2">
-    <i data-lucide="activity" class="w-6 h-6 text-brand" aria-hidden="true"></i>
-    {{ t.get('vitals_services', 'Services') }}
-  </h1>
   {# The way out to configuration. A state page that does not say where its
      state comes from is a dead end the same way an empty state without a
      hint is. #}

@@ -1,5 +1,11 @@
 {% extends "base.html" %}
-{% block title %}{{ sop.id }} {{ sop.title }} — Prism{% endblock %}
+{# WP-6 D7 — this page's title is DATA: the SOP's own id + title, not a
+   constant page name, because the operator navigated here for this one
+   procedure. Capped at the chip's max-w + truncate (not by Jinja), which
+   truncates toward the id — the half that identifies it — since the id
+   comes first. #}
+{% block page_title %}{{ sop.id }} {{ sop.title }}{% endblock %}
+{% block page_icon %}scroll-text{% endblock %}
 
 {% block content %}
 <div class="p-6 max-w-7xl mx-auto">

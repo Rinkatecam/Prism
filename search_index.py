@@ -69,7 +69,14 @@ def _headings(html: str) -> list[tuple[int, str]]:
     number would otherwise end up in the index."""
     out = []
     for m in re.finditer(r"<h([12])\b[^>]*>(.*?)</h\1>", html, re.S | re.I):
-        text = re.sub(r"<[^>]+>", " ", m.group(2))
+        # WP-6 C17/§6.3 — a tooltip's sr-only mirror is a sibling of its
+        # trigger, never inside a heading, precisely so it cannot reach here.
+        # Stripped by CONTENT (not just tags) as belt-and-braces: were one
+        # ever nested inside a heading anyway, its explanatory text must not
+        # pollute the jump-to label or push the heading past the 80-char drop.
+        text = re.sub(r'<span[^>]*\bclass="[^"]*\bsr-only\b[^"]*"[^>]*>.*?</span>',
+                      " ", m.group(2), flags=re.S | re.I)
+        text = re.sub(r"<[^>]+>", " ", text)
         text = re.sub(r"&amp;", "&", text)
         text = re.sub(r"&[a-z]+;|&#\d+;", " ", text)
         text = re.sub(r"\s+", " ", text).strip()
@@ -88,9 +95,18 @@ def _headings(html: str) -> list[tuple[int, str]]:
 
 
 def _anchor_for(html: str, text: str) -> str | None:
-    """An id on the heading, so the jump lands on the section not the page."""
+    """An id on the heading, so the jump lands on the section not the page.
+
+    WP-6 C11 — narrowed from `<h[12]` to `<h2\\b`. The base H1 now carries
+    `id="page-title"` and is first in document order (`<header>` precedes
+    `<main>`), so the old pattern would resolve a page's own title heading
+    — "Servers (29)" normalised to "Servers" against a page title of
+    "Servers" — to `#page-title`, a link that scrolls the operator to the
+    top bar instead of the section they asked for. h1 is never indexed as
+    a heading by `_headings` (`build()` reads it separately, as the page
+    name), so it never needs an anchor of its own."""
     m = re.search(
-        r'<h[12]\b[^>]*\bid="([^"]+)"[^>]*>(?:(?!</h[12]>).)*?'
+        r'<h2\b[^>]*\bid="([^"]+)"[^>]*>(?:(?!</h2>).)*?'
         + re.escape(text[:20]), html, re.S | re.I)
     return m.group(1) if m else None
 

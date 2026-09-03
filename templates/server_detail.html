@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 {% from "partials/_skeletons.html" import forecast_cards %}
 {% from "partials/_tip.html" import tip_mirror with context %}
+
+{# WP-6 D7 — this page's title is DATA, not a page name: the chip shows the
+   server's own name, capped at the chip's max-w + truncate (not by Jinja),
+   because the operator navigated here for this specific server. #}
+{% block page_title %}{{ server.name }}{% endblock %}
+{% block page_icon %}server{% endblock %}
+
 {% block content %}
 
 <!-- Back button + header -->
@@ -11,7 +18,6 @@
   </a>
   <div class="flex items-center justify-between flex-wrap gap-3">
     <div class="flex items-center gap-3 flex-wrap">
-      <h1 class="text-2xl font-bold">{{ server.name }}</h1>
       {# Status badge — hover/focus for the full status rule explanation. JS
          (renderStatusBadge) keeps data-tip-title/desc AND the mirror's text
          in sync when the status updates via fetchServerData — see that

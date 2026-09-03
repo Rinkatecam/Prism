@@ -45,9 +45,39 @@ TEMPLATES = PROJECT_ROOT / "templates"
 # tree end in a digit (settings-2, trash-2, bar-chart-3, grid-3x3, edit-3,
 # undo-2, volume-2, loader-2, table-2, file-code-2, bar-chart-2), covering 34
 # of 472 icon sites. See test_the_icon_scan_can_see_a_digit_in_the_name.
-_TITLE_ICON = re.compile(
-    r"<h1[^>]*>\s*<i data-lucide=\"[a-z0-9-]+\" class=\"([^\"]*)\"", re.S)
+#
+# WP-6 §2.1/§2.4 widens this from h1-only ("the page title") to h1/h2/h3
+# ("the heading ladder"): an H2's icon is violet with its text, same as the
+# page title always was; an H3's is muted with its text instead. Mirrors
+# tools/migrate_brand_roles.py's own _HEADING_ICON, kept as an independent
+# object rather than an import so a rule the migrator enforces is also
+# checked by a scan that shares none of its code.
+_HEADING_ICON = re.compile(
+    r"<h([123])\b([^>]*)>\s*<i data-lucide=\"[a-z0-9-]+\" class=\"([^\"]*)\"", re.S)
 _ICON = re.compile(r"<i data-lucide=\"([a-z0-9-]+)\" class=\"([^\"]*)\"")
+
+# WP-6 D2/C22 — base.html's topbar <h1 id="page-title"> is the only h1 left
+# anywhere (test_the_one_page_title_icon_is_violet below asserts that), and
+# every page supplies its OWN icon by overriding `{% block page_icon %}`.
+# That means base.html's own source never shows a resolved icon NAME — the
+# attribute reads `data-lucide="{% block page_icon %}circle-dot{% endblock
+# %}"` — so `_HEADING_ICON` above (which requires a literal name, same as
+# the migrator it mirrors) structurally cannot match it. This is the one
+# heading-icon site that needs a pattern of its own; h2/h3 keep their icon
+# name as a plain literal exactly as before and _HEADING_ICON sees them
+# fine, which is why this file has two patterns instead of a single one
+# loosened to fit both shapes.
+_TOPBAR_H1_ICON = re.compile(
+    r'<h1 id="page-title"[^>]*>\s*<i data-lucide="[^"]*"\s+class="([^"]*)"', re.S)
+
+# WP-6 §2.6 — a heading whose colour the ladder does not govern says so by
+# attribute, not by naming convention: a dialog's accessible name (its
+# colour is fixed regardless of level), the workflow guide panel's
+# deliberately theme-invariant chrome, and a verdict banner where a status
+# colour outranks the ladder because a critical verdict rendered violet
+# would be a lie. None of the three carry a heading icon today — measured
+# below as a positive control that stays honest if one ever does.
+_HEADING_CARVE_OUTS = {"dialog-title", "chrome", "verdict"}
 
 
 def _templates() -> list[Path]:
@@ -68,17 +98,160 @@ def test_the_assignment_is_idempotent():
         assert not counts, f"{path.name}: second pass still wants {dict(counts)}"
 
 
-def test_every_page_title_icon_is_violet():
-    """The one icon per page that says which page this is."""
-    seen, wrong = 0, []
+def test_the_one_page_title_icon_is_violet():
+    """WP-6 D2/C22 — every page's title now lives in base.html's topbar H1;
+    replaces test_every_page_title_icon_is_violet, whose `seen >= 9` counted
+    an <h1><i> pair per page and necessarily collapsed to 1 the instant the
+    H1s consolidated. It failed for the right reason (DESIGN_SYSTEM_SPEC.md
+    Part II §8.5 names this exact replacement), not a regression to chase."""
+    h1_sites = sorted(path.name for path in _templates()
+                       if re.search(r"<h1\b", path.read_text(encoding="utf-8")))
+    assert h1_sites == ["base.html"], (
+        f"exactly one file may contain an <h1>, and it is base.html: {h1_sites}")
+
+    m = _TOPBAR_H1_ICON.search((TEMPLATES / "base.html").read_text(encoding="utf-8"))
+    assert m, "base.html's #page-title <h1> no longer carries a leading icon"
+    assert "text-brand" in m.group(1), (
+        f"the page-title icon must be text-brand, is: {m.group(1)!r}")
+
+
+# WP-6 §8.1/§2.1 — an H2's icon is text-brand and an H3's is text-muted once
+# that heading reaches the ladder, which happens one card family at a time
+# in DESIGN_SYSTEM_SPEC.md Part III steps 14-20 ("card conversion IS the H2
+# migration — there is no separate H2 sweep", C25). A flat "every one
+# already is" assert is unsatisfiable the moment it is written: measured on
+# this tree 2026-09-03, immediately after WP-6 step 12 consolidated every
+# page's own <h1>, ALL 49 <h2><i> pairs and 19 of 22 <h3><i> pairs are still
+# on their PRE-ladder colour (mostly text-accent, plus the handful of
+# legitimate status carve-outs §3.4 permits — Danger Zone, Incidents,
+# All Clear — which this ratchet cannot tell apart from "not yet migrated"
+# and does not try to; both count against the same baseline, and a rung
+# that is a genuine, permanent carve-out simply keeps its file's count above
+# zero forever, the same way workflows.html's theme-invariant literals sit
+# in LITERAL_BASELINE without ever reaching 0).
+#
+# So these are RATCHETS — the shape DESIGN_SYSTEM_SPEC.md §0 itself names
+# for exactly this state ("the rule cannot be met yet") — seeded by running
+# this file's own detector against the tree as it stands right now, per the
+# spec's own C28 ("every ratchet is seeded by running its own detector,
+# never by typing a number"). Steps 14-20 lower these two dicts (and this
+# file's totals) as each card family converts; test_design_headings.py's
+# eventual HEADING_BASELINE (spec step 13) will likely subsume both, at
+# which point these may be deleted rather than merged.
+H2_ICON_BASELINE: dict[str, int] = {
+    "dashboard.html": 1,
+    "monitoring.html": 1,
+    "operations.html": 3,
+    "partials/active_actions.html": 1,
+    "partials/critical_issues.html": 1,
+    "partials/server_comparison.html": 1,
+    "partials/services_table.html": 1,
+    "partials/settings/_compliance.html": 1,
+    "partials/settings/_dependencies.html": 1,
+    "partials/settings/_health_checks.html": 1,
+    "partials/settings/_maintenance.html": 1,
+    "partials/settings/_rbac.html": 4,
+    "partials/settings/_restarts.html": 1,
+    "partials/settings/_server_config.html": 1,
+    "partials/settings/_servers.html": 1,
+    "partials/settings/_tls.html": 1,
+    "partials/updates_overview.html": 1,
+    "reports.html": 7,
+    "server_detail.html": 9,
+    "servers.html": 1,
+    "settings.html": 9,
+    "workflows.html": 1,
+}
+H2_ICON_TOTAL = 49
+
+H3_ICON_BASELINE: dict[str, int] = {
+    "operations.html": 3,
+    "partials/server_comparison.html": 3,
+    "partials/settings/_server_config.html": 2,
+    "server_detail.html": 4,
+    "servers.html": 1,
+    "settings.html": 4,
+    "topology.html": 1,
+    "workflows.html": 1,
+}
+H3_ICON_TOTAL = 19
+
+
+def _non_compliant_heading_icons(level: str, target: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
     for path in _templates():
-        for m in _TITLE_ICON.finditer(path.read_text(encoding="utf-8")):
-            seen += 1
-            if "text-brand" not in m.group(1):
-                colour = re.search(r"text-[a-z-]+", m.group(1))
-                wrong.append(f"{path.name}: {colour.group(0) if colour else '(none)'}")
-    assert seen >= 9, f"only {seen} page titles matched — the pattern has drifted"
-    assert not wrong, "page-title icons must be text-brand:\n  " + "\n  ".join(wrong)
+        text = path.read_text(encoding="utf-8")
+        for m in _HEADING_ICON.finditer(text):
+            if m.group(1) != level:
+                continue
+            role = re.search(r'data-role="([^"]+)"', m.group(2))
+            if role and role.group(1) in _HEADING_CARVE_OUTS:
+                continue
+            if target not in m.group(3):
+                rel = path.relative_to(TEMPLATES).as_posix()
+                counts[rel] = counts.get(rel, 0) + 1
+    return counts
+
+
+def test_every_section_heading_icon_is_violet():
+    """Ratchet (see the block comment above H2_ICON_BASELINE): a non-carve-
+    out H2 icon not yet text-brand may not exceed its file's baseline, the
+    total may not rise even via a brand-new file entry (H2_ICON_TOTAL — the
+    companion LITERAL_TOTAL exists for in tests/test_design_tokens.py, for
+    the same reason: a per-file ceiling alone still permits adding one new
+    entry to the dict), and the baseline must come down when the real count
+    does. The `seen >= 40` guard is a positive control — a scan finding
+    fewer than that means the pattern itself has drifted, not that the tree
+    improved."""
+    counts = _non_compliant_heading_icons("2", "text-brand")
+    seen = sum(counts.values())
+    assert seen >= 40, f"only {seen} <h2><i> pairs matched — the pattern has drifted"
+
+    grew = {f: (H2_ICON_BASELINE.get(f, 0), n)
+            for f, n in counts.items() if n > H2_ICON_BASELINE.get(f, 0)}
+    assert not grew, (
+        "non-violet H2 icons increased — convert via the heading ladder "
+        "(§2.1), not by adding one more:\n  "
+        + "\n  ".join(f"{f}: {b} -> {n}" for f, (b, n) in grew.items()))
+
+    assert seen <= H2_ICON_TOTAL, (
+        f"total non-violet H2 icons rose to {seen} (was {H2_ICON_TOTAL}) — a new "
+        "H2_ICON_BASELINE entry redistributes existing debt, it does not add to it")
+    assert seen == H2_ICON_TOTAL, (
+        f"total fell to {seen}; lower H2_ICON_TOTAL to match, or the headroom "
+        "just won is silently available to spend again")
+
+    stale = {f: (b, counts.get(f, 0))
+             for f, b in H2_ICON_BASELINE.items() if counts.get(f, 0) < b}
+    assert not stale, (
+        "these files hold FEWER non-violet H2 icons than the baseline; "
+        "lower it:\n  " + "\n  ".join(f"{f}: {b} -> {n}" for f, (b, n) in stale.items()))
+
+
+def test_every_h3_icon_is_muted():
+    """Ratchet twin of the H2 test above, against text-muted."""
+    counts = _non_compliant_heading_icons("3", "text-muted")
+    seen = sum(counts.values())
+
+    grew = {f: (H3_ICON_BASELINE.get(f, 0), n)
+            for f, n in counts.items() if n > H3_ICON_BASELINE.get(f, 0)}
+    assert not grew, (
+        "non-muted H3 icons increased — convert via the heading ladder "
+        "(§2.1), not by adding one more:\n  "
+        + "\n  ".join(f"{f}: {b} -> {n}" for f, (b, n) in grew.items()))
+
+    assert seen <= H3_ICON_TOTAL, (
+        f"total non-muted H3 icons rose to {seen} (was {H3_ICON_TOTAL}) — a new "
+        "H3_ICON_BASELINE entry redistributes existing debt, it does not add to it")
+    assert seen == H3_ICON_TOTAL, (
+        f"total fell to {seen}; lower H3_ICON_TOTAL to match, or the headroom "
+        "just won is silently available to spend again")
+
+    stale = {f: (b, counts.get(f, 0))
+             for f, b in H3_ICON_BASELINE.items() if counts.get(f, 0) < b}
+    assert not stale, (
+        "these files hold FEWER non-muted H3 icons than the baseline; "
+        "lower it:\n  " + "\n  ".join(f"{f}: {b} -> {n}" for f, (b, n) in stale.items()))
 
 
 def test_no_decorative_icon_is_left_on_the_informational_blue():
@@ -119,10 +292,10 @@ def test_the_icon_scan_can_see_a_digit_in_the_name():
     sample = ('<h1 class="x"><i data-lucide="settings-2" '
               'class="w-5 h-5 text-brand"></i>Settings</h1>')
     assert _ICON.search(sample), "the icon scan cannot see a digit in a name"
-    assert _TITLE_ICON.search(sample), "the page-title scan cannot see a digit"
+    assert _HEADING_ICON.search(sample), "the heading-icon scan cannot see a digit"
     assert mbr._ICON.search(sample), "the migrator cannot see a digit in a name"
-    assert mbr._PAGE_TITLE_ICON.search(sample), (
-        "the migrator's page-title scan cannot see a digit")
+    assert mbr._HEADING_ICON.search(sample), (
+        "the migrator's heading-icon scan cannot see a digit")
 
     names, sites = set(), 0
     for path in _templates():
@@ -136,7 +309,19 @@ def test_the_icon_scan_can_see_a_digit_in_the_name():
     assert len(digits) >= 11, (
         f"only {len(digits)} digit-bearing icon names visible: {digits} — "
         "measured 11 across 34 sites")
-    assert sites >= 470, f"only {sites} icon sites scanned — measured 472"
+    # 470 -> 459 with WP-6 step 12: 11 page-title icons (one per page,
+    # `<h1><i data-lucide="LITERAL">`) disappeared from the templates this
+    # scan reads, not because they were deleted, but because they moved
+    # BEHIND base.html's single shared H1, whose icon name is
+    # `{% block page_icon %}...{% endblock %}` — a Jinja expression, not a
+    # literal — because every page supplies its own by overriding that
+    # block. No single template's source shows the resolved name any more,
+    # so this scan (deliberately unchanged: it is verifying the ICON-NAME
+    # character class, not the heading ladder) can no longer count them.
+    # test_the_one_page_title_icon_is_violet is what checks base.html's one
+    # remaining heading icon now, via a pattern built for that specific
+    # shape (_TOPBAR_H1_ICON).
+    assert sites >= 459, f"only {sites} icon sites scanned — measured 459 post-WP-6-step-12"
 
 
 def test_no_primary_button_is_left_on_the_informational_blue():

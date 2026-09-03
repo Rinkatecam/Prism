@@ -1,12 +1,7 @@
 {% extends "base.html" %}
+{% block page_title %}{{ t.get('monitoring', 'Monitoring') }}{% endblock %}
+{% block page_icon %}activity{% endblock %}
 {% block content %}
-
-<div class="flex items-center justify-between mb-6">
-  <h1 class="text-2xl font-bold flex items-center gap-2">
-    <i data-lucide="activity" class="w-6 h-6 text-brand"></i>
-    {{ t.get('monitoring', 'Monitoring') }}
-  </h1>
-</div>
 
 <!-- Status message (shown after save) -->
 <div id="save-message" class="hidden mb-4 rounded-lg p-3 text-sm"></div>

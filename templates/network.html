@@ -23,12 +23,10 @@
    inert control; on a page it reads as a delivery date nobody has promised.
    The wording describes the product's CURRENT SCOPE. #}
 
-{% block content %}
+{% block page_title %}{{ t.get('vitals_network', 'Network') }}{% endblock %}
+{% block page_icon %}router{% endblock %}
 
-<h1 class="text-2xl font-bold flex items-center gap-2 mb-1">
-  <i data-lucide="router" class="w-6 h-6 text-brand" aria-hidden="true"></i>
-  {{ t.get('vitals_network', 'Network') }}
-</h1>
+{% block content %}
 
 <p class="text-sm text-muted mb-6 max-w-2xl">
   {{ t.get('network_lede',

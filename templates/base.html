@@ -3,7 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prism - Server Monitoring</title>
+  {# WP-6 §3.1 — the tab title now follows the page. `self.page_title()` is
+     legal here even though every child's {% block page_title %} is declared
+     further down the file: Jinja resolves blocks by name at compile time,
+     not in source order. Empty (the chrome pages define page_title too, but
+     — see the topbar — the STRING is still needed for the tab even where
+     the chip itself is suppressed) falls back to the name this file has
+     carried since it was written. #}
+  <title>{% if self.page_title() | trim %}{{ self.page_title() | trim }} — Prism{% else %}Prism — Server Monitoring{% endif %}</title>
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
   <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='img/favicon-16.png') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
@@ -385,6 +392,29 @@
       <img src="{{ url_for('static', filename='img/logo.png') }}" alt="" class="w-7 h-7 flex-shrink-0" width="28" height="28">
       <span class="prism-wordmark">Prism</span>
     </a>
+    {# WP-6 D2/§3.1 — the page-title chip: Prism -> which page -> search is
+       the sentence the bar should say, so this sits right after the brand
+       and before the jump box. "Cut out" of the bar: bg-page against the
+       bar's own bg-card, with the border doing the actual visual work (§3.2
+       measures why — the fill alone is ~1.1:1 against the bar in light
+       mode). Suppressed on '/' by the #page-title[data-home] rule in
+       app.css (H-11), which is CSS on an element that stays in the DOM —
+       the reason search_index.build()'s "/" -> path fallback is provably
+       dead (§6.1) rather than merely unused. Absent entirely (not just
+       clipped) on the four D8 "chrome" pages, which render this shell
+       before anyone is signed in and where a title chip would imply the
+       operator is inside the application proper. #}
+    {% if not page_chrome|default(false) %}
+    <h1 id="page-title"
+        data-home="{{ 'true' if request.path == '/' else 'false' }}"
+        class="inline-flex items-center gap-2 min-w-0 max-w-[14rem] lg:max-w-[22rem]
+               h-9 px-3 rounded-md bg-page border border-line
+               text-lg font-bold text-ink">
+      <i data-lucide="{% block page_icon %}circle-dot{% endblock %}"
+         class="w-5 h-5 flex-shrink-0 text-brand" aria-hidden="true"></i>
+      <span class="truncate">{% block page_title %}{% endblock %}</span>
+    </h1>
+    {% endif %}
     {#── Jump-to (D8) ──────────────────────────────────────
 
        A combobox, spelled out as one: `role="combobox"` on the input,
@@ -1215,7 +1245,7 @@
     <div class="px-5 pt-5 pb-3">
       <div class="flex items-center gap-3 mb-3">
         <div id="prism-modal-icon" class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"></div>
-        <h3 id="prism-modal-title" class="font-semibold text-sm text-ink dark:text-[#F9FAFB]"></h3>
+        <h3 id="prism-modal-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2"></h3>
       </div>
       <p id="prism-modal-message" class="text-xs text-muted leading-relaxed"></p>
       <input type="text" id="prism-modal-input" class="hidden w-full mt-3 px-3 py-1.5 text-sm rounded-lg border border-line bg-field focus-visible:ring-2 focus-visible:ring-brand outline-none">

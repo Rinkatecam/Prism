@@ -32,13 +32,12 @@
   told twice.
 #}
 
+{% block page_title %}{{ t.reports }}{% endblock %}
+{% block page_icon %}file-bar-chart{% endblock %}
+
 {% block content %}
 
 <div class="flex items-start justify-between gap-4 mb-6 flex-wrap">
-  <h1 class="text-2xl font-bold flex items-center gap-2">
-    <i data-lucide="file-bar-chart" class="w-6 h-6 text-brand"></i>
-    {{ t.reports }}
-  </h1>
   <p class="text-sm text-muted max-w-md">
     {{ t.get('reports_by_question_desc', 'Every section is a question. Pick the question, then pick the format.') }}
   </p>

@@ -1633,6 +1633,29 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   border-radius: 0.5rem;
 }
 
+/* ── WP-6 §3.3 — the page-title chip's visibility rule ────────────────────
+   #page-title carries Tailwind utilities; an ID selector (1,0,0) beats a
+   utility class (0,1,0) regardless of stylesheet order, so this is
+   deterministic. `sr-only`/`not-sr-only` cannot be used here: `not-sr-only`
+   emits `padding: 0`, which fights the chip's own `px-3` at equal
+   specificity and resolves on sheet order rather than intent.
+   (memory: measure the cascade, not the palette)
+
+   `clip`, not `display:none` — the H1 stays in the DOM and the
+   accessibility tree in both cases. Below 640px a screen-reader user still
+   hears "<page>, heading level 1"; a sighted user gets the bar's width
+   back, which it needs at that size. On '/' the chip is suppressed at every
+   width, because the brand mark already names that destination (H-10). */
+#page-title[data-home="true"] {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+@media (max-width: 639.98px) {
+  #page-title { position: absolute; width: 1px; height: 1px; padding: 0;
+                margin: -1px; overflow: hidden; clip: rect(0 0 0 0);
+                white-space: nowrap; border: 0; }
+}
+
 /* ── Brand primary button ──
    Violet→turquoise gradient with a lift + glow on hover. Used on the brand-
    forward auth screens (login / setup); reusable anywhere a primary CTA should

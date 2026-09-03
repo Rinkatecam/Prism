@@ -531,7 +531,12 @@ LITERAL_BASELINE: dict[str, int] = {
     #                           in WP-4 D2, and were tokenised on the way
     #                           rather than given a baseline of their own
     "partials/server_card.html": 4,
-    "compliance.html": 5,
+    # 5 -> 4. WP-6 step 12 deleted compliance.html's in-page <h1> (its title
+    # moved to the topbar chip via page_title/page_icon), taking its
+    # `dark:text-[#F9FAFB]` with it. The h2 four lines below carries the
+    # same literal and is untouched — that one is steps 14-20's job (the
+    # heading-ladder/card conversion), not this sweep's.
+    "compliance.html": 4,
     "partials/incidents_panel.html": 5,
     # 5 -> 0. Two went with the deleted all-healthy branch; the other three
     # were the light/dark halves of status washes that the `-tint` / `-strong`
@@ -539,7 +544,11 @@ LITERAL_BASELINE: dict[str, int] = {
     "partials/verdict_header.html": 0,
     "operations.html": 0,
     "partials/server_comparison.html": 4,
-    "base.html": 1,
+    # 1 -> 0. WP-6 step 11 gave the global confirm/prompt dialog's <h3> the
+    # canonical dialog-title string (data-role="dialog-title", §2.6) in the
+    # same commit that dropped `dark:text-[#F9FAFB]` for the `text-ink` token
+    # it was redundantly restating.
+    "base.html": 0,
     "partials/critical_issues.html": 1,
     "setup.html": 1,
 }
@@ -687,7 +696,11 @@ def test_no_colour_literal_outside_the_templates_that_already_have_one():
 # Lowering this in the same commit is the point of the pair — a baseline that
 # keeps the headroom after the literals are gone lets the next change spend it
 # again without anything failing.
-LITERAL_TOTAL = 114
+# 114 -> 113 with WP-6 step 11: base.html's one dark:text-[#F9FAFB], with the
+# modal <h3> that carried it.
+# 113 -> 112 with WP-6 step 12: compliance.html's in-page <h1> is deleted
+# (its title moved to the topbar chip), taking its dark:text-[#F9FAFB] with it.
+LITERAL_TOTAL = 112
 
 
 def test_the_total_number_of_literals_never_rises():
