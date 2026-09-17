@@ -26,7 +26,16 @@
     1. Permissive-mode banner + "permissions for me" summary
     2. ACL grant/revoke table
     3. Pending approvals queue (tier-0 dual-admin flow)
-#}
+
+  WP-6 step 15: the four h2s below STAY h2 (C9 -- each already owns its
+  own card) and simply take the canonical string plus a stable id, now
+  rendered by card()'s own head row (p-4 -> p-5, automatic: CARD's own
+  string is "...p-5"). "Pending approvals"'s icon loses its text-warning
+  tint (H2_ICON is a fixed "...text-brand" string, per the roles rule --
+  §2.4: "an H2's leading icon is violet with its text" -- flagged in this
+  step's own report as an expected, spec-mandated consequence, not an
+  oversight). #}
+{% from "partials/_card.html" import card with context %}
 
 <div class="flex items-center justify-end mb-4 flex-wrap gap-3">
   <button id="rbac-refresh"
@@ -41,24 +50,18 @@
 <div id="rbac-banner" class="hidden mb-4 px-4 py-3 rounded-lg text-sm"></div>
 
 <!-- "What can I do" summary card -->
-<div class="bg-card rounded-lg border border-line p-4 mb-4">
-  <h2 class="text-sm font-semibold mb-2 flex items-center gap-1.5">
-    <i data-lucide="user-check" class="w-4 h-4"></i>
-    {{ t.get('my_permissions', 'My permissions') }}
-  </h2>
+{% call card(heading=t.get('my_permissions', 'My permissions'), icon='user-check',
+             heading_id='rbac-my-permissions-heading', extra='mb-4') %}
   <div id="rbac-me-summary" class="text-xs text-muted"><div class="rbac-ghost" aria-hidden="true">
       <div class="skeleton h-4 w-40 mb-2"></div>
       <div class="skeleton h-3 w-56 mb-1"></div>
       <div class="skeleton h-3 w-48"></div>
     </div></div>
-</div>
+{% endcall %}
 
 <!-- ACL grant form -->
-<div class="bg-card rounded-lg border border-line p-4 mb-4">
-  <h2 class="text-sm font-semibold mb-3 flex items-center gap-1.5">
-    <i data-lucide="user-plus" class="w-4 h-4"></i>
-    {{ t.get('grant_acl', 'Grant access') }}
-  </h2>
+{% call card(heading=t.get('grant_acl', 'Grant access'), icon='user-plus',
+             heading_id='rbac-grant-access-heading', extra='mb-4') %}
   <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
     <input type="text" id="rbac-grant-user"
            placeholder="{{ t.get('username', 'Username (bare, no DOMAIN\\\\)') }}"
@@ -89,32 +92,26 @@
   <p class="text-[10px] text-faint mt-2 italic">
     {{ t.get('rbac_grant_hint', "Tip: granting any ACL exits permissive mode and starts enforcement for everyone.") }}
   </p>
-</div>
+{% endcall %}
 
 <!-- Existing ACLs -->
-<div class="bg-card rounded-lg border border-line p-4 mb-4">
-  <h2 class="text-sm font-semibold mb-3 flex items-center gap-1.5">
-    <i data-lucide="list-checks" class="w-4 h-4"></i>
-    {{ t.get('current_acls', 'Current ACLs') }}
-  </h2>
+{% call card(heading=t.get('current_acls', 'Current ACLs'), icon='list-checks',
+             heading_id='rbac-current-acls-heading', extra='mb-4') %}
   <div id="rbac-acl-list" class="text-xs text-muted"><div class="rbac-ghost" aria-hidden="true">
       <div class="skeleton h-3 w-full mb-2"></div>
       <div class="skeleton h-3 w-full mb-2"></div>
       <div class="skeleton h-3 w-3/4"></div>
     </div></div>
-</div>
+{% endcall %}
 
 <!-- Pending approvals -->
-<div class="bg-card rounded-lg border border-line p-4">
-  <h2 class="text-sm font-semibold mb-3 flex items-center gap-1.5">
-    <i data-lucide="hourglass" class="w-4 h-4 text-warning"></i>
-    {{ t.get('pending_approvals', 'Pending approvals (tier-0)') }}
-  </h2>
+{% call card(heading=t.get('pending_approvals', 'Pending approvals (tier-0)'), icon='hourglass',
+             heading_id='rbac-pending-approvals-heading') %}
   <div id="rbac-approvals-list" class="text-xs text-muted"><div class="rbac-ghost" aria-hidden="true">
       <div class="skeleton h-4 w-2/3 mb-1"></div>
       <div class="skeleton h-3 w-1/2"></div>
     </div></div>
-</div>
+{% endcall %}
 
 <script nonce="{{ csp_nonce }}">
 (function () {

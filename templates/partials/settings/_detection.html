@@ -20,7 +20,20 @@
    did not fix this text, it uncovered it. See OPS-LEARNINGS §4: the token
    is compliant on one surface and not the other, and nothing in the class
    name says which. #}
-  <div id="baseline-security-card" class="bg-card rounded-lg p-5 border border-line space-y-4">
+{% from "partials/_card.html" import card, subhead with context %}
+  {# WP-6 step 15 / C9: no page-level "Detection" H2 in settings.html any
+     more -- this card now owns that exact heading text (and icon) as its
+     own canonical H2. id="baseline-security-card" is preserved verbatim
+     via card()'s new id= (not dropped, not a heading_id=): grepped
+     across templates/ and static/js/ before converting and it is
+     referenced nowhere there, but tools/verify_guardrails.py's own
+     mutation harness anchors a mutation to the literal source string
+     <div id="baseline-security-card" for
+     test_every_control_lives_in_the_section_that_saves_it -- see
+     _card.html's own comment on id= for the full account. #}
+  {% call card(heading=t.get('settings_section_detection', 'Detection'), icon='radar',
+               id='baseline-security-card') %}
+  <div class="space-y-4">
 
     <!-- Detection Mode (priority: baseline > anomaly > threshold) -->
     <div>
@@ -293,7 +306,12 @@
       </div>
 
       <hr class="border-line my-3">
-      <div class="text-xs font-semibold text-muted mb-2">Security Status Monitoring</div>
+      {# WP-6 step 15: named by exact location in the step's own text --
+         hardcoded English, no t.get()/t.xxx at all. Minted
+         `security_status_monitoring`, added to all five locales, and
+         converted to H3 via subhead() (a div pseudo-heading becoming a
+         real heading inside its card). #}
+      {{ subhead(t.get('security_status_monitoring', 'Security Status Monitoring')) }}
 
       <div class="flex flex-wrap items-center gap-3">
         <label class="flex items-center gap-2 cursor-pointer">
@@ -333,3 +351,4 @@
     </div>
 
   </div>
+  {% endcall %}

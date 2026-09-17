@@ -481,6 +481,23 @@ def test_an_inline_flex_segmented_control_is_not_mistaken_for_a_card():
 # what was nominally the same count) plus 13 further implementation steps
 # of markup changes since the addendum's own number was taken. Every
 # entry below was produced by the detector, not hand-adjusted.
+# Lowered 2026-09-17 by WP-6 step 15 (Batch B, the Settings family) --
+# RE-RUN, not hand-computed, against the tree after converting settings.html
+# + partials/settings/*.html to {% call card(...) %}. Every card SHELL this
+# step converted reached the exact canonical CARD/CARD_FLUSH string (the
+# pre-conversion violation in each case was purely ORDER -- "bg-card
+# rounded-lg p-5 border border-line" instead of the pinned "...border
+# border-line p-5" -- never an extra utility), so each conversion removes
+# exactly one exception. Four entries below reached zero and are deleted
+# rather than kept at 0 (_compliance.html, _maintenance.html, _rbac.html,
+# _tls.html), matching this ratchet's own established convention. Five
+# entries stay NONZERO because this step deliberately did not touch a
+# second, DIFFERENT card-shaped site still living in the same file --
+# _detection.html's two `bg-page` grid boxes (Thresholds/Anomaly),
+# _restarts.html's and _health_checks.html's/_dependencies.html's own
+# `bg-page`-recessed rows/forms, and _servers.html's one JS-built tag-pill
+# row -- none of which this step's own text named for conversion (see this
+# step's own report for the tile-conversion scope decision).
 CARD_EXCEPTIONS: dict[str, int] = {
     "base.html": 4,
     "compliance.html": 4,
@@ -499,27 +516,23 @@ CARD_EXCEPTIONS: dict[str, int] = {
     "partials/server_card.html": 1,
     "partials/server_comparison.html": 1,
     "partials/services_table.html": 7,
-    "partials/settings/_compliance.html": 1,
-    "partials/settings/_dependencies.html": 2,
-    "partials/settings/_detection.html": 3,
-    "partials/settings/_health_checks.html": 2,
-    "partials/settings/_maintenance.html": 1,
-    "partials/settings/_rbac.html": 4,
-    "partials/settings/_restarts.html": 2,
-    "partials/settings/_servers.html": 2,
-    "partials/settings/_tls.html": 1,
+    "partials/settings/_dependencies.html": 1,
+    "partials/settings/_detection.html": 2,
+    "partials/settings/_health_checks.html": 1,
+    "partials/settings/_restarts.html": 1,
+    "partials/settings/_servers.html": 1,
     "partials/updates_overview.html": 1,
     "reports.html": 8,
     "scan.html": 2,
     "server_detail.html": 19,
     "servers.html": 5,
-    "settings.html": 14,
+    "settings.html": 8,
     "setup.html": 1,
     "topology.html": 3,
     "workflows.html": 5,
 }
 
-CARD_EXCEPTION_TOTAL = 133
+CARD_EXCEPTION_TOTAL = 115
 
 
 def test_every_card_shaped_class_string_is_one_of_the_pinned_ones():
@@ -1526,23 +1539,27 @@ def test_the_section_header_row_scan_actually_catches_a_violation():
 # numbers for nominally the same shape (124 vs 131 for CARD_EXCEPTIONS'
 # own count), plus 13 further implementation steps since that number was
 # taken.
+# Lowered 2026-09-17 by WP-6 step 15 -- RE-RUN, not hand-computed. Every
+# one of the eight settings-family entries below (settings.html and seven
+# partials) reached exactly zero: converting a "heading outside, then its
+# card" site to {% call card(...) %} removes this shape BY CONSTRUCTION
+# (the macro's own head row puts the heading INSIDE the card), so every
+# such site this step touched is gone, not merely reduced. All eight
+# entries are deleted rather than kept at 0, matching this ratchet's own
+# convention. _detection.html, _rbac.html and _server_config.html were
+# never in this dict to begin with (0 before, 0 after -- see this file's
+# own header comment on why the detector's 600-char window and its
+# already-inside-a-panel guard made those three vacuous for this exact
+# shape, not exempt by any rule).
 SECTION_HEADER_BASELINE: dict[str, int] = {
     "monitoring.html": 1,
     "operations.html": 3,
     "partials/services_table.html": 1,
-    "partials/settings/_compliance.html": 1,
-    "partials/settings/_dependencies.html": 1,
-    "partials/settings/_health_checks.html": 1,
-    "partials/settings/_maintenance.html": 1,
-    "partials/settings/_restarts.html": 1,
-    "partials/settings/_servers.html": 1,
-    "partials/settings/_tls.html": 1,
     "server_detail.html": 5,
-    "settings.html": 6,
     "workflows.html": 1,
 }
 
-SECTION_HEADER_TOTAL = 24
+SECTION_HEADER_TOTAL = 11
 
 
 def _section_header_counts() -> dict[str, int]:

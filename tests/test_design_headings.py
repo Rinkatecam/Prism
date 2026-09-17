@@ -395,6 +395,26 @@ def _heading_violations() -> dict[str, int]:
 # genuine files each holding at least one un-migrated heading is consistent
 # with "every H2/H3/H4 in the app is still pre-ladder except base.html's H1"
 # (steps 14-20/the card conversion is what converts them, file by file).
+# Lowered 2026-09-17 by WP-6 step 15 -- RE-RUN, not hand-computed, against
+# the tree after converting settings.html + partials/settings/*.html to
+# {% call card(...) %}/subhead(). Nine settings.html page-level theme H2s
+# (C9) and six whole-partial H2s reached the canonical H2 string via the
+# macro and vanished from THIS source-level scan entirely (card()'s own
+# `<{{ _tag }} class="{{ _hcls }}">` is not literal `<h2` text, so a
+# macro-rendered heading is invisible to a scan of TEMPLATE SOURCE the same
+# way a {% call card( site is invisible to C-4's raw-literal scanner --
+# proven correct instead by test_design_cards.py's C-7, which renders the
+# macro for real). partials/settings/_tls.html, _maintenance.html (partly:
+# its OWN h2 is gone, its modal's h3 is untouched, step 19's job),
+# _restarts.html, _health_checks.html, _dependencies.html, _servers.html,
+# _compliance.html and _rbac.html (all four h2s at once) are affected;
+# _detection.html was never in this dict (it had no h2 of its own before
+# this step -- it borrowed settings.html's page-level one -- so converting
+# it to own a canonical H2 via the macro leaves this scan unchanged: 0
+# before, 0 after, for the same source-invisibility reason). Four
+# untouched modal h3s remain per file where one already existed
+# (settings.html, _maintenance.html, _server_config.html) -- step 19's
+# job ("every dialog declares itself"), not this one's.
 HEADING_BASELINE: dict[str, int] = {
     "compliance.html": 2,
     "dashboard.html": 3,
@@ -407,28 +427,21 @@ HEADING_BASELINE: dict[str, int] = {
     "partials/server_comparison.html": 9,
     "partials/server_grid.html": 1,
     "partials/services_table.html": 1,
-    "partials/settings/_compliance.html": 1,
-    "partials/settings/_dependencies.html": 1,
-    "partials/settings/_health_checks.html": 1,
-    "partials/settings/_maintenance.html": 2,
-    "partials/settings/_rbac.html": 4,
-    "partials/settings/_restarts.html": 1,
-    "partials/settings/_server_config.html": 4,
-    "partials/settings/_servers.html": 1,
-    "partials/settings/_tls.html": 1,
+    "partials/settings/_maintenance.html": 1,
+    "partials/settings/_server_config.html": 3,
     "partials/updates_overview.html": 1,
     "partials/verdict_header.html": 2,
     "reports.html": 13,
     "scan.html": 1,
     "server_detail.html": 17,
     "servers.html": 3,
-    "settings.html": 13,
+    "settings.html": 4,
     "setup.html": 1,
     "topology.html": 2,
     "workflows.html": 16,
 }
 
-HEADING_TOTAL = 112
+HEADING_TOTAL = 91
 
 
 def test_every_heading_uses_its_level_s_canonical_classes():
@@ -1044,10 +1057,12 @@ def test_the_settings_theme_repeat_scan_is_not_vacuous():
     import app as prism_app
     prism_app.app.config["TESTING"] = True
     counts = _settings_theme_repeats(prism_app.app.test_client())
-    assert sum(counts.values()) >= 9, (
+    assert sum(counts.values()) >= 7, (
         f"only {sum(counts.values())} settings theme-repeat(s) found across "
-        f"{counts} -- measured 9 across 9 sections; the scan may have "
-        "regressed to the deduped-index trap this test exists to catch")
+        f"{counts} -- measured 7 across 7 sections after WP-6 step 15 "
+        "lowered this from 9 (see SETTINGS_THEME_REPEAT_BASELINE's own "
+        "comment); the scan may have regressed to the deduped-index trap "
+        "this test exists to catch")
 
 
 # Measured 2026-09-03 by RUNNING _settings_theme_repeats() against this
@@ -1056,19 +1071,39 @@ def test_the_settings_theme_repeat_scan_is_not_vacuous():
 # per-file key would collapse most of them into one entry and hide which
 # sections still need it. See the test's own docstring for the full
 # reasoning on why this is a ratchet at all.
+#
+# Lowered 2026-09-17 by WP-6 step 15 -- RE-RUN, not hand-computed, and NOT
+# simply "C9 removed every page-level H2 so every repeat should vanish":
+# for seven of the nine sections (general/collector/servers/detection/
+# security/compliance/notifications), this step's own card() conversion
+# gives the surviving card the SAME heading text the page-level H2 used to
+# carry (there being no more specific name for "the one card this section
+# is" -- general IS "General", collector IS "Collector", and so on;
+# servers' repeat comes from _server_config.html's own h2 text "Servers",
+# unchanged by moving it into card()), so the rendered page still carries
+# exactly one h2 reading the section's own name -- unchanged by WHERE that
+# heading now sits. Only two of the nine actually reach zero:
+#   * alerts -- its page-level H2 is deleted with NO replacement (both
+#     _tls.html's "TLS Monitoring" and _maintenance.html's "Maintenance
+#     windows" already had their own, DIFFERENT names).
+#   * operations -- the runbook-definitions card is deliberately given
+#     `t.runbooks` ("Runbooks") rather than a re-used "Operations": the
+#     same key/icon (`book-open`) operations.html's own "Runbook Library"
+#     section already uses for the identical concept, and a real,
+#     available choice this step's own text did not forbid, over
+#     mechanically recopying the page-level label -- see this step's own
+#     report for the judgement call.
 SETTINGS_THEME_REPEAT_BASELINE: dict[str, int] = {
     "general": 1,
     "collector": 1,
     "servers": 1,
     "detection": 1,
-    "alerts": 1,
-    "operations": 1,
     "security": 1,
     "compliance": 1,
     "notifications": 1,
 }
 
-SETTINGS_THEME_REPEAT_TOTAL = 9
+SETTINGS_THEME_REPEAT_TOTAL = 7
 
 
 def test_the_settings_theme_repeat_baseline_is_not_left_behind(client):

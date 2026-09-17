@@ -902,6 +902,7 @@ TRANSLATIONS = {
         "baseline_settings": "Baseline Settings",
         # --- F5: Failed Login Heatmap ---
         "security_alerts": "Security Alerts",
+        "security_status_monitoring": "Security Status Monitoring",
         "failed_logins": "Failed Logins",
         "login_heatmap": "Login Heatmap",
         "source_ip": "Source IP",
@@ -2187,6 +2188,7 @@ TRANSLATIONS = {
         "baseline_settings": "Baseline-Einstellungen",
         # --- F5: Failed Login Heatmap ---
         "security_alerts": "Sicherheitswarnungen",
+        "security_status_monitoring": "Sicherheitsstatus-Überwachung",
         "failed_logins": "Fehlgeschlagene Anmeldungen",
         "login_heatmap": "Anmelde-Heatmap",
         "source_ip": "Quell-IP",
@@ -3473,6 +3475,7 @@ TRANSLATIONS = {
         "baseline_settings": "Paramètres de référence",
         # --- F5: Failed Login Heatmap ---
         "security_alerts": "Alertes de sécurité",
+        "security_status_monitoring": "Surveillance de l'état de sécurité",
         "failed_logins": "Échecs de connexion",
         "login_heatmap": "Carte thermique des connexions",
         "source_ip": "IP source",
@@ -4759,6 +4762,7 @@ TRANSLATIONS = {
         "baseline_settings": "Configuración de línea base",
         # --- F5: Failed Login Heatmap ---
         "security_alerts": "Alertas de seguridad",
+        "security_status_monitoring": "Supervisión del estado de seguridad",
         "failed_logins": "Inicios de sesión fallidos",
         "login_heatmap": "Mapa de calor de inicio de sesión",
         "source_ip": "IP de origen",
@@ -6045,6 +6049,7 @@ TRANSLATIONS = {
         "baseline_settings": "ベースライン設定",
         # --- F5: Failed Login Heatmap ---
         "security_alerts": "セキュリティアラート",
+        "security_status_monitoring": "セキュリティステータス監視",
         "failed_logins": "ログイン失敗",
         "login_heatmap": "ログインヒートマップ",
         "source_ip": "送信元IP",

@@ -9,39 +9,41 @@
 
 {% from "partials/_empty_state.html" import empty_state %}
 {% from "partials/_tip.html" import tip_mirror with context %}
+{% from "partials/_card.html" import card with context %}
 
+{# WP-6 step 15: this h2 STAYS an h2 (C9 -- it already owned this card,
+   distance from its card alone is why the SECTION_HEADER_BASELINE
+   detector never flagged it as debt: the button cluster's ~1500
+   characters exceed that detector's 600-char window) and simply takes
+   the canonical string plus a stable id, now rendered by card()'s own
+   head row -- flush=True because the body is a full-bleed <table>
+   (§4.1). All four buttons + the hidden file input move into controls=. #}
 <div class="mb-8" id="server-list">
-  <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-    <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="server" class="w-5 h-5 text-accent"></i>
-      {{ t.get('servers_page', 'Servers') }}
-    </h2>
-    <div class="flex items-center gap-2 flex-wrap">
-      <button data-action="discoverServers"
-              class="px-3 py-1.5 text-sm font-medium rounded border border-healthy text-healthy hover:bg-healthy-tint flex items-center gap-1">
-        <i data-lucide="radar" class="w-4 h-4"></i>
-        {{ t.discover_servers }}
-      </button>
-      <button data-action="exportServersCSV"
-              class="px-3 py-1.5 text-sm font-medium rounded border border-line hover:bg-page flex items-center gap-1">
-        <i data-lucide="download" class="w-4 h-4"></i>
-        {{ t.csv_export }}
-      </button>
-      <button data-action="_srvClickCsvImport"
-              class="px-3 py-1.5 text-sm font-medium rounded border border-line hover:bg-page flex items-center gap-1">
-        <i data-lucide="upload" class="w-4 h-4"></i>
-        {{ t.csv_import }}
-      </button>
-      <input type="file" id="csv-import-input" accept=".csv" class="hidden" data-change="_srvImportCsv">
-      <button data-action="showAddForm"
-              class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
-        <i data-lucide="plus" class="w-4 h-4"></i>
-        {{ t.add_server }}
-      </button>
-    </div>
-  </div>
-
-  <div class="bg-card rounded-lg border border-line overflow-hidden">
+  {% set _server_list_controls %}
+  <button data-action="discoverServers"
+          class="px-3 py-1.5 text-sm font-medium rounded border border-healthy text-healthy hover:bg-healthy-tint flex items-center gap-1">
+    <i data-lucide="radar" class="w-4 h-4"></i>
+    {{ t.discover_servers }}
+  </button>
+  <button data-action="exportServersCSV"
+          class="px-3 py-1.5 text-sm font-medium rounded border border-line hover:bg-page flex items-center gap-1">
+    <i data-lucide="download" class="w-4 h-4"></i>
+    {{ t.csv_export }}
+  </button>
+  <button data-action="_srvClickCsvImport"
+          class="px-3 py-1.5 text-sm font-medium rounded border border-line hover:bg-page flex items-center gap-1">
+    <i data-lucide="upload" class="w-4 h-4"></i>
+    {{ t.csv_import }}
+  </button>
+  <input type="file" id="csv-import-input" accept=".csv" class="hidden" data-change="_srvImportCsv">
+  <button data-action="showAddForm"
+          class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
+    <i data-lucide="plus" class="w-4 h-4"></i>
+    {{ t.add_server }}
+  </button>
+  {% endset %}
+  {% call card(heading=t.get('servers_page', 'Servers'), icon='server', flush=True,
+               heading_id='server-list-heading', controls=_server_list_controls) %}
     {% if servers %}
     {# Rendered from the same `servers` the page already has. Fetching the
        list again would be a second source for it, and two sources for one
@@ -89,7 +91,7 @@
                            'Add one above, or use Discover to find them on the domain \u2014 nothing is collected until a server is here')) }}
     </div>
     {% endif %}
-  </div>
+  {% endcall %}
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════

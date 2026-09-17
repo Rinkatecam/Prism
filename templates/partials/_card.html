@@ -162,21 +162,65 @@
      the head row, so `controls` without `heading` renders nothing --
      there is no defined shape for "controls with no title", and nothing
      in this tree needs one today.
+
+   * `id=` and `heading_id=` -- ADDED during step 15 (WP-6 Batch B, the
+     Settings family), NOT part of §4.2/§4.3's own signature. Both are
+     purely additive/opt-in (default None, rendered only when given), so
+     every existing call site and every test in test_design_cards.py that
+     never passes them is byte-for-byte unaffected -- C-1's own
+     `re.search(r'<div class="([^"]*)">', html)` still matches because no
+     id= is ever passed in that test.
+
+     `id=` sets an id on the OUTER SHELL div, BEFORE `class=` (so the
+     rendered tag reads `<div id="X" class="...">`). Needed for exactly
+     one real site this step converts: partials/settings/_detection.html's
+     `baseline-security-card`. That id is not read by any live template or
+     JS (checked by grep across templates/ and static/js/ before
+     converting), but tools/verify_guardrails.py's own mutation harness
+     anchors a mutation to the literal source string
+     `<div id="baseline-security-card"` (path-and-string search-and-
+     replace over the TEMPLATE SOURCE FILE, not rendered output) for
+     test_every_control_lives_in_the_section_that_saves_it. Dropping the
+     id would not break that test today, but would make the mutation's
+     own anchor drift (verify_guardrails.py's own step 1 calls this out
+     explicitly: "a mutation whose anchor has drifted is reported as NOT
+     APPLIED rather than passing silently") -- so the id is preserved via
+     this new parameter rather than silently dropped. See this step's own
+     report for the full account; tools/verify_guardrails.py itself is
+     deliberately not run or edited here (out of this step's scope, and
+     the house rule against running it).
+
+     `heading_id=` sets an id on the HEADING TAG ITSELF (h2, or h{level}),
+     which is the separate thing DESIGN_SYSTEM_SPEC.md's own Step 15 text
+     asks for ("simply take the canonical string and a stable id") for
+     the named list of headings that already owned their own card and
+     merely move into the macro's head row. Nothing in
+     tests/test_design_headings.py's `test_a_heading_inside_a_settings_
+     section_is_findable` REQUIRES this id (that test passes on heading
+     TEXT alone, via search_index._headings, independent of any id --
+     verified by reading its own assertion before relying on it); what an
+     id buys is search_index._anchor_for actually resolving to that
+     specific heading rather than the settings sub-page falling back to a
+     bare, un-anchored URL -- real precision on pages that end up with two
+     or more h2 cards after this step (alerts: TLS + Maintenance;
+     operations: Runbooks + Scheduled restarts; servers: Tag Management +
+     Servers + Health Checks + Dependencies).
    ══════════════════════════════════════════════════════════════════════
 #}
 {% macro card(heading=None, icon=None, level=2, flush=False, extra='',
               controls='', footer='',
               tip_desc_key=None, tip_desc_fallback=None,
               tip_title_key=None, tip_title_fallback=None,
-              tip_label_key=None, tip_label_fallback=None) %}
+              tip_label_key=None, tip_label_fallback=None,
+              id=None, heading_id=None) %}
 {%- set _shell = (CARD_FLUSH if flush else CARD) ~ (' ' ~ extra if extra else '') -%}
-<div class="{{ _shell }}">
+<div{% if id %} id="{{ id }}"{% endif %} class="{{ _shell }}">
 {%- if heading is not none %}
   <div class="{{ HEAD_FLUSH if flush else HEAD }}">
     {%- set _dialog = level != 2 %}
     {%- set _tag = 'h' ~ level %}
     {%- set _hcls = DIALOG_TITLE if _dialog else H2 %}
-    <{{ _tag }} class="{{ _hcls }}"{% if _dialog %} data-role="dialog-title"{% endif %}>
+    <{{ _tag }} class="{{ _hcls }}"{% if heading_id %} id="{{ heading_id }}"{% endif %}{% if _dialog %} data-role="dialog-title"{% endif %}>
       {%- if icon %}<i data-lucide="{{ icon }}" class="{{ H2_ICON }}" aria-hidden="true"></i>{% endif %}
       {{ heading }}
       {%- if tip_desc_key %}

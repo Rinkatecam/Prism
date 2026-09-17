@@ -9,17 +9,20 @@
    periodics' `tls_certs` job calls `get_settings()` on every run. The one TLS
    field that WOULD need a restart is `check_interval_cycles`, which the
    periodics loop resolves once at startup — and it has no control here. #}
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="shield-check" class="w-5 h-5 text-accent"></i>
-      {{ t.get('tls_monitoring', 'TLS Monitoring') }}
-    </h2>
-    <button data-action="addTlsCertRow" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
-      <i data-lucide="plus" class="w-4 h-4"></i>
-      {{ t.get('add_certificate', 'Add Certificate') }}
-    </button>
-  </div>
-  <div class="bg-card rounded-lg p-5 border border-line space-y-4">
+{% from "partials/_card.html" import card with context %}
+  {# WP-6 step 15: this h2 STAYS an h2 (C9 -- it already owned this card,
+     it is not a page-level theme wrapper) and simply takes the canonical
+     string plus a stable id, now rendered by card()'s own head row. The
+     "Add Certificate" button moves into controls=. #}
+  {% set _tls_controls %}
+  <button data-action="addTlsCertRow" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
+    <i data-lucide="plus" class="w-4 h-4"></i>
+    {{ t.get('add_certificate', 'Add Certificate') }}
+  </button>
+  {% endset %}
+  {% call card(heading=t.get('tls_monitoring', 'TLS Monitoring'), icon='shield-check',
+               heading_id='tls-monitoring-heading', controls=_tls_controls) %}
+  <div class="space-y-4">
     <div class="flex items-center gap-3 mb-3">
       <label class="relative inline-flex items-center cursor-pointer">
         <input type="checkbox" id="tls-monitoring-enabled" class="sr-only peer general-input">
@@ -42,3 +45,4 @@
       <p class="text-[10px] mt-1 opacity-60">{{ t.get('no_certificates_hint', 'Click "Add Certificate" to monitor TLS expiration') }}</p>
     </div>
   </div>
+  {% endcall %}

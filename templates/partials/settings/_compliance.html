@@ -15,15 +15,26 @@
 
    The toggle is in the `general-input` bucket, not `security-input`: it
    changes routing and navigation, which a reload picks up. It does not
-   touch the collector, so it does not raise the restart badge. #}
+   touch the collector, so it does not raise the restart badge.
+
+   WP-6 step 15 / C9: no page-level "Compliance" H2 -- the card below owns
+   the canonical H2 itself. The macro import deliberately sits AFTER this
+   file's own section tag below (matching _servers.html's identical
+   placement), not before it: tests/test_settings_change_tracking.py's
+   markup helper resolves this file's include in place and then requires
+   the enclosing if-block to be followed, with ONLY whitespace in
+   between, by that exact section tag -- an import STATEMENT, unlike a
+   comment, is not whitespace and is not stripped, so it must not land
+   between the two. NOTE FOR THE NEXT EDITOR: do not quote a literal
+   Jinja comment delimiter pair inside this comment block -- doing so
+   once already closed this very comment early and leaked the rest of it
+   as literal page text; this paragraph is worded to avoid that pair
+   entirely. #}
 
 <section class="mb-8" data-settings-section="compliance">
-  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="clipboard-check" class="w-5 h-5 text-accent"></i>
-    {{ t.get('compliance', 'Compliance') }}
-  </h2>
-
-  <div class="bg-card rounded-lg p-5 border border-line space-y-4">
+  {% from "partials/_card.html" import card with context %}
+  {% call card(heading=t.get('compliance', 'Compliance'), icon='clipboard-check') %}
+  <div class="space-y-4">
 
     <div class="flex items-start justify-between gap-4">
       <div>
@@ -73,4 +84,5 @@
     {% endif %}
 
   </div>
+  {% endcall %}
 </section>

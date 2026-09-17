@@ -24,19 +24,24 @@
 {# A div, not a section: it nests inside the Servers settings section,
    and every <section> on a settings page has to declare which section
    it is. This is a sub-block of one. The `id` is what /services links
-   to and is unchanged. #}
+   to and is unchanged.
+
+   WP-6 step 15: the h2 STAYS an h2 (C9 -- it already owned this card)
+   and simply takes the canonical string plus a stable id (distinct from
+   the load-bearing `id="health-checks"` on the outer div above, which
+   /services#health-checks anchors to and which this step leaves
+   untouched), now rendered by card()'s own head row. "Add Health Check"
+   moves into controls=. #}
+{% from "partials/_card.html" import card with context %}
 <div class="mb-8" id="health-checks">
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="activity" class="w-5 h-5 text-accent"></i>
-      {{ t.get('health_checks', 'Health Checks') }}
-    </h2>
-    <button data-action="toggleHcForm" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
-      <i data-lucide="plus" class="w-4 h-4"></i>
-      {{ t.get('add_health_check', 'Add Health Check') }}
-    </button>
-  </div>
-  <div class="bg-card rounded-lg p-5 border border-line">
+  {% set _hc_controls %}
+  <button data-action="toggleHcForm" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
+    <i data-lucide="plus" class="w-4 h-4"></i>
+    {{ t.get('add_health_check', 'Add Health Check') }}
+  </button>
+  {% endset %}
+  {% call card(heading=t.get('health_checks', 'Health Checks'), icon='activity',
+               heading_id='health-checks-heading', controls=_hc_controls) %}
 
     <!-- Add health check form (hidden by default, matches dependency design) -->
     <div id="hc-add-form" class="hidden mb-4 p-4 rounded-lg border border-dashed border-line bg-page dark:bg-page/50">
@@ -114,7 +119,7 @@
                      t.get('no_health_checks_hint',
                            'Add one above to watch a port, a URL or a host \u2014 a probe proves the service answered, not just that the machine is up')) }}
     </div>
-  </div>
+  {% endcall %}
 </div>
 
 <script nonce="{{ csp_nonce }}">

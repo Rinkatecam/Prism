@@ -138,6 +138,24 @@ def test_the_one_page_title_icon_is_violet():
 # file's totals) as each card family converts; test_design_headings.py's
 # eventual HEADING_BASELINE (spec step 13) will likely subsume both, at
 # which point these may be deleted rather than merged.
+# Lowered 2026-09-17 by WP-6 step 15 (Batch B, the Settings family) --
+# RE-RUN, not hand-computed. This file's own comment above already named
+# this exact consequence ("Steps 14-20 lower these two dicts... as each
+# card family converts"). All ten settings-family entries (settings.html
+# and nine partials) reached exactly zero and are deleted rather than kept
+# at 0: every H2 icon step 15 converted now renders via card()'s own
+# H2_ICON constant (`w-5 h-5 flex-shrink-0 text-brand`, already
+# text-brand/violet by construction), and a macro-rendered `<h2><i>` pair
+# is not literal `<h2` source text, so it is invisible to THIS file's
+# source-level regex scan the same way it is to test_design_headings.py's
+# HEADING_BASELINE -- proven compliant instead by test_design_cards.py's
+# C-7 (renders the macro for real) and C-1 (the icon class is the pinned
+# H2_ICON string, character for character). H3_ICON_BASELINE is
+# UNCHANGED by this step: the six settings.html div-pseudo-headings
+# converted to subhead() were `<div>`s, never `<h3>` tags, so they were
+# never counted here either before (0) or after (0) -- this file's
+# remaining settings.html/_server_config.html H3 entries are unrelated,
+# pre-existing modal-title icons (step 19's job).
 H2_ICON_BASELINE: dict[str, int] = {
     "dashboard.html": 1,
     "monitoring.html": 1,
@@ -146,23 +164,13 @@ H2_ICON_BASELINE: dict[str, int] = {
     "partials/critical_issues.html": 1,
     "partials/server_comparison.html": 1,
     "partials/services_table.html": 1,
-    "partials/settings/_compliance.html": 1,
-    "partials/settings/_dependencies.html": 1,
-    "partials/settings/_health_checks.html": 1,
-    "partials/settings/_maintenance.html": 1,
-    "partials/settings/_rbac.html": 4,
-    "partials/settings/_restarts.html": 1,
-    "partials/settings/_server_config.html": 1,
-    "partials/settings/_servers.html": 1,
-    "partials/settings/_tls.html": 1,
     "partials/updates_overview.html": 1,
     "reports.html": 7,
     "server_detail.html": 9,
     "servers.html": 1,
-    "settings.html": 9,
     "workflows.html": 1,
 }
-H2_ICON_TOTAL = 49
+H2_ICON_TOTAL = 28
 
 H3_ICON_BASELINE: dict[str, int] = {
     "operations.html": 3,
@@ -200,12 +208,16 @@ def test_every_section_heading_icon_is_violet():
     companion LITERAL_TOTAL exists for in tests/test_design_tokens.py, for
     the same reason: a per-file ceiling alone still permits adding one new
     entry to the dict), and the baseline must come down when the real count
-    does. The `seen >= 40` guard is a positive control — a scan finding
+    does. The `seen >= 28` guard is a positive control — a scan finding
     fewer than that means the pattern itself has drifted, not that the tree
-    improved."""
+    improved. (Lowered from 40 by WP-6 step 15: every settings-family H2
+    icon this step converted now renders violet via card()'s own H2_ICON
+    constant, a macro-generated `<h2><i>` pair that is invisible to this
+    file's source-text scan the same way it is to test_design_headings.py's
+    HEADING_BASELINE -- see H2_ICON_BASELINE's own comment.)"""
     counts = _non_compliant_heading_icons("2", "text-brand")
     seen = sum(counts.values())
-    assert seen >= 40, f"only {seen} <h2><i> pairs matched — the pattern has drifted"
+    assert seen >= 28, f"only {seen} <h2><i> pairs matched — the pattern has drifted"
 
     grew = {f: (H2_ICON_BASELINE.get(f, 0), n)
             for f, n in counts.items() if n > H2_ICON_BASELINE.get(f, 0)}
@@ -321,7 +333,17 @@ def test_the_icon_scan_can_see_a_digit_in_the_name():
     # test_the_one_page_title_icon_is_violet is what checks base.html's one
     # remaining heading icon now, via a pattern built for that specific
     # shape (_TOPBAR_H1_ICON).
-    assert sites >= 459, f"only {sites} icon sites scanned — measured 459 post-WP-6-step-12"
+    #
+    # 459 -> 433 with WP-6 step 15 (Batch B, the Settings family): every
+    # icon on a heading this step converted to card()/subhead() is now
+    # passed as an `icon='name'` MACRO ARGUMENT (settings.html and nine
+    # partials), not literal `<i data-lucide="name" class="...">` markup in
+    # the template this scan reads -- the same "moved behind a macro"
+    # effect the step-12 comment above already documents for the page-title
+    # icon, one card family later. `settings-2` itself stays findable
+    # (servers.html:54, services.html:31, both untouched by this step), so
+    # `digits >= 11` above is unaffected; only the raw SITE count drops.
+    assert sites >= 433, f"only {sites} icon sites scanned — measured 433 post-WP-6-step-15"
 
 
 def test_no_primary_button_is_left_on_the_informational_blue():

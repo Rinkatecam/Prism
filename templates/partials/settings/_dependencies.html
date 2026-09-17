@@ -9,23 +9,25 @@
 
    A div rather than a section, for the reason _health_checks.html records:
    it nests inside the Servers settings section, and every <section> on a
-   settings page has to declare which section it is. #}
+   settings page has to declare which section it is.
+
+   WP-6 step 15: the h2 STAYS an h2 (C9 -- it already owned this card) and
+   simply takes the canonical string plus a stable id, now rendered by
+   card()'s own head row. "Add Dependency" moves into controls=. #}
+{% from "partials/_card.html" import card with context %}
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 8b — Dependencies
      ═══════════════════════════════════════════════════════════════ -->
 <div class="mb-8">
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="network" class="w-5 h-5 text-accent"></i>
-      {{ t.dependencies }}
-    </h2>
-    <button data-action="toggleDepForm" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
-      <i data-lucide="plus" class="w-4 h-4"></i>
-      {{ t.add_dependency }}
-    </button>
-  </div>
-  <div class="bg-card rounded-lg p-5 border border-line">
+  {% set _dep_controls %}
+  <button data-action="toggleDepForm" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
+    <i data-lucide="plus" class="w-4 h-4"></i>
+    {{ t.add_dependency }}
+  </button>
+  {% endset %}
+  {% call card(heading=t.dependencies, icon='network',
+               heading_id='dependencies-heading', controls=_dep_controls) %}
 
     <!-- Add dependency form (hidden by default) -->
     <div id="dep-add-form" class="hidden mb-4 p-4 rounded-lg border border-dashed border-line bg-page dark:bg-page/50">
@@ -109,7 +111,7 @@
                      t.get('no_dependencies_hint',
                            'Define dependencies in Servers settings to map service relationships')) }}
     </div>
-  </div>
+  {% endcall %}
 </div>
 
 <script nonce="{{ csp_nonce }}">

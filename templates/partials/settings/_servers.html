@@ -20,14 +20,18 @@
    up serving is the defect this package has now produced four times. #}
 
 <section class="mb-8" data-settings-section="servers">
-  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="tags" class="w-5 h-5 text-accent"></i>
-    {{ t.get('tag_management', 'Tag Management') }}
-  </h2>
+  {# WP-6 step 15: this h2 STAYS an h2 (C9 -- it already owned this card;
+     the include in between it and its card is why the SECTION_HEADER_
+     BASELINE detector never flagged it -- see that ratchet's own header
+     comment) and simply takes the canonical string plus a stable id, now
+     rendered by card()'s own head row. #}
+  {% from "partials/_card.html" import card with context %}
 
   {% include "partials/settings/_server_config.html" %}
 
-  <div class="bg-card rounded-lg p-5 border border-line space-y-4">
+  {% call card(heading=t.get('tag_management', 'Tag Management'), icon='tags',
+               heading_id='tag-management-heading') %}
+  <div class="space-y-4">
     <div class="flex items-center gap-3">
       <label for="new-tag-name" class="sr-only">{{ t.get('tag_name', 'Tag name') }}</label>
       <input type="text" id="new-tag-name"
@@ -50,6 +54,7 @@
     <div id="tag-list" class="space-y-2"></div>
     <div id="no-tags"></div>
   </div>
+  {% endcall %}
 
   {# Health checks are part of configuring a server, so they sit inside
      this section rather than beside it — which is also what puts them

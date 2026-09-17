@@ -10,12 +10,15 @@
 
    The controls carry no change-detection bucket on purpose: like maintenance
    windows, this section saves itself through its own endpoint and its own
-   button rather than through the settings save bar. #}
-  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="timer-reset" class="w-5 h-5 text-accent"></i>
-    {{ t.scheduled_restarts }}
-  </h2>
-  <div class="bg-card rounded-lg p-5 border border-line space-y-5">
+   button rather than through the settings save bar.
+
+   WP-6 step 15: this h2 STAYS an h2 (C9 -- it already owned this card) and
+   simply takes the canonical string plus a stable id, now rendered by
+   card()'s own head row. #}
+{% from "partials/_card.html" import card with context %}
+  {% call card(heading=t.scheduled_restarts, icon='timer-reset',
+               heading_id='scheduled-restarts-heading') %}
+  <div class="space-y-5">
 
     <!-- Prism Service Restart -->
     <div>
@@ -133,3 +136,4 @@
       <span id="restart-save-result" class="text-xs text-muted"></span>
     </div>
   </div>
+  {% endcall %}

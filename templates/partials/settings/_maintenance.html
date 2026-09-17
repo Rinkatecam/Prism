@@ -6,21 +6,23 @@
 
    It does NOT go through the settings save bar. Windows have their own
    `/api/maintenance-windows` endpoint and save individually from the modal,
-   which is why no builder in this page's payload mentions them. #}
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="clock" class="w-5 h-5 text-accent"></i>
-      {{ t.maintenance_windows }}
-    </h2>
-    <button data-action="showAddMaintenance"
-            class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
-      <i data-lucide="plus" class="w-4 h-4"></i>
-      {{ t.add_maintenance }}
-    </button>
-  </div>
-  <div class="bg-card rounded-lg p-5 border border-line">
-    <div id="maint-list" class="space-y-2"></div>
-  </div>
+   which is why no builder in this page's payload mentions them.
+
+   WP-6 step 15: this h2 STAYS an h2 (C9 -- it already owned this card) and
+   simply takes the canonical string plus a stable id, now rendered by
+   card()'s own head row; "Add" moves into controls=. #}
+{% from "partials/_card.html" import card with context %}
+  {% set _maint_controls %}
+  <button data-action="showAddMaintenance"
+          class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
+    <i data-lucide="plus" class="w-4 h-4"></i>
+    {{ t.add_maintenance }}
+  </button>
+  {% endset %}
+  {% call card(heading=t.maintenance_windows, icon='clock',
+               heading_id='maintenance-windows-heading', controls=_maint_controls) %}
+  <div id="maint-list" class="space-y-2"></div>
+  {% endcall %}
 
 <div id="maint-modal" class="fixed inset-0 z-[60] hidden">
   <div class="fixed inset-0 bg-black/50" data-action="closeMaintModal"></div>

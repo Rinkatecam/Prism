@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "partials/_tip.html" import tip with context %}
+{% from "partials/_card.html" import card, subhead with context %}
 {% block page_title %}{{ t.settings }}{% endblock %}
 {% block page_icon %}settings{% endblock %}
 {% block content %}
@@ -55,11 +56,15 @@
      ═══════════════════════════════════════════════════════════════ -->
 {% if section == 'general' %}
 <section class="mb-8" data-settings-section="general">
-  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="settings-2" class="w-5 h-5 text-accent"></i>
-    {{ t.general }}
-  </h2>
-  <div id="general-card" class="bg-card rounded-lg p-5 border border-line space-y-4">
+  {# WP-6 step 15: the page-level theme H2 that used to sit above this div
+     (C9 -- "no page-level theme H2; every settings card owns its own
+     canonical H2") is gone. `general-card`'s id is NOT carried onto the
+     card() shell: grepped across templates/ and static/js/ before this
+     conversion and it is referenced nowhere -- a dead id, unlike
+     _detection.html's `baseline-security-card` (see that file's own
+     comment for why THAT one is preserved via card()'s new `id=`). #}
+  {% call card(heading=t.general, icon='settings-2') %}
+  <div class="space-y-4">
     {# Collector cadence rows moved to the Collector section below (2026-08-03).
        General is now purely locale + retention. #}
     <div class="flex items-center justify-between">
@@ -127,6 +132,7 @@
       </select>
     </div>
   </div>
+  {% endcall %}
 </section>
 {% endif %}
 
@@ -151,13 +157,8 @@
      ═══════════════════════════════════════════════════════════════ -->
 {% if section == 'collector' %}
 <section class="mb-8" data-settings-section="collector">
-  <div class="flex items-center gap-3 mb-4">
-    <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="cpu" class="w-5 h-5 text-accent"></i>
-      {{ t.get('collector_engine_section', 'Collector') }}
-    </h2>
-  </div>
-  <div class="bg-card rounded-lg p-5 border border-line space-y-4">
+  {% call card(heading=t.get('collector_engine_section', 'Collector'), icon='cpu') %}
+  <div class="space-y-4">
     {# All three interval rows below are *per-server* cadences. Each server
        is scheduled independently (with a small hash-derived offset so the
        fleet does not stampede on a tick boundary). Setting "60s" means
@@ -248,6 +249,7 @@
       </div>
     </div>
   </div>
+  {% endcall %}
 </section>
 {% endif %}
 
@@ -263,10 +265,9 @@
 
 {% if section == 'detection' %}
 <section class="mb-8" data-settings-section="detection">
-  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="radar" class="w-5 h-5 text-accent"></i>
-    {{ t.get('settings_section_detection', 'Detection') }}
-  </h2>
+  {# WP-6 step 15 / C9: the page-level "Detection" H2 that used to sit here
+     is gone -- _detection.html's own baseline-security-card now owns that
+     exact heading text (and icon) as its own canonical H2, via card(). #}
   {% include "partials/settings/_detection.html" %}
 </section>
 {% endif %}
@@ -283,10 +284,11 @@
      ═══════════════════════════════════════════════════════════════ -->
 {% if section == 'alerts' %}
 <section class="mb-8" data-settings-section="alerts">
-  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="bell" class="w-5 h-5 text-accent"></i>
-    {{ t.get('settings_section_alerts', 'Alerts') }}
-  </h2>
+  {# WP-6 step 15 / C9: no page-level "Alerts" H2 -- _tls.html's "TLS
+     Monitoring" and _maintenance.html's "Maintenance windows" already own
+     their own canonical H2 each; a wrapper heading here would be a third,
+     purely-duplicative "H2 nested under H2" that names nothing the two
+     real cards don't already say. #}
   {% include "partials/settings/_tls.html" %}
   {% include "partials/settings/_maintenance.html" %}
 </section>
@@ -298,19 +300,26 @@
      ═══════════════════════════════════════════════════════════════ -->
 {% if section == 'operations' %}
 <section class="mb-8" data-settings-section="operations">
-  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="wrench" class="w-5 h-5 text-accent"></i>
-    {{ t.get('settings_section_operations', 'Operations') }}
-  </h2>
-  {# Runbook DEFINITIONS. Running one is an action and stays on
-     /operations; the list is shared markup in `manage` mode. #}
-  <div class="flex items-center justify-end mb-4">
-    {% include "partials/_runbook_create_button.html" %}
-  </div>
-  <div class="bg-card rounded-lg p-5 border border-line space-y-6 mb-6">
+  {# WP-6 step 15 / C9: no page-level "Operations" H2. The runbook-
+     definitions card below now owns its own canonical H2 -- given
+     `t.runbooks`/`book-open` (the SAME key and icon operations.html's own
+     "Runbook Library" section already uses for the identical concept,
+     just in 'run' rather than 'manage' mode) rather than re-using
+     "Operations" verbatim: this section shows two unrelated cards
+     (runbook definitions, then _restarts.html's "Scheduled restarts"),
+     and the settings NAV/index already say "Operations" for the section
+     as a whole (C9: "the theme's name lives in the nav chip and in the
+     index label") -- repeating it as this card's own title would say
+     nothing "Scheduled restarts" doesn't already contradict by being
+     more specific. The create-runbook button moves into `controls=`,
+     replacing the separate flex/justify-end row it used to need. #}
+  {% set _runbook_controls %}{% include "partials/_runbook_create_button.html" %}{% endset %}
+  {% call card(heading=t.runbooks, icon='book-open', controls=_runbook_controls, extra='mb-6') %}
+  <div class="space-y-6">
     {% with mode = 'manage' %}{% include "partials/_runbook_list.html" %}{% endwith %}
     {% include "partials/_runbook_form.html" %}
   </div>
+  {% endcall %}
 
   {% include "partials/settings/_restarts.html" %}
   {# The picker the restart condition rows open. #}
@@ -368,21 +377,17 @@
      ═══════════════════════════════════════════════════════════════ -->
 {% if section == 'security' %}
 <section class="mb-8" data-settings-section="security">
-  <div class="flex items-center gap-3 mb-4">
-    <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="shield-check" class="w-5 h-5 text-accent"></i>
-      {{ t.security }}
-    </h2>
-    <span class="text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong">{{ t.get('requires_restart', 'Requires restart') }}</span>
-  </div>
-  <div class="bg-card rounded-lg p-5 border border-line space-y-5">
+  {# WP-6 step 15 / C9: no page-level "Security" H2 -- the card below owns
+     the canonical H2 (t.security/shield-check) itself; the "Requires
+     restart" pill moves into `controls=`, the head row's own slot for
+     exactly this shape (a status/action cluster beside the heading). #}
+  {% set _security_controls %}<span class="text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong">{{ t.get('requires_restart', 'Requires restart') }}</span>{% endset %}
+  {% call card(heading=t.security, icon='shield-check', controls=_security_controls) %}
+  <div class="space-y-5">
 
     <!-- TLS / HTTPS -->
     <div>
-      <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="shield" class="w-4 h-4 text-accent"></i>
-        {{ t.communication }}
-      </div>
+      {{ subhead(t.communication, icon='shield') }}
       <div class="space-y-3 pl-1">
         <div class="flex items-center justify-between">
           <div>
@@ -421,10 +426,7 @@
 
     <!-- Authentication -->
     <div>
-      <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="lock" class="w-4 h-4 text-accent"></i>
-        {{ t.authentication }}
-      </div>
+      {{ subhead(t.authentication, icon='lock') }}
       <div class="space-y-3 pl-1">
         <div class="flex items-center justify-between">
           <div>
@@ -586,6 +588,7 @@
       </div>
     </div>
   </div>
+  {% endcall %}
 </section>
 {% endif %}
 
@@ -594,10 +597,13 @@
      ═══════════════════════════════════════════════════════════════ -->
 {% if section == 'rbac' %}
 <section class="mb-8" data-settings-section="rbac">
-  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="shield-check" class="w-5 h-5 text-accent"></i>
-    {{ t.get('settings_section_permissions', 'Permissions') }}
-  </h2>
+  {# WP-6 step 15 / C9: no page-level "Permissions" H2 -- _rbac.html's own
+     four cards ("My permissions" / "Grant access" / "Current ACLs" /
+     "Pending approvals") already each own a canonical H2 of their own;
+     this wrapper heading named nothing they didn't already say between
+     them, and was the concrete "H2 nested under H2" example C9 itself
+     cites (test_design_headings.py's H-15 docstring names this exact
+     heading by location). #}
   {% include "partials/settings/_rbac.html" %}
 </section>
 {% endif %}
@@ -615,21 +621,16 @@
      ═══════════════════════════════════════════════════════════════ -->
 {% if section == 'notifications' %}
 <section class="mb-8" data-settings-section="notifications">
-  <div class="flex items-center gap-3 mb-4">
-    <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="bell" class="w-5 h-5 text-accent"></i>
-      {{ t.get('notifications', 'Notifications') }}
-    </h2>
-    <span class="text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong">{{ t.get('requires_restart', 'Requires restart') }}</span>
-  </div>
-  <div class="bg-card rounded-lg p-5 border border-line space-y-5">
+  {# WP-6 step 15 / C9: no page-level "Notifications" H2 -- the card below
+     owns the canonical H2 itself; the "Requires restart" pill moves into
+     `controls=`, same treatment as the security section above. #}
+  {% set _notifications_controls %}<span class="text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong">{{ t.get('requires_restart', 'Requires restart') }}</span>{% endset %}
+  {% call card(heading=t.get('notifications', 'Notifications'), icon='bell', controls=_notifications_controls) %}
+  <div class="space-y-5">
 
     <!-- Email Alerts -->
     <div>
-      <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="mail" class="w-4 h-4 text-accent"></i>
-        {{ t.email_alerts }}
-      </div>
+      {{ subhead(t.email_alerts, icon='mail') }}
       <div class="space-y-3 pl-1">
         <div class="flex items-center justify-between">
           <div>
@@ -725,10 +726,7 @@
 
     <!-- Microsoft Teams Webhooks -->
     <div>
-      <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="webhook" class="w-4 h-4 text-accent"></i>
-        {{ t.teams_webhook }}
-      </div>
+      {{ subhead(t.teams_webhook, icon='webhook') }}
       <div class="space-y-3 pl-1">
         <div class="flex items-center justify-between">
           <div class="text-xs text-muted">{{ t.webhook_enabled }}</div>
@@ -775,10 +773,7 @@
 
     <!-- Scheduled Reports -->
     <div>
-      <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="calendar-clock" class="w-4 h-4 text-accent"></i>
-        {{ t.scheduled_reports }}
-      </div>
+      {{ subhead(t.scheduled_reports, icon='calendar-clock') }}
       <div class="space-y-4 pl-1">
         {# The eight controls in this block carry `general-input`, and the
            move from `security-input` is a correction rather than a
@@ -863,6 +858,7 @@
       </div>
     </div>
   </div>
+  {% endcall %}
 </section>
 {% endif %}
 
@@ -871,11 +867,10 @@
      ═══════════════════════════════════════════════════════════════ -->
 {% if section == 'display' %}
 <section class="mb-8" data-settings-section="display">
-  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="sliders" class="w-5 h-5 text-accent"></i>
-    {{ t.display_preferences }}
-  </h2>
-  <div class="bg-card rounded-lg p-5 border border-line space-y-4">
+  {# WP-6 step 15 / C9: no page-level "Display Preferences" H2 -- the card
+     below owns the canonical H2 itself. #}
+  {% call card(heading=t.display_preferences, icon='sliders') %}
+  <div class="space-y-4">
     <div class="flex items-center justify-between">
       <div>
         <div class="text-sm font-medium">{{ t.default_time_range }}</div>
@@ -933,6 +928,7 @@
     </div>
     <div id="pref-saved-msg" class="hidden text-xs text-healthy">{{ t.preferences_saved }}</div>
   </div>
+  {% endcall %}
 </section>
 {% endif %}
 
