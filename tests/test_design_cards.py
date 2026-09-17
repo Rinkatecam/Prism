@@ -547,36 +547,80 @@ def test_an_inline_flex_segmented_control_is_not_mistaken_for_a_card():
 # and Dependencies p-4 cards (5 sites) are UNCHANGED and remain counted --
 # see this step's own report for the C-7/signal-icon conflict that left
 # them as hand-rolled divs rather than {% call card(...) %}.
+# Lowered 2026-09-17 by WP-6 step 18 (Batch E -- fleet and overview pages) --
+# RE-RUN, not hand-computed. dashboard.html, network.html, scan.html,
+# topology.html and partials/services_table.html all reach exactly zero and
+# are deleted, matching this ratchet's own convention:
+#   dashboard.html (5 -> 0): the onboarding p-10 dashed box converts to
+#     empty_state(card=true) (macro-invisible, -1); all four doorway tiles
+#     reach the exact §4.5 doorway string once rounded-md->rounded-lg and
+#     p-4->p-5 land (-4).
+#   network.html / scan.html (2 -> 0 each): the rounded-md notice-shaped box
+#     converts to card(extra='flex items-start gap-3 mb-4') -- its RENDERED
+#     class string still carries extra utilities beyond CARD's own (it would
+#     still count if hand-typed), but a {% call card( site has no literal
+#     class="..." text in the TEMPLATE SOURCE at all -- class_scopes() has
+#     nothing to find, so the site is invisible to this source-level scan,
+#     the identical "moved behind the macro" effect every prior step's H2
+#     conversions already rely on, just exercised here for extra= instead of
+#     heading=. The second site, the "What Prism watches today" card,
+#     dissolves entirely rather than converting: its heading moves bare onto
+#     `page` per §2.3 and its links become their own compliant doorway
+#     cards, so there is no card shell left at all. Both of the file's two
+#     pre-existing exceptions are gone, for two different reasons.
+#   topology.html (3 -> 0): the Legend and Blast Radius p-4 boxes convert to
+#     card(heading=...) (both macro-invisible, -2); the canvas wrapper's
+#     stray mb-4 moves onto the following grid's mt-4 instead, so the shell
+#     itself becomes the exact canonical CARD_FLUSH string (-1).
+#   partials/services_table.html (7 -> 0): the four p-4 stat tiles reach the
+#     exact TILE_ON_PAGE string (-4); both table shells fix rounded-md unde
+#     rounded-lg and reach exact CARD_FLUSH (-2); the unreadable-panel
+#     notice converts to card(extra='border-warning flex items-start
+#     gap-3') (macro-invisible, -1).
+# Two entries LOWER but not to zero:
+#   compliance.html (4 -> 1): the readiness-card and audit-card p-4 readouts
+#     reach the exact TILE_ON_PAGE string (-2); the findings-card doorway
+#     conversion (card-clickable, p-5, flex items-start gap-3, an exact
+#     §4.5 doorway match) also resolves (-1) -- see this step's own report
+#     for why treating findings-card as the third "clickable group" is a
+#     flagged judgement call, not a certainty. The one remaining exception
+#     is the JS-built SOP-grid card (`card.className = 'bg-card rounded-lg
+#     border border-line p-3 flex flex-col gap-2'`) -- untouched, out of
+#     this step's own named scope (only "the four bg-card p-4 readouts,
+#     plus two more in compliance.html" were named, and this is neither).
+#   servers.html (5 -> 1): all five bg-raised code-shell blocks in the
+#     WinRM setup guide gain `border border-line`, reaching the pinned
+#     "bg-raised rounded border border-line overflow-hidden" code-shell
+#     idiom (§4.5). Four resolve exactly; the fifth (the troubleshooting
+#     section's Get-Credential snippet) keeps a trailing `mt-1` for the
+#     small gap after its preceding sentence, so it stays one exception --
+#     the same "canonical string + a necessary layout utility" shape this
+#     ratchet's own history already accepts for step 16's #fleet-band mb-4.
 CARD_EXCEPTIONS: dict[str, int] = {
     "base.html": 4,
-    "compliance.html": 4,
+    "compliance.html": 1,
     "compliance_doc.html": 2,
     "compliance_sop.html": 3,
-    "dashboard.html": 5,
     "login.html": 1,
-    "network.html": 2,
     "operations.html": 4,
     "partials/_empty_state.html": 1,
     "partials/_skeletons.html": 4,
     "partials/critical_issues.html": 1,
     "partials/server_card.html": 1,
-    "partials/services_table.html": 7,
     "partials/settings/_dependencies.html": 1,
     "partials/settings/_detection.html": 2,
     "partials/settings/_health_checks.html": 1,
     "partials/settings/_restarts.html": 1,
     "partials/settings/_servers.html": 1,
     "reports.html": 1,
-    "scan.html": 2,
     "server_detail.html": 13,
-    "servers.html": 5,
+    "servers.html": 1,
     "settings.html": 8,
     "setup.html": 1,
-    "topology.html": 3,
     "workflows.html": 5,
 }
 
-CARD_EXCEPTION_TOTAL = 83
+CARD_EXCEPTION_TOTAL = 57
 
 
 def test_every_card_shaped_class_string_is_one_of_the_pinned_ones():

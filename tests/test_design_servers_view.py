@@ -190,13 +190,22 @@ def test_the_boundary_buttons_say_why_they_are_unavailable():
 def test_the_band_keeps_its_type_segments():
     """Owner's decision, and the one most likely to be "simplified" away: the
     headings are laid ALONG the band rather than flattened into a single A-Z
-    run."""
+    run.
+
+    Was `<h3` -- raised to `<h2` by DESIGN_SYSTEM_SPEC.md Part II §2.3 (WP-6
+    step 18): this heading names its own type-group's run of server cards,
+    one of the "Four H2s [that] name a grid of cards" the spec names
+    explicitly (`partials/server_grid.html:136`). The assertion this test
+    actually cares about -- a per-segment heading element still exists,
+    laid along the band -- is unchanged; only the level it was hard-coded
+    to moved, in step with the same migration test_design_headings.py's own
+    HEADING_BASELINE ratchet tracks for this exact site."""
     html = _code_only(GRID.read_text(encoding="utf-8"))
     assert "server-band-segment" in html, (
         "the band no longer has per-type segments; the grouping the grid had "
         "was kept deliberately, not inherited")
     band = html[html.index('class="server-band"'):]
-    assert "<h3" in band[:900], "the segments lost their headings"
+    assert "<h2" in band[:900], "the segments lost their headings"
 
 
 def test_both_levels_of_the_band_ordering_are_decided_server_side():

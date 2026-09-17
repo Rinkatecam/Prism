@@ -439,28 +439,59 @@ def _heading_violations() -> dict[str, int]:
 # heading=...)) both convert; the Security and Dependencies section h2s,
 # and every h3 in this file, are UNCHANGED (this step's own report explains
 # why those five p-4 cards were deliberately left as hand-rolled divs).
+# Lowered 2026-09-17 by WP-6 step 18 (Batch E -- fleet and overview pages) --
+# RE-RUN, not hand-computed. network.html, partials/critical_issues.html,
+# partials/server_grid.html, scan.html and topology.html all reach exactly
+# zero and are deleted, matching this ratchet's own convention:
+#   network.html / scan.html (1 -> 0 each): the "What Prism watches today"
+#     h2 becomes the canonical bare H2 string directly (DESIGN_SYSTEM_SPEC.md
+#     Part II §2.3's own named exception -- it sits on `page`, not inside a
+#     card, so there is no macro-invisibility effect here; the class string
+#     is simply now correct).
+#   partials/critical_issues.html (1 -> 0): "Issues Detected" becomes the
+#     canonical bare H2 string the same direct way (also a §2.3-shaped
+#     heading, though not one of the spec's own four NAMED sites -- see this
+#     step's own report for why treating it identically was a judgement
+#     call). Its icon deliberately stays text-critical, not violet -- a
+#     severity carve-out matching dashboard.html's own "Incidents" precedent
+#     -- so it is UNCHANGED in test_design_roles.py's H2_ICON_BASELINE.
+#   partials/server_grid.html (1 -> 0): the per-type-group heading changes
+#     tag from h3 to h2 (one of the spec's four named §2.3 sites) AND
+#     reaches the canonical H2 string in the same edit, so it leaves both
+#     this ratchet and would have left H3_ICON_BASELINE had it ever carried
+#     an icon (it does not).
+#   topology.html (2 -> 0): the Legend and Blast Radius headings both convert
+#     to card(heading=...) and vanish behind the macro, the same
+#     source-invisibility effect steps 15-17 already documented repeatedly.
+#     This is also what fixes test_design_headings.py's own H-16
+#     (HEADING_LEVEL_SKIP_BASELINE): /topology jumped h1 -> h3 with no h2 in
+#     between, and this step's own Files list is exactly where that ratchet's
+#     comment says the fix belongs -- card()'s default heading is a real h2,
+#     so the skip is gone along with the two now-migrated headings.
+#   dashboard.html (3 -> 1): "Welcome to Prism" (the onboarding h2) is gone
+#     entirely -- empty_state() has no heading parameter, so the greeting
+#     is not migrated so much as retired (see this step's own report); the
+#     "Overview" h2 converts to card(heading=...) and vanishes behind the
+#     macro the same way topology.html's two did. "Incidents" is UNCHANGED
+#     (out of this step's own named scope) and is the one entry that
+#     remains.
 HEADING_BASELINE: dict[str, int] = {
     "compliance.html": 2,
-    "dashboard.html": 3,
-    "network.html": 1,
+    "dashboard.html": 1,
     "operations.html": 2,
     "partials/_runbook_form.html": 1,
-    "partials/critical_issues.html": 1,
-    "partials/server_grid.html": 1,
     "partials/services_table.html": 1,
     "partials/settings/_maintenance.html": 1,
     "partials/settings/_server_config.html": 3,
     "partials/verdict_header.html": 2,
-    "scan.html": 1,
     "server_detail.html": 15,
     "servers.html": 3,
     "settings.html": 4,
     "setup.html": 1,
-    "topology.html": 2,
     "workflows.html": 16,
 }
 
-HEADING_TOTAL = 60
+HEADING_TOTAL = 52
 
 
 def test_every_heading_uses_its_level_s_canonical_classes():
@@ -919,15 +950,25 @@ def test_the_undertext_scan_actually_catches_a_violation():
 # under card(heading=...)'s invisible-to-source-text macro call instead --
 # the paragraph's own text and position in the rendered card are unchanged.
 # Entry deleted rather than kept at 0.
+# Lowered 2026-09-17 by WP-6 step 18 -- RE-RUN, not hand-computed.
+# dashboard.html reaches 0 and is deleted: the "Welcome to Prism" h2 and its
+# `{{ t.get('no_servers_yet', ...) }}` paragraph are BOTH gone -- retired
+# together by the empty_state(card=true) conversion, not merely moved (see
+# CARD_EXCEPTIONS' and DESC_LINE_BASELINE's own step-18 comments for the
+# same site from their own angles). network.html and scan.html are
+# UNCHANGED at 1 each: each file's "What Prism watches today" h2 still sits
+# directly above its own `{{ t.get('..._today_desc', ...) }}` paragraph --
+# only the heading's OWN class string and position (bare on `page` now,
+# not inside a card) changed; the heading-then-paragraph SHAPE this
+# detector keys on is identical before and after.
 HEADING_UNDERTEXT_BASELINE: dict[str, int] = {
-    "dashboard.html": 1,
     "network.html": 1,
     "partials/services_table.html": 1,
     "scan.html": 1,
     "setup.html": 1,
 }
 
-HEADING_UNDERTEXT_TOTAL = 5
+HEADING_UNDERTEXT_TOTAL = 4
 
 
 def test_no_prose_sits_directly_under_a_heading():
@@ -1217,11 +1258,15 @@ def _heading_level_skips(rendered_pages: dict[str, str]) -> dict[str, int]:
 # tracking-wider`) and consequently do NOT skip. topology.html is the one
 # sibling page in that batch that has not yet gained its own h2, which is
 # the single, precise, out-of-scope reason this fails today.
-HEADING_LEVEL_SKIP_BASELINE: dict[str, int] = {
-    "/topology": 1,
-}
+# Resolved to zero 2026-09-17 by WP-6 step 18, exactly as this ratchet's own
+# docstring predicted ("why it is step 18's job, not this one's"): the Legend
+# and Blast Radius boxes in topology.html both convert to
+# {% call card(heading=...) %}, whose default head row is a real <h2> --
+# /topology's outline is now h1 -> h2 -> ..., no jump greater than +1.
+# RE-RUN, not hand-computed; confirmed empty rather than left at a stale 1.
+HEADING_LEVEL_SKIP_BASELINE: dict[str, int] = {}
 
-HEADING_LEVEL_SKIP_TOTAL = 1
+HEADING_LEVEL_SKIP_TOTAL = 0
 
 
 def test_no_heading_level_is_skipped(rendered_pages):

@@ -17,6 +17,7 @@
    `test_no_colour_literal_outside_the_templates_that_already_have_one` fails
    the build if one appears rather than a ratchet tolerating it. #}
 {% from "partials/_empty_state.html" import empty_state %}
+{% from "partials/_card.html" import card with context %}
 
 {% set live = probes | selectattr('enabled') | list %}
 {% set switched_off = probes | rejectattr('enabled') | list %}
@@ -29,13 +30,13 @@
    tell "saw nothing bad" from "saw nothing", written in the UI layer.
    Deliberately NOT an empty state either: there is no hint, because the
    action is not the operator's. #}
-<div class="bg-card rounded-md border border-warning p-5 flex items-start gap-3">
+{% call card(extra='border-warning flex items-start gap-3') %}
   <i data-lucide="alert-triangle" class="w-5 h-5 text-warning flex-shrink-0 mt-0.5" aria-hidden="true"></i>
   <p class="text-sm text-ink">
     {{ t.get('services_unreadable',
              'The probe inventory could not be read. That is a fault in Prism, not a report about the services - nothing here says whether they are reachable.') }}
   </p>
-</div>
+{% endcall %}
 {% elif probes | length == 0 %}
 {{ empty_state(
      'activity',
@@ -49,20 +50,30 @@
    words. The card links here; two vocabularies for one measurement is how an
    operator ends up wondering which page is telling the truth. #}
 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-  <div class="bg-card rounded-md border border-line p-4">
+  <div class="bg-card rounded border border-line p-3">
     <p class="text-2xl font-bold tabular-nums text-ink">{{ summary.total }}</p>
     <p class="text-xs text-muted mt-0.5">{{ t.get('services_probes_total', 'Probes configured') }}</p>
   </div>
-  <div class="bg-card rounded-md border border-line p-4">
+  <div class="bg-card rounded border border-line p-3">
     <p class="text-2xl font-bold tabular-nums text-healthy">{{ summary.up }}</p>
     <p class="text-xs text-muted mt-0.5">{{ t.get('vitals_up', 'Reachable') }}</p>
   </div>
-  <div class="bg-card rounded-md border border-line p-4">
-    <p class="text-2xl font-bold tabular-nums {% if summary.down %}text-critical{% else %}text-faint{% endif %}">{{ summary.down }}</p>
+  {# text-faint -> text-muted on the two zero-ish readings below: a REAL
+     fix, not a like-for-like rename. §4.4/C-9 (test_design_cards.py) forbid
+     text-faint inside any tile-shaped box -- faint-on-page is 4.34:1 in
+     light mode, below AA -- and moving these p-4 readouts into TILE_ON_PAGE
+     (WP-6 step 18) put them on `page` for the first time. Caught by
+     RUNNING test_no_tile_shaped_box_carries_text_faint after the tile
+     conversion, not spotted by eye; muted clears AA on every surface in
+     the ladder (§2.3), so this is the same fix TILE_FAINT_BASELINE's own
+     settings.html sites are still waiting for, applied here instead of
+     silently widening the ratchet to match a new violation. #}
+  <div class="bg-card rounded border border-line p-3">
+    <p class="text-2xl font-bold tabular-nums {% if summary.down %}text-critical{% else %}text-muted{% endif %}">{{ summary.down }}</p>
     <p class="text-xs text-muted mt-0.5">{{ t.get('vitals_down', 'Failing') }}</p>
   </div>
-  <div class="bg-card rounded-md border border-line p-4">
-    <p class="text-2xl font-bold tabular-nums text-faint">{{ summary.unknown }}</p>
+  <div class="bg-card rounded border border-line p-3">
+    <p class="text-2xl font-bold tabular-nums text-muted">{{ summary.unknown }}</p>
     <p class="text-xs text-muted mt-0.5">{{ t.get('vitals_not_probed', 'Not probed') }}</p>
   </div>
 </div>
@@ -123,7 +134,7 @@
 {% endmacro %}
 
 {% if live | length %}
-<div class="bg-card rounded-md border border-line overflow-hidden">
+<div class="bg-card rounded-lg border border-line overflow-hidden">
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
       <thead data-sort-table="services-probes">
@@ -161,7 +172,7 @@
   <p class="text-xs text-muted mb-2">
     {{ t.get('services_switched_off_note', 'Configured but not running, and not counted above.') }}
   </p>
-  <div class="bg-card rounded-md border border-line overflow-hidden">
+  <div class="bg-card rounded-lg border border-line overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
         <tbody>{{ probe_rows(switched_off) }}</tbody>

@@ -898,11 +898,28 @@ def test_the_panel_is_reachable_by_a_pointer_when_visible():
 # None of these three lines changed its own tag, class or text by a single
 # character -- all three are pre-existing content the outer shell's own
 # removal revealed to this regex, not new description-line prose.
+# Changed 2026-09-17 by WP-6 step 18 (Batch E) -- RE-RUN, not hand-computed.
+# dashboard.html (1 -> 0, deleted): the onboarding empty state's own
+# `{{ t.get('no_servers_yet', ...) }}` paragraph is GONE, not merely moved --
+# empty_state(card=true) replaces the whole hand-rolled block, and the
+# macro's own hint line uses `opacity-60`, not a text-muted/text-faint
+# token, so it was never going to re-enter this count either. Confirmed by
+# diffing this detector's own output against `git show HEAD:dashboard.html`,
+# the same convention steps 16/17's comments above already establish.
+# compliance.html (3 -> 2): the OPPOSITE of steps 16/17's "unshadowing"
+# effect above -- this is a SHADOWING one. The findings-card doorway
+# conversion wraps its pre-existing uppercase label div (`text-xs ...
+# text-muted ... <span>{{ t.get('findings_register', ...) }}</span>`) one
+# nesting level deeper, inside a new flex-child <div class="min-w-0
+# flex-1"> (mirroring dashboard.html's own doorway tiles). The label's own
+# tag, class and text are byte-for-byte unchanged; it is now swallowed past
+# the first intervening `</div>` the identical way steps 16/17's own three
+# "unshadowed" sites were previously swallowed the other direction. Also
+# confirmed by diffing against `git show HEAD:compliance.html`.
 DESC_LINE_BASELINE: dict[str, int] = {
     "500.html": 1,
-    "compliance.html": 3,
+    "compliance.html": 2,
     "compliance_sop.html": 1,
-    "dashboard.html": 1,
     "login.html": 2,
     "monitoring.html": 1,
     "network.html": 2,
@@ -1003,7 +1020,12 @@ def test_no_description_line_outside_the_templates_that_already_have_one():
 # blind-spot losing its cover, not new content).
 # Raised from 118 to 121 by WP-6 step 17 -- same reason, three more sites,
 # same comment block.
-DESC_LINE_TOTAL = 121
+# Lowered from 121 to 119 by WP-6 step 18 -- RE-RUN, not hand-computed:
+# dashboard.html's one site is retired along with the content it described
+# (-1); compliance.html loses one to a macro-nesting shadow effect, the
+# mirror image of steps 16/17's own unshadowing (-1) -- see
+# DESC_LINE_BASELINE's own step-18 comment for both.
+DESC_LINE_TOTAL = 119
 
 
 def test_the_total_number_of_description_lines_never_rises():

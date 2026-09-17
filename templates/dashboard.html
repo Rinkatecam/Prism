@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% from "partials/_skeletons.html" import vitals_cards, banner %}
+{% from "partials/_empty_state.html" import empty_state %}
+{% from "partials/_card.html" import card with context %}
 
 {# 1280 -> 2560 is the design's range, and the top end is the requirement that
    does not survive being ignored: a wall-screen dashboard must not be a
@@ -40,22 +42,26 @@
 
 {% if server_count == 0 %}
 {# Onboarding empty state — shown to brand-new admins before any server is
-   configured. Without this, the dashboard is a sea of skeletons + nothing. #}
+   configured. Without this, the dashboard is a sea of skeletons + nothing.
+
+   WP-6 step 18: was the tree's only p-10 dashed shape (border-2 border-dashed),
+   now empty_state(card=true) per DESIGN_SYSTEM_SPEC.md Part II §7 Batch E --
+   this deletes the only p-10 and the only border-2 anywhere in the tree.
+   message/hint are the EXACT pair servers.html's own empty fleet-table state
+   already uses (line ~62) rather than new copy: same underlying situation
+   (no servers configured), same words, and zero new i18n keys to translate.
+   Real, visible losses from the conversion, flagged rather than absorbed
+   silently: the "Welcome to Prism" heading, the large accent-tinted circular
+   icon badge, and the dedicated "Add Your First Server" CTA button are all
+   gone -- empty_state() has no heading/button parameter (D3/§4's own
+   "no desc parameter, and there will not be one" logic: this macro has a
+   fixed, deliberately small shape). The operator is not stranded: the
+   Overview doorway grid a few lines below still links to /servers. #}
 <section class="mb-8">
-  <div class="bg-card rounded-md border-2 border-dashed border-line p-10 text-center">
-    <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-info/10 dark:bg-info/20 flex items-center justify-center">
-      <i data-lucide="server" class="w-8 h-8 text-accent"></i>
-    </div>
-    <h2 class="text-xl font-semibold mb-2">{{ t.get('welcome_to_prism', 'Welcome to Prism') }}</h2>
-    <p class="text-sm text-muted mb-6 max-w-md mx-auto">
-      {{ t.get('no_servers_yet', "You haven't added any servers yet. Add your first server to start monitoring CPU, RAM, disk, and Windows updates across your fleet.") }}
-    </p>
-    <a href="/servers"
-       class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors">
-      <i data-lucide="plus" class="w-4 h-4"></i>
-      {{ t.get('add_first_server', 'Add Your First Server') }}
-    </a>
-  </div>
+  {{ empty_state('server', t.no_servers,
+                 t.get('no_servers_hint_fleet',
+                       'Add the first one under Settings → Servers — nothing is collected until a server is listed there'),
+                 card=true) }}
 </section>
 {% endif %}
 
@@ -305,12 +311,19 @@
    Prism could not read them — the same distinction /services makes at
    length. #}
 <section id="overview-sections" class="mt-8">
-  <h2 class="text-sm font-semibold text-muted uppercase tracking-wider mb-3">
-    {{ t.get('dashboard_overview', 'Overview') }}
-  </h2>
+  {# WP-6 step 18: "Overview" becomes the H2 of a card WRAPPING the doorway
+     grid (DESIGN_SYSTEM_SPEC.md Part II §2.3's own explicit differentiation
+     from its three siblings below, which stay bare on `page` -- see this
+     step's own report for both passages read side by side). id/class on
+     the outer <section> are UNCHANGED: tests/test_design_overview_pages.py's
+     _doorways() slices on `<section id="overview-sections"` verbatim. #}
+  {% call card(heading=t.get('dashboard_overview', 'Overview')) %}
   <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
 
-    <a href="/servers" class="card-clickable bg-card rounded-md border border-line p-4 flex items-start gap-3">
+    {# The four doorway tiles: rounded-md -> rounded-lg (provably inert) and
+       p-4 -> p-5 (the one deliberate, visible gutter change this step's own
+       Risk line names: 16px -> 20px). Every other class is unchanged. #}
+    <a href="/servers" class="card-clickable bg-card rounded-lg border border-line p-5 flex items-start gap-3">
       <i data-lucide="server" class="w-5 h-5 text-accent flex-shrink-0 mt-0.5" aria-hidden="true"></i>
       <div class="min-w-0">
         <p class="text-sm font-semibold text-ink">{{ t.servers }}</p>
@@ -322,7 +335,7 @@
       <i data-lucide="chevron-right" class="w-4 h-4 text-muted flex-shrink-0 ml-auto mt-0.5" aria-hidden="true"></i>
     </a>
 
-    <a href="/services" class="card-clickable bg-card rounded-md border border-line p-4 flex items-start gap-3">
+    <a href="/services" class="card-clickable bg-card rounded-lg border border-line p-5 flex items-start gap-3">
       <i data-lucide="activity" class="w-5 h-5 text-accent flex-shrink-0 mt-0.5" aria-hidden="true"></i>
       <div class="min-w-0">
         <p class="text-sm font-semibold text-ink">{{ t.get('vitals_services', 'Services') }}</p>
@@ -339,7 +352,7 @@
     {# Dashed, like the quadrant cards they mirror — the app's idiom for
        "nothing here yet". No dim: that treatment was measured under AA on
        exactly these words. #}
-    <a href="/network" class="card-clickable bg-card rounded-md border border-dashed border-line p-4 flex items-start gap-3">
+    <a href="/network" class="card-clickable bg-card rounded-lg border border-dashed border-line p-5 flex items-start gap-3">
       <i data-lucide="router" class="w-5 h-5 text-muted flex-shrink-0 mt-0.5" aria-hidden="true"></i>
       <div class="min-w-0">
         <p class="text-sm font-semibold text-ink">{{ t.get('vitals_network', 'Network') }}</p>
@@ -348,7 +361,7 @@
       <i data-lucide="chevron-right" class="w-4 h-4 text-muted flex-shrink-0 ml-auto mt-0.5" aria-hidden="true"></i>
     </a>
 
-    <a href="/scan" class="card-clickable bg-card rounded-md border border-dashed border-line p-4 flex items-start gap-3">
+    <a href="/scan" class="card-clickable bg-card rounded-lg border border-dashed border-line p-5 flex items-start gap-3">
       <i data-lucide="shield" class="w-5 h-5 text-muted flex-shrink-0 mt-0.5" aria-hidden="true"></i>
       <div class="min-w-0">
         <p class="text-sm font-semibold text-ink">{{ t.get('vitals_scan', 'Scan') }}</p>
@@ -358,6 +371,7 @@
     </a>
 
   </div>
+  {% endcall %}
 </section>
 
 <script nonce="{{ csp_nonce }}">

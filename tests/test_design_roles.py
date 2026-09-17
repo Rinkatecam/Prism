@@ -202,16 +202,25 @@ H2_ICON_TOTAL = 12
 # whose icon is the macro's own H3_ICON constant (text-muted) -- a real,
 # flagged recolour (see this step's own report), not a detector blind
 # spot. Entry deleted rather than kept at 0.
+# Lowered 2026-09-17 by WP-6 step 18 -- RE-RUN, not hand-computed.
+# topology.html reaches 0: its "Blast Radius" h3 (zap icon, text-warning)
+# converts to card(heading=t.blast_radius, icon='zap') and becomes an h2 --
+# both because it leaves H3 level entirely (§2.3's own "these headings name
+# a grid/section and become h2" shape, not this specific file, but the
+# card() conversion carries it along regardless) and because its icon now
+# renders through card()'s own H2_ICON constant (text-brand). A real,
+# flagged recolour (warning amber -> violet) -- see this step's own report;
+# there is no carve-out mechanism in the macro for keeping one icon's old
+# status colour. Entry deleted rather than kept at 0.
 H3_ICON_BASELINE: dict[str, int] = {
     "operations.html": 2,
     "partials/settings/_server_config.html": 2,
     "server_detail.html": 4,
     "servers.html": 1,
     "settings.html": 4,
-    "topology.html": 1,
     "workflows.html": 1,
 }
-H3_ICON_TOTAL = 15
+H3_ICON_TOTAL = 14
 
 
 def _non_compliant_heading_icons(level: str, target: str) -> dict[str, int]:

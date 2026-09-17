@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/_card.html" import card with context %}
 {% block page_title %}{{ t.infrastructure_map }}{% endblock %}
 {% block page_icon %}network{% endblock %}
 {% block content %}
@@ -94,9 +95,15 @@
   <button type="button" class="topo-chip" data-type-filter="other">{{ t.get('other', 'Other') }}</button>
 </div>
 
-<!-- SVG canvas container -->
+<!-- SVG canvas container. Raw CARD_FLUSH literal, deliberately not routed
+     through the card() macro -- a canvas shell with no heading inside it,
+     C-4's own named carve-out (test_design_cards.py). Its bottom gutter used
+     to live here as its own mb-4; moved onto the next element's mt-4
+     instead (WP-6 step 18) so this stays byte-for-byte the canonical
+     "bg-card rounded-lg border border-line overflow-hidden" string rather
+     than one more "canonical string + extra utility" exception. -->
 <div id="topology-canvas-wrap"
-     class="bg-card rounded-lg border border-line overflow-hidden mb-4">
+     class="bg-card rounded-lg border border-line overflow-hidden">
   <svg id="topology-canvas"></svg>
 </div>
 
@@ -108,11 +115,12 @@
      the graph itself is, so a refresh never leaves a stale mirror behind. -->
 <div id="topo-tip-mirrors" class="sr-only"></div>
 
-<!-- Legend + blast radius results -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Legend + blast radius results. mt-4 replaces the canvas wrap's old
+     mb-4 (see its own comment above) -- same 16px gutter, sourced from the
+     other side so the canvas shell stays canonical. -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
   <!-- Status + type legend -->
-  <div class="bg-card rounded-lg border border-line p-4">
-    <h3 class="text-sm font-medium mb-3">{{ t.get('legend', 'Legend') }}</h3>
+  {% call card(heading=t.get('legend', 'Legend')) %}
     <div class="flex flex-wrap gap-3 text-xs mb-3">
       <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-healthy"></span> {{ t.healthy }}</span>
       <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-warning"></span> {{ t.warning }}</span>
@@ -125,16 +133,19 @@
       <span class="inline-flex items-center gap-1.5"><span class="w-5 h-0.5 bg-warning inline-block"></span> {{ t.blast_radius }}</span>
       <span class="inline-flex items-center gap-1.5 ml-2 italic">{{ t.get('topology_hint', 'Drag to pan · Scroll to zoom · Click a node to open') }}</span>
     </div>
-  </div>
+  {% endcall %}
 
-  <!-- Blast radius results -->
-  <div id="blast-radius-panel" class="bg-card rounded-lg border border-line p-4 hidden">
-    <h3 class="text-sm font-medium mb-3 flex items-center gap-1.5">
-      <i data-lucide="zap" class="w-4 h-4 text-warning"></i>
-      {{ t.blast_radius }}
-    </h3>
+  {# `id=` preserved exactly -- static/js/topology.js's loadBlastRadius()
+     reads it by getElementById to toggle the `hidden` class and to fill
+     #blast-radius-list; see this file's own JS for both call sites. `hidden`
+     moves into extra= (C-3 allows it verbatim). The zap icon was
+     text-warning before this conversion and is now card()'s own violet
+     H2_ICON -- a real, visible recolour, flagged in this step's own report
+     rather than silently absorbed (there is no carve-out mechanism for
+     "keep this one icon's old colour" inside the macro). #}
+  {% call card(heading=t.blast_radius, icon='zap', extra='hidden', id='blast-radius-panel') %}
     <div id="blast-radius-list" class="text-xs space-y-1"></div>
-  </div>
+  {% endcall %}
 </div>
 
 <script src="{{ url_for('static', filename='js/topology.js') }}"></script>

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/_card.html" import card with context %}
 
 {# ── /scan — an honest surface over an absence ───────────────────────────
 
@@ -25,7 +26,11 @@
 
 <div class="max-w-3xl">
 
-  <div class="bg-card rounded-md border border-line p-5 mb-4 flex items-start gap-3">
+  {# rounded-md -> card()'s rounded-lg is the provably-inert radius step
+     (WP-6 step 18); see network.html's identical site for the full
+     extra= rationale (this file repeats the argument rather than the
+     text, per this house's "one copy of a rule" convention). #}
+  {% call card(extra='flex items-start gap-3 mb-4') %}
     <i data-lucide="circle-slash" class="w-5 h-5 text-faint flex-shrink-0 mt-0.5" aria-hidden="true"></i>
     <div>
       <p class="text-sm font-semibold text-ink">
@@ -36,37 +41,42 @@
                  'Posture scanning will sweep the network for what should not be there and what needs updating - rogue devices, stale drivers, configuration drift. A posture check, not an attack tool.') }}
       </p>
     </div>
-  </div>
+  {% endcall %}
 
-  <section class="bg-card rounded-md border border-line p-5">
-    <h2 class="text-sm font-semibold text-muted uppercase tracking-wider mb-3">
-      {{ t.get('overview_today', 'What Prism watches today') }}
-    </h2>
-    <p class="text-sm text-muted mb-3">
-      {{ t.get('scan_today_desc',
-               'Patch state is already tracked per server, and configuration drift is detected against each server\'s own baseline. Both are per-host rather than a sweep of the network.') }}
-    </p>
-    <ul class="flex flex-wrap gap-2">
-      <li>
-        <a href="/servers" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-line text-ink hover:bg-page transition-colors">
-          <i data-lucide="server" class="w-4 h-4 text-accent" aria-hidden="true"></i>
-          {{ t.get('servers', 'Servers') }}
-        </a>
-      </li>
-      {# Compliance is an optional per-customer module. Linking to it when it
-         is switched off would send the operator to a route that is not
-         registered — the flag is already in the global template context for
-         exactly this. #}
-      {% if compliance_enabled %}
-      <li>
-        <a href="/compliance" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-line text-ink hover:bg-page transition-colors">
-          <i data-lucide="clipboard-check" class="w-4 h-4 text-accent" aria-hidden="true"></i>
-          {{ t.get('compliance', 'Compliance') }}
-        </a>
-      </li>
-      {% endif %}
-    </ul>
-  </section>
+  {# ── H2 — DESIGN_SYSTEM_SPEC.md Part II §2.3: one of the four H2s named
+     explicitly ("scan.html:44"). Names the grid of doorway cards below it,
+     stays bare on `page` with the canonical H2 string -- see network.html's
+     identical site for the full account of why the card this used to sit
+     inside dissolves entirely (WP-6 step 18). #}
+  <h2 class="text-base font-bold text-brand flex items-center gap-2 min-w-0">
+    {{ t.get('overview_today', 'What Prism watches today') }}
+  </h2>
+  <p class="text-xs text-muted mb-4">
+    {{ t.get('scan_today_desc',
+             'Patch state is already tracked per server, and configuration drift is detected against each server\'s own baseline. Both are per-host rather than a sweep of the network.') }}
+  </p>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <a href="/servers" class="card-clickable bg-card rounded-lg border border-line p-5 flex items-start gap-3">
+      <i data-lucide="server" class="w-5 h-5 text-accent flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      <div class="min-w-0">
+        <p class="text-sm font-semibold text-ink">{{ t.get('servers', 'Servers') }}</p>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-muted flex-shrink-0 ml-auto mt-0.5" aria-hidden="true"></i>
+    </a>
+    {# Compliance is an optional per-customer module. Linking to it when it
+       is switched off would send the operator to a route that is not
+       registered — the flag is already in the global template context for
+       exactly this. #}
+    {% if compliance_enabled %}
+    <a href="/compliance" class="card-clickable bg-card rounded-lg border border-line p-5 flex items-start gap-3">
+      <i data-lucide="clipboard-check" class="w-5 h-5 text-accent flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      <div class="min-w-0">
+        <p class="text-sm font-semibold text-ink">{{ t.get('compliance', 'Compliance') }}</p>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-muted flex-shrink-0 ml-auto mt-0.5" aria-hidden="true"></i>
+    </a>
+    {% endif %}
+  </div>
 
 </div>
 

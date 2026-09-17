@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/_card.html" import card with context %}
 
 {# ── /network — an honest surface over an absence ────────────────────────
 
@@ -36,8 +37,14 @@
 <div class="max-w-3xl">
 
   {# The one plain statement. It leads, because an operator who navigated here
-     from a dashboard card is asking exactly this question. #}
-  <div class="bg-card rounded-md border border-line p-5 mb-4 flex items-start gap-3">
+     from a dashboard card is asking exactly this question. rounded-md ->
+     card()'s rounded-lg is the provably-inert radius step (WP-6 step 18);
+     the flex/icon-led layout has no head row (no heading= given) so it
+     travels via extra= (C-3 allows flex/items-*/gap-*/mb-*) rather than
+     becoming a §4.5 idiom -- it is one more "canonical string + layout
+     utility" exception, the same shape step 16 already accepted for the
+     JS-filled #fleet-band's own mb-4. #}
+  {% call card(extra='flex items-start gap-3 mb-4') %}
     <i data-lucide="circle-slash" class="w-5 h-5 text-faint flex-shrink-0 mt-0.5" aria-hidden="true"></i>
     <div>
       <p class="text-sm font-semibold text-ink">
@@ -48,33 +55,43 @@
                  'Network monitoring will cover switches, firewalls, routers and access points. There is nothing to configure yet - servers and services are what Prism watches today.') }}
       </p>
     </div>
-  </div>
+  {% endcall %}
 
-  <section class="bg-card rounded-md border border-line p-5">
-    <h2 class="text-sm font-semibold text-muted uppercase tracking-wider mb-3">
-      {{ t.get('overview_today', 'What Prism watches today') }}
-    </h2>
-    <p class="text-sm text-muted mb-3">
-      {{ t.get('network_today_desc',
-               'Reachability is already measured from the server side: every health check proves a port, a URL or a host answered, and the map shows how the servers relate.') }}
-    </p>
-    {# Named routes onward. A page about an absence that offers nowhere to go
-       is the dead end the empty-state rule exists to prevent. #}
-    <ul class="flex flex-wrap gap-2">
-      <li>
-        <a href="/services" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-line text-ink hover:bg-page transition-colors">
-          <i data-lucide="activity" class="w-4 h-4 text-accent" aria-hidden="true"></i>
-          {{ t.get('vitals_services', 'Services') }}
-        </a>
-      </li>
-      <li>
-        <a href="/topology" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-line text-ink hover:bg-page transition-colors">
-          <i data-lucide="network" class="w-4 h-4 text-accent" aria-hidden="true"></i>
-          {{ t.get('infrastructure_map', 'Infrastructure Map') }}
-        </a>
-      </li>
-    </ul>
-  </section>
+  {# ── H2 — DESIGN_SYSTEM_SPEC.md Part II §2.3: one of the four H2s named
+     explicitly ("network.html:56"). This heading names the grid of doorway
+     cards below it and therefore cannot sit inside any one of them -- it
+     keeps the canonical H2 string and sits bare on `page`. The card this
+     heading and its "named routes onward" used to sit inside is GONE: its
+     rounded-md shell dissolves entirely rather than converting, because
+     nothing is left to wrap once the heading moves out and the link list
+     below becomes its own grid of doorway cards (WP-6 step 18). #}
+  <h2 class="text-base font-bold text-brand flex items-center gap-2 min-w-0">
+    {{ t.get('overview_today', 'What Prism watches today') }}
+  </h2>
+  <p class="text-xs text-muted mb-4">
+    {{ t.get('network_today_desc',
+             'Reachability is already measured from the server side: every health check proves a port, a URL or a host answered, and the map shows how the servers relate.') }}
+  </p>
+  {# Named routes onward, now doorway cards (§4.5) rather than inline pills --
+     "a page about an absence that offers nowhere to go is the dead end the
+     empty-state rule exists to prevent" reads more like the app's other
+     doorways this way. #}
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <a href="/services" class="card-clickable bg-card rounded-lg border border-line p-5 flex items-start gap-3">
+      <i data-lucide="activity" class="w-5 h-5 text-accent flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      <div class="min-w-0">
+        <p class="text-sm font-semibold text-ink">{{ t.get('vitals_services', 'Services') }}</p>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-muted flex-shrink-0 ml-auto mt-0.5" aria-hidden="true"></i>
+    </a>
+    <a href="/topology" class="card-clickable bg-card rounded-lg border border-line p-5 flex items-start gap-3">
+      <i data-lucide="network" class="w-5 h-5 text-accent flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      <div class="min-w-0">
+        <p class="text-sm font-semibold text-ink">{{ t.get('infrastructure_map', 'Infrastructure Map') }}</p>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-muted flex-shrink-0 ml-auto mt-0.5" aria-hidden="true"></i>
+    </a>
+  </div>
 
 </div>
 

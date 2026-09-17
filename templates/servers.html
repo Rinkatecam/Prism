@@ -314,7 +314,7 @@
           <div>
             <div class="font-semibold mb-1">{{ t.step_enable_winrm }}</div>
             <p class="text-muted mb-2">RDP into the server and open an <strong>{{ t.step_elevated_ps }}</strong> (Run as Administrator):</p>
-            <div class="bg-raised rounded overflow-hidden"><pre class="p-2 text-xs font-mono overflow-x-auto">winrm quickconfig -force</pre></div>
+            <div class="bg-raised rounded border border-line overflow-hidden"><pre class="p-2 text-xs font-mono overflow-x-auto">winrm quickconfig -force</pre></div>
             <p class="text-muted mt-1 text-xs">This enables the WinRM service and opens the firewall for port 5985 (HTTP).</p>
           </div>
         </div>
@@ -325,7 +325,7 @@
           <div>
             <div class="font-semibold mb-1">{{ t.step_verify_winrm }}</div>
             <p class="text-muted mb-2">Still on the target server, check the listener configuration:</p>
-            <div class="bg-raised rounded overflow-hidden"><pre class="p-2 text-xs font-mono overflow-x-auto">winrm enumerate winrm/config/listener</pre></div>
+            <div class="bg-raised rounded border border-line overflow-hidden"><pre class="p-2 text-xs font-mono overflow-x-auto">winrm enumerate winrm/config/listener</pre></div>
             <p class="text-muted mt-1 text-xs">You should see <code>Transport = HTTP</code> and <code>Port = 5985</code>.</p>
           </div>
         </div>
@@ -336,7 +336,7 @@
           <div>
             <div class="font-semibold mb-1">{{ t.step_check_auth }}</div>
             <p class="text-muted mb-2">On the target server, verify Negotiate or Kerberos is enabled:</p>
-            <div class="bg-raised rounded overflow-hidden"><pre class="p-2 text-xs font-mono overflow-x-auto">winrm get winrm/config/service/auth</pre></div>
+            <div class="bg-raised rounded border border-line overflow-hidden"><pre class="p-2 text-xs font-mono overflow-x-auto">winrm get winrm/config/service/auth</pre></div>
             <p class="text-muted mt-1 text-xs">Ensure <code>Negotiate = true</code> or <code>Kerberos = true</code> is shown.</p>
           </div>
         </div>
@@ -347,7 +347,7 @@
           <div>
             <div class="font-semibold mb-1">{{ t.step_test_connectivity }}</div>
             <p class="text-muted mb-2">On the Prism host, open PowerShell and test the connection:</p>
-            <div class="bg-raised rounded overflow-hidden"><pre class="p-2 text-xs font-mono overflow-x-auto">Test-WSMan -ComputerName SERVER.DOMAIN.COM</pre></div>
+            <div class="bg-raised rounded border border-line overflow-hidden"><pre class="p-2 text-xs font-mono overflow-x-auto">Test-WSMan -ComputerName SERVER.DOMAIN.COM</pre></div>
             <p class="text-muted mt-1 text-xs">If this fails, check firewall rules and DNS resolution. Use the FQDN, not the IP address.</p>
           </div>
         </div>
@@ -386,7 +386,7 @@
           <div class="space-y-2 text-muted">
             <div><strong>{{ t.troubleshoot_timeout }}</strong> — Check that port 5985 is open in Windows Firewall on the target. Run <code>Get-NetFirewallRule -Name "WINRM*"</code> to verify.</div>
             <div><strong>{{ t.troubleshoot_auth_failed }}</strong> — Verify the username format is <code>DOMAIN\user</code>. Test with PowerShell first:
-              <div class="bg-raised rounded overflow-hidden mt-1"><pre class="p-2 text-xs font-mono overflow-x-auto">$cred = Get-Credential
+              <div class="bg-raised rounded border border-line overflow-hidden mt-1"><pre class="p-2 text-xs font-mono overflow-x-auto">$cred = Get-Credential
 Invoke-Command -ComputerName SERVER.DOMAIN.COM -Credential $cred -ScriptBlock { $env:COMPUTERNAME }</pre></div>
             </div>
             <div><strong>{{ t.troubleshoot_host_not_found }}</strong> — Use the FQDN instead of the IP. Kerberos authentication requires the full domain name to work properly.</div>

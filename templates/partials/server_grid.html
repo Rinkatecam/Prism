@@ -133,10 +133,13 @@
      aria-label="{{ t.get('servers_band_label', 'Server cards grouped by type — scroll sideways, or use the arrow keys') }}">
   {% for type_key, servers in grouped.items() %}
   <div class="server-band-segment">
-    <h3 class="text-sm font-semibold text-muted uppercase tracking-wider mb-3">
+    {# H2 -- one of §2.3's four named "names a grid of cards" headings
+       (WP-6 step 18); was <h3>. See test_design_headings.py/test_design_
+       servers_view.py for the full account. #}
+    <h2 class="text-base font-bold text-brand flex items-center gap-2 min-w-0">
       {{ type_labels.get(type_key, type_key | replace('_', ' ') | title) }}
       <span class="text-xs font-normal">({{ servers | length }})</span>
-    </h3>
+    </h2>
     <div class="server-band-cards">
       {% for server in servers %}
       <div class="server-band-item">
