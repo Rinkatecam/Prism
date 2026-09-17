@@ -118,6 +118,24 @@
     {%- endif %}
     <i data-lucide="chevron-down" class="w-4 h-4 flex-shrink-0 text-muted" aria-hidden="true"></i>
   </button>
+  {# WP-6 step 23 (§7.3) — the mobile bottom-sheet backdrop. A plain click
+     target, `aria-hidden="true"` (never a focusable element — the sheet's
+     only ways out are Escape and the trigger; this is not a third one that
+     needs a tab stop). Kept INSIDE #settings-theme-wrap, the file's own
+     root, rather than appended elsewhere in the DOM: base.html's IIFE binds
+     its own dismissal listener directly to this id, so it does not need to
+     be "outside" the wrap for the generic outside-pointerdown listener
+     (S-11) to reach it — see that listener's own comment.
+
+     `sm:hidden` is a second, CSS-only guarantee, independent of JS: even if
+     script state is ever wrong, this can never paint at a width where the
+     panel is a popover rather than a sheet. The desktop dropdown is not
+     modal and must never darken the rest of the page. `hidden` (the plain
+     attribute, same reasoning as the panel's own below) is the JS-driven
+     half — base.html's setOpen() toggles it in the same call that toggles
+     the panel, never independently. #}
+  <div id="settings-theme-backdrop" aria-hidden="true" hidden
+       class="fixed inset-0 z-dropdown bg-black/50 sm:hidden"></div>
   {# The panel. `hidden` is the plain HTML boolean attribute, not a
      Tailwind class — step 23's JS will flip this attribute directly, and
      keeping "hidden" off the class list sidesteps any future cascade-order
@@ -126,9 +144,25 @@
      aria-labelledby points back at the trigger's own id — the button's
      aria-label already says what this menu is for, so the menu borrows
      that name rather than needing a second string that could drift from
-     the first. #}
+     the first.
+
+     WP-6 step 23 additions: `settings-theme-menu` is a hand-authored CSS
+     hook (app.css's §7.3 media rule targets the class, not the id — this
+     codebase's own convention for a CSS-owned selector alongside a
+     JS-owned id, see .pulse-cta/.stepper-btn) that only does anything below
+     640px. `data-sheet-title` reuses step 21's `settings_theme_menu_title`
+     ("Settings sections") rather than a new key — that key's own i18n.py
+     comment already earmarked it for exactly this ("a better fit for step
+     23's mobile bottom-sheet data-sheet-title than for anything step 22
+     renders"), and it is already translated in all five locales. Painted by
+     app.css as generated content (`::before`) below `sm` only, so it needs
+     no extra DOM node and cannot drift from the attribute — it is
+     decorative reinforcement for a sighted mobile reader, not the panel's
+     accessible name, which is still `aria-labelledby="settings-theme-trigger"`
+     below, unchanged from step 22. #}
   <div id="settings-theme-panel" role="menu" aria-labelledby="settings-theme-trigger" hidden
-       class="absolute left-0 mt-1 min-w-[14rem] rounded-md border border-line
+       data-sheet-title="{{ t.get('settings_theme_menu_title', 'Settings sections') }}"
+       class="settings-theme-menu absolute left-0 mt-1 min-w-[14rem] rounded-md border border-line
               bg-card shadow-lg z-dropdown py-1 transition duration-fast">
     {%- for theme in settings_themes %}
     {%- set _is_current = theme.slug == _current %}

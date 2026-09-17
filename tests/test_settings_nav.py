@@ -30,6 +30,7 @@ without any test noticing.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 import pytest
 
@@ -99,19 +100,25 @@ def test_the_registry_order_matches_the_rendered_settings_nav(client):
     defect) — happens to already match §7.1's table order exactly: general,
     collector, servers, detection, alerts, operations, security, rbac,
     compliance, notifications, display. SETTINGS_THEMES copies that verified
-    order. This test pins the finding: if a future step reorders the tab
-    strip without updating SETTINGS_THEMES to match, the rendered tabs and
-    the registry (and therefore the steps 22-23 menu) would silently
-    disagree, and this catches it."""
-    import re
+    order. This test pins the finding: if a future step reorders the menu
+    without updating SETTINGS_THEMES to match, the rendered menu and the
+    registry would silently disagree, and this catches it.
+
+    WP-6 step 23: the label dict and `<nav id="settings-section-nav">` this
+    docstring's history refers to are gone (§7.4 — replaced outright by the
+    top-bar theme menu). Repointed at `#settings-theme-panel` — the control
+    that replaced it — via the same `_settings_theme_panel_html` helper
+    S-6/S-7 further down this file already use. The underlying claim this
+    test makes (rendered order == registry order) has not changed, only
+    where that order is now rendered; S-6 below additionally proves this on
+    ALL eleven /settings/<slug> pages, not just /settings/general, so the
+    two tests are complementary rather than duplicates."""
     from routes.views import _SETTINGS_SECTIONS
 
-    html = client.get("/settings/general").get_data(as_text=True)
-    start = html.index('id="settings-section-nav"')
-    nav = html[start:html.index("</nav>", start)]
-    rendered_order = re.findall(r'href="/settings/(\w+)"', nav)
+    _, panel = _settings_theme_panel_html(client, "general")
+    rendered_order = re.findall(r'href="/settings/([a-z-]+)"', panel)
     assert rendered_order == list(_SETTINGS_SECTIONS), (
-        f"rendered tab order {rendered_order} != registry order "
+        f"rendered order {rendered_order} != registry order "
         f"{list(_SETTINGS_SECTIONS)}")
 
 
@@ -508,3 +515,131 @@ def test_the_index_labels_a_theme_from_the_registry(app_obj):
         "the servers theme's index label reverted to the sidebar's own word")
     assert "Display" not in settings_labels.values(), (
         "the display theme's index label reverted to a bare slug.title()")
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# WP-6 step 23 — the theme menu behaves, and the tab strip goes.
+# DESIGN_SYSTEM_SPEC.md Part II §8.4's own table, S-9..S-13: the five tests
+# step 22 explicitly left for this step ("there is no JS to test yet").
+#
+# All five are STATIC: they read base.html's/app.css's own source text (the
+# same slice-by-marker-comment convention test_jump_search.py already uses
+# on `Jump-to (WP-4 D8)`) or the rendered HTML through the test client. None
+# of them execute JavaScript -- this suite has no browser, and the two
+# genuinely interactive checks (a real keyboard sequence; the 375px sheet)
+# are this step's own explicitly deferred, real-browser-only verification.
+# ══════════════════════════════════════════════════════════════════════════
+
+def _settings_theme_menu_script() -> str:
+    """The initSettingsThemeMenu() IIFE's own source, sliced from its marker
+    comment to the closing `</script>` of the tag it lives in -- mirrors
+    test_jump_search.py's `src[src.index("Jump-to (WP-4 D8)"):]` exactly,
+    down to anchoring on the marker's plain text rather than its decorative
+    box-drawing dashes, which is what keeps this working regardless of
+    exactly how many trailing `─` characters follow the text on that line.
+
+    This IIFE is appended INSIDE the same nonce'd `<script>` tag that
+    already hosts Jump-to (D4's own spec text: never a new `<script>` tag,
+    and never inside a `<script src>` one -- see base.html's own comment on
+    the historical mistake three IIFEs above this one). Slicing to the next
+    `</script>` after the marker is therefore exactly this IIFE's own
+    extent: nothing else is appended after it in the same tag."""
+    base = Path(__file__).resolve().parent.parent / "templates" / "base.html"
+    src = base.read_text(encoding="utf-8")
+    start = src.index("Settings theme menu (WP-6 D4)")
+    end = src.index("</script>", start)
+    return src[start:end]
+
+
+def test_the_menu_is_keyboard_operable():
+    """S-9. The sliced IIFE names every key §7.2's keyboard contract
+    requires, a type-ahead buffer with its own reset timer, at least one
+    preventDefault, and roving-tabindex management. Static-source, like
+    every test in this section -- this cannot prove the keys actually WORK
+    (that needs a real browser, and is this step's own deferred check), only
+    that the code implementing them is genuinely present rather than merely
+    described in a comment."""
+    block = _settings_theme_menu_script()
+    for key in ("ArrowDown", "ArrowUp", "Home", "End", "Escape"):
+        assert f"'{key}'" in block, f"{key} is not handled inside the panel's keydown"
+    assert "setTimeout" in block and "500" in block, (
+        "no 500ms type-ahead buffer timer")
+    assert "clearTimeout" in block, (
+        "the buffer is never reset -- a keypress arriving after the window "
+        "would append to a stale search instead of starting a new one")
+    assert "preventDefault" in block
+    assert "setRoving" in block and "tabindex" in block, (
+        "no roving-tabindex management in the script")
+
+
+def test_escape_returns_focus_to_the_trigger():
+    """S-10. Not merely that SOME `.focus()` call exists in base.html (it
+    has several, e.g. Jump-to's own `/` shortcut) -- it has to be reachable
+    from the Escape branch specifically. `closeAndFocusTrigger` is the one
+    function the Escape case calls that is not also called from anywhere
+    else that should NOT move focus (outside pointerdown / Tab-out both
+    close via plain `close()`, deliberately -- see those tests below and
+    the function's own comment in base.html)."""
+    block = _settings_theme_menu_script()
+    escape_at = block.index("'Escape'")
+    nearby = block[escape_at:escape_at + 200]
+    assert "closeAndFocusTrigger" in nearby, (
+        "Escape does not call the function that focuses the trigger")
+
+    fn = re.search(r"function closeAndFocusTrigger\(\)\s*\{([^}]*)\}", block)
+    assert fn, "closeAndFocusTrigger is not defined"
+    assert "trigger.focus()" in fn.group(1), (
+        "closeAndFocusTrigger no longer focuses the trigger")
+
+
+def test_the_menu_closes_on_a_pointerdown_outside():
+    """S-11. A document-level pointerdown listener, scoped by
+    `.closest('#settings-theme-wrap')` -- the WRAP, not the panel alone,
+    which would treat a pointerdown on the trigger itself as "outside" and
+    close the menu out from under the very interaction opening it."""
+    block = _settings_theme_menu_script()
+    assert "addEventListener('pointerdown'" in block, (
+        "no pointerdown listener in the settings-theme-menu script")
+    assert ".closest('#settings-theme-wrap')" in block, (
+        "the outside-pointerdown check is not scoped to #settings-theme-wrap")
+
+
+def test_the_selector_is_gone_from_the_page_body(client):
+    """S-12. The eleven-tab strip is gone in full: the `<nav>`, its id, the
+    `settings_sections` loop variable that fed it, and the inline label
+    dict that translated each slug -- checked against settings.html's own
+    source AND a real rendered page, not just one or the other."""
+    settings_html_path = (Path(__file__).resolve().parent.parent
+                           / "templates" / "settings.html")
+    src = settings_html_path.read_text(encoding="utf-8")
+    assert "settings-section-nav" not in src
+    assert "settings_sections" not in src, (
+        "the router-fed loop variable that built the old nav is still here")
+    assert "'collector': t.get('collector_engine_section'" not in src, (
+        "the old nav's inline label dict is still here")
+
+    rendered = client.get("/settings/general").get_data(as_text=True)
+    assert "settings-section-nav" not in rendered
+
+
+def test_the_sheet_variant_exists_below_sm():
+    """S-13. §7.3's own literal block: fixed, pinned to the bottom, top
+    cleared, capped at 60vh, radius on the top corners only -- read from the
+    real stylesheet the browser loads, not a paraphrase of it. The rule
+    targets `.settings-theme-menu`, the class _settings_nav.html's panel
+    carries (not the `#settings-theme-panel` id JS uses), per this
+    codebase's own hand-authored-CSS-hook convention (.pulse-cta,
+    .stepper-btn)."""
+    css_path = (Path(__file__).resolve().parent.parent
+                / "static" / "css" / "app.css")
+    css = css_path.read_text(encoding="utf-8")
+    m = re.search(r"@media \(max-width: 639px\) \{(.*?)\n\}", css, re.S)
+    assert m, "no `@media (max-width: 639px)` rule in app.css"
+    block = m.group(1)
+    assert ".settings-theme-menu" in block
+    assert "position: fixed" in block
+    assert "left: 0; right: 0; bottom: 0; top: auto" in block, (
+        "the sheet is not pinned to the bottom with top cleared")
+    assert "max-height: 60vh" in block
+    assert "border-radius: 1rem 1rem 0 0" in block, (
+        "the sheet does not round only its top corners")

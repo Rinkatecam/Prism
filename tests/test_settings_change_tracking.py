@@ -694,16 +694,27 @@ def test_every_section_renders_only_when_it_is_the_active_one():
 
 def test_the_nav_is_generated_from_the_router_list():
     """A nav with its own hardcoded list drifts from the routes, and the
-    failure is a tab that 404s or a section nobody can reach."""
+    failure is a tab that 404s or a section nobody can reach.
+
+    WP-6 step 23: `<nav id="settings-section-nav">` — the always-visible
+    eleven-tab strip this test used to check — is gone from settings.html,
+    replaced by the top-bar theme menu (partials/_settings_nav.html,
+    included from base.html, not from settings.html — invisible to this
+    file's own `_markup()`, which resolves only settings.html's OWN
+    `{% include %}`s). The concern itself is not unguarded: it moved to
+    `tests/test_settings_nav.py`'s `test_every_theme_is_a_menuitem_link_to_its_own_url`
+    (S-6), which proves all eleven `/settings/<slug>` pages render all eleven
+    menu hrefs, server-side, in registry order — the same drift this test
+    used to catch, now checked against the control that replaced the nav.
+    This test's remaining job is narrower and permanent: prove the tab strip
+    never quietly comes back."""
     markup = _markup()
-    m = re.search(r'<nav id="settings-section-nav".*?</nav>', markup, re.S)
-    assert m, "the section nav is gone"
-    nav = m.group(0)
-    assert "{% for name in settings_sections %}" in nav, (
-        "the nav no longer iterates the router's list")
-    assert 'href="/settings/{{ name }}"' in nav
-    assert 'aria-current="page"' in nav, (
-        "nothing but colour says which section is active")
+    assert 'id="settings-section-nav"' not in markup, (
+        "the old tab strip is back in settings.html's own markup — WP-6 "
+        "step 23 replaced it with the top-bar theme menu "
+        "(partials/_settings_nav.html)")
+    assert "settings_sections" not in markup, (
+        "the old nav's router-fed loop variable is back in settings.html")
 
 
 def test_an_unknown_section_is_a_404_rather_than_a_silent_fallback():

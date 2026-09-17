@@ -424,13 +424,13 @@
        above (rather than repeating that guard on a sibling `{% if %}`) is
        what keeps this out of the /settings/<bad-slug> 404 case for free:
        that branch (routes/views.py's settings() view) renders "404.html"
-       directly rather than settings.html, and 404.html sets
-       page_chrome = true — so this whole block, include and all, is never
-       reached there, and `section` never needs to be defined on that path.
-       See partials/_settings_nav.html's own header comment for the fuller
-       chain of reasoning (that view is the ONLY route matching
-       '/settings*', and its only two outcomes are "a real section,
-       section defined" or "unknown slug, page_chrome page").
+       directly rather than settings.html, and 404.html is itself one of
+       D8's four chrome pages — so this whole block, include and all, is
+       never reached there, and `section` never needs to be defined on
+       that path. See partials/_settings_nav.html's own header comment
+       for the fuller chain of reasoning (that view is the ONLY route
+       matching '/settings*', and its only two outcomes are "a real
+       section, section defined" or "unknown slug, chrome-exempt page").
 
        The `›` separator lives HERE, not inside the partial: it is a layout
        decision about the BAR — what sits between its two chips — not
@@ -2084,6 +2084,248 @@
       if (e.key === '/' && !typing) { e.preventDefault(); input.focus(); input.select(); }
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); input.focus(); input.select(); }
     });
+  })();
+
+  // ── Settings theme menu (WP-6 D4) ──
+  //
+  // APG "menu button" (§7.2): one <button aria-haspopup="menu"> plus an
+  // 11-item role="menu" panel, all server-rendered by step 22's
+  // partials/_settings_nav.html — this IIFE only ever ATTACHES behaviour to
+  // markup that already exists; it never builds a row (same discipline as
+  // Jump-to just above, which this sits beside on purpose: the two are
+  // neighbouring top-bar controls, and appending here — inside THIS tag —
+  // is what the comment a few screens up this file (the one about a
+  // <script src> silently swallowing inline code) is warning against
+  // getting wrong a second time).
+  //
+  // aria-expanded is flipped ONLY inside setOpen() below. There is no
+  // second place in this whole IIFE that writes to `panel.hidden` or the
+  // trigger's aria-expanded — on purpose, so the two can never read
+  // differently (§7.2's own requirement).
+  (function initSettingsThemeMenu() {
+    const wrap = document.getElementById('settings-theme-wrap');
+    const trigger = document.getElementById('settings-theme-trigger');
+    const panel = document.getElementById('settings-theme-panel');
+    const backdrop = document.getElementById('settings-theme-backdrop');
+    // Absent on every page outside /settings — the include is guarded on
+    // request.path in this file's own header markup — so every other page
+    // returns here immediately and does nothing.
+    if (!wrap || !trigger || !panel) return;
+
+    let sheetMode = false;   // decided once, at open() — never re-read mid-interaction (§7.3)
+    let buffer = '';         // type-ahead accumulator
+    let bufferTimer = 0;
+
+    function items() {
+      return Array.prototype.slice.call(panel.querySelectorAll('[role="menuitem"]'));
+    }
+
+    function isOpen() { return !panel.hidden; }
+
+    // Roving tabindex: exactly one "0", the rest "-1" (§7.2) — this is what
+    // keeps S-6/S-7's server-rendered invariant true after the operator has
+    // actually used the arrow keys, not just on the first paint.
+    function setRoving(el) {
+      items().forEach(function (it) {
+        it.setAttribute('tabindex', it === el ? '0' : '-1');
+      });
+    }
+
+    function currentItem() {
+      return panel.querySelector('[role="menuitem"][tabindex="0"]') || items()[0];
+    }
+
+    function pageThemeItem() {
+      return panel.querySelector('[role="menuitem"][aria-current="page"]') || items()[0];
+    }
+
+    function setOpen(next) {
+      if (next === isOpen()) return;
+      panel.hidden = !next;
+      trigger.setAttribute('aria-expanded', next ? 'true' : 'false');
+      if (backdrop) backdrop.hidden = !(next && sheetMode);
+      if (next && sheetMode) {
+        // Two rendered frames, not one: the panel's CLOSED transform
+        // (translateY(100%), app.css) has to actually paint once before
+        // adding this class flips it to 0, or the browser has nothing to
+        // transition FROM — an element that goes from display:none to its
+        // final transform in the same tick does not animate, it just
+        // appears. The read (not the discard) is what forces the reflow.
+        void panel.offsetHeight;
+        panel.classList.add('settings-theme-sheet-open');
+      } else {
+        panel.classList.remove('settings-theme-sheet-open');
+      }
+      if (!next) {
+        // Whatever the operator arrowed to without choosing it stops
+        // mattering the moment the menu closes — the NEXT open (click /
+        // Enter / Space / ArrowDown) must focus the real current theme
+        // again, not wherever Home/End/arrows last parked the roving stop.
+        setRoving(pageThemeItem());
+        buffer = '';
+        if (bufferTimer) { clearTimeout(bufferTimer); bufferTimer = 0; }
+      }
+    }
+
+    function open(focusEl) {
+      if (!isOpen()) {
+        sheetMode = window.matchMedia('(max-width: 639px)').matches;
+        setOpen(true);
+      }
+      if (focusEl) { setRoving(focusEl); focusEl.focus(); }
+    }
+
+    function close() { setOpen(false); }
+
+    function closeAndFocusTrigger() {
+      close();
+      trigger.focus();
+    }
+
+    // ── the trigger ──────────────────────────────────────────────────────
+    // Enter/Space need no handler of their own: both already fire a native
+    // `click` on a real <button>, which is exactly why this control is a
+    // <button> and not a styled <div> (test_design_keyboard.py).
+    trigger.addEventListener('click', function () {
+      if (isOpen()) { close(); return; }
+      open(currentItem());
+    });
+    trigger.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); open(currentItem()); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); open(items()[items().length - 1]); }
+    });
+
+    // ── inside the open panel ───────────────────────────────────────────
+    function move(list, index) {
+      const el = list[index];
+      setRoving(el);
+      el.focus();
+    }
+
+    function normalize(s) {
+      // Locale-aware fold (document.documentElement.lang, not a bare
+      // .toLowerCase()), then NFD-decompose and drop the combining
+      // diacritical marks. This is what lets a plain "ber" keystroke match
+      // a German "Berichte"-shaped label even when the label itself carries
+      // no accent of its own, and what lets an accented label match an
+      // unaccented keystroke the other way round (§7.2).
+      return s.toLocaleLowerCase(document.documentElement.lang)
+              .normalize('NFD')
+              .replace(/\p{Diacritic}/gu, '');
+    }
+
+    function resetBuffer() {
+      buffer = '';
+      bufferTimer = 0;
+    }
+
+    function typeahead(e, list) {
+      // Printable, unmodified characters only — a Ctrl/Alt/Meta combination
+      // is a shortcut, not a letter being typed at the menu.
+      if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+      clearTimeout(bufferTimer);
+      // 500ms buffer, reset on every keypress that arrives before it
+      // expires (§7.2) — the timer is always restarted here, never merely
+      // extended, so a keypress at 499ms gets the full 500ms again.
+      buffer += normalize(e.key);
+      bufferTimer = setTimeout(resetBuffer, 500);
+
+      // A single character typed more than once ("sss") cycles every item
+      // starting with it, rather than searching for the literal "sss".
+      const repeated = buffer.length > 1 &&
+        buffer.split('').every(function (c) { return c === buffer.charAt(0); });
+      const needle = repeated ? buffer.charAt(0) : buffer;
+
+      const start = list.indexOf(document.activeElement);
+      for (let step = 1; step <= list.length; step++) {
+        // Search starts AFTER the current item, wrapping through the whole
+        // list and back to the current one last — a repeat keystroke
+        // advances to the NEXT match instead of re-finding the same one,
+        // and a current item that is the only match still gets found on
+        // the final iteration (cycle of size one).
+        const idx = (start + step) % list.length;
+        if (normalize(list[idx].textContent).indexOf(needle) === 0) {
+          move(list, idx);
+          return;
+        }
+      }
+      // No match: focus stays exactly where it is (§7.2).
+    }
+
+    panel.addEventListener('keydown', function (e) {
+      const list = items();
+      const at = list.indexOf(document.activeElement);
+      if (at === -1) return;
+
+      if (e.key === 'ArrowDown') { e.preventDefault(); move(list, (at + 1) % list.length); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); move(list, (at - 1 + list.length) % list.length); return; }
+      if (e.key === 'Home') { e.preventDefault(); move(list, 0); return; }
+      if (e.key === 'End') { e.preventDefault(); move(list, list.length - 1); return; }
+      if (e.key === 'Escape') { e.preventDefault(); closeAndFocusTrigger(); return; }
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        // Space's native behaviour on a link is to scroll the page —
+        // test_design_keyboard.py:167 names this exact failure for a
+        // different control; preventDefault() + a synthetic click is the
+        // same fix applied here.
+        e.preventDefault();
+        document.activeElement.click();
+        return;
+      }
+      if (e.key === 'Tab') {
+        if (sheetMode) {
+          // Modal in appearance (the backdrop) must be modal in behaviour:
+          // below `sm` Tab must not hand focus to whatever the backdrop is
+          // covering. Roving tabindex already limits this panel to exactly
+          // ONE reachable stop — arrow keys move the roving item, Tab does
+          // not — so "trapped" here means Tab wraps onto that same single
+          // stop rather than cycling several; there is nothing else in
+          // this panel's native tab order to cycle to. The desktop
+          // dropdown never reaches this branch (sheetMode is false there),
+          // so it is never trapped — it is not modal and must not act like
+          // it is.
+          e.preventDefault();
+          if (document.activeElement) document.activeElement.focus();
+        }
+        // Desktop: no preventDefault — Tab is left to move focus on
+        // normally, and the wrap's own focusout listener below is what
+        // notices focus left and closes the panel. Closing HERE, before
+        // the browser has actually computed where Tab is sending focus,
+        // risks racing that computation on an ancestor that is about to
+        // become display:none; reacting to the result instead of the
+        // keystroke sidesteps the race entirely.
+        return;
+      }
+      typeahead(e, list);
+    });
+
+    // Tab (or Shift+Tab) carrying focus OUT of the control closes it — the
+    // desktop half of "Tab closes" (§7.2). Never fires in sheet mode: the
+    // trap above already prevents Tab's default action there, so focus
+    // never actually leaves and this listener has nothing to react to.
+    wrap.addEventListener('focusout', function (e) {
+      if (!isOpen() || sheetMode) return;
+      if (e.relatedTarget && wrap.contains(e.relatedTarget)) return;
+      close();
+    });
+
+    // A pointerdown anywhere outside the control closes it WITHOUT moving
+    // focus (§7.2). closest() runs on the event TARGET, not on
+    // document.activeElement, so a touch that never focuses anything still
+    // counts.
+    document.addEventListener('pointerdown', function (e) {
+      if (!isOpen()) return;
+      if (e.target && e.target.closest('#settings-theme-wrap')) return;
+      close();
+    });
+
+    // The mobile-sheet backdrop lives INSIDE #settings-theme-wrap (see its
+    // own comment in _settings_nav.html for why), so the listener above
+    // treats a tap on it as "inside" and leaves it alone — this is its
+    // dismissal instead. No refocus, matching this app's one other
+    // backdrop (_prismModalCancel doesn't move focus either).
+    if (backdrop) {
+      backdrop.addEventListener('pointerdown', function () { close(); });
+    }
   })();
   </script>
 

@@ -410,9 +410,20 @@ def reports():
 #
 # Order is the CURRENT nav order — verified against the
 # `{% for name in settings_sections %}` loop in templates/settings.html
-# (which iterates this exact list) BEFORE this step touched anything, not
+# (which iterated this exact list) BEFORE this step touched anything, not
 # assumed from the spec's own §7.1 table. The two orders happen to already
 # match.
+#
+# WP-6 step 23: that loop, the render_template() keyword argument that fed
+# it, and the always-visible tab strip it built are gone from settings.html
+# and from this view's render_template() call — replaced by the top-bar
+# theme menu (partials/_settings_nav.html, included from base.html), which reads
+# SETTINGS_THEMES directly via the `settings_themes` context processor
+# instead of a per-view kwarg. The order-provenance note above is left as
+# history: it is still how this order was ORIGINALLY verified, the value
+# has not changed since, and `test_every_theme_is_a_menuitem_link_to_its_own_url`
+# (tests/test_settings_nav.py, S-6) is what now pins the rendered order
+# going forward.
 #
 # D10 correction (DESIGN_SYSTEM_SPEC.md §0.0.2, already ratified — resolves
 # Part V owner question 2): the spec's own §7.1 table still literally reads
@@ -493,7 +504,7 @@ def settings(section: str | None = None):
         servers = _config.get_servers()
         settings_data = _config.get_settings()
         return render_template("settings.html", servers=servers, settings=settings_data,
-                               section=section, settings_sections=_SETTINGS_SECTIONS)
+                               section=section)
     except Exception:
         logger.exception("Error rendering settings")
         return (render_template("500.html"), 500) if _template_exists("500.html") \

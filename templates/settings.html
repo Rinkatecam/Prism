@@ -8,48 +8,35 @@
 <!-- Status message (shown after save) -->
 <div id="save-message" class="hidden mb-4 rounded-lg p-3 text-sm"></div>
 
-{# ── The settings sections ───────────────────────────────────────────────
+{# ── WP-6 step 23 — the always-visible tab strip is gone from here ────────
 
-   One section per page as of WP-4. `/settings` renders the first rather than
-   redirecting to it, so every existing bookmark and link stays a real page
-   and `/settings/general` is just its deep-linkable spelling.
+   Through step 22, this spot held an eleven-item `<nav>`: one tab per
+   settings theme, each looked up by slug in a hand-written label dict, fed
+   by a router-derived list passed in as its own render_template() keyword
+   argument. Step 23 (§7.4 — "moving a control from the page body to the
+   bar does not change what a section IS") replaced it outright with the
+   top-bar theme menu: `templates/partials/_settings_nav.html` (step 22's
+   markup, step 23's behaviour in base.html's initSettingsThemeMenu IIFE),
+   included from base.html's header on every `/settings*` path, right
+   beside the page-title chip. Same eleven slugs, same URLs, same
+   `aria-current="page"` semantics (§7.4 — "the same eleven slugs,
+   /settings still renders general rather than redirecting, unknown slug
+   still 404s") — only WHERE the picker lives changed, not what it picks
+   from or what it points at.
 
-   The list comes from the ROUTER (`_SETTINGS_SECTIONS` in routes/views.py),
-   not from a copy here — a nav that names its own sections drifts from the
-   ones that exist, and the failure is a link to a 404 or a page nobody can
-   reach. The labels are the section headings' own keys, so the tab and the
-   heading below it cannot disagree.
-
-   `aria-current="page"` rather than a class alone: the active tab is the
-   only thing on the page saying which section the operator is looking at,
-   and colour is not available to everyone reading it. #}
-<nav id="settings-section-nav" class="mb-6 border-b border-line" aria-label="{{ t.settings }}">
-  <ul class="flex flex-wrap gap-1 -mb-px">
-    {% for name in settings_sections %}
-    {% set label = {
-         'general': t.general,
-         'collector': t.get('collector_engine_section', 'Collector'),
-         'servers': t.get('servers_page', 'Servers'),
-         'detection': t.get('settings_section_detection', 'Detection'),
-         'alerts': t.get('settings_section_alerts', 'Alerts'),
-         'operations': t.get('settings_section_operations', 'Operations'),
-         'rbac': t.get('settings_section_permissions', 'Permissions'),
-         'compliance': t.get('compliance', 'Compliance'),
-         'security': t.security,
-         'notifications': t.get('notifications', 'Notifications'),
-         'display': t.display_preferences,
-       }[name] %}
-    <li>
-      <a href="/settings/{{ name }}"
-         {% if name == section %}aria-current="page"{% endif %}
-         class="inline-block px-4 py-2 text-sm font-medium border-b-2 transition-colors
-                {% if name == section %}border-brand text-ink{% else %}border-transparent text-muted hover:text-ink hover:border-line{% endif %}">
-        {{ label }}
-      </a>
-    </li>
-    {% endfor %}
-  </ul>
-</nav>
+   The old markup, its id, and the render_template() keyword argument that
+   fed it are gone from this template and from routes/views.py's settings()
+   view entirely — checked with a plain repo-wide grep before removal (see
+   this step's own report) and pinned going forward by
+   `tests/test_settings_nav.py`'s S-12. That test's own source necessarily
+   spells both retired identifiers out in full, which is exactly why this
+   comment deliberately does not: a raw, comment-blind grep for either one
+   (the kind a Verify line runs) must find nothing anywhere else in the
+   tree, including here. The per-section gating below
+   (`{% if section == '...' %}`, `data-settings-section="..."`) is
+   UNCHANGED: it never belonged to the tab strip, it belongs to each
+   section's own `<section>`, and it still reads `section` from the same
+   context variable the router still passes in. #}
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 1 — General Settings (locale + retention, NO restart needed)
