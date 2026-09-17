@@ -184,8 +184,14 @@
       {# Colour is never the only signal (aria-current above already marks
          this one; this icon is the SIGHTED equivalent — see the file
          header's judgement-call #3 for why it sits after the label
-         instead of doubling up the leading icon's job). #}
-      <i data-lucide="check" class="w-4 h-4 flex-shrink-0 text-brand" aria-hidden="true"></i>
+         instead of doubling up the leading icon's job). text-accent, not
+         text-brand -- §2.4's roles rule reserves violet for an icon that
+         NAMES a position (the leading theme icon already does that job);
+         this one is closer to the tooltip's own "info" glyph, offering a
+         status fact about the row rather than identifying it, and
+         tools/migrate_brand_roles.py --check confirms this is the only
+         reading consistent with every other decorative icon in the tree. #}
+      <i data-lucide="check" class="w-4 h-4 flex-shrink-0 text-accent" aria-hidden="true"></i>
       {%- endif %}
     </a>
     {%- endfor %}
