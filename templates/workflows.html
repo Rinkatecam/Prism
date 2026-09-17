@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/_card.html" import card with context %}
 {% block page_title %}{{ t.get('workflows_page', 'Workflows') }}{% endblock %}
 {% block page_icon %}git-branch{% endblock %}
 {% block content %}
@@ -412,14 +413,20 @@
 </div>
 
 <!-- Execution History -->
+{# Found outside the WP-6 card-conversion batches (steps 14-20 never
+   listed workflows.html's own page body, only its modals in step 19) --
+   converted here to match every other page's own section pattern.
+   id="execution-history" moves onto the INNER div, not the card() shell:
+   static/js's own renderExecutionHistory() does
+   `document.getElementById('execution-history').innerHTML = ...`, and
+   that call must keep replacing only the body (the loading message, an
+   empty state, or the real table), never the heading row above it. #}
 <section>
-  <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">
-    <i data-lucide="history" class="w-5 h-5 text-muted"></i>
-    {{ t.get('execution_history', 'Execution History') }}
-  </h2>
-  <div id="execution-history" class="bg-card rounded-lg border border-line overflow-hidden">
+  {% call card(heading=t.get('execution_history', 'Execution History'), icon='history', flush=true) %}
+  <div id="execution-history">
     <div class="p-6 text-center text-sm text-muted">Loading...</div>
   </div>
+  {% endcall %}
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════

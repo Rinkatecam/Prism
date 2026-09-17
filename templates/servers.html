@@ -12,9 +12,25 @@
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 1 — Server List
      ═══════════════════════════════════════════════════════════════ -->
+{# Found outside the WP-6 card-conversion batches -- no step's own Files
+   list ever named servers.html's page body. NOT wrapped in {% call
+   card(...) %}, unlike every other converted section: this heading's own
+   content becomes, on demand, exactly the shape §2.3 already names as the
+   one a card cannot express -- "Cards" view is a GRID of server_card.html's
+   own bg-card cards (server_band()), and nesting that grid inside another
+   card is what C-8 forbids (confirmed live: wrapping this section broke
+   test_a_card_never_contains_another_card's rendered-DOM half on exactly
+   this route). The canonical H2 string applies directly instead, the same
+   bare-on-page treatment network.html/scan.html/partials/server_grid.html's
+   own group-label headings already use for the identical reason -- visual
+   parity with every card-wrapped section (violet, bold, sized the same),
+   without a wrapper this content cannot honestly sit inside. #}
 <section class="mb-8">
   <div class="flex items-center justify-between mb-4">
-    <h2 class="text-lg font-semibold">{{ t.servers }} ({{ servers | length }})</h2>
+    <h2 class="text-base font-bold text-brand flex items-center gap-2 min-w-0">
+      <i data-lucide="server" class="w-5 h-5 flex-shrink-0 text-brand" aria-hidden="true"></i>
+      {{ t.servers }} ({{ servers | length }})
+    </h2>
     <div class="flex items-center gap-2">
       {# ── Cards / table toggle. Remembered per session, keyed per view, the
          same mechanism and the same storage prefix as the column sort in
@@ -271,12 +287,25 @@
      the server grid's own deferred load; this region uses the ordinary
      `load` and shows the same ghost the dashboard used to.
      ═══════════════════════════════════════════════════════════════ -->
+{# Found outside the WP-6 card-conversion batches -- no step's own Files
+   list ever named servers.html's page body. NOT wrapped in {% call
+   card(...) %}: partials/activity_feed.html (loaded via the hx-get below,
+   ghosted here by feed_rows()) is ALREADY its own self-contained
+   CARD_FLUSH -- confirmed directly in step 18's own report ("already
+   exactly canonical CARD_FLUSH with empty_state(card=true) already in
+   use") and confirmed live here (wrapping this heading in a second card
+   put one CARD_FLUSH inside another, breaking
+   test_a_card_never_contains_another_card's rendered-DOM half on this
+   exact route). Same resolution as Section 1 above: canonical H2 string
+   applied directly, bare on the page, so the title reads the same as
+   every card-wrapped section without wrapping content that is already a
+   card in a second one. #}
 <section id="activity-section" class="mb-8">
-  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="activity" class="w-5 h-5 text-accent"></i>
+  <h2 class="text-base font-bold text-brand flex items-center gap-2 min-w-0">
+    <i data-lucide="activity" class="w-5 h-5 flex-shrink-0 text-brand" aria-hidden="true"></i>
     {{ t.activity_feed }}
   </h2>
-  <div hx-get="/partials/activity-feed?compact=1" hx-trigger="load, prismRefresh from:body"
+  <div class="mt-4" hx-get="/partials/activity-feed?compact=1" hx-trigger="load, prismRefresh from:body"
        hx-swap="morph:innerHTML">
     {{ feed_rows(4, compact=true) }}
   </div>

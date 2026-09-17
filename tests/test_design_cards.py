@@ -1850,10 +1850,16 @@ def test_the_section_header_row_scan_actually_catches_a_violation():
 SECTION_HEADER_BASELINE: dict[str, int] = {
     "partials/services_table.html": 1,
     "server_detail.html": 2,
-    "workflows.html": 1,
 }
 
-SECTION_HEADER_TOTAL = 4
+# 4 -> 3. Found outside the WP-6 card-conversion batches: workflows.html's
+# "Execution History" heading-above-a-card row converts to card(), which
+# is what this ratchet counts as fixed BY CONSTRUCTION the same way this
+# file's own comment above already describes for server_detail.html's
+# three sites -- the row and the card beneath it become one thing, so the
+# shape this detector matches (a heading immediately followed by a
+# sibling card) no longer exists.
+SECTION_HEADER_TOTAL = 3
 
 
 def _section_header_counts() -> dict[str, int]:

@@ -181,10 +181,13 @@ H2_ICON_BASELINE: dict[str, int] = {
     "partials/critical_issues.html": 1,
     "partials/services_table.html": 1,
     "server_detail.html": 7,
-    "servers.html": 1,
-    "workflows.html": 1,
 }
-H2_ICON_TOTAL = 12
+# 12 -> 10. Found outside the WP-6 card-conversion batches: servers.html's
+# "activity" icon (was text-accent) is now text-brand directly, on a bare
+# heading, not via a macro -- a real fix, not a source-invisibility effect.
+# workflows.html's "history" icon reaches 0 via card()'s own H2_ICON
+# constant, the usual macro-generated-pair effect. Both entries deleted.
+H2_ICON_TOTAL = 10
 
 # Lowered 2026-09-17 by WP-6 step 16 -- RE-RUN, not hand-computed.
 # operations.html falls from 3 to 2: its "Execution History" h3 (inside
@@ -253,17 +256,18 @@ def test_every_section_heading_icon_is_violet():
     companion LITERAL_TOTAL exists for in tests/test_design_tokens.py, for
     the same reason: a per-file ceiling alone still permits adding one new
     entry to the dict), and the baseline must come down when the real count
-    does. The `seen >= 12` guard is a positive control — a scan finding
+    does. The `seen >= 10` guard is a positive control — a scan finding
     fewer than that means the pattern itself has drifted, not that the tree
     improved. (Lowered from 40 to 28 by WP-6 step 15, from 28 to 15 by
-    step 16, and from 15 to 12 by step 17: every H2 icon each step converted
-    now renders violet via card()'s own H2_ICON constant, a macro-generated
-    `<h2><i>` pair that is invisible to this file's source-text scan the
-    same way it is to test_design_headings.py's HEADING_BASELINE -- see
+    step 16, from 15 to 12 by step 17, and from 12 to 10 outside any step's
+    own batch: servers.html's activity icon is fixed directly -- text-brand
+    on a bare heading, a real fix seen has to drop for -- and workflows.
+    html's history icon reaches the usual macro-generated-pair invisibility
+    via card(), same as test_design_headings.py's HEADING_BASELINE -- see
     H2_ICON_BASELINE's own comment.)"""
     counts = _non_compliant_heading_icons("2", "text-brand")
     seen = sum(counts.values())
-    assert seen >= 12, f"only {seen} <h2><i> pairs matched — the pattern has drifted"
+    assert seen >= 10, f"only {seen} <h2><i> pairs matched — the pattern has drifted"
 
     grew = {f: (H2_ICON_BASELINE.get(f, 0), n)
             for f, n in counts.items() if n > H2_ICON_BASELINE.get(f, 0)}

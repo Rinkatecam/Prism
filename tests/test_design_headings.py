@@ -495,12 +495,20 @@ HEADING_BASELINE: dict[str, int] = {
     "partials/services_table.html": 1,
     "partials/verdict_header.html": 2,
     "server_detail.html": 13,
-    "servers.html": 3,
+    "servers.html": 1,
     "setup.html": 1,
-    "workflows.html": 12,
+    "workflows.html": 11,
 }
 
-HEADING_TOTAL = 38
+# 38 -> 35. Found outside the WP-6 card-conversion batches: servers.html's
+# main "Servers (N)" and "Recent Activity" headings take the canonical H2
+# string directly (bare on the page -- see servers.html's own comment for
+# why neither is wrapped in card()); workflows.html's "Execution History"
+# takes it via card(). servers.html's remaining 1 is a pre-existing,
+# untouched <h3 class="text-lg font-semibold flex items-center gap-2">
+# inside its guide-modal, unrelated to either fix -- confirmed by running
+# the detector and reading which heading it still names, not assumed.
+HEADING_TOTAL = 35
 
 
 def test_every_heading_uses_its_level_s_canonical_classes():
