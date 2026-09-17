@@ -414,6 +414,40 @@
          class="w-5 h-5 flex-shrink-0 text-brand" aria-hidden="true"></i>
       <span class="truncate">{% block page_title %}{% endblock %}</span>
     </h1>
+    {# WP-6 D4/§3.4/§7 (step 22) — the Settings theme chip: a SECOND, PEER
+       chip immediately after the H1, never a wrapper around both (C13 —
+       "two chips, not one container"). Guarded on the URL rather than a
+       template-local flag, because this one file already serves every
+       page and already knows the request.
+
+       Nested inside the SAME `{% if not page_chrome %}` block as the H1
+       above (rather than repeating that guard on a sibling `{% if %}`) is
+       what keeps this out of the /settings/<bad-slug> 404 case for free:
+       that branch (routes/views.py's settings() view) renders "404.html"
+       directly rather than settings.html, and 404.html sets
+       page_chrome = true — so this whole block, include and all, is never
+       reached there, and `section` never needs to be defined on that path.
+       See partials/_settings_nav.html's own header comment for the fuller
+       chain of reasoning (that view is the ONLY route matching
+       '/settings*', and its only two outcomes are "a real section,
+       section defined" or "unknown slug, page_chrome page").
+
+       The `›` separator lives HERE, not inside the partial: it is a layout
+       decision about the BAR — what sits between its two chips — not
+       something intrinsic to what a theme menu is. `&rsaquo;` rather than
+       a literal › character keeps this hunk plain ASCII (house rule); it
+       is `hidden sm:inline` for the same reason the H1 chip itself clips
+       away below 640px (app.css's `#page-title` media rule) — a dangling
+       separator with nothing on its left would be worse than none.
+
+       `with context` on the include is REQUIRED — the partial reads `t`,
+       `settings_themes` and `section` from THIS render's own context, not
+       as arguments (see partials/_card.html's header comment for what
+       silently breaks without it: Undefined, not a build error). #}
+    {% if request.path.startswith('/settings') %}
+    <span aria-hidden="true" class="hidden sm:inline text-faint select-none">&rsaquo;</span>
+    {% include "partials/_settings_nav.html" with context %}
+    {% endif %}
     {% endif %}
     {#── Jump-to (D8) ──────────────────────────────────────
 

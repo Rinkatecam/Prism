@@ -1,0 +1,159 @@
+{# ── The Settings theme menu — DESIGN_SYSTEM_SPEC.md Part II §7 (D4) ──────
+
+   WP-6 step 22. MARKUP AND ARIA ONLY — no keyboard or pointer behaviour yet.
+   That is step 23's job: an IIFE in base.html's existing nonce'd <script>
+   region, opened by the marker comment `// -- Settings theme menu (WP-6
+   D4) --` (§7.2). Everything below is written so that JS can attach to it
+   unchanged: `aria-expanded="false"` and the panel's `hidden` attribute are
+   static literals here ONLY because nothing flips them yet, not because
+   the control is meant to stay permanently closed.
+
+   Included from templates/base.html's header, immediately after the H1
+   title chip, inside the SAME `{% if not page_chrome %}` guard the H1 uses,
+   plus base.html's own `{% if request.path.startswith('/settings') %}` —
+   see that include site's own comment for why nesting inside the
+   page_chrome guard is what keeps `section` (read below) always defined
+   whenever this file actually renders. The `›` separator between the two
+   chips lives in base.html itself, not here (C13 — "two chips, not one
+   container": this file's own root is the button + its panel, nothing
+   else).
+
+   `with context` is REQUIRED at the include site (already is — see
+   base.html) — this file reads `t`, `settings_themes` and `section` from
+   the CALLER's context, exactly like partials/_card.html and
+   partials/_tip.html (see either file's own header comment for the
+   silent-failure mode of forgetting it: Undefined renders as nothing,
+   never a build error).
+
+   ══════════════════════════════════════════════════════════════════════
+   JUDGEMENT CALLS made in this step (all flagged again in the step's own
+   report — read that for the full reasoning, this is the short version):
+
+   1. CURRENT THEME: `theme.slug == section`, the identical comparison
+      templates/settings.html's own tab strip already uses
+      (`{% if name == section %}`) for the identical purpose. `section` is
+      a plain slug string, passed to render_template() ONLY by
+      routes/views.py's settings() view — that view's docstring says an
+      unknown slug renders "404.html" directly instead, which sets
+      page_chrome = true and therefore never reaches this file at all
+      (nested inside the same page_chrome guard, see base.html). This is
+      the ONLY route in the app matching '/settings*' (checked: `grep -rn
+      "route(\"/settings" routes/*.py app.py` returns exactly the two
+      decorators on this one view). `section|default('')` immediately
+      below, and the `{% if current_theme %}` guard further down, are
+      belt-and-braces for a gap this step could not actually find, not a
+      discovered one — documented so the next reader does not go looking
+      for it again, and so a genuinely unreachable state still degrades to
+      "no theme highlighted" instead of a 500 if this reasoning is ever
+      wrong.
+
+   2. settings_theme_menu_aria (step 21) is used as the button's aria-label.
+      settings_theme_menu_title (also step 21, "Settings sections") is NOT
+      consumed here — it reads as a noun phrase, a better fit for step 23's
+      mobile bottom-sheet `data-sheet-title` (§7.3) than for anything this
+      step renders. No THIRD i18n key was added; both existing keys were
+      checked against this step's actual needs before writing this file.
+
+   3. The check icon renders AFTER the label (trailing), not before it —
+      the leading position already carries the theme's own identity icon,
+      and doubling that one icon up as both "which theme" and "is this the
+      current one" would put two jobs on one glyph.
+
+   4. `z-dropdown` (tools/design_tokens.Z_LAYERS — "jump panel, context
+      menu, the Settings menu (step 22)", literally named for this control)
+      is used as the real Tailwind utility class, NOT the raw `z-[60]`
+      #jump-panel still spells out in base.html today. See that Z_LAYERS
+      entry's own comment: the numeric literal is measured, not yet
+      migrated, tree-wide — 54 sites still spell a number and none of them
+      may break while the scale is only being introduced. Writing the
+      token class here instead is what tests/test_design_tokens.py's
+      Z_LITERAL_BASELINE ratchet expects of a file that has never spelled a
+      raw z-index before (a new file starts clean, and does not get an
+      entry in that dict), and it is the exact class name Z_LAYERS' own
+      comment already reserved for this control.
+
+   5. `rounded-md` (not `rounded-lg`) on the panel, matching §7.2's own
+      literal text and §3.4's "chrome is the same as the H1 chip" verbatim.
+      §4.2 separately describes `rounded-md` as a 28-use synonym for
+      `rounded-lg` being retired by find-and-replace for CARD consistency —
+      that rule is about card call sites specifically, and
+      tests/test_design_radii.py only enforces that a NAME is pinned by the
+      config and that the config has exactly two distinct VALUES, never a
+      specific spelling per call site. `md` and `lg` both resolve to the
+      same 1rem today (verified in that test file), so this is not a
+      conflict, just two legal spellings of one number, and this file's
+      spelling matches its own spec sections exactly.
+
+   6. No `focus-visible:ring-*` utility anywhere in this file. app.css's
+      global `:focus-visible` rule (§1.6 — "a single global keyboard-focus
+      ring") already matches `button`, `a` and `[tabindex]` unconditionally
+      (static/css/app.css, the block right before the EOF). That block's
+      own comment names the exact symptom of adding a second, hand-rolled
+      ring on top of it — two rings, two violets, "nothing looked broken"
+      until someone measured — so this file relies on the existing global
+      rule instead of repeating it.
+   ══════════════════════════════════════════════════════════════════════
+#}
+{% set _current = section|default('') %}
+{% set current_theme = settings_themes|selectattr('slug', 'equalto', _current)|list|first %}
+<div id="settings-theme-wrap" class="relative flex-shrink-0">
+  {# The trigger. Chrome matches the H1 chip exactly (§3.4) plus
+     hover:bg-raised, since unlike the H1 this one is a real control (§8.3
+     — the hover surface is raised, everywhere a control has one). The
+     visible label collapses at `sm` (§7.3): below 640px only the icon and
+     chevron remain, and the icon is a different shape per theme for
+     exactly that reason ("every theme has a distinct icon") — the button's
+     own aria-label is present at every width regardless, so the
+     accessible name never depends on the label span being visible. #}
+  <button type="button" id="settings-theme-trigger"
+          aria-haspopup="menu" aria-expanded="false"
+          aria-controls="settings-theme-panel"
+          aria-label="{{ t.get('settings_theme_menu_aria', 'Choose settings section') }}"
+          class="inline-flex items-center gap-2 min-w-0 max-w-[14rem] lg:max-w-[22rem]
+                 h-9 px-3 rounded-md bg-page border border-line hover:bg-raised
+                 text-sm font-semibold text-ink transition-colors duration-fast">
+    {%- if current_theme %}
+    <i data-lucide="{{ current_theme.icon }}" class="w-5 h-5 flex-shrink-0 text-brand" aria-hidden="true"></i>
+    <span class="truncate hidden sm:inline">{{ t.get(current_theme.key, current_theme.fallback) }}</span>
+    {%- endif %}
+    <i data-lucide="chevron-down" class="w-4 h-4 flex-shrink-0 text-muted" aria-hidden="true"></i>
+  </button>
+  {# The panel. `hidden` is the plain HTML boolean attribute, not a
+     Tailwind class — step 23's JS will flip this attribute directly, and
+     keeping "hidden" off the class list sidesteps any future cascade-order
+     fight between a utility class and the UA's own `[hidden]` rule
+     (memory: measure the cascade, not the palette). role="menu" +
+     aria-labelledby points back at the trigger's own id — the button's
+     aria-label already says what this menu is for, so the menu borrows
+     that name rather than needing a second string that could drift from
+     the first. #}
+  <div id="settings-theme-panel" role="menu" aria-labelledby="settings-theme-trigger" hidden
+       class="absolute left-0 mt-1 min-w-[14rem] rounded-md border border-line
+              bg-card shadow-lg z-dropdown py-1 transition duration-fast">
+    {%- for theme in settings_themes %}
+    {%- set _is_current = theme.slug == _current %}
+    {# Server-rendered, all eleven, every time — no JS builds this list.
+       Roving tabindex: the current theme is the only "0", matching the
+       APG menu-button pattern step 23 will wire up (ArrowDown opens
+       focusing this exact item — findable later by JS as
+       `[role="menuitem"][tabindex="0"]`, with no extra id needed here). #}
+    <a href="/settings/{{ theme.slug }}" role="menuitem"
+       tabindex="{{ '0' if _is_current else '-1' }}"
+       {%- if _is_current %}
+       aria-current="page"
+       {%- endif %}
+       class="flex items-center gap-2 px-3 py-2 text-sm transition-colors duration-fast
+              hover:bg-raised {{ 'text-ink font-medium' if _is_current else 'text-muted hover:text-ink' }}">
+      <i data-lucide="{{ theme.icon }}" class="w-4 h-4 flex-shrink-0 text-muted" aria-hidden="true"></i>
+      <span class="truncate flex-1">{{ t.get(theme.key, theme.fallback) }}</span>
+      {%- if _is_current %}
+      {# Colour is never the only signal (aria-current above already marks
+         this one; this icon is the SIGHTED equivalent — see the file
+         header's judgement-call #3 for why it sits after the label
+         instead of doubling up the leading icon's job). #}
+      <i data-lucide="check" class="w-4 h-4 flex-shrink-0 text-brand" aria-hidden="true"></i>
+      {%- endif %}
+    </a>
+    {%- endfor %}
+  </div>
+</div>

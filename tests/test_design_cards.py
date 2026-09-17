@@ -1132,7 +1132,37 @@ def test_the_total_number_of_banned_shadow_names_never_rises():
 # ══════════════════════════════════════════════════════════════════════════
 
 _FIXED_OR_ABS = re.compile(r"(?<!:)\b(fixed|absolute)\b")
-_Z_SIGNAL = re.compile(r"(?<!:)\bz-\[?\d|z-index\s*:\s*\d")
+
+# `_Z_SIGNAL` recognises THREE forms of overlay z-positioning, not two: a
+# Tailwind `z-[n]`/`z-n` class, an inline `style="z-index: n"`, and (WP-6
+# step 22) a NAMED tools/design_tokens.Z_LAYERS utility class (`z-dropdown`,
+# `z-modal`, ...) -- the scale that module renders into tailwind.config
+# specifically so future code can stop spelling z-index as a bare number at
+# all (Z_LAYERS' own comment names "the Settings menu (step 22)" as the
+# dropdown layer's occupant). The name set is read from `dt.Z_LAYERS`
+# itself, not hand-typed, so this stays in sync with that scale without
+# anyone needing to remember to update a second list here.
+#
+# Found missing when partials/_settings_nav.html (step 22) gave its
+# dropdown panel `absolute ... z-dropdown ... shadow-lg` -- exactly the
+# "overlay positioning on the same element" shape this detector already
+# exempts for the NUMERIC spelling (`fixed z-[70] ... shadow-lg`, this
+# file's own positive control below), but spelled with the token class the
+# design system asks new code to use instead. Without this, a correctly
+# token-authored overlay would have been reported as a page-flow violation
+# and forced into STATIC_SHADOW_BASELINE as manufactured debt -- the wrong
+# fix, since the panel genuinely IS `fixed`/`absolute`-positioned overlay
+# chrome, just not in a spelling this regex had been taught yet.
+#
+# Widening it here is low-risk in a way worth stating rather than assuming:
+# STATIC_SHADOW_BASELINE is empty (reached zero in step 20, see the module
+# docstring), so there is no OTHER file's recorded count this change could
+# invalidate, and the widening can only ever make a match MORE permissive
+# (recognise an overlay the old pattern missed), never LESS -- it cannot
+# newly flag anything that passed before.
+_Z_LAYER_NAMES = "|".join(dt.Z_LAYERS)
+_Z_SIGNAL = re.compile(
+    r"(?<!:)\bz-\[?\d|z-index\s*:\s*\d|(?<!:)\bz-(?:" + _Z_LAYER_NAMES + r")\b")
 _STATIC_SHADOW = re.compile(r"(?<![:\w-])shadow(?:-([a-z0-9]+))?\b")
 
 
@@ -1179,6 +1209,21 @@ def test_the_static_shadow_scan_actually_catches_a_violation():
     ok_hover_only = '<div class="bg-card rounded-lg border border-line overflow-hidden hover:shadow-lg">x</div>'
     assert not _static_shadow_on_card_in_flow(ok_hover_only), (
         "a hover:-conditional shadow was treated as static")
+
+    # WP-6 step 22 -- the NAMED z-layer spelling must exempt exactly like
+    # the numeric one above (same shape, `z-dropdown` in place of
+    # `z-[70]`); a `hover:z-dropdown` must NOT exempt, for the identical
+    # reason a bare `hover:z-50` was never a signal (see _Z_SIGNAL's own
+    # comment) -- a conditional layer promotion is not proof the element is
+    # always overlay-positioned.
+    ok_named_layer = '<div class="absolute z-dropdown bg-card rounded-lg border border-line p-6 shadow-lg">x</div>'
+    assert not _static_shadow_on_card_in_flow(ok_named_layer), (
+        "a named Z_LAYERS class (z-dropdown) was not recognised as overlay positioning")
+
+    bad_conditional_named_layer = (
+        '<div class="absolute hover:z-dropdown bg-card rounded-lg border border-line p-6 shadow-lg">x</div>')
+    assert _static_shadow_on_card_in_flow(bad_conditional_named_layer), (
+        "a hover:-conditional named z-layer class was wrongly treated as static overlay positioning")
 
 
 def _static_shadow_counts() -> dict[str, int]:
