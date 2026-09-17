@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/_card.html" import card with context %}
 {# WP-6 D8 — one of the four "chrome" pages: it renders the full app shell
    while nobody is signed in, and a title chip would imply otherwise. See
    setup.html's comment for the full rationale; tests/test_pages_render.py
@@ -10,7 +11,13 @@
 
 <div class="flex items-center justify-center min-h-[70vh]">
   <div class="w-full max-w-sm">
-    <div class="bg-card rounded-lg border border-line p-6 shadow-sm">
+    {# WP-6 step 20 (Batch G+H) -- was a hand-typed `bg-card rounded-lg
+       border border-line p-6 shadow-sm` (STATIC_SHADOW_BASELINE's own
+       login.html:1 site, C-6). No heading of any kind sits inside this
+       card (D8: chrome pages carry no title chip, and this is just the
+       logo/form block), so card() with no `heading=` renders the shell
+       with no head row at all -- C-4's own named carve-out. #}
+    {% call card() %}
 
       <!-- Logo -->
       <div class="text-center mb-6">
@@ -58,7 +65,7 @@
           {{ t.sign_in }}
         </button>
       </form>
-    </div>
+    {% endcall %}
 
     <p class="text-center text-xs text-muted mt-4">
       {{ t.ad_credentials_hint }}

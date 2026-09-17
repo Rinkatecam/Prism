@@ -24,7 +24,17 @@
 
     <!-- LEFT: table of contents -->
     <aside class="hidden lg:block">
-      <div id="toc-card" class="sticky top-4 bg-card rounded-lg border border-line p-4">
+      {# WP-6 step 20 (Batch G+H) -- ordering fixed to match the OTHER sticky
+         p-4 card in this same file (the metadata aside, two dozen lines
+         down): card-shell utilities first, position utilities (`sticky
+         top-4`) last, appended the same way card()'s own `extra=` composes
+         onto CARD (§4.3: "extra is appended after the canonical string, not
+         folded into it"). Was `sticky top-4 bg-card rounded-lg border
+         border-line p-4` -- the two orderings this step's own text names.
+         Still a CARD_EXCEPTIONS entry either way (p-4, not the canonical
+         p-5) -- reordering does not change the count, only makes the two
+         sticky p-4 cards in this file spell the same idiom identically. #}
+      <div id="toc-card" class="bg-card rounded-lg border border-line p-4 sticky top-4">
         <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2">
           {{ t.get('on_this_page', 'On this page') }}
         </div>

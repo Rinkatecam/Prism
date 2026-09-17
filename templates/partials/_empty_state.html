@@ -22,8 +22,21 @@
    base.html, for regions built from strings after page load. Two renderers,
    one rule — keep the markup below in step with it. #}
 
+{# WP-6 step 20 (Batch G+H) -- the `card=true` shell below is the literal
+   CARD constant (DESIGN_SYSTEM_SPEC.md Part II §4.2), typed out by hand
+   rather than imported: an empty state has no title/controls/tip, so
+   routing it through {% call card(...) %} would be ceremony around one
+   div (this step's own text, verbatim). Using the exact literal string is
+   what makes C-2 (test_every_card_shaped_class_string_is_one_of_the_
+   pinned_ones) recognise this as one of the always-allowed constants
+   rather than count it as a per-file exception, and what keeps C-4 (a raw
+   CARD literal is legal only where no heading follows) provably correct
+   here -- this macro renders no heading of any kind. Was `bg-card
+   rounded-lg p-6 border border-line` (wrong order, p-6 not p-5) --
+   CARD_EXCEPTIONS' own "partials/_empty_state.html": 1 entry, now 0 and
+   deleted. #}
 {% macro empty_state(icon, message, hint, card=false) %}
-{% if card %}<div class="bg-card rounded-lg p-6 border border-line">{% endif %}
+{% if card %}<div class="bg-card rounded-lg border border-line p-5">{% endif %}
 <div class="text-sm text-faint text-center py-8">
   <i data-lucide="{{ icon }}" class="w-8 h-8 mx-auto mb-2 opacity-30" aria-hidden="true"></i>
   <p>{{ message }}</p>

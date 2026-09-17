@@ -70,6 +70,20 @@
 {% set TILE           = "bg-raised rounded border border-line p-3" %}
 {% set TILE_ON_PAGE   = "bg-card rounded border border-line p-3" %}
 {% set TILE_LABEL     = "text-xs font-medium text-muted" %}
+{# CARD_DOC -- DESIGN_SYSTEM_SPEC.md §0.0.3 D13 (third decision round,
+   2026-09-17): "The doc surface is its own permanent idiom, not forced to
+   p-5." compliance_doc.html/compliance_sop.html's centre content column
+   keeps this wider, deliberately non-p-5 padding -- "a rendered SOP reads
+   as a document, not a dashboard panel" -- and D13 is explicit that this
+   is now tracked as a PERMANENT tests/test_design_cards.py CARD_EXCEPTIONS
+   entry (one per file), not folded into the always-allowed §4.5 idiom list
+   the way it briefly was ("pending owner question 4"). Not referenced by
+   `{{ CARD_DOC }}` from either template -- D13 says KEEP compliance_doc/
+   sop.html's own hand-typed classes exactly as they are; this constant
+   exists so the string has ONE named home in the same file as CARD/
+   CARD_FLUSH/TILE, per this step's own instruction, for whatever future
+   template needs to cite it deliberately (not silently, per D13). #}
+{% set CARD_DOC       = "bg-card rounded-lg border border-line p-6 lg:p-8" %}
 {# TIP_BTN: copied verbatim from §4.2 per this step's own instructions, but
    NOT wired into card()/subhead() below -- see the "JUDGEMENT CALL" note
    near the bottom of this comment block for why, and this step's own

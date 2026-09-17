@@ -86,13 +86,17 @@ is proven instead by a positive control rendering or scanning a SYNTHETIC
 example, per this house's standing convention that every regex/detector
 carries proof it can actually fire.
 
-TWO CONSTANTS beyond §4.2's own eighteen were added to _card.html, both
+THREE CONSTANTS beyond §4.2's own eighteen were added to _card.html, all
 documented in that file's own header comment and repeated here:
 `H3_NO_ICON` (§2.1's "without an icon, an H3 drops the <i> AND `flex
 items-center gap-2`" -- test_design_headings.py already carries the
-identical string under the identical name) and `DIALOG_TITLE` (§2.6's
+identical string under the identical name), `DIALOG_TITLE` (§2.6's
 carve-out table, needed to implement §4.3's `level` parameter -- there is
-no other place in Part II this literal string is pinned).
+no other place in Part II this literal string is pinned), and, as of WP-6
+step 20, `CARD_DOC` (§0.0.3 D13 -- the doc surface's own permanent idiom;
+see CARD_DOC's own definition below and CARD_EXCEPTIONS' step-20 comment
+for the full account, including the one, small, self-referential exception
+its own `{% set %}` line in _card.html now measures).
 
 `TIP_BTN` is declared in _card.html exactly as §4.2 lists it, but is NOT
 wired into card()/subhead()'s rendered output -- flagged prominently here
@@ -208,20 +212,44 @@ TIP_BTN = ("ps-tip inline-flex items-center justify-center align-middle w-8 h-8 
            "rounded text-muted hover:text-accent focus-visible:text-accent flex-shrink-0 "
            "transition-colors duration-fast ease-standard")
 
-# Not one of §4.2's eighteen -- see the module docstring's "TWO CONSTANTS"
+# Not one of §4.2's eighteen -- see the module docstring's "THREE CONSTANTS"
 # paragraph. §2.6's carve-out table.
 DIALOG_TITLE = "text-base font-bold text-ink flex items-center gap-2"
 
-# §4.5 -- the five things that are not cards.
+# §4.5 -- the four things that are not cards. ("Five" through step 19: see
+# CARD_DOC below for where the fifth (doc_surface) went and why.)
 NOT_CARD_IDIOMS = {
     "code_shell": "bg-raised rounded border border-line overflow-hidden",
     "notice": "rounded border border-line bg-raised p-4 flex items-start gap-3",
     "doorway": "card-clickable bg-card rounded-lg border border-line p-5 flex items-start gap-3",
     "menu": "bg-card rounded border border-line shadow-lg overflow-hidden py-1",
-    "doc_surface": "bg-card rounded-lg border border-line p-6 lg:p-8",
 }
 _NOTICE_SUFFIXES = ("border-dashed", "border-warning", "border-critical")
 _DOORWAY_SUFFIXES = ("border-dashed",)
+
+# CARD_DOC -- DESIGN_SYSTEM_SPEC.md §0.0.3 D13 (third decision round,
+# 2026-09-17), implemented WP-6 step 20. Through step 19 this string lived
+# in NOT_CARD_IDIOMS as "doc_surface", which put it in _ALLOWED_EXACT
+# UNCONDITIONALLY -- any template, anywhere, could use
+# "bg-card rounded-lg border border-line p-6 lg:p-8" and C-2 would treat it
+# as one of the five always-legal §4.5 idioms, the same free pass
+# code_shell/notice/doorway/menu get. D13 is explicit that this is wrong
+# for THIS string specifically: it names the exact ratchet variables
+# ("This is ONE permanent CARD_EXCEPTIONS entry... CARD_EXCEPTION_TOTAL
+# settles at whatever that one exception measures, not at a literal 0"),
+# not the §4.5 always-allowed mechanism. The difference is not cosmetic --
+# NOT_CARD_IDIOMS membership means test_no_card_exception_outside_the_
+# templates_that_already_have_one can NEVER catch a third file adopting
+# this shape (it would just be allowed, silently, forever); CARD_EXCEPTIONS
+# membership means it can, because a per-file ratchet's one permitted move
+# (adding a file entry) "cannot happen silently" (C-2's own docstring,
+# verbatim). compliance_doc.html/compliance_sop.html are the only two
+# templates that use it today (their centre content column, D7/D13:
+# "a rendered SOP reads as a document, not a dashboard panel") -- both now
+# carry one CARD_EXCEPTIONS entry for it (see that dict's own WP-6 step 20
+# comment), and CARD_DOC is intentionally NOT added to _ALLOWED_EXACT.
+CARD_DOC = "bg-card rounded-lg border border-line p-6 lg:p-8"
+
 _ALLOWED_EXACT = {CARD, CARD_FLUSH, TILE, TILE_ON_PAGE} | set(NOT_CARD_IDIOMS.values())
 
 
@@ -231,9 +259,11 @@ def _norm(cls: str) -> str:
 
 def _is_allowed_card_string(cls: str) -> bool:
     """C-2's allowlist: exactly one of the card/tile constants, or one of
-    the five §4.5 idioms (optionally + one named status/dashed border
+    the four §4.5 idioms (optionally + one named status/dashed border
     utility -- §4.5's own "(+ border-dashed / border-warning /
-    border-critical)" annotation on notice/doorway)."""
+    border-critical)" annotation on notice/doorway). NOT CARD_DOC -- WP-6
+    step 20 / D13 deliberately keeps that one out; see CARD_DOC's own
+    comment."""
     n = _norm(cls)
     if n in _ALLOWED_EXACT:
         return True
@@ -418,8 +448,10 @@ def _card_exception_counts() -> tuple[dict[str, int], set[str]]:
 def test_the_card_shape_scan_actually_catches_a_violation():
     """Positive control. A near-miss (one extra utility beyond the
     canonical string) must be caught; the canonical string itself, and
-    each of the five §4.5 idioms (+ their one named suffix variant), must
-    NOT be."""
+    each of the four §4.5 idioms (+ their one named suffix variant), must
+    NOT be. CARD_DOC's own converse (card-shaped, but NOT unconditionally
+    allowed) is proven separately, by
+    test_the_doc_surface_idiom_is_a_tracked_exception_not_a_free_pass."""
     assert _is_card_shaped('bg-card rounded-lg border border-line p-5 mb-2')
     assert not _is_allowed_card_string('bg-card rounded-lg border border-line p-5 mb-2')
     assert _is_allowed_card_string(CARD)
@@ -431,6 +463,23 @@ def test_the_card_shape_scan_actually_catches_a_violation():
     assert _is_allowed_card_string(NOT_CARD_IDIOMS["notice"] + " border-warning")
     assert _is_allowed_card_string(NOT_CARD_IDIOMS["doorway"] + " border-dashed")
     assert not _is_allowed_card_string(NOT_CARD_IDIOMS["notice"] + " border-brand")
+
+
+def test_the_doc_surface_idiom_is_a_tracked_exception_not_a_free_pass():
+    """D13 (WP-6 step 20). CARD_DOC is card-shaped (so C-2's scanner finds
+    it at all) but deliberately NOT in _ALLOWED_EXACT (so it does not get
+    code_shell/notice/doorway/menu's unconditional free pass) -- it is
+    legal only via a per-file CARD_EXCEPTIONS entry, proven below against
+    the two real templates that use it today."""
+    assert _is_card_shaped(CARD_DOC), "CARD_DOC no longer reads as card-shaped"
+    assert not _is_allowed_card_string(CARD_DOC), (
+        "CARD_DOC must NOT be unconditionally allowed -- D13 tracks it via "
+        "CARD_EXCEPTIONS, not via NOT_CARD_IDIOMS/_ALLOWED_EXACT")
+    for rel in ("compliance_doc.html", "compliance_sop.html"):
+        text = _code_only((TEMPLATES / rel).read_text(encoding="utf-8"))
+        spans = [cls for _a, _b, cls in _card_shaped_spans(text) if _norm(cls) == CARD_DOC]
+        assert spans, f"{rel} no longer carries the literal CARD_DOC string"
+        assert rel in CARD_EXCEPTIONS, f"{rel} must hold a CARD_EXCEPTIONS entry for CARD_DOC"
 
 
 def test_a_hover_or_dark_variant_is_not_mistaken_for_a_static_card_surface():
@@ -596,15 +645,93 @@ def test_an_inline_flex_segmented_control_is_not_mistaken_for_a_card():
 #     small gap after its preceding sentence, so it stays one exception --
 #     the same "canonical string + a necessary layout utility" shape this
 #     ratchet's own history already accepts for step 16's #fleet-band mb-4.
+# Changed 2026-09-17 by WP-6 step 20 (Batch G+H -- auth, doc surfaces,
+# skeletons; the card ratchets reach zero) -- RE-RUN, not hand-computed.
+# 57 -> 53, net of four deletions, two raises and one new file:
+#   login.html (1 -> 0, deleted): its one shadow-sm page card
+#     (STATIC_SHADOW_BASELINE's own site) converts to {% call card() %}
+#     with no heading= -- macro-invisible to this source-text scan, the
+#     same effect every prior step's card() conversions already document.
+#   setup.html (1 -> 0, deleted): identical conversion. Its own <h2>
+#     ("Welcome to Prism") stays hand-authored, unchanged, inside the
+#     caller() body rather than passed as heading= -- a flagged judgement
+#     call (see setup.html's own comment and this step's report) -- but
+#     that heading was never what this ratchet counts; only the outer
+#     shell's class string was, and that is now gone from the source text.
+#   partials/_empty_state.html (1 -> 0, deleted): its `card=true` shell was
+#     `bg-card rounded-lg p-6 border border-line` (wrong order, p-6); now
+#     the exact literal CARD string, hand-typed rather than macro-called
+#     (an empty state has no heading/controls/tip -- this step's own text,
+#     verbatim) -- so it is now VISIBLE to this scan and reads as
+#     compliant, rather than invisible behind a macro call.
+#   partials/_skeletons.html (4 -> 0, deleted): all four card-shaped ghost
+#     shells (banner(), server_band()'s per-card div, forecast_cards()'s
+#     two divs) become the exact literal CARD string the same way, for the
+#     same reason (a skeleton has no heading/controls/tip either). Two
+#     needed restructuring, not just a class edit, to reach an EXACT match
+#     rather than "CARD plus a leftover utility": banner()'s `flex
+#     items-center gap-3` moved to a new nested div (mirroring how card()
+#     itself never lets head-row layout utilities touch the outer shell);
+#     server_band()'s `server-band-item` (a bare flex-sizing class, no
+#     surface of its own -- app.css's own rule for it carries no
+#     background/border/padding) split from the card into its own outer
+#     wrapper, one level further out, matching the REAL DOM shape
+#     (server-band-item > server_card.html's own root) more closely than
+#     the single collapsed div this ghost used before. forecast_cards()'s
+#     anomaly-slot shell had its trailing `mb-4` moved onto the following
+#     grid as `mt-4` instead -- the identical technique step 18's own
+#     comment above documents for topology.html's canvas wrapper. See the
+#     file's own header comment for the resulting, deliberate, flagged
+#     pixel mismatch between two of these ghosts (banner(), server_band())
+#     and their still-unconverted real counterparts (partials/
+#     critical_issues.html's banner, partials/server_card.html), and for
+#     why forecast_cards()'s own two shells are a genuine fix instead (their
+#     real counterpart, partials/server_analytics.html, already converted
+#     to {% call card(...) %} in step 17).
+#   compliance_doc.html (2 -> 3) and compliance_sop.html (3 -> 4): the
+#     RAISE is D13 (§0.0.3, the third decision round), not new debt --
+#     "doc_surface" moved out of NOT_CARD_IDIOMS (which made it
+#     unconditionally allowed, like code_shell/notice/doorway/menu) into a
+#     tracked CARD_EXCEPTIONS entry per file (CARD_DOC, defined in
+#     _card.html and in this file, both citing D13). The doc-surface div's
+#     own HTML is BYTE-FOR-BYTE UNCHANGED in both templates -- D13 says
+#     keep it exactly as it is -- only which BUCKET the detector counts it
+#     in changed. Each file's two pre-existing sticky-card exceptions (the
+#     toc-card and the metadata/status card) are also unchanged in COUNT --
+#     this step's own text asked only that "the two orderings... collapse
+#     to one consistent ordering" (both now read
+#     `bg-card rounded-lg border border-line p-4 sticky top-4`, matching
+#     how card()'s own `extra=` composes onto CARD), which does not change
+#     how many sites are non-canonical, only that they now share one
+#     spelling instead of two. compliance_sop.html's third (unrelated,
+#     untouched) exception is its "Execution history" card (p-4, no
+#     sticky) -- not part of "the two orderings" and not mentioned by this
+#     step's own text, so left as measured.
+#   partials/_card.html (new, 1): NOT a template gaining real card-shaped
+#     markup -- CARD_DOC's own `{% set CARD_DOC = "bg-card rounded-lg
+#     border border-line p-6 lg:p-8" %}` line is, textually, indistinguishable
+#     from a real usage to dt.class_scopes()'s literal-string scan, the
+#     same mechanism C-4b relies on to see a JS-built class string. CARD/
+#     CARD_FLUSH/TILE/TILE_ON_PAGE's own `{% set %}` lines in this same
+#     file have ALWAYS matched this scan too -- they were simply never
+#     COUNTED, because each one's value trivially equals itself, which is
+#     always in _ALLOWED_EXACT. CARD_DOC is the first constant in this file
+#     whose value is deliberately NOT in _ALLOWED_EXACT (D13's whole
+#     point), so its own definition line is the first one to surface as a
+#     genuine, measured exception. Investigated rather than special-cased
+#     away: silencing it would mean teaching the shared dt.class_scopes()
+#     detector (used by several OTHER ratchets in other files) to ignore
+#     _card.html's own {% set %} lines, a change to shared detector logic
+#     this step's own scope does not include and that could hide a real
+#     future mistake (a constant accidentally defined with a genuinely
+#     wrong, uninspected value) behind the same blind spot.
 CARD_EXCEPTIONS: dict[str, int] = {
     "base.html": 4,
     "compliance.html": 1,
-    "compliance_doc.html": 2,
-    "compliance_sop.html": 3,
-    "login.html": 1,
+    "compliance_doc.html": 3,
+    "compliance_sop.html": 4,
     "operations.html": 4,
-    "partials/_empty_state.html": 1,
-    "partials/_skeletons.html": 4,
+    "partials/_card.html": 1,
     "partials/critical_issues.html": 1,
     "partials/server_card.html": 1,
     "partials/settings/_dependencies.html": 1,
@@ -616,11 +743,34 @@ CARD_EXCEPTIONS: dict[str, int] = {
     "server_detail.html": 13,
     "servers.html": 1,
     "settings.html": 8,
-    "setup.html": 1,
     "workflows.html": 5,
 }
 
-CARD_EXCEPTION_TOTAL = 57
+# NOT 0 -- see D13 (§0.0.3) and this file's own module docstring. The
+# doc-surface exception (compliance_doc.html + compliance_sop.html, 1 each
+# = 2) is a PERMANENT, ratified, named exception this step deliberately
+# does not drive further. It is also not the ONLY reason this total is
+# nonzero: 51 of these 53 sites sit in files entirely OUTSIDE step 20's own
+# Files list (server_detail.html, settings.html, workflows.html,
+# operations.html, base.html, reports.html, compliance.html, servers.html,
+# and five partials/settings/*.html + two more partials), each one a
+# real, previously-measured, DELIBERATE residue from steps 15-18's own
+# scope decisions (documented in this dict's own history above -- e.g.
+# "the Security and Dependencies p-4 cards... UNCHANGED... see this step's
+# own report for the C-7/signal-icon conflict", "the three Danger Zone
+# action boxes... deliberately NOT converted"). This step's Files list
+# (login.html, setup.html, compliance_doc.html, compliance_sop.html,
+# partials/_skeletons.html, partials/_empty_state.html,
+# tests/test_design_cards.py) does not touch any of those files, so this
+# total cannot honestly read as "0, or exactly the doc-surface exception"
+# the way the spec's own original Step 20 Verify line puts it -- that line
+# describes the programme's eventual end state, not what is reachable from
+# this step's own scope alone. Measured, not asserted: see this step's own
+# report for the full per-file accounting against that expectation (C28's
+# own seeding rule: a measurement outside its expectation is investigated
+# and reported, never silently reconciled by editing the expectation to
+# match).
+CARD_EXCEPTION_TOTAL = 53
 
 
 def test_every_card_shaped_class_string_is_one_of_the_pinned_ones():
@@ -925,14 +1075,21 @@ def _shadow_name_counts() -> dict[str, int]:
 # (login.html/setup.html's shadow-sm, operations.html/servers.html's
 # leftover shadow-xl/2xl) are untouched, out of this step's own Files
 # list -- steps 19 named exactly six files, not these four.
+# 5 -> 3 with WP-6 step 20 (Batch G+H): login.html and setup.html both
+# convert their one shadow-sm page card to {% call card() %} (C-6's
+# rendered `_static_shadow_counts()` and this file's OWN pytest run both
+# confirm 0 for both files, not merely inferred from the class-string
+# edit) -- card()'s own CARD constant carries no shadow utility of any
+# kind. Both entries deleted rather than kept at 0, matching this
+# ratchet's own convention. operations.html/servers.html are untouched,
+# same reason as step 19's own comment above: neither is in step 20's
+# Files list.
 SHADOW_NAME_BASELINE: dict[str, int] = {
-    "login.html": 1,
     "operations.html": 2,
     "servers.html": 1,
-    "setup.html": 1,
 }
 
-SHADOW_NAME_TOTAL = 5
+SHADOW_NAME_TOTAL = 3
 
 
 def test_no_shadow_xl_2xl_sm_inner_or_none_class_appears_in_any_template():
@@ -1053,12 +1210,19 @@ def _static_shadow_counts() -> dict[str, int]:
 # TODAY's STATIC_SHADOW-adjacent sites happen to need the inline-style
 # form, since they all use a real z-[n] class, but the detector supports
 # both so a future card-shaped overlay styled either way is still seen.)
-STATIC_SHADOW_BASELINE: dict[str, int] = {
-    "login.html": 1,
-    "setup.html": 1,
-}
+# 2 -> 0 with WP-6 step 20 (Batch G+H): login.html and setup.html -- this
+# ratchet's only two sites, ever, both the identical `bg-card rounded-lg
+# border border-line p-6 shadow-sm` -- both convert to {% call card() %}.
+# Both entries reach exactly zero (re-run, not assumed: this file's own
+# pytest run confirms `_static_shadow_counts()` returns {}) and are
+# deleted, leaving the dict empty rather than removing the ratchet's own
+# machinery -- the four companion tests below stay in place, vacuous but
+# real, the identical posture C-1/C-3/C-7/C-8/C-10 already document for a
+# mechanism proven only against synthetic examples until a real site
+# exists again.
+STATIC_SHADOW_BASELINE: dict[str, int] = {}
 
-STATIC_SHADOW_TOTAL = 2
+STATIC_SHADOW_TOTAL = 0
 
 
 def test_no_card_in_page_flow_carries_a_static_shadow():

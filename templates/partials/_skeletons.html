@@ -27,6 +27,10 @@
      stat card    p-5(40) + icon row 16 + mb-1 4 + metric 24 + border 2 = 86
      server card  p-4(32) + header 20 + mb-3 12 + metrics 128
                   + sparkline 24 + mt-2 8 + stamp 16 + mt-2 8         = 248
+                  (still the REAL card's own measurement -- partials/
+                  server_card.html has not converted to p-5. The GHOST
+                  below is p-5/256 as of WP-6 step 20; see that step's own
+                  note above for why the two now differ by 8px.)
      feed card    scroller capped at max-h-[400px] + border 2         = 402
      feed row     py-3(24) + content 57                               =  81
 
@@ -37,7 +41,50 @@
    composites.
 
    Every macro's root carries `aria-hidden="true"`. A ghost has nothing to
-   say to a screen reader, and it is removed wholesale by the swap. #}
+   say to a screen reader, and it is removed wholesale by the swap.
+
+   WP-6 step 20 (Batch G+H) -- every card-shaped ghost shell below (there
+   were four: banner(), server_band()'s per-card div, and forecast_cards()'s
+   two divs) now reads the EXACT literal CARD string from
+   DESIGN_SYSTEM_SPEC.md Part II §4.2 (`bg-card rounded-lg border
+   border-line p-5`), typed out by hand rather than imported or run through
+   {% call card(...) %} -- this step's own text, verbatim: "a skeleton has
+   no title, controls or tip, so {% call card() %} would be ceremony around
+   one div." Using the literal string (not a macro call, not a `{{ CARD }}`
+   Jinja reference) is deliberate: it is what makes C-2
+   (test_every_card_shaped_class_string_is_one_of_the_pinned_ones) actually
+   SEE and recognise these four shells as compliant, and what keeps C-4 (a
+   raw CARD literal is legal only where no heading follows) a real,
+   non-vacuous check for this file -- none of these four ghosts renders a
+   heading. A `{{ CARD }}` reference would have worked for C-2 too (it
+   composes to the same rendered class) but would have made the shell
+   invisible to a source-text scan instead of provably matching it, the
+   same distinction this file's own module docstring draws for C-4.
+
+   JUDGEMENT CALL, flagged prominently in this step's own report: two of
+   the four shells (banner(), server_band()'s per-card div) ghost a REAL
+   element that has NOT itself converted to p-5 yet and is not in this
+   step's own Files list to convert --
+   partials/critical_issues.html's ALL-HEALTHY banner and
+   partials/server_card.html's server-card are both still their
+   pre-existing `p-4` (deliberately left that way by step 17's own report,
+   in server_card.html's case). Pinning the GHOST to the canonical p-5
+   while its real counterpart stays p-4 trades a mismatch that did not
+   exist before (both ghost and real were p-4) for one that does now (ghost
+   20px, real 16px -- 4px per edge, 8px of total width/height from padding
+   alone) -- the opposite direction from every other measurement fix this
+   file documents. This step's own text pins ALL card-shaped skeleton
+   shells to the canonical constants with no carve-out for "unless its real
+   counterpart hasn't converted", and the size of the drift (a few pixels,
+   for a placeholder shown only until the real content swaps in) is judged
+   small enough that following the explicit instruction outranks pixel-
+   perfect ghost matching here. It self-corrects the day those two real
+   elements convert. forecast_cards()'s two shells are the opposite case --
+   a genuine FIX, not a new trade-off: partials/server_analytics.html's real
+   anomaly card and forecast tiles were converted to {% call card(...) %}
+   (p-5) back in step 17, and nobody updated this file's ghost to match at
+   the time, so it had already silently drifted to the wrong padding before
+   today. #}
 
 {# `stat_cards()` used to be here — the ghost for the four flat stat boxes at
    the top of the dashboard, measured at 86px against a real 86px. The
@@ -89,9 +136,16 @@
    A tall ghost that resolves to a one-line banner is a worse jump than a
    short ghost that resolves to a grid. #}
 {% macro banner() %}
-<div class="bg-card rounded-lg p-4 border border-line flex items-center gap-3" aria-hidden="true">
-  <div class="skeleton w-5 h-5 flex-shrink-0"></div>
-  <div class="skeleton h-4 w-48"></div>
+{# The outer shell is the literal CARD string and nothing else (see the
+   file header's WP-6 step 20 note) -- the icon+text row's own `flex
+   items-center gap-3` moves to a nested div instead of living on the
+   shell, the same way card()'s own head row keeps layout utilities off
+   the outer <div class="{{ CARD }}"> and inside a child. #}
+<div class="bg-card rounded-lg border border-line p-5" aria-hidden="true">
+  <div class="flex items-center gap-3">
+    <div class="skeleton w-5 h-5 flex-shrink-0"></div>
+    <div class="skeleton h-4 w-48"></div>
+  </div>
 </div>
 {% endmacro %}
 
@@ -138,32 +192,49 @@
   <div class="server-band">
     <div class="server-band-cards">
       {% for _ in range(n) %}
-      <div class="server-band-item bg-card rounded-lg p-4 border border-line">
-        <div class="flex items-center justify-between mb-3">
-          <div class="skeleton h-4 w-28"></div>
-          <div class="skeleton h-5 w-16 flex-shrink-0"></div>
-        </div>
-        <div class="space-y-2">
-          {% for _m in range(4) %}
-          <div>
-            {# h-4: the real label/value line is `text-xs`, whose line box is
-               16px. h-3 made each of the four rows 4px short — 16px on the
-               card, which is most of the 15px that was still missing after
-               the sparkline and stamp were added. #}
-            <div class="flex justify-between mb-0.5">
-              <div class="skeleton h-4 w-12"></div>
-              <div class="skeleton h-4 w-10"></div>
-            </div>
-            <div class="skeleton h-2 w-full"></div>
+      {# `server-band-item` (real layout: partials/server_grid.html) is a
+         flex-sizing wrapper ONLY -- app.css's own .server-band-item rule is
+         `flex: 0 0 auto; width: clamp(...)`, no surface/border/padding of
+         its own. The real card look comes from a SEPARATE nested element
+         (partials/server_card.html's own root). Splitting the ghost the
+         same way -- a plain server-band-item wrapper around a nested div
+         carrying the literal CARD string -- both matches that real DOM
+         shape and keeps the outer wrapper's class free of anything
+         card-shaped, so the CARD literal below reads as compliant to C-2
+         rather than as "server-band-item bg-card ..." (a string that would
+         never exactly match CARD no matter how the utilities inside it
+         were ordered). See the file header's WP-6 step 20 note for the
+         resulting, deliberate, small ghost/real padding mismatch (this
+         nested div is now p-5; partials/server_card.html's real root is
+         still p-4, unconverted). #}
+      <div class="server-band-item">
+        <div class="bg-card rounded-lg border border-line p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div class="skeleton h-4 w-28"></div>
+            <div class="skeleton h-5 w-16 flex-shrink-0"></div>
           </div>
-          {% endfor %}
-        </div>
-        {# The sparkline strip and the timestamp. Both were missing from the
-           first cut of this macro, which is how the card came out 57px
-           short. #}
-        <div class="skeleton mt-2 h-6"></div>
-        <div class="flex justify-end mt-2">
-          <div class="skeleton h-4 w-16"></div>
+          <div class="space-y-2">
+            {% for _m in range(4) %}
+            <div>
+              {# h-4: the real label/value line is `text-xs`, whose line box is
+                 16px. h-3 made each of the four rows 4px short — 16px on the
+                 card, which is most of the 15px that was still missing after
+                 the sparkline and stamp were added. #}
+              <div class="flex justify-between mb-0.5">
+                <div class="skeleton h-4 w-12"></div>
+                <div class="skeleton h-4 w-10"></div>
+              </div>
+              <div class="skeleton h-2 w-full"></div>
+            </div>
+            {% endfor %}
+          </div>
+          {# The sparkline strip and the timestamp. Both were missing from the
+             first cut of this macro, which is how the card came out 57px
+             short. #}
+          <div class="skeleton mt-2 h-6"></div>
+          <div class="flex justify-end mt-2">
+            <div class="skeleton h-4 w-16"></div>
+          </div>
         </div>
       </div>
       {% endfor %}
@@ -200,16 +271,34 @@
 <div aria-hidden="true">
   {# The anomalies slot. On a healthy fleet this resolves to a single
      empty-state card, which is the common case worth reserving; on a host
-     with anomalies it becomes a grid and grows further. #}
-  <div class="bg-card rounded-lg p-6 border border-line mb-4">
+     with anomalies it becomes a grid and grows further.
+
+     WP-6 step 20 -- the `mb-4` that used to sit on this shell's own class
+     (`bg-card rounded-lg p-6 border border-line mb-4`) moved onto the grid
+     below instead (`mt-4`), the identical technique WP-6 step 18's own
+     CARD_EXCEPTIONS comment documents for topology.html's canvas wrapper:
+     the SPACING between the two regions is unchanged, but the shell's own
+     class is now the exact literal CARD string with no trailing utility,
+     so it reads as compliant to C-2 rather than "CARD + mb-4" (a string
+     C-2's allowlist has no general "constant plus a layout utility" rule
+     for -- only card()'s own `extra=` composes that way, and this shell is
+     deliberately NOT going through the macro, per the file header's WP-6
+     step 20 note). Padding also drops from p-6 to the canonical p-5: this
+     is a genuine fix, not a new trade-off -- partials/server_analytics.html's
+     real anomaly card converted to {% call card(...) %} (p-5) in step 17,
+     and this ghost was never updated to match at the time. #}
+  <div class="bg-card rounded-lg border border-line p-5">
     <div class="skeleton w-8 h-8 mx-auto"></div>
     <div class="skeleton skeleton-text mx-auto mt-2" style="width:11rem"></div>
   </div>
   {# Same column expression as partials/server_analytics.html. If that one
      changes, this has to change with it — they are two halves of one layout. #}
-  <div class="grid grid-cols-1 sm:grid-cols-2 {{ 'lg:grid-cols-4' if forecast_count >= 4 else ('lg:grid-cols-3' if forecast_count == 3 else ('lg:grid-cols-2' if forecast_count == 2 else '')) }} gap-3">
+  <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 {{ 'lg:grid-cols-4' if forecast_count >= 4 else ('lg:grid-cols-3' if forecast_count == 3 else ('lg:grid-cols-2' if forecast_count == 2 else '')) }} gap-3">
     {% for _ in range(forecast_count) %}
-    <div class="bg-card rounded-lg p-4 border border-line">
+    {# p-4 -> p-5 (WP-6 step 20): same real-drift fix as the anomaly slot
+       above -- partials/server_analytics.html's real forecast tiles are
+       {% call card() %} (p-5) since step 17. #}
+    <div class="bg-card rounded-lg border border-line p-5">
       <div class="flex items-center gap-2 mb-2">
         <div class="skeleton w-4 h-4"></div>
         <div class="skeleton h-5 w-20"></div>
