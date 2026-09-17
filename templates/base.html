@@ -1254,7 +1254,20 @@
      untouched here. Flagged prominently in this step's own report: this is
      the app's single most shared dialog (74 call sites per Part I §13.1),
      so restructuring its wrapper divs -- even though verified safe -- is
-     called out for review rather than landed silently. #}
+     called out for review rather than landed silently.
+
+     Correction, found post-commit: the step-19 edit that introduced the
+     comment above dropped the #prism-modal-overlay backdrop div itself
+     while restructuring this block, even though the comment claims it
+     survives as "the separate #prism-modal-overlay sibling above". It did
+     not -- six getElementById('prism-modal-overlay') call sites below
+     (and in the confirm/prompt flow's other functions) were left
+     dereferencing a null element, throwing on every dismissal of every
+     confirm/prompt modal in the app (74 call sites). Restored verbatim
+     from the pre-step-19 markup; no other part of this element needed to
+     change for step 19's own purpose (only #prism-modal's own shadow/ARIA
+     changed, never this one). #}
+  <div id="prism-modal-overlay" class="fixed inset-0 z-[9998] hidden bg-black/50 backdrop-blur-sm" data-action="modal-backdrop"></div>
   <div id="prism-modal" role="dialog" aria-modal="true" aria-labelledby="prism-modal-title" class="fixed z-[9999] hidden top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md shadow-lg border border-line w-[380px] overflow-hidden">
     <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-line">
       <div class="flex items-center gap-3">
