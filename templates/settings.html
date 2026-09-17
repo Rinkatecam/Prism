@@ -323,12 +323,27 @@
 
   {% include "partials/settings/_restarts.html" %}
   {# The picker the restart condition rows open. #}
+  {# WP-6 step 19: shadow-xl -> shadow-lg; HEAD_FLUSH-shaped header
+     (flex-wrap items-start gap-3 px-5 py-4, was p-4 with items-center and
+     no wrap/gap); role="dialog" aria-modal="true"
+     aria-labelledby="picker-title" on the panel (picker-title already
+     existed -- reused, not renamed); DIALOG_TITLE class + data-role on the
+     title (icon keeps its own text-accent, unaffected by the title text
+     going to text-ink). FOOTER: this row has a bulk-select cluster on the
+     LEFT (select-all/clear) and the dialog's own actions on the RIGHT
+     (cancel/apply) -- FOOTER_FLUSH's own string is `justify-end` (a single
+     trailing cluster), which would collapse that left/right grouping.
+     JUDGEMENT CALL, flagged in this step's own report: kept
+     `justify-between` and applied FOOTER_FLUSH's other facets (px-5 py-4
+     border-t border-line flex items-center) rather than the literal
+     `justify-end`, so the bulk-action buttons stay visually separated from
+     the dialog's own Cancel/Apply. #}
   <div id="service-picker-modal" class="fixed inset-0 z-[70] hidden">
     <div class="fixed inset-0 bg-black/50" data-action="closePickerModal"></div>
     <div class="fixed inset-0 flex items-center justify-center p-4">
-      <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-lg max-h-[80vh] flex flex-col relative">
-        <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
-          <h3 id="picker-title" class="text-lg font-semibold flex items-center gap-2">
+      <div role="dialog" aria-modal="true" aria-labelledby="picker-title" class="bg-card rounded-lg shadow-lg border border-line w-full max-w-lg max-h-[80vh] flex flex-col relative">
+        <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-line flex-shrink-0">
+          <h3 id="picker-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">
             <i data-lucide="list" class="w-5 h-5 text-accent"></i>
             <span>{{ t.get('choose_services', 'Choose Services') }}</span>
           </h3>
@@ -349,7 +364,7 @@
         </div>
         <div id="picker-list" class="px-4 py-2 overflow-y-auto flex-1" style="max-height: 400px;">
         </div>
-        <div class="flex justify-between items-center gap-2 p-4 border-t border-line flex-shrink-0">
+        <div class="px-5 py-4 border-t border-line flex items-center justify-between gap-2 flex-shrink-0">
           <div class="flex items-center gap-2">
             <button id="picker-select-all-btn" data-action="selectAllFiltered" class="hidden px-3 py-1 text-xs font-medium rounded border border-line hover:bg-page">
               {{ t.get('select_all_filtered', 'Select All Filtered') }}
@@ -973,9 +988,12 @@
 <div id="ldap-picker-modal" class="fixed inset-0 z-[70] hidden">
   <div class="fixed inset-0 bg-black/50" data-action="closeLdapPicker"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-2xl max-h-[80vh] flex flex-col relative">
-      <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
-        <h3 class="text-base font-semibold flex items-center gap-2">
+    {# WP-6 step 19: same treatment as service-picker-modal above -- see its
+       comment for the FOOTER justify-between rationale (this footer's left
+       side is the result count, right side is Close). #}
+    <div role="dialog" aria-modal="true" aria-labelledby="ldap-picker-title" class="bg-card rounded-lg shadow-lg border border-line w-full max-w-2xl max-h-[80vh] flex flex-col relative">
+      <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-line flex-shrink-0">
+        <h3 id="ldap-picker-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">
           <i data-lucide="search" class="w-5 h-5 text-accent"></i>
           {{ t.get('ldap_picker_title', 'Query Active Directory') }}
         </h3>
@@ -1022,7 +1040,7 @@
       </div>
 
       <!-- Footer -->
-      <div class="flex justify-between items-center gap-2 p-4 border-t border-line flex-shrink-0">
+      <div class="px-5 py-4 border-t border-line flex items-center justify-between gap-2 flex-shrink-0">
         <span id="ldap-picker-count" class="text-[10px] text-faint"></span>
         <button data-action="closeLdapPicker" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.get('close', 'Close') }}</button>
       </div>
@@ -1034,9 +1052,12 @@
 <div id="reset-pw-modal" class="fixed inset-0 z-[70] hidden">
   <div class="fixed inset-0 bg-black/50" data-action="closeResetPasswordModal"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-sm relative">
-      <div class="flex items-center justify-between p-4 border-b border-line">
-        <h3 class="text-base font-semibold flex items-center gap-2">
+    {# WP-6 step 19: shadow-xl -> shadow-lg; HEAD_FLUSH header; FOOTER_FLUSH
+       footer applies literally here -- a single trailing Cancel/Reset
+       cluster, no left-side group. #}
+    <div role="dialog" aria-modal="true" aria-labelledby="reset-pw-modal-title" class="bg-card rounded-lg shadow-lg border border-line w-full max-w-sm relative">
+      <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-line">
+        <h3 id="reset-pw-modal-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">
           <i data-lucide="key" class="w-5 h-5 text-warning"></i>
           {{ t.change_admin_password }}
         </h3>
@@ -1058,7 +1079,7 @@
                  class="w-full px-3 py-2 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-brand focus-visible:border-transparent outline-none">
         </div>
       </div>
-      <div class="flex justify-end gap-2 p-4 border-t border-line">
+      <div class="px-5 py-4 border-t border-line flex items-center justify-end gap-2">
         <button data-action="closeResetPasswordModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
         <button data-action="submitResetPassword" class="px-4 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1.5">
           <i data-lucide="check" class="w-4 h-4"></i>
@@ -1073,9 +1094,12 @@
 <div id="diff-modal" class="fixed inset-0 z-[70] hidden">
   <div class="fixed inset-0 bg-black/50"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-lg max-h-[80vh] flex flex-col relative">
-      <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
-        <h3 class="text-lg font-semibold flex items-center gap-2">
+    {# WP-6 step 19. FOOTER stays justify-between: Undo (left) is
+       distinct from Cancel/Confirm (right); FOOTER_FLUSH's justify-end
+       would merge them into one cluster. #}
+    <div role="dialog" aria-modal="true" aria-labelledby="diff-modal-title" class="bg-card rounded-lg shadow-lg border border-line w-full max-w-lg max-h-[80vh] flex flex-col relative">
+      <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-line flex-shrink-0">
+        <h3 id="diff-modal-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">
           <i data-lucide="git-compare" class="w-5 h-5 text-warning"></i>
           {{ t.review_changes }}
         </h3>
@@ -1086,7 +1110,7 @@
       <div class="p-4 overflow-y-auto flex-1">
         <div id="diff-list" class="space-y-2"></div>
       </div>
-      <div class="flex justify-between gap-2 p-4 border-t border-line flex-shrink-0">
+      <div class="px-5 py-4 border-t border-line flex items-center justify-between gap-2 flex-shrink-0">
         <button data-action="undoLastChange"
                 class="px-3 py-1.5 text-sm rounded border border-warning text-warning hover:bg-warning/10 flex items-center gap-1.5">
           <i data-lucide="undo-2" class="w-4 h-4"></i>

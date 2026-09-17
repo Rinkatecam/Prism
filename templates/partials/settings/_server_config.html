@@ -97,12 +97,15 @@
 <!-- ═══════════════════════════════════════════════════════════════
      Add / Edit Server Modal
      ═══════════════════════════════════════════════════════════════ -->
+{# WP-6 step 19: shadow-xl -> shadow-lg; HEAD_FLUSH header; role="dialog"
+   aria-modal="true" aria-labelledby="modal-title" (id already existed --
+   JS textContent target at :527/:549 below -- reused, untouched). #}
 <div id="server-modal" class="fixed inset-0 z-50 hidden">
   <div class="fixed inset-0 bg-black/50" data-action="closeModal"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-lg max-h-[90vh] flex flex-col relative">
-      <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
-        <h3 id="modal-title" class="text-lg font-semibold">{{ t.add_server }}</h3>
+    <div role="dialog" aria-modal="true" aria-labelledby="modal-title" class="bg-card rounded-lg shadow-lg border border-line w-full max-w-lg max-h-[90vh] flex flex-col relative">
+      <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-line flex-shrink-0">
+        <h3 id="modal-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">{{ t.add_server }}</h3>
         <button data-action="closeModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
@@ -257,7 +260,11 @@
       <div id="modal-test-result" class="hidden px-4 pt-2 flex-shrink-0">
         <div class="test-result-box rounded p-2 text-sm"></div>
       </div>
-      <div class="flex justify-between gap-2 p-4 border-t border-line flex-shrink-0">
+      {# FOOTER kept justify-between -- Test Connection is a distinct,
+         left-side diagnostic action, separate from the Cancel/Save pair;
+         see service-picker-modal's comment in settings.html for the same
+         reasoning applied uniformly across every 2-sided modal footer. #}
+      <div class="px-5 py-4 border-t border-line flex items-center justify-between gap-2 flex-shrink-0">
         <button data-action="testConnectionFromModal" id="modal-test-btn"
                 class="px-4 py-1.5 text-sm rounded border border-healthy text-healthy hover:bg-healthy/10 flex items-center gap-1.5">
           <i data-lucide="plug" class="w-4 h-4"></i>
@@ -275,13 +282,26 @@
 <!-- Setup Guide Modal -->
 
 <!-- Delete Server Confirmation Modal -->
+{# WP-6 step 19: shadow-xl -> shadow-lg. Border already present
+   (border-critical/30, a C-3-allowed border-<status> literal) -- kept, not
+   switched to border-line, matching the panel's own deliberate danger
+   colour; same for the header's border-b border-critical. role="dialog"
+   aria-modal="true" aria-labelledby="delete-modal-title" added
+   (delete-modal-title is the EXISTING span id, JS textContent target at
+   :587 below -- reused as-is, not moved onto the h3). The h3 carries
+   data-role="dialog-title" + the DIALOG_TITLE string (text-ink, dropping
+   its own text-critical), with text-critical moved onto the icon
+   directly so the danger cue survives on the one element that carried no
+   colour of its own before -- same split base.html's #prism-modal already
+   uses (icon = status colour, title text = neutral ink). JUDGEMENT CALL,
+   flagged in this step's own report. #}
 <div id="delete-modal" class="fixed inset-0 z-[60] hidden">
   <div class="fixed inset-0 bg-black/50"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-card rounded-lg shadow-xl border border-critical/30 w-full max-w-md relative">
-      <div class="flex items-center justify-between p-4 border-b border-critical dark:border-critical-tint">
-        <h3 class="text-lg font-semibold text-critical flex items-center gap-2">
-          <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+    <div role="dialog" aria-modal="true" aria-labelledby="delete-modal-title" class="bg-card rounded-lg shadow-lg border border-critical/30 w-full max-w-md relative">
+      <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-critical dark:border-critical-tint">
+        <h3 data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">
+          <i data-lucide="alert-triangle" class="w-5 h-5 text-critical"></i>
           <span id="delete-modal-title">{{ t.get('delete_server', 'Delete Server') }}?</span>
         </h3>
         <button data-action="closeDeleteModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
@@ -299,7 +319,7 @@
                  data-input="checkDeleteConfirmation">
         </div>
       </div>
-      <div class="flex justify-end gap-2 p-4 border-t border-line">
+      <div class="px-5 py-4 border-t border-line flex items-center justify-end gap-2">
         <button data-action="closeDeleteModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
         {# Real <button> with its own visible label already — needs the §5.3
            mirror/describedby pairing, not a second tip() trigger. The native
@@ -322,12 +342,16 @@
 </div>
 
 <!-- AD Discovery Modal -->
+{# WP-6 step 19: shadow-xl -> shadow-lg; HEAD_FLUSH header; new id on the
+   title (none existed before); FOOTER kept justify-between (select-all +
+   count on the left is a bulk-action cluster, distinct from the dialog's
+   own Cancel/Add pair on the right). #}
 <div id="discovery-modal" class="fixed inset-0 z-[60] hidden">
   <div class="fixed inset-0 bg-black/50" data-action="closeDiscoveryModal"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-2xl max-h-[80vh] flex flex-col relative">
-      <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
-        <h3 class="text-lg font-semibold flex items-center gap-2">
+    <div role="dialog" aria-modal="true" aria-labelledby="discovery-modal-title" class="bg-card rounded-lg shadow-lg border border-line w-full max-w-2xl max-h-[80vh] flex flex-col relative">
+      <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-line flex-shrink-0">
+        <h3 id="discovery-modal-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">
           <i data-lucide="radar" class="w-5 h-5 text-healthy"></i>
           {{ t.discovered_servers }}
         </h3>
@@ -339,7 +363,7 @@
         <div id="discovery-status" class="text-sm text-muted mb-3"></div>
         <div id="discovery-list" class="space-y-1"></div>
       </div>
-      <div class="flex justify-between items-center gap-2 p-4 border-t border-line flex-shrink-0">
+      <div class="px-5 py-4 border-t border-line flex items-center justify-between gap-2 flex-shrink-0">
         <div class="flex items-center gap-3">
           <button data-action="selectAllDiscovered" class="px-3 py-1 text-xs font-medium rounded border border-line hover:bg-page">
             {{ t.get('select_all', 'Select All') }}

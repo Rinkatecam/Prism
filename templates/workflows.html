@@ -616,8 +616,22 @@
       <span class="text-[10px] font-medium">Guide</span>
     </button>
 
-    <!-- Guide panel -->
-    <div id="workflow-guide" class="absolute bottom-14 w-80 max-h-[60vh] bg-[#2D2D2D] rounded-md border border-[#404040] shadow-2xl hidden overflow-hidden flex flex-col" style="z-index: 31; left: 208px;">
+    {# WP-6 step 19: shadow-2xl -> shadow-lg only (elevation ban, §4.6 --
+       applies unconditionally, everywhere). Everything else here is
+       deliberately UNCHANGED: this panel has no backdrop and does not
+       block interaction with the canvas behind it (toggled open/closed by
+       the Guide button, canvas stays live), so it is not a dialog -- no
+       role="dialog"/aria-modal added. Its heading is the §2.6 "chrome"
+       carve-out by name ("headings on the workflow guide panel's fixed
+       #404040 surface, deliberately identical in both themes") and its
+       heading-ladder/data-role status is pre-existing debt from BEFORE
+       this step (workflows.html has not been through any of the heading/
+       card conversion batches in steps 12-18) -- out of this step's scope,
+       governed by test_design_headings.py/HEADING_BASELINE, not by
+       test_design_cards.py's C-5/C-6/C-10 this step's Verify line names.
+       Not touched here; flagged rather than silently fixed or silently
+       left unexplained. #}
+    <div id="workflow-guide" class="absolute bottom-14 w-80 max-h-[60vh] bg-[#2D2D2D] rounded-md border border-[#404040] shadow-lg hidden overflow-hidden flex flex-col" style="z-index: 31; left: 208px;">
       <div class="flex items-center justify-between px-4 py-3 border-b border-[#404040]">
         <h3 class="text-sm font-bold text-white flex items-center gap-2">
           <i data-lucide="book-open" class="w-4 h-4 text-accent"></i>
@@ -731,9 +745,22 @@
 <!-- ═══════════════════════════════════════════════════════════════
      Execution Detail Slide-Over
      ═══════════════════════════════════════════════════════════════ -->
-<div id="exec-slideout" class="fixed right-0 top-0 bottom-0 w-96 z-[55] hidden bg-card border-l border-line shadow-xl" style="display:none;">
-  <div class="flex items-center justify-between p-4 border-b border-line">
-    <h3 class="text-sm font-semibold">{{ t.get('execution_detail', 'Execution Detail') }}</h3>
+{# WP-6 step 19: shadow-xl -> shadow-lg. border-l border-line kept as-is
+   (not widened to a 4-sided border) -- it is a right-edge-docked slide-
+   over, and a left border is the correct edge treatment for that shape,
+   same as a card never needing a border on the edge it is flush against.
+   role="dialog" aria-modal="true" aria-labelledby="exec-slideout-title"
+   added per this step's own unconditional "every modal container" text;
+   flagged: unlike every other one of the 12, this panel has NO backdrop
+   dimming the canvas behind it (a pre-existing characteristic, not
+   something this step changes) so aria-modal="true" is applied here for
+   consistency with the step's own instruction rather than because a
+   backdrop makes it obviously modal. New id + data-role + DIALOG_TITLE
+   class on the title (none existed before). No footer exists to convert
+   (content is a single scrollable region). #}
+<div id="exec-slideout" role="dialog" aria-modal="true" aria-labelledby="exec-slideout-title" class="fixed right-0 top-0 bottom-0 w-96 z-[55] hidden bg-card border-l border-line shadow-lg" style="display:none;">
+  <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-line">
+    <h3 id="exec-slideout-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">{{ t.get('execution_detail', 'Execution Detail') }}</h3>
     <button data-action="closeExecSlideout" class="p-1 rounded hover:bg-raised dark:hover:bg-line">
       <i data-lucide="x" class="w-4 h-4"></i>
     </button>
@@ -745,11 +772,30 @@
 <!-- ═══════════════════════════════════════════════════════════════
      Template Gallery Modal
      ═══════════════════════════════════════════════════════════════ -->
+{# WP-6 step 19: one of "the three absolute shadow-xl popovers" (§4.6 --
+   positioned via absolute+translate centring rather than fixed+flex, but
+   functionally a real backdrop-blocking dialog, not a menu/listbox). Takes
+   shadow-lg (the value both the modal AND the menu/popover idiom converge
+   on) plus a border it did not have before. JUDGEMENT CALL, flagged
+   prominently: NOT reshaped into the literal §4.5 menu/popover string
+   (`rounded border ... overflow-hidden py-1`) -- this is a 600px form/
+   gallery panel with its own header+scrolling-list structure, not a tight
+   list of menu items, so `py-1` would crush its layout and shrinking
+   `rounded-md` to the 8px control radius would look inconsistent against
+   every 16px-radius modal beside it. Kept rounded-md (== rounded-lg,
+   16px, per base.html:72-77) and its own existing p-4/overflow-hidden
+   structure; added ONLY border border-line and shadow-lg from the idiom.
+   role="dialog" aria-modal="true" aria-labelledby, and a new title id +
+   data-role + DIALOG_TITLE class, since it has a real backdrop
+   (closeTemplateGallery below) and blocks the canvas the same way the
+   12 modals do. Header/footer NOT converted to HEAD_FLUSH/FOOTER_FLUSH --
+   that conversion is this step's own text only for "the 12 modal panels",
+   not the popover group. #}
 <div id="template-modal" class="fixed inset-0 z-[65] hidden" style="display:none;">
   <div class="absolute inset-0 bg-black/50" data-action="closeTemplateGallery"></div>
-  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md shadow-xl w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
+  <div role="dialog" aria-modal="true" aria-labelledby="template-modal-title" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md border border-line shadow-lg w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
     <div class="p-4 border-b border-line flex items-center justify-between">
-      <h3 class="font-semibold">{{ t.get('workflow_templates', 'Workflow Templates') }}</h3>
+      <h3 id="template-modal-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">{{ t.get('workflow_templates', 'Workflow Templates') }}</h3>
       <button data-action="closeTemplateGallery" class="p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
     </div>
     <div id="template-list" class="p-4 overflow-y-auto space-y-3">
@@ -760,10 +806,19 @@
 <!-- ═══════════════════════════════════════════════════════════════
      Add Category Modal
      ═══════════════════════════════════════════════════════════════ -->
+{# WP-6 step 19: another of "the three absolute shadow-xl popovers" -- see
+   template-modal's comment above for the full reasoning (kept rounded-md,
+   added border+shadow-lg, added dialog ARIA + title id/data-role/
+   DIALOG_TITLE, did not force the literal menu/popover py-1 shape). This
+   one has no separate header row at all (title + fields + footer share
+   one p-5 box), so the title keeps its own `mb-4` alongside the
+   DIALOG_TITLE string -- removing it would collapse the gap to the first
+   field, and this popover is not getting a bordered HEAD_FLUSH row to
+   supply that spacing instead. #}
 <div id="add-category-modal" class="fixed inset-0 z-[65] hidden" style="display:none;">
   <div class="absolute inset-0 bg-black/50" data-action="closeAddCategory"></div>
-  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md shadow-xl w-80 p-5">
-    <h3 class="font-semibold mb-4">{{ t.get('add_category', 'Add Category') }}</h3>
+  <div role="dialog" aria-modal="true" aria-labelledby="add-category-modal-title" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md border border-line shadow-lg w-80 p-5">
+    <h3 id="add-category-modal-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2 mb-4">{{ t.get('add_category', 'Add Category') }}</h3>
     <div class="space-y-3">
       <div>
         <label class="text-xs font-medium block mb-1">{{ t.get('name', 'Name') }}</label>
@@ -3348,11 +3403,16 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 <!-- Service/Process Browse Modal -->
+{# WP-6 step 19: the third of "the three absolute shadow-xl popovers" --
+   same reasoning as template-modal/add-category-modal above. id
+   "wf-browse-title" already existed (no JS reference to it found by grep;
+   reused rather than renamed, gains data-role="dialog-title" and the
+   DIALOG_TITLE class in place of its own font-semibold text-sm). #}
 <div id="wf-browse-modal" class="fixed inset-0 z-[70] hidden">
   <div class="absolute inset-0 bg-black/50" data-action="closeBrowseModal"></div>
-  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md shadow-xl w-[420px] max-h-[70vh] overflow-hidden flex flex-col">
+  <div role="dialog" aria-modal="true" aria-labelledby="wf-browse-title" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md border border-line shadow-lg w-[420px] max-h-[70vh] overflow-hidden flex flex-col">
     <div class="p-4 border-b border-line flex items-center justify-between">
-      <h3 class="font-semibold text-sm" id="wf-browse-title">Choose Service</h3>
+      <h3 id="wf-browse-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">Choose Service</h3>
       <button data-action="closeBrowseModal" class="p-1 rounded hover:bg-raised dark:hover:bg-line">
         <i data-lucide="x" class="w-4 h-4"></i>
       </button>

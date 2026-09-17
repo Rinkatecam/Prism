@@ -486,11 +486,39 @@
 </section>
 
 <!-- Power Action Confirmation Modal -->
+{# WP-6 step 19: this panel was the one modal missing ANY border (C-6/C-5's
+   own docstrings name it as one of the 19 shadow-xl/2xl modal sites) --
+   shadow-lg + border border-line added. role="dialog" aria-modal="true"
+   aria-labelledby="power-modal-title" added to the panel div (the actual
+   dialog surface; #power-modal itself is the fixed+bg-black/50 backdrop,
+   the same combined outer+backdrop shape as this file's other modals'
+   two-div pattern collapsed into one).
+
+   #power-modal-title KEEPS id="power-modal-title" (JS textContent target,
+   server_detail.html:1784/1792/1798) and gains data-role="dialog-title",
+   but deliberately does NOT take the literal DIALOG_TITLE string
+   (text-ink) -- #power-modal-header's OWN className is fully replaced by
+   JS on every open (`header.className = 'px-5 py-3 flex items-center
+   gap-2 bg-[#DC2626]'` / '...bg-[#F59E0B]', lines 1790/1796), painting the
+   whole title bar a solid red/amber. text-ink would be low-contrast (in
+   places unreadable) against that solid fill; text-white is what makes it
+   readable, exactly why the original markup chose it. JUDGEMENT CALL,
+   flagged prominently in this step's own report: the header bar itself
+   (both the static template class above and the two JS className string
+   literals that actually control it whenever the modal opens) is left
+   UNTOUCHED -- no HEAD_FLUSH conversion -- since HEAD_FLUSH's
+   `border-b border-line` is a neutral token line that would barely
+   register against a solid saturated fill, no test governs this specific
+   class string, and editing the JS string literals in this
+   explicitly-flagged-sensitive file for a purely cosmetic border seemed
+   like the wrong risk trade. The FOOTER below (a plain static class, not
+   JS-driven) is converted to FOOTER_FLUSH; it was already a single
+   trailing Cancel/Confirm cluster, so justify-end applies literally. #}
 <div id="power-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50">
-  <div class="bg-card rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
+  <div role="dialog" aria-modal="true" aria-labelledby="power-modal-title" class="bg-card rounded-lg shadow-lg border border-line w-full max-w-md mx-4 overflow-hidden">
     <div id="power-modal-header" class="px-5 py-3 flex items-center gap-2">
       <i id="power-modal-icon" data-lucide="power" class="w-5 h-5"></i>
-      <h3 id="power-modal-title" class="text-sm font-semibold text-white"></h3>
+      <h3 id="power-modal-title" data-role="dialog-title" class="text-sm font-semibold text-white"></h3>
     </div>
     <div class="px-5 py-4">
       <p id="power-modal-consequence" class="text-sm text-muted mb-4"></p>
@@ -502,7 +530,7 @@
              class="w-full text-sm rounded border border-line bg-field text-ink px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
              placeholder="{{ server.name }}" />
     </div>
-    <div class="flex justify-end gap-2 px-5 py-3 border-t border-line">
+    <div class="px-5 py-4 border-t border-line flex items-center justify-end gap-2">
       <button data-action="closePowerModal"
               class="px-3 py-1.5 text-xs font-medium rounded border border-line text-muted hover:bg-page">
         {{ t.get('cancel', 'Cancel') }}
@@ -3581,12 +3609,16 @@
 </div>
 
 <!-- Runbook Confirmation Modal -->
+{# WP-6 step 19: shadow-xl -> shadow-lg (already had a border); HEAD_FLUSH
+   header; FOOTER_FLUSH footer applies literally -- Cancel/Dry Run/Execute
+   are one trailing cluster, no left-side group. New id on the title
+   (none existed before). #}
 <div id="runbook-confirm-modal" class="fixed inset-0 z-[70] hidden">
   <div class="fixed inset-0 bg-black/50" data-action="closeRunbookModal"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-md relative">
-      <div class="flex items-center justify-between p-4 border-b border-line">
-        <h3 class="text-lg font-semibold flex items-center gap-2">
+    <div role="dialog" aria-modal="true" aria-labelledby="runbook-confirm-modal-title" class="bg-card rounded-lg shadow-lg border border-line w-full max-w-md relative">
+      <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-line">
+        <h3 id="runbook-confirm-modal-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">
           <i data-lucide="zap" class="w-5 h-5 text-accent"></i>
           <span>{{ t.confirm_execution | default('Confirm Execution') }}</span>
         </h3>
@@ -3598,7 +3630,7 @@
         <p class="text-sm" id="runbook-confirm-text"></p>
         <div class="text-xs text-muted" id="runbook-confirm-desc"></div>
       </div>
-      <div class="flex justify-end gap-2 p-4 border-t border-line">
+      <div class="px-5 py-4 border-t border-line flex items-center justify-end gap-2">
         <button data-action="closeRunbookModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">
           {{ t.cancel | default('Cancel') }}
         </button>

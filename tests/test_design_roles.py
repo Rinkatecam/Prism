@@ -212,15 +212,22 @@ H2_ICON_TOTAL = 12
 # flagged recolour (warning amber -> violet) -- see this step's own report;
 # there is no carve-out mechanism in the macro for keeping one icon's old
 # status colour. Entry deleted rather than kept at 0.
+# 14 -> 7 with WP-6 step 19 (Batch F, overlays collapse onto shadow-lg):
+# every modal title this step touches keeps its own tag level (most are
+# h3s, unchanged) but gains `data-role="dialog-title"` -- the same §2.6
+# carve-out HEADING_BASELINE's own step-19 comment documents, applying
+# here too since this detector excludes a carve-out heading by attribute
+# regardless of level. partials/settings/_server_config.html (2 -> 0) and
+# settings.html (4 -> 0) lose every entry this way (their only H3-icon
+# violations were modal titles); server_detail.html (4 -> 3) had one
+# other, still-unconverted H3 icon alongside its modal title.
 H3_ICON_BASELINE: dict[str, int] = {
     "operations.html": 2,
-    "partials/settings/_server_config.html": 2,
-    "server_detail.html": 4,
+    "server_detail.html": 3,
     "servers.html": 1,
-    "settings.html": 4,
     "workflows.html": 1,
 }
-H3_ICON_TOTAL = 14
+H3_ICON_TOTAL = 7
 
 
 def _non_compliant_heading_icons(level: str, target: str) -> dict[str, int]:

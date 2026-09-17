@@ -475,23 +475,32 @@ def _heading_violations() -> dict[str, int]:
 #     macro the same way topology.html's two did. "Incidents" is UNCHANGED
 #     (out of this step's own named scope) and is the one entry that
 #     remains.
+# 52 -> 38 with WP-6 step 19 (Batch F, overlays collapse onto shadow-lg):
+# every modal title this step touches gets `data-role="dialog-title"` --
+# the §2.6 carve-out this ratchet's own detector already excludes by
+# attribute, not by naming convention -- so a raw `<h3 class="text-lg
+# font-semibold ...">` modal title that used to count as a non-canonical
+# heading now correctly reads as "not a rung at all" and drops out.
+# partials/settings/_maintenance.html (1 -> 0) and
+# partials/settings/_server_config.html (3 -> 0) and settings.html (4 -> 0)
+# lose every entry this way (their only violations were modal titles);
+# server_detail.html (15 -> 13) and workflows.html (16 -> 12) each had
+# other, still-unconverted headings alongside their modal titles, so they
+# fall but do not reach zero.
 HEADING_BASELINE: dict[str, int] = {
     "compliance.html": 2,
     "dashboard.html": 1,
     "operations.html": 2,
     "partials/_runbook_form.html": 1,
     "partials/services_table.html": 1,
-    "partials/settings/_maintenance.html": 1,
-    "partials/settings/_server_config.html": 3,
     "partials/verdict_header.html": 2,
-    "server_detail.html": 15,
+    "server_detail.html": 13,
     "servers.html": 3,
-    "settings.html": 4,
     "setup.html": 1,
-    "workflows.html": 16,
+    "workflows.html": 12,
 }
 
-HEADING_TOTAL = 52
+HEADING_TOTAL = 38
 
 
 def test_every_heading_uses_its_level_s_canonical_classes():

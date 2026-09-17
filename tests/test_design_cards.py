@@ -916,20 +916,23 @@ def _shadow_name_counts() -> dict[str, int]:
 # STATIC_SHADOW_BASELINE's own two sites below) -- see this file's module
 # docstring for the full account of why this is a ratchet and not the flat
 # assert the spec's own text describes.
+#
+# 21 -> 5 with WP-6 step 19 (Batch F, overlays collapse onto shadow-lg):
+# all six files this step touches (base.html, both settings partials,
+# server_detail.html, settings.html, workflows.html) drop to zero --
+# every modal panel/popover in scope moved shadow-xl/2xl -> shadow-lg,
+# the one legal name this ratchet does not ban. The five remaining sites
+# (login.html/setup.html's shadow-sm, operations.html/servers.html's
+# leftover shadow-xl/2xl) are untouched, out of this step's own Files
+# list -- steps 19 named exactly six files, not these four.
 SHADOW_NAME_BASELINE: dict[str, int] = {
-    "base.html": 1,
     "login.html": 1,
     "operations.html": 2,
-    "partials/settings/_maintenance.html": 1,
-    "partials/settings/_server_config.html": 3,
-    "server_detail.html": 2,
     "servers.html": 1,
-    "settings.html": 4,
     "setup.html": 1,
-    "workflows.html": 5,
 }
 
-SHADOW_NAME_TOTAL = 21
+SHADOW_NAME_TOTAL = 5
 
 
 def test_no_shadow_xl_2xl_sm_inner_or_none_class_appears_in_any_template():
