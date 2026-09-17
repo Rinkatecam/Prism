@@ -36,6 +36,8 @@ import logging
 import re
 import threading
 
+from i18n import get_translations
+
 logger = logging.getLogger(__name__)
 
 # The crawl renders pages, and a rendered page must never trigger a crawl.
@@ -111,12 +113,23 @@ def _anchor_for(html: str, text: str) -> str | None:
     return m.group(1) if m else None
 
 
-def build(app, settings: dict | None = None) -> list[dict]:
+def build(app, settings: dict | None = None, lang: str = "en") -> list[dict]:
     """Every jump target, as {label, sublabel, url, kind}.
 
     `app` is passed in rather than imported: importing the Flask app from a
     module the app itself imports is a cycle, and the one place this is called
-    from already has it."""
+    from already has it.
+
+    `lang` (WP-6 step 21) picks which locale's strings back the settings
+    theme labels below. `get()` already keyed its cache by language before
+    this step existed, but nothing downstream actually varied by it yet:
+    every settings-kind label was computed with `slug.title()`, a mechanical
+    transform with no language in it at all ('rbac'.title() == 'Rbac' in
+    every locale, on every install, regardless of `lang`). Defaults to 'en'
+    so every existing direct caller of `build()` — this module's own tests,
+    which call `build(app_obj)` with no second argument — keeps working
+    unchanged; `get()` below now passes its own `lang` through instead of
+    silently dropping it."""
     if getattr(_building, "active", False):
         # A crawled page asked for the index. Answer empty rather than recurse.
         return []
@@ -124,16 +137,30 @@ def build(app, settings: dict | None = None) -> list[dict]:
     _building.active = True
     entries: list[dict] = []
     try:
-        from routes.views import _SETTINGS_SECTIONS
+        from routes.views import _SETTINGS_SECTIONS, SETTINGS_THEMES
+
+        # WP-6 step 21 / C12 — the settings label is the registry's own
+        # translated name, never `slug.title()`. That transform is exactly
+        # what rendered "Rbac" here (and as every settings sub-page's
+        # `page_name` below) regardless of the operator's language. Reusing
+        # SETTINGS_THEMES — the same key/fallback pairs the top-bar theme
+        # menu (steps 22-23) will render — means the jump index and the nav
+        # can never name a section two different things.
+        #
+        # `search_index.py` builds outside a live request (the crawl below
+        # uses a throwaway test client of its own), so `t` — the per-request
+        # dict the app's context processor injects into templates — is never
+        # available here. `i18n.get_translations(lang)` is the same merged
+        # dict `t` ultimately IS; this calls it directly instead.
+        tr = get_translations(lang)
+        _theme_by_slug = {th.slug: th for th in SETTINGS_THEMES}
 
         # ── settings sections ──────────────────────────────────────────
-        # Labels come from the page itself for the same reason headings do:
-        # the nav's label map is Jinja, and re-implementing it here would be
-        # a second source of truth for the same nine words.
         client = app.test_client()
         for name in _SETTINGS_SECTIONS:
+            theme = _theme_by_slug[name]
             entries.append({
-                "label": name.replace("_", " ").title(),
+                "label": tr.get(theme.key, theme.fallback),
                 "sublabel": "Settings",
                 "url": f"/settings/{name}",
                 "kind": "settings",
@@ -178,8 +205,12 @@ def build(app, settings: dict | None = None) -> list[dict]:
                     "kind": "page",
                 })
             else:
-                # Its h2s belong to the section, named as the nav names it.
-                page_name = path.rsplit("/", 1)[1].replace("_", " ").title()
+                # Its h2s belong to the section, named as the registry names
+                # it (WP-6 step 21) — not `slug.title()`, which is exactly
+                # the mechanism that put "Rbac" in the jump box instead of
+                # "Permissions".
+                section_theme = _theme_by_slug[path.rsplit("/", 1)[1]]
+                page_name = tr.get(section_theme.key, section_theme.fallback)
             for lvl, text in found:
                 if lvl == 1:
                     continue
@@ -216,7 +247,14 @@ def get(app, lang: str) -> list[dict]:
     with _cache_lock:
         if lang in _cache:
             return _cache[lang]
-    built = build(app)
+    # WP-6 step 21 — `lang` used to be accepted here and then silently
+    # dropped: build() had no parameter to receive it, and every label it
+    # computed (`slug.title()`) was English-shaped regardless of language
+    # anyway. Now that labels come from the SETTINGS_THEMES registry through
+    # i18n, forwarding it is what makes a non-English install's jump index
+    # actually read in that language instead of a mechanical title-case of
+    # the slug.
+    built = build(app, lang=lang)
     with _cache_lock:
         _cache[lang] = built
     return built

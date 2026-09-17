@@ -82,6 +82,19 @@ TRANSLATIONS = {
         "settings_section_alerts": "Alerts",
         "settings_section_operations": "Operations",
         "settings_section_permissions": "Permissions",
+        # WP-6 step 21 (DESIGN_SYSTEM_SPEC.md §7.1/D10). The `servers`
+        # Settings theme's own label, kept deliberately separate from
+        # `servers_page` (the SIDEBAR's top-level Servers page, still used
+        # by that page and by _server_config.html's card heading): once the
+        # theme name reaches the new top-bar nav chip (steps 22-23) it sits
+        # right next to that sidebar entry, and two things called "Servers"
+        # on the same screen is the collision D10 renames this to avoid.
+        "settings_theme_servers_configuration": "Server Configuration",
+        # Steps 22-23 consume these for the theme menu's trigger button and
+        # its panel/mobile-sheet title; added now because this step's brief
+        # asks for the keys even though no template reads them yet.
+        "settings_theme_menu_aria": "Choose settings section",
+        "settings_theme_menu_title": "Settings sections",
         "rbac_badge_backup_admin": "BACKUP ADMIN",
         "rbac_badge_permissive": "PERMISSIVE",
         "rbac_badge_auth_off": "AUTH OFF",
@@ -2491,6 +2504,9 @@ TRANSLATIONS = {
         "settings_section_alerts": "Alarme",
         "settings_section_operations": "Betrieb",
         "settings_section_permissions": "Berechtigungen",
+        "settings_theme_servers_configuration": "Serverkonfiguration",
+        "settings_theme_menu_aria": "Einstellungsbereich wählen",
+        "settings_theme_menu_title": "Einstellungsbereiche",
         "rbac_badge_backup_admin": "BACKUP-ADMIN",
         "rbac_badge_permissive": "PERMISSIV",
         "rbac_badge_auth_off": "AUTH AUS",
@@ -3780,6 +3796,9 @@ TRANSLATIONS = {
         "settings_section_alerts": "Alertes",
         "settings_section_operations": "Exploitation",
         "settings_section_permissions": "Autorisations",
+        "settings_theme_servers_configuration": "Configuration des serveurs",
+        "settings_theme_menu_aria": "Choisir une section des paramètres",
+        "settings_theme_menu_title": "Sections des paramètres",
         "rbac_badge_backup_admin": "ADMIN DE SECOURS",
         "rbac_badge_permissive": "PERMISSIF",
         "rbac_badge_auth_off": "AUTH DÉSACTIVÉE",
@@ -5069,6 +5088,9 @@ TRANSLATIONS = {
         "settings_section_alerts": "Alertas",
         "settings_section_operations": "Operaciones",
         "settings_section_permissions": "Permisos",
+        "settings_theme_servers_configuration": "Configuración de servidores",
+        "settings_theme_menu_aria": "Elegir sección de configuración",
+        "settings_theme_menu_title": "Secciones de configuración",
         "rbac_badge_backup_admin": "ADMIN DE RESPALDO",
         "rbac_badge_permissive": "PERMISIVO",
         "rbac_badge_auth_off": "AUTH DESACTIVADA",
@@ -6358,6 +6380,9 @@ TRANSLATIONS = {
         "settings_section_alerts": "アラート",
         "settings_section_operations": "運用",
         "settings_section_permissions": "権限",
+        "settings_theme_servers_configuration": "サーバー構成",
+        "settings_theme_menu_aria": "設定セクションを選択",
+        "settings_theme_menu_title": "設定セクション",
         "rbac_badge_backup_admin": "予備管理者",
         "rbac_badge_permissive": "制限なし",
         "rbac_badge_auth_off": "認証無効",

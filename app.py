@@ -120,7 +120,7 @@ seed_builtin_runbooks(db)
 
 # Register routes
 from routes.api import register_api_routes  # noqa: E402
-from routes.views import register_view_routes  # noqa: E402
+from routes.views import register_view_routes, SETTINGS_THEMES  # noqa: E402
 register_api_routes(app, db, config, limiter)
 register_view_routes(app, db, config)
 
@@ -245,6 +245,11 @@ def inject_locale():
         # _next_tip_id's docstring for why the counter lives on flask.g
         # rather than as a local closed over by this function.
         "next_tip_id": _next_tip_id,
+        # WP-6 step 21 (DESIGN_SYSTEM_SPEC.md §7.1) — the Settings menu
+        # registry, exposed to every template so steps 22-23 can build the
+        # top-bar theme menu without their own import. No template reads
+        # this yet; this step is data-layer only.
+        "settings_themes": SETTINGS_THEMES,
     }
 
 # ── Startup summary ──

@@ -1,6 +1,7 @@
 """HTML page routes and HTMX partial routes for Prism."""
 
 import logging
+from typing import NamedTuple
 from flask import Blueprint, render_template, request, redirect
 from database import Database
 from config_manager import ConfigManager
@@ -398,11 +399,66 @@ def reports():
             else ("Internal Server Error", 500)
 
 
+# WP-6 step 21 (DESIGN_SYSTEM_SPEC.md §7.1) — the Settings menu registry.
+#
+# ONE registry now feeds what used to be three independent lists: the
+# router's own section tuple (derived below, unchanged in value), the
+# top-bar theme menu steps 22-23 add, and search_index.py's jump-to labels
+# (which used to compute `slug.title()` — the exact mechanism that rendered
+# "Rbac" instead of "Permissions"). `key`/`fallback` is the same pair every
+# `t.get(key, fallback)` call in this codebase already uses.
+#
+# Order is the CURRENT nav order — verified against the
+# `{% for name in settings_sections %}` loop in templates/settings.html
+# (which iterates this exact list) BEFORE this step touched anything, not
+# assumed from the spec's own §7.1 table. The two orders happen to already
+# match.
+#
+# D10 correction (DESIGN_SYSTEM_SPEC.md §0.0.2, already ratified — resolves
+# Part V owner question 2): the spec's own §7.1 table still literally reads
+#   SettingsTheme("servers", "server", "servers_page", "Servers")
+# which is stale. `servers_page` / "Servers" is the SIDEBAR's top-level
+# Servers page label (see templates/base.html's `nav_servers` and
+# partials/settings/_server_config.html's card heading, both of which
+# legitimately keep using that key for THAT page) — this settings THEME
+# reused the same key, invisibly, only because the tab strip never put the
+# word "Servers" next to the sidebar's own "Servers" entry as prominently as
+# the new top-bar chip (steps 22-23) will. D10 renames the THEME ONLY — not
+# the slug, not the icon, not the sidebar page — to "Server Configuration",
+# behind a brand-new, genuinely five-locale-translated key,
+# `settings_theme_servers_configuration`, rather than reusing servers_page's
+# key or its English string.
+class SettingsTheme(NamedTuple):
+    slug: str
+    icon: str
+    key: str
+    fallback: str
+
+
+SETTINGS_THEMES: tuple[SettingsTheme, ...] = (
+    SettingsTheme("general",       "settings-2",      "general",                               "General"),
+    SettingsTheme("collector",     "cpu",             "collector_engine_section",              "Collector"),
+    SettingsTheme("servers",       "server",          "settings_theme_servers_configuration",  "Server Configuration"),  # D10 — was servers_page/"Servers"
+    SettingsTheme("detection",     "radar",           "settings_section_detection",            "Detection"),
+    SettingsTheme("alerts",        "bell",            "settings_section_alerts",               "Alerts"),
+    SettingsTheme("operations",    "wrench",          "settings_section_operations",           "Operations"),
+    SettingsTheme("security",      "shield-check",    "security",                              "Security"),
+    SettingsTheme("rbac",          "user-check",      "settings_section_permissions",          "Permissions"),
+    SettingsTheme("compliance",    "clipboard-check", "compliance",                            "Compliance"),
+    SettingsTheme("notifications", "send",            "notifications",                         "Notifications"),
+    SettingsTheme("display",       "sliders",         "display_preferences",                   "Display Preferences"),
+)
+
 # The settings sub-pages, in the order they appear in the section nav.
 #
-# The list is the ROUTER's, not the template's: a name here that the template
-# does not render produces an empty page, and a section the template renders
-# that is missing here is unreachable. Both are caught by
+# DERIVED from SETTINGS_THEMES (WP-6 step 21) rather than a literal tuple, so
+# search_index.py and every test file that imports this name directly need
+# NO change at all — they see the exact same slugs in the exact same order
+# as before this step.
+#
+# The list is still effectively the ROUTER's, not the template's: a name here
+# that the template does not render produces an empty page, and a section the
+# template renders that is missing here is unreachable. Both are caught by
 # tests/test_settings_change_tracking.py, which compares this list against the
 # `data-settings-section` attributes in the markup — the same attributes the
 # save payload is assembled from, so the router, the page and the save cannot
@@ -411,9 +467,7 @@ def reports():
 # `display` is here despite configuring nothing server-side: its four controls
 # are dashboard preferences in localStorage, and they are still settings the
 # operator goes to this page to change.
-_SETTINGS_SECTIONS = ("general", "collector", "servers", "detection", "alerts",
-                      "operations", "security", "rbac", "compliance",
-                      "notifications", "display")
+_SETTINGS_SECTIONS = tuple(th.slug for th in SETTINGS_THEMES)
 
 
 @views_bp.route("/settings")
