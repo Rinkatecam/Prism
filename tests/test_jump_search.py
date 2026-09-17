@@ -113,6 +113,54 @@ def test_a_heading_inside_a_settings_section_is_findable(index):
         f"'tls' found only {[h['url'] for h in hits]}")
 
 
+def test_a_page_entry_never_falls_back_to_its_path(index):
+    """WP-6 DESIGN_SYSTEM_SPEC.md §6.1. `build()`'s page name is
+    `next((t for lvl, t in found if lvl == 1), path)` -- the H1 stays in
+    the DOM on every page (CSS-clipped on '/', per #page-title[data-home],
+    never deleted) precisely so this fallback is never actually taken. Had
+    the dashboard's `<h1 class="sr-only">` been deleted instead of
+    consolidated into base.html's always-present topbar H1 (C22), '/'
+    would index as {"label": "/", "kind": "page"} -- an entry that still
+    satisfies test_every_entry_has_a_label_and_a_url_that_resolves above
+    while making "dashboard" unfindable by its own name."""
+    offenders = [e for e in index if e["kind"] == "page" and e["label"] == e["url"]]
+    assert not offenders, (
+        f"page entry/ies fell back to their own path instead of reading "
+        f"an H1: {offenders}")
+
+    dashboard = [e for e in index if e["kind"] == "page" and e["url"] == "/"]
+    assert dashboard, "no page entry indexed for '/' at all"
+    assert dashboard[0]["label"] != "/", (
+        "the dashboard's index label is its own path -- the H1 fallback "
+        "was taken")
+
+
+def test_an_anchor_never_points_at_the_top_bar(index):
+    """WP-6 DESIGN_SYSTEM_SPEC.md §6.2/C11. `_anchor_for` is narrowed to
+    `<h2\\b` (never h1, never h3) specifically so it can never resolve to
+    `#page-title` -- the id the new topbar H1 carries. Before that
+    narrowing, `<h[12]` would have matched the H1 itself whenever a page's
+    title happened to prefix-match one of its own headings (e.g.
+    '/servers' normalises "Servers (29)" to "Servers", the same word the
+    page title already is), producing a jump-to entry that scrolls the
+    operator to the top bar instead of the section they searched for."""
+    offenders = [e["url"] for e in index if e["url"].endswith("#page-title")]
+    assert not offenders, f"an index entry anchors to the top bar: {offenders}"
+
+    # Direct proof at the function level -- not just "the built index
+    # happens not to contain one" -- that _anchor_for prefers a real h2
+    # over the top bar even when the h1 shares the exact same text.
+    import search_index
+    both = '<h1 id="page-title">Servers</h1><main><h2 id="real">Servers</h2></main>'
+    assert search_index._anchor_for(both, "Servers") == "real", (
+        "_anchor_for no longer prefers a real h2 over the top bar when "
+        "both share the same text")
+    h1_only = '<h1 id="page-title">Servers</h1>'
+    assert search_index._anchor_for(h1_only, "Servers") is None, (
+        "_anchor_for resolved to the top bar's own id -- the <h2\\b "
+        "narrowing (C11) has regressed back to matching <h1")
+
+
 def test_the_crawl_cannot_recurse(app_obj):
     """The index is built by rendering pages. A rendered page asking for the
     index would recurse until the stack ran out — and inside a request, so the

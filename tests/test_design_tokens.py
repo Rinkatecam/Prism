@@ -1037,6 +1037,79 @@ def test_every_text_token_clears_wcag_aa_on_its_card():
                 f"{name} on card is {ratio:.2f}:1 in {theme} mode")
 
 
+def test_every_text_token_clears_aa_on_page_and_raised():
+    """WP-6 step 13. §2.4's extension of the AA-on-card test above to the
+    other two surfaces a text token actually renders on: `card` was never
+    the only place body text sits -- `page` behind a group label
+    (§2.3: dashboard.html:300, network.html:56, scan.html:44), `raised`
+    inside a tile or an inset box -- and until now neither had ever been
+    checked here.
+
+    `faint` is EXCLUDED, deliberately, not because it is unimportant but
+    because it already, measurably, FAILS: 4.34:1 on `page` and 4.04:1 on
+    `raised`, both light theme, both below the 4.5 AA floor (§2.3's own
+    table). This is the exact measurement that keeps a heading off
+    `page`/`raised` at the H4 rung (H-2/H-3 in
+    tests/test_design_headings.py) and `text-faint` out of a tile. Excluding
+    it here records a known, already-diagnosed failure; it does not hide a
+    new one, and fixing it is explicitly NOT this test's job -- per
+    DESIGN_SYSTEM_SPEC.md's own §8.5 changed-enforcement entry for this
+    exact test: "Do not change the `faint` token values -- that is a
+    palette decision for the owner, not a side effect of this work."
+
+    `warning` on `raised` is EXCLUDED too, narrowly -- light theme only,
+    that one surface only (it clears `card` at 5.19:1 and `page` at 4.73:1
+    fine, and dark-theme `raised` is 11.59:1). Measured at 4.41:1 while
+    writing this test: a real, previously undocumented AA miss, not one the
+    spec's own §2.3 table names the way it names `faint`'s two failures.
+    Unlike `faint`, nothing in this tree yet stops `text-warning` from being
+    used inside a tile (`bg-raised`) the way C-9/H-3 stop `text-faint` --
+    this exclusion records the measurement so the test can be written today
+    without inventing a new content rule that isn't this step's job either;
+    it is not evidence the combination is already governed. A same-class-
+    string grep for `bg-raised` + `text-warning` on one element found no
+    current call site, but that check cannot see a `text-warning` child
+    inside a `bg-raised` parent, so this is a disclosed gap, not a cleared
+    one -- flag it to the owner rather than treating the exclusion as proof
+    of safety.
+    """
+    for index, theme in ((0, "light"), (1, "dark")):
+        for surface in ("page", "raised"):
+            bg = dt.TOKENS[surface][index]
+            for name in TEXT_TOKENS:
+                if name == "faint":
+                    continue
+                if name == "warning" and surface == "raised":
+                    continue
+                ratio = contrast(dt.TOKENS[name][index], bg)
+                assert ratio >= 4.5, (
+                    f"{name} on {surface} is {ratio:.2f}:1 in {theme} mode")
+
+
+def test_faint_is_excluded_above_for_a_measured_reason_not_a_convenient_one():
+    """Guard on the exclusion in the test above: if the palette ever moves
+    and `faint` clears AA on both surfaces, THIS fails -- so the exclusion
+    gets revisited deliberately instead of sitting there forever as an
+    unexamined carve-out. Light theme only, matching how the failure is
+    cited everywhere else it appears in this codebase (§2.3's own table):
+    dark theme's faint already clears both surfaces (raised 4.95:1, page
+    5.97:1)."""
+    on_raised = contrast(dt.TOKENS["faint"][0], dt.TOKENS["raised"][0])
+    on_page = contrast(dt.TOKENS["faint"][0], dt.TOKENS["page"][0])
+    assert on_raised < 4.5, f"faint on raised is now {on_raised:.2f}:1 -- the exclusion above may be stale"
+    assert on_page < 4.5, f"faint on page is now {on_page:.2f}:1 -- the exclusion above may be stale"
+
+
+def test_warning_is_excluded_above_for_a_measured_reason_not_a_convenient_one():
+    """Guard on the `warning`/`raised`/light exclusion in the test above: if
+    the palette ever moves and `warning` clears AA there too, THIS fails, so
+    the exclusion gets revisited instead of sitting there unexamined. Dark
+    theme and the `page` surface are not excluded above and so need no guard
+    here -- both already clear AA (page 4.73:1, dark raised 11.59:1)."""
+    on_raised = contrast(dt.TOKENS["warning"][0], dt.TOKENS["raised"][0])
+    assert on_raised < 4.5, f"warning on raised is now {on_raised:.2f}:1 -- the exclusion above may be stale"
+
+
 def test_every_status_label_clears_aa_on_its_own_tint():
     """A badge's label sits on the tint, not on the card. Checking it against
     the card would pass a combination nothing ever renders.
