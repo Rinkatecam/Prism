@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/_card.html" import card with context %}
 
 {#
   /reports — organised by QUESTION, not by file format.  WP-5.
@@ -50,18 +51,15 @@
      <button> that scrolls to the section owning the finding.
      ═══════════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  <div class="bg-card rounded-lg border border-line p-6">
-    <h2 id="right-now" class="text-lg font-semibold flex items-center gap-2 mb-1">
-      <i data-lucide="siren" class="w-5 h-5 text-muted"></i>
-      {{ t.get('q_right_now', 'Should I be worried right now?') }}
-    </h2>
-    <p id="nowcast-summary" class="text-sm mt-3 mb-3"></p>
+  {% call card(heading=t.get('q_right_now', 'Should I be worried right now?'),
+                icon='siren', heading_id='right-now') %}
+    <p id="nowcast-summary" class="text-sm mb-3"></p>
     <div id="nowcast-skeleton" class="space-y-2" aria-hidden="true">
       <div class="skeleton skeleton-text w-3/4"></div>
       <div class="skeleton skeleton-text w-1/2"></div>
     </div>
     <div id="nowcast-findings" class="space-y-1.5"></div>
-  </div>
+  {% endcall %}
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════
@@ -73,27 +71,20 @@
      detail fields read undefined.
      ═══════════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  <div class="bg-card rounded-lg border border-line p-6">
-    <div class="flex flex-wrap items-start justify-between gap-3 mb-1">
-      <h2 id="attention" class="text-lg font-semibold flex items-center gap-2">
-        <i data-lucide="activity" class="w-5 h-5 text-healthy"></i>
-        {{ t.get('q_attention', 'Which servers need attention, and why?') }}
-      </h2>
-      <div class="flex items-center gap-2">
-        <select id="fleet-hours" data-change="setFleetWindow"
-                aria-label="{{ t.get('time_range', 'Time range') }}"
-                class="text-xs rounded border border-line bg-field px-2 py-1.5">
-          <option value="24">{{ t.hours_24 }}</option>
-          <option value="168">{{ t.hours_168 }}</option>
-          <option value="720" selected>{{ t.hours_720 }}</option>
-        </select>
-        <button data-action="loadFleetReport"
-                class="text-xs font-medium px-3 py-1.5 rounded border border-line hover:bg-page transition-colors">
-          <i data-lucide="refresh-cw" class="w-3.5 h-3.5 inline mr-1"></i>
-          {{ t.get('refresh', 'Refresh') }}
-        </button>
-      </div>
-    </div>
+  {% set _attention_controls %}<select id="fleet-hours" data-change="setFleetWindow"
+          aria-label="{{ t.get('time_range', 'Time range') }}"
+          class="text-xs rounded border border-line bg-field px-2 py-1.5">
+    <option value="24">{{ t.hours_24 }}</option>
+    <option value="168">{{ t.hours_168 }}</option>
+    <option value="720" selected>{{ t.hours_720 }}</option>
+  </select>
+  <button data-action="loadFleetReport"
+          class="text-xs font-medium px-3 py-1.5 rounded border border-line hover:bg-page transition-colors">
+    <i data-lucide="refresh-cw" class="w-3.5 h-3.5 inline mr-1"></i>
+    {{ t.get('refresh', 'Refresh') }}
+  </button>{% endset %}
+  {% call card(heading=t.get('q_attention', 'Which servers need attention, and why?'),
+                icon='activity', heading_id='attention', controls=_attention_controls) %}
     <p id="fleet-answer" class="text-xs text-muted mb-4"></p>
 
     <div id="fleet-loading" class="space-y-2" aria-hidden="true">
@@ -102,7 +93,10 @@
     </div>
 
     <div id="fleet-content" class="hidden">
-      <div id="fleet-band" class="rounded-lg border border-line bg-page p-4 mb-4"></div>
+      {# §4.4/§4.5 tile idiom -- the fleet-band is a JS-filled inset inside
+         this card, so it takes TILE (bg-raised rounded border border-line
+         p-3), not a hand-rolled bg-page shape. #}
+      <div id="fleet-band" class="bg-raised rounded border border-line p-3 mb-4"></div>
       <div id="fleet-empty" class="hidden text-center py-8"></div>
       <div id="fleet-table-wrap" class="overflow-x-auto">
         <table class="w-full text-sm border-collapse">
@@ -138,7 +132,7 @@
         {{ t.get('fleet_report_desc', 'Servers ranked by how much of their reachable time was spent outside thresholds.') }}
       </span>
     </div>
-  </div>
+  {% endcall %}
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════
@@ -149,11 +143,8 @@
      column cannot rank a fleet.
      ═══════════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  <div class="bg-card rounded-lg border border-line p-6">
-    <h2 id="uptime" class="text-lg font-semibold flex items-center gap-2 mb-3">
-      <i data-lucide="timer" class="w-5 h-5 text-muted"></i>
-      {{ t.get('q_uptime', 'How much uptime did we have, and when were we down?') }}
-    </h2>
+  {% call card(heading=t.get('q_uptime', 'How much uptime did we have, and when were we down?'),
+                icon='timer', heading_id='uptime') %}
     <div id="uptime-content"></div>
 
     <div class="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-line">
@@ -169,7 +160,7 @@
       </button>
       <span id="uptime-format-note" class="text-[10px] text-faint"></span>
     </div>
-  </div>
+  {% endcall %}
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════
@@ -181,18 +172,13 @@
      applies here, and the filter that relaxes it is opt-in and labelled.
      ═══════════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  <div class="bg-card rounded-lg border border-line p-6">
-    <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
-      <h2 id="capacity" class="text-lg font-semibold flex items-center gap-2">
-        <i data-lucide="hard-drive" class="w-5 h-5 text-muted"></i>
-        {{ t.get('q_capacity', 'What is going to run out of space, and when?') }}
-      </h2>
-      <label class="flex items-center gap-1.5 text-xs text-muted">
-        <input type="checkbox" id="capacity-low" data-change="toggleCapacityLow"
-               class="rounded border-line">
-        {{ t.get('include_low_risk', 'Include low-risk forecasts') }}
-      </label>
-    </div>
+  {% set _capacity_controls %}<label class="flex items-center gap-1.5 text-xs text-muted">
+    <input type="checkbox" id="capacity-low" data-change="toggleCapacityLow"
+           class="rounded border-line">
+    {{ t.get('include_low_risk', 'Include low-risk forecasts') }}
+  </label>{% endset %}
+  {% call card(heading=t.get('q_capacity', 'What is going to run out of space, and when?'),
+                icon='hard-drive', heading_id='capacity', controls=_capacity_controls) %}
     <div id="capacity-content"></div>
     <div class="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-line">
       <button data-action="downloadFleetCSV"
@@ -202,7 +188,7 @@
       </button>
       <span id="capacity-format-note" class="text-[10px] text-faint"></span>
     </div>
-  </div>
+  {% endcall %}
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════
@@ -214,22 +200,17 @@
      is actually a collection fault.
      ═══════════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  <div class="bg-card rounded-lg border border-line p-6">
-    <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
-      <h2 id="evidence" class="text-lg font-semibold flex items-center gap-2">
-        <i data-lucide="shield-check" class="w-5 h-5 text-muted"></i>
-        {{ t.get('q_evidence', 'Who changed what, and is anything actually protected?') }}
-      </h2>
-      <select id="evidence-hours" data-change="setEvidenceWindow"
-              aria-label="{{ t.get('time_range', 'Time range') }}"
-              class="text-xs rounded border border-line bg-field px-2 py-1.5">
-        <option value="24">{{ t.hours_24 }}</option>
-        <option value="168" selected>{{ t.hours_168 }}</option>
-        <option value="336">{{ t.get('days_14', '14 days') }}</option>
-        <option value="720">{{ t.hours_720 }}</option>
-        <option value="2160">{{ t.get('days_90', '90 days') }}</option>
-      </select>
-    </div>
+  {% set _evidence_controls %}<select id="evidence-hours" data-change="setEvidenceWindow"
+          aria-label="{{ t.get('time_range', 'Time range') }}"
+          class="text-xs rounded border border-line bg-field px-2 py-1.5">
+    <option value="24">{{ t.hours_24 }}</option>
+    <option value="168" selected>{{ t.hours_168 }}</option>
+    <option value="336">{{ t.get('days_14', '14 days') }}</option>
+    <option value="720">{{ t.hours_720 }}</option>
+    <option value="2160">{{ t.get('days_90', '90 days') }}</option>
+  </select>{% endset %}
+  {% call card(heading=t.get('q_evidence', 'Who changed what, and is anything actually protected?'),
+                icon='shield-check', heading_id='evidence', controls=_evidence_controls) %}
     <p id="evidence-answer" class="text-sm mb-4"></p>
     <div id="evidence-skeleton" class="space-y-2" aria-hidden="true">
       <div class="skeleton skeleton-text w-full"></div>
@@ -255,7 +236,7 @@
       {{ t.get('evidence_contains', 'This pack contains the full audit log, failed sign-ins and security posture for the selected period.') }}
       {{ t.get('firewall_in_export', 'Firewall policy events are not shown here, but they are included in the CSV and PDF.') }}
     </p>
-  </div>
+  {% endcall %}
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════
@@ -265,11 +246,8 @@
      then breadth then spike, and re-sorting by raw count would undo it.
      ═══════════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  <div class="bg-card rounded-lg border border-line p-6">
-    <h2 id="correlation" class="text-lg font-semibold flex items-center gap-2 mb-3">
-      <i data-lucide="git-branch" class="w-5 h-5 text-muted"></i>
-      {{ t.get('q_correlation', 'Was that an attack, or one fault hitting everything?') }}
-    </h2>
+  {% call card(heading=t.get('q_correlation', 'Was that an attack, or one fault hitting everything?'),
+                icon='git-branch', heading_id='correlation') %}
     <div id="correlation-content"></div>
     <div class="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-line">
       <button data-action="openCorrelationJson"
@@ -279,7 +257,7 @@
       </button>
       <span class="text-[10px] text-faint" id="correlation-format-note"></span>
     </div>
-  </div>
+  {% endcall %}
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════
@@ -288,16 +266,27 @@
      here the file IS the question. Collapsed, and last.
      ═══════════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  <div class="bg-card rounded-lg border border-line p-6">
-    <button data-action="toggleRawData" aria-expanded="false" aria-controls="raw-panel"
-            class="w-full flex items-center justify-between gap-2 text-left">
-      <h2 id="raw" class="text-lg font-semibold flex items-center gap-2">
-        <i data-lucide="table" class="w-5 h-5 text-muted"></i>
-        {{ t.get('q_raw_data', 'I need the raw numbers myself') }}
-      </h2>
-      <i data-lucide="chevron-right" id="raw-chevron" class="w-4 h-4 text-muted"></i>
-    </button>
-
+  {# JUDGEMENT CALL (step 16): this heading used to BE the disclosure
+     button (a <button> wrapping the whole head row). card()'s heading=/
+     controls= contract has no way to make the WHOLE head row a single
+     <button> -- controls renders INSIDE the row, beside the heading, not
+     around it. Rather than hand-roll a second head-row shape outside the
+     macro, the disclosure toggle becomes a small icon-only button in
+     controls= (same aria-expanded/aria-controls/data-action wiring, same
+     #raw-chevron id the JS already updates), and the heading itself is a
+     plain, non-interactive <h2>. This shrinks the click target from "the
+     whole row" to "the chevron button" but is arguably more correct
+     accessibility-wise (a heading that is also a button is an unusual
+     pattern for a screen reader); functionality (toggleRawData, the
+     chevron flip, lazy-loading server options) is unchanged. Flagged in
+     this step's own report. #}
+  {% set _raw_controls %}<button data-action="toggleRawData" aria-expanded="false" aria-controls="raw-panel"
+          aria-label="{{ t.get('q_raw_data', 'I need the raw numbers myself') }}"
+          class="p-1.5 -m-1.5 rounded text-muted hover:text-accent focus-visible:text-accent transition-colors duration-fast ease-standard">
+    <i data-lucide="chevron-right" id="raw-chevron" class="w-4 h-4"></i>
+  </button>{% endset %}
+  {% call card(heading=t.get('q_raw_data', 'I need the raw numbers myself'),
+                icon='table', heading_id='raw', controls=_raw_controls) %}
     <div id="raw-panel" class="hidden mt-4 space-y-4">
 
       <div class="border border-line rounded-lg p-4">
@@ -366,7 +355,7 @@
       </div>
 
     </div>
-  </div>
+  {% endcall %}
 </section>
 
 
@@ -1228,7 +1217,12 @@
       + 'aria-expanded="' + open + '" aria-controls="blk-' + id + '" '
       + 'class="w-full flex items-center gap-2 text-left mb-2">'
       + '<i data-lucide="chevron-' + (open ? 'down' : 'right') + '" class="w-3.5 h-3.5 text-muted"></i>'
-      + '<h3 class="text-sm font-semibold">' + e(title) + '</h3></button>'
+      // WP-6 step 16 (H-4/H-5): canonical H3_NO_ICON (_card.html section 4.2)
+      // -- was 'text-sm font-semibold' with no colour/margin at all. The
+      // <h3> stays inside this <button> (a hand-rolled JS disclosure
+      // toggle, not a card() macro head row -- no macro contract to
+      // satisfy here), so only the class string changes.
+      + '<h3 class="text-sm font-semibold text-muted mb-3">' + e(title) + '</h3></button>'
       + '<div id="blk-' + id + '"' + (open ? '' : ' class="hidden"') + '>' + body + '</div></div>';
   }
 
@@ -1275,12 +1269,17 @@
             e(r[EV.username]), e(r[EV.action]), e(r[EV.category]),
             r[EV.sourceIp] ? e(r[EV.sourceIp]) : '<span class="text-faint">' + e(T.notRecorded) + '</span>'];
         }))
-      + '<h4 class="text-xs font-semibold mt-3 mb-1">' + e(T.sopExecutions) + '</h4>'
+      // WP-6 step 16 (H-4/H-5): H4 never carries its own top margin (C8) --
+      // the mt-3 that used to sit ON the heading now sits on this wrapping
+      // div instead (this h4 is never the first thing in auditBody, so no
+      // first:mt-0 variant is needed).
+      + '<div class="mt-4"><h4 class="text-xs font-semibold uppercase tracking-wide text-faint mb-2">'
+      + e(T.sopExecutions) + '</h4>'
       + tbl([T.hourBeginning, 'SOP', T.username],
         (au[EV.sopExecutions] || []).slice(0, 30).map(function (r) {
           return ['<span class="font-mono">' + e(ts(r[EV.executedAt])) + '</span>',
             e(r[EV.sopId]), e(r[EV.executedBy])];
-        }));
+        })) + '</div>';
 
     const authBody =
       tbl([T.sourceIp, T.servers, 'accounts', 'attempts'],
@@ -1288,11 +1287,13 @@
           return [r[EV.sourceIp] ? e(r[EV.sourceIp]) : '<span class="text-faint">' + e(T.notRecorded) + '</span>',
             e(num(r[EV.servers])), e(num(r[EV.accounts])), e(num(r[EV.attempts]))];
         }))
-      + '<h4 class="text-xs font-semibold mt-3 mb-1">' + e(T.logonReason) + '</h4>'
+      // WP-6 step 16 (H-4/H-5): same fix as auditBody's h4 above.
+      + '<div class="mt-4"><h4 class="text-xs font-semibold uppercase tracking-wide text-faint mb-2">'
+      + e(T.logonReason) + '</h4>'
       + tbl([T.logonReason, 'attempts'],
         (auth[EV.byReason] || []).map(function (r) {
           return [e(r[EV.meaning] || T.unknown), e(num(r[EV.attempts]))];
-        }));
+        })) + '</div>';
 
     const postureRows = (p[EV.postureServers] || []).slice().sort(function (a, b) {
       const ac = (a[EV.concerns] || []).length, bc = (b[EV.concerns] || []).length;
@@ -1368,29 +1369,36 @@
 
     let html = '<p class="text-sm mb-3">' + e(v[CR.summary] || '') + '</p>';
 
+    // WP-6 step 16 (H-4/H-5): each of these three h3s used to carry its own
+    // mb-1 (and, for stale/faults, an mt-4 top margin -- forbidden on a
+    // heading, absolutely, C8). Canonical H3_NO_ICON has no top margin at
+    // all, so the mt-5 that used to separate one sub-section from the next
+    // now lives on a wrapping div instead (subblock()'s own mt-5 first:mt-0
+    // rhythm, hand-applied here because this is JS string concatenation,
+    // not a Jinja subblock() macro call.
     if (attacks.length) {
-      html += '<h3 class="text-sm font-semibold mb-1">' + e(T.attackShape) + '</h3>'
+      html += '<div class="mt-5 first:mt-0"><h3 class="text-sm font-semibold text-muted mb-3">' + e(T.attackShape) + '</h3>'
         + tbl([T.sourceIp, T.attackTargets, 'attempts', 'shapes'], attacks.map(function (a) {
           return [e(a[CR.sourceIp]), e(num(a[CR.servers])), e(num(a[CR.attempts])),
             e((a[CR.shapes] || []).join(', '))];
         }))
         + attacks.map(function (a) {
           return '<p class="text-[10px] text-muted mt-1">' + e(a[CR.why] || '') + '</p>';
-        }).join('');
+        }).join('') + '</div>';
     }
 
     if (stale.length) {
-      html += '<h3 class="text-sm font-semibold mt-4 mb-1 ' + NONE + '">' + e(T.staleCredential) + '</h3>'
+      html += '<div class="mt-5 first:mt-0"><h3 class="text-sm font-semibold text-muted mb-3">' + e(T.staleCredential) + '</h3>'
         + tbl([T.sourceIp, 'attempts', T.servers], stale.map(function (a) {
           return ['<span class="' + NONE + '">' + e(a[CR.sourceIp]) + '</span>',
             e(num(a[CR.attempts])), e(num(a[CR.servers]))];
-        }));
+        })) + '</div>';
     }
 
     if (faults.length) {
       // The API's ORDER BY encodes severity, then breadth, then spike. No
       // client-side re-sort: ranking by raw count would undo that priority.
-      html += '<h3 class="text-sm font-semibold mt-4 mb-1">' + e(T.fleetWideFault) + '</h3>'
+      html += '<div class="mt-5 first:mt-0"><h3 class="text-sm font-semibold text-muted mb-3">' + e(T.fleetWideFault) + '</h3>'
         + tbl([T.hourBeginning, 'source/id', T.level, T.servers, 'spike'],
           faults.map(function (f) {
             const explained = (f[CR.explainedBy] || []).length;
@@ -1401,7 +1409,7 @@
               e(f[CR.spikeMultiple] + '×')
               + (explained ? ' <span class="badge text-[9px] ' + NONE + '">'
                 + e(T.explainedBy) + '</span>' : '')];
-          }));
+          })) + '</div>';
     }
     fill('correlation-content', html);
     fill('correlation-format-note', e(T.howDecided));

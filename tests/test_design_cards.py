@@ -498,6 +498,32 @@ def test_an_inline_flex_segmented_control_is_not_mistaken_for_a_card():
 # `bg-page`-recessed rows/forms, and _servers.html's one JS-built tag-pill
 # row -- none of which this step's own text named for conversion (see this
 # step's own report for the tile-conversion scope decision).
+# Lowered 2026-09-17 by WP-6 step 16 (Batch C -- Reports, Monitoring,
+# Operations) -- RE-RUN, not hand-computed. monitoring.html (1 -> 0),
+# partials/active_actions.html (1 -> 0) and partials/updates_overview.html
+# (1 -> 0) reached exactly zero and are deleted, matching this ratchet's own
+# convention. reports.html falls from 8 to 1: seven `bg-card p-6` sections
+# converted to {% call card(...) %} (now invisible to this source-text
+# scan, same "moved behind the macro" effect CARD_EXCEPTIONS already
+# documents for step 15); the eighth exception -- the JS-filled #fleet-band,
+# converted from a hand-rolled `bg-page` shape to TILE plus an appended
+# `mb-4` layout margin -- stays counted because `mb-4` is not part of the
+# pinned TILE string, exactly as C-2's own allowlist is written (an exact
+# string match, not "TILE plus anything"). operations.html falls from 15 to
+# 4: the Runbook Library, System & Tools and Data Management card shells
+# convert (macro-invisible, -3), the seven bg-page System Health tiles
+# reach the exact TILE string (-7), and the runbook-run-modal's code shell
+# is fixed from `bg-page` to the pinned `bg-raised` idiom (-1) -- eleven
+# sites resolved. The four that remain: the three Danger Zone action boxes
+# (Clean/Delete/Factory Reset), each of which keeps a real `<button>` and so
+# is deliberately NOT converted to the TILE idiom (§4.4: "if it needs a
+# button, it is a card and belongs at the page level") -- only their
+# bg-page/dark:bg-page/50 -> bg-raised theme-token fix and rounded-lg ->
+# rounded radius step landed, which does not change their exception COUNT
+# (still non-canonical before and after, for the same underlying shape);
+# and one pre-existing, untouched JS-built status box (`rounded p-2 text-sm
+# bg-raised dark:bg-line text-muted`, the config-upload result banner) this
+# step's own brief never named.
 CARD_EXCEPTIONS: dict[str, int] = {
     "base.html": 4,
     "compliance.html": 4,
@@ -505,12 +531,10 @@ CARD_EXCEPTIONS: dict[str, int] = {
     "compliance_sop.html": 3,
     "dashboard.html": 5,
     "login.html": 1,
-    "monitoring.html": 1,
     "network.html": 2,
-    "operations.html": 15,
+    "operations.html": 4,
     "partials/_empty_state.html": 1,
     "partials/_skeletons.html": 4,
-    "partials/active_actions.html": 1,
     "partials/critical_issues.html": 1,
     "partials/server_analytics.html": 4,
     "partials/server_card.html": 1,
@@ -521,8 +545,7 @@ CARD_EXCEPTIONS: dict[str, int] = {
     "partials/settings/_health_checks.html": 1,
     "partials/settings/_restarts.html": 1,
     "partials/settings/_servers.html": 1,
-    "partials/updates_overview.html": 1,
-    "reports.html": 8,
+    "reports.html": 1,
     "scan.html": 2,
     "server_detail.html": 19,
     "servers.html": 5,
@@ -532,7 +555,7 @@ CARD_EXCEPTIONS: dict[str, int] = {
     "workflows.html": 5,
 }
 
-CARD_EXCEPTION_TOTAL = 115
+CARD_EXCEPTION_TOTAL = 94
 
 
 def test_every_card_shaped_class_string_is_one_of_the_pinned_ones():
@@ -1551,15 +1574,20 @@ def test_the_section_header_row_scan_actually_catches_a_violation():
 # own header comment on why the detector's 600-char window and its
 # already-inside-a-panel guard made those three vacuous for this exact
 # shape, not exempt by any rule).
+# Lowered 2026-09-17 by WP-6 step 16 -- RE-RUN, not hand-computed.
+# monitoring.html's Alert Fatigue h2 (outside its card) and operations.html's
+# three h2s (Runbooks, System & Tools, Data Management -- all previously
+# outside their own bg-card div) all converted to {% call card(...) %},
+# which removes this "heading outside, then its card" shape BY
+# CONSTRUCTION exactly as step 15's own comment above already documents.
+# Both entries reached exactly zero and are deleted.
 SECTION_HEADER_BASELINE: dict[str, int] = {
-    "monitoring.html": 1,
-    "operations.html": 3,
     "partials/services_table.html": 1,
     "server_detail.html": 5,
     "workflows.html": 1,
 }
 
-SECTION_HEADER_TOTAL = 11
+SECTION_HEADER_TOTAL = 7
 
 
 def _section_header_counts() -> dict[str, int]:

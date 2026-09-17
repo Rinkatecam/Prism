@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/_card.html" import card with context %}
 {% block page_title %}{{ t.get('monitoring', 'Monitoring') }}{% endblock %}
 {% block page_icon %}activity{% endblock %}
 {% block content %}
@@ -10,11 +11,19 @@
      SECTION 3 — Alert Fatigue Scoring
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="volume-2" class="w-5 h-5 text-accent"></i>
-    {{ t.alert_fatigue if t.alert_fatigue is defined else 'Alert Fatigue' }}
-  </h2>
-  <div class="bg-card rounded-lg p-5 border border-line space-y-4">
+  {% call card(heading=(t.alert_fatigue if t.alert_fatigue is defined else 'Alert Fatigue'),
+                icon='volume-2') %}
+    {# WP-6 step 16 -- JUDGEMENT CALL, flagged prominently in this step's
+       own report. Part I §7.4 names this exact paragraph ("Noise Digest —
+       Alert Scoring") as a muted <p> doing a heading's job and says it
+       "becomes an <h3> ... or is deleted". This step's own brief instead
+       identifies it as a gate-5 explanatory-prose candidate (§5.7) that
+       may not move before step 10 (browser measurement, not done) and
+       step 24 (structure checkpoint, not done) have landed, and says
+       explicitly: leave it exactly where and how it is. Left untouched:
+       same <p>, same classes, same position, same text -- not converted
+       to h3, not moved, not deleted. Do not touch until steps 10/24 clear
+       it. #}
     <p class="text-xs text-muted">
       {{ t.noise_digest if t.noise_digest is defined else 'Noise Digest' }} &mdash;
       {{ t.alert_scoring if t.alert_scoring is defined else 'Alert Scoring' }}
@@ -52,7 +61,7 @@
       </button>
       <span id="reset-scores-result" class="text-xs text-muted"></span>
     </div>
-  </div>
+  {% endcall %}
 </section>
 
 <script nonce="{{ csp_nonce }}">

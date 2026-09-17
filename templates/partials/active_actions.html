@@ -11,20 +11,11 @@
    no active install (shown only in Updates) or be mid-reboot with the
    install already complete (shown only in Actions).
 #}
+{% from "partials/_card.html" import card with context %}
 {%- if items -%}
-<div class="bg-card rounded-lg border border-line p-4">
-  <div class="flex items-center justify-between mb-3">
-    <h2 class="text-sm font-semibold flex items-center gap-2">
-      <i data-lucide="activity" class="w-4 h-4 text-accent"></i>
-      {{ t.get('server_actions', 'Server Actions') }}
-      <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-brand/10 text-brand dark:bg-brand/20">
-        {{ items | length }}
-      </span>
-    </h2>
-    <span class="text-[10px] text-faint">
-      {{ t.get('actions_live', 'Live') }}
-    </span>
-  </div>
+{% set _actions_heading %}{{ t.get('server_actions', 'Server Actions') }} <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-brand/10 text-brand dark:bg-brand/20">{{ items | length }}</span>{% endset %}
+{% set _actions_controls %}<span class="text-[10px] text-faint">{{ t.get('actions_live', 'Live') }}</span>{% endset %}
+{% call card(heading=_actions_heading, icon='activity', controls=_actions_controls) %}
 
   <div class="space-y-2">
     {% for it in items %}
@@ -123,5 +114,5 @@
     </a>
     {% endfor %}
   </div>
-</div>
+{% endcall %}
 {%- endif -%}

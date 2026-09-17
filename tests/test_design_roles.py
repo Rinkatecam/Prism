@@ -156,24 +156,41 @@ def test_the_one_page_title_icon_is_violet():
 # never counted here either before (0) or after (0) -- this file's
 # remaining settings.html/_server_config.html H3 entries are unrelated,
 # pre-existing modal-title icons (step 19's job).
+# Lowered 2026-09-17 by WP-6 step 16 (Batch C -- Reports, Monitoring,
+# Operations) -- RE-RUN, not hand-computed. monitoring.html,
+# partials/active_actions.html, partials/updates_overview.html and
+# reports.html all reach exactly zero: every H2 icon these files carried
+# (including reports.html's own text-healthy "activity" icon on the
+# attention section, and operations.html's critical-red "database" icon on
+# Data Management, converted with no status-colour exception per this
+# step's own instruction) is now rendered via card()'s H2_ICON constant --
+# a macro-generated `<h2><i>` pair invisible to this file's source-text
+# scan, same effect this dict's own comment already documents for step 15.
+# operations.html falls from 3 to 0 (Runbooks, System & Tools and Data
+# Management were its only three H2 icons). Four entries deleted rather
+# than kept at 0, matching this ratchet's own convention.
 H2_ICON_BASELINE: dict[str, int] = {
     "dashboard.html": 1,
-    "monitoring.html": 1,
-    "operations.html": 3,
-    "partials/active_actions.html": 1,
     "partials/critical_issues.html": 1,
     "partials/server_comparison.html": 1,
     "partials/services_table.html": 1,
-    "partials/updates_overview.html": 1,
-    "reports.html": 7,
     "server_detail.html": 9,
     "servers.html": 1,
     "workflows.html": 1,
 }
-H2_ICON_TOTAL = 28
+H2_ICON_TOTAL = 15
 
+# Lowered 2026-09-17 by WP-6 step 16 -- RE-RUN, not hand-computed.
+# operations.html falls from 3 to 2: its "Execution History" h3 (inside
+# the Runbook Library card) converted to subhead(icon='history'), whose
+# icon is now the macro's own H3_ICON constant (text-muted), invisible to
+# this scan the same way a converted H2 icon is. The two that remain are
+# the Data Action Confirmation modal's alert-triangle (text-critical) and
+# the Run Runbook modal's play icon (text-healthy) -- both dialog titles,
+# neither yet marked data-role="dialog-title", so both still counted here
+# until step 19 ("every dialog declares itself").
 H3_ICON_BASELINE: dict[str, int] = {
-    "operations.html": 3,
+    "operations.html": 2,
     "partials/server_comparison.html": 3,
     "partials/settings/_server_config.html": 2,
     "server_detail.html": 4,
@@ -182,7 +199,7 @@ H3_ICON_BASELINE: dict[str, int] = {
     "topology.html": 1,
     "workflows.html": 1,
 }
-H3_ICON_TOTAL = 19
+H3_ICON_TOTAL = 18
 
 
 def _non_compliant_heading_icons(level: str, target: str) -> dict[str, int]:
@@ -208,16 +225,17 @@ def test_every_section_heading_icon_is_violet():
     companion LITERAL_TOTAL exists for in tests/test_design_tokens.py, for
     the same reason: a per-file ceiling alone still permits adding one new
     entry to the dict), and the baseline must come down when the real count
-    does. The `seen >= 28` guard is a positive control — a scan finding
+    does. The `seen >= 15` guard is a positive control — a scan finding
     fewer than that means the pattern itself has drifted, not that the tree
-    improved. (Lowered from 40 by WP-6 step 15: every settings-family H2
-    icon this step converted now renders violet via card()'s own H2_ICON
-    constant, a macro-generated `<h2><i>` pair that is invisible to this
-    file's source-text scan the same way it is to test_design_headings.py's
-    HEADING_BASELINE -- see H2_ICON_BASELINE's own comment.)"""
+    improved. (Lowered from 40 to 28 by WP-6 step 15, and from 28 to 15 by
+    step 16: every H2 icon each step converted now renders violet via
+    card()'s own H2_ICON constant, a macro-generated `<h2><i>` pair that is
+    invisible to this file's source-text scan the same way it is to
+    test_design_headings.py's HEADING_BASELINE -- see H2_ICON_BASELINE's
+    own comment.)"""
     counts = _non_compliant_heading_icons("2", "text-brand")
     seen = sum(counts.values())
-    assert seen >= 28, f"only {seen} <h2><i> pairs matched — the pattern has drifted"
+    assert seen >= 15, f"only {seen} <h2><i> pairs matched — the pattern has drifted"
 
     grew = {f: (H2_ICON_BASELINE.get(f, 0), n)
             for f, n in counts.items() if n > H2_ICON_BASELINE.get(f, 0)}
@@ -343,7 +361,24 @@ def test_the_icon_scan_can_see_a_digit_in_the_name():
     # icon, one card family later. `settings-2` itself stays findable
     # (servers.html:54, services.html:31, both untouched by this step), so
     # `digits >= 11` above is unaffected; only the raw SITE count drops.
-    assert sites >= 433, f"only {sites} icon sites scanned — measured 433 post-WP-6-step-15"
+    #
+    # 433 -> 416 with WP-6 step 16 (Batch C -- Reports, Monitoring,
+    # Operations): the same "moved behind a macro" effect, for 17 more
+    # icons. Fourteen were literal heading icons converted via card()'s
+    # `icon=`/subhead()'s `icon=` (reports.html's seven h2 icons,
+    # monitoring.html's one, operations.html's Runbooks/System & Tools/Data
+    # Management h2 icons plus its Execution History h3 icon, and the two
+    # dashboard partials' one h2 icon each). The other three are
+    # operations.html's Config Backup & Restore/System Health &
+    # Diagnostics/Audit Trail sub-headings: these were `<div>` pseudo-
+    # headings before this step (Part I §7.4's own named defect --
+    # `archive`/`heart-pulse`/`scroll-text` icons sitting in a styled
+    # `<div>`, not an `<h3>`) so they were never in H3_ICON_BASELINE's
+    # scan (which only reads real `<h3>` tags), but they WERE three more
+    # literal `<i data-lucide="...">` sites this generic scan counted --
+    # converting them to real subhead()-owned h3s moves their icons behind
+    # the macro too, for the identical reason.
+    assert sites >= 416, f"only {sites} icon sites scanned — measured 416 post-WP-6-step-16"
 
 
 def test_no_primary_button_is_left_on_the_informational_blue():

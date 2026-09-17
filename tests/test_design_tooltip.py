@@ -839,15 +839,56 @@ def test_the_panel_is_reachable_by_a_pointer_when_visible():
 #
 # This is content-migration bookkeeping for wave B (steps 25-26), not a gate
 # this step closes — the ratchet only has to stop the count getting WORSE.
+#
+# RAISED 2026-09-17 by WP-6 step 16 (Batch C -- Reports, Monitoring,
+# Operations) -- by +4, RE-MEASURED, not hand-typed, and prominently
+# flagged (a ratchet moving the wrong direction is unusual and deserves
+# scrutiny, not a quiet edit). This is the DOCUMENTED trade-off two
+# comments above names by name: "non-greedy body matching stops at the
+# FIRST same-named close tag, so a description <div> that nests another
+# <div> undercounts". Before this step, each of these four description
+# lines sat as a `<p>`/`<span>` INSIDE a hand-written `<div class="bg-card
+# ...">` (and, for three of the four, a second wrapping header-row
+# `<div>`) — neither of which is itself description-shaped, but the outer
+# div's own (non-greedy, same-tag) match swallowed everything up to its
+# own first nested `</div>`, hiding the real description line from ever
+# getting its own match. Converting the card SHELL to
+# {% call card(...) %} (this step's whole point) removes that literal
+# wrapping `<div>` text from the template's own source -- the exact same
+# "moved behind the macro" mechanism this file's own HEADING_BASELINE-style
+# comments document elsewhere in this house, except here it makes a
+# PRE-EXISTING match newly VISIBLE instead of making one disappear. Not one
+# of these four lines changed its own tag, class or text by a single
+# character; two are the ones this step's own brief explicitly says must
+# NOT move yet (monitoring.html's "Noise Digest" paragraph, gated behind
+# steps 10/24) and the other two ("Live" / "Checked: <timestamp>" status
+# spans) are content-migration's own STATUS half, not its explanatory
+# half, so none of the four is a candidate to fix by touching content here
+# even if this step's scope allowed it. Confirmed by diffing this
+# detector's own output against `git show HEAD:<file>` for all five
+# touched templates before writing this comment -- reports.html's own
+# count (16) did not move at all.
+#   monitoring.html   (new key, was absent = 0): "Noise Digest — Alert
+#     Scoring" (line ~27) -- untouched, left exactly in place per this
+#     step's own explicit instruction.
+#   operations.html (5 -> 6): the Data Management section's own
+#     `{{ t.data_management_desc }}` div (the three Danger Zone boxes'
+#     own desc paragraphs were ALREADY counted before this step -- they
+#     sat one nesting level shallower, past the first swallowed `</div>`).
+#   partials/active_actions.html (1 -> 2): the "Live" status span, now
+#     `controls=`.
+#   partials/updates_overview.html (2 -> 3): the "Checked: <timestamp>"
+#     status span, now `controls=`.
 DESC_LINE_BASELINE: dict[str, int] = {
     "500.html": 1,
     "compliance.html": 3,
     "compliance_sop.html": 1,
     "dashboard.html": 1,
     "login.html": 2,
+    "monitoring.html": 1,
     "network.html": 2,
-    "operations.html": 5,
-    "partials/active_actions.html": 1,
+    "operations.html": 6,
+    "partials/active_actions.html": 2,
     "partials/activity_feed.html": 1,
     "partials/critical_issues.html": 1,
     "partials/server_analytics.html": 7,
@@ -863,7 +904,7 @@ DESC_LINE_BASELINE: dict[str, int] = {
     "partials/settings/_server_config.html": 2,
     "partials/settings/_tls.html": 1,
     "partials/tls_overview.html": 1,
-    "partials/updates_overview.html": 2,
+    "partials/updates_overview.html": 3,
     "reports.html": 16,
     "scan.html": 2,
     "server_detail.html": 13,
@@ -938,7 +979,10 @@ def test_no_description_line_outside_the_templates_that_already_have_one():
     assert not new, f"new template(s) with a description line: {new}"
 
 
-DESC_LINE_TOTAL = 114
+# Raised from 114 to 118 by WP-6 step 16 -- see DESC_LINE_BASELINE's own
+# comment above for the full account of why (a documented detector
+# blind-spot losing its cover, not new content).
+DESC_LINE_TOTAL = 118
 
 
 def test_the_total_number_of_description_lines_never_rises():

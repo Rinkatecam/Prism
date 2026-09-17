@@ -415,23 +415,34 @@ def _heading_violations() -> dict[str, int]:
 # untouched modal h3s remain per file where one already existed
 # (settings.html, _maintenance.html, _server_config.html) -- step 19's
 # job ("every dialog declares itself"), not this one's.
+# Lowered 2026-09-17 by WP-6 step 16 (Batch C -- Reports, Monitoring,
+# Operations) -- RE-RUN, not hand-computed. reports.html's seven h2s (all
+# converted to {% call card(heading=..., heading_id=...) %}) plus its four
+# JS-built h3s and two h4s (restyled to the canonical H3_NO_ICON/H4 strings
+# in place, no macro involved -- they are JS string concatenation, not
+# Jinja) reach 0 together. monitoring.html's one h2, both dashboard
+# partials' one h2 each, all converted to card(), also reach 0 -- the same
+# macro-invisibility effect step 15's own comment documents above.
+# operations.html falls from 6 to 2: its three h2s (Runbooks, System &
+# Tools, Data Management) and its one h3 (Execution History, via
+# subhead()) all vanish behind the macro; the two that remain are the
+# Data Action Confirmation and Run Runbook modals' own <h3> titles --
+# step 19's job ("every dialog declares itself"), same carve-out reasoning
+# as the settings-family modal h3s above, not yet marked
+# data-role="dialog-title" so still counted here.
 HEADING_BASELINE: dict[str, int] = {
     "compliance.html": 2,
     "dashboard.html": 3,
-    "monitoring.html": 1,
     "network.html": 1,
-    "operations.html": 6,
+    "operations.html": 2,
     "partials/_runbook_form.html": 1,
-    "partials/active_actions.html": 1,
     "partials/critical_issues.html": 1,
     "partials/server_comparison.html": 9,
     "partials/server_grid.html": 1,
     "partials/services_table.html": 1,
     "partials/settings/_maintenance.html": 1,
     "partials/settings/_server_config.html": 3,
-    "partials/updates_overview.html": 1,
     "partials/verdict_header.html": 2,
-    "reports.html": 13,
     "scan.html": 1,
     "server_detail.html": 17,
     "servers.html": 3,
@@ -441,7 +452,7 @@ HEADING_BASELINE: dict[str, int] = {
     "workflows.html": 16,
 }
 
-HEADING_TOTAL = 91
+HEADING_TOTAL = 71
 
 
 def test_every_heading_uses_its_level_s_canonical_classes():
@@ -515,11 +526,22 @@ def _top_margin_violations() -> dict[str, int]:
 # mt-*-bearing headings and the instruction to remove them are exactly
 # reproduced by this baseline). Step 13's own file list touches no
 # template, so this cannot reach zero here.
-HEADING_TOP_MARGIN_BASELINE: dict[str, int] = {
-    "reports.html": 4,
-}
+#
+# Reached 0 on 2026-09-17 by WP-6 step 16, exactly as scheduled above --
+# RE-RUN, not hand-computed. The two h4s (now at lines ~1276/1290: sopExecutions
+# "Procedures executed", logonReason "Reason") and the two h3s (now at lines
+# ~1380/1401: staleCredential, fleetWideFault) all had their mt-3/mt-4 moved
+# OFF the heading and onto a wrapping <div class="mt-5 first:mt-0"> (h3s) or
+# <div class="mt-4"> (h4s, never first-child so no first: variant needed) --
+# the container-owns-the-gap principle C8/subblock() already established,
+# hand-applied here because this is JS string concatenation, not a
+# {% call subblock( %} site. All four headings now carry their level's
+# exact canonical string with zero top margin. The dict entry is deleted
+# rather than kept at 0, matching this ratchet's own established convention
+# (see HEADING_BASELINE's comment above for the identical pattern).
+HEADING_TOP_MARGIN_BASELINE: dict[str, int] = {}
 
-HEADING_TOP_MARGIN_TOTAL = 4
+HEADING_TOP_MARGIN_TOTAL = 0
 
 
 def test_no_heading_carries_a_top_margin():
@@ -870,17 +892,29 @@ def test_the_undertext_scan_actually_catches_a_violation():
 # explanatory half D3 moves to a tooltip, so excluding it is not just
 # defensible but CORRECT. The strict "immediately adjacent" definition
 # this file uses is doing real filtering work, not just missing cases.
+#
+# Lowered 2026-09-17 by WP-6 step 16 -- RE-RUN, not hand-computed.
+# partials/active_actions.html's one site (the "Live" status span
+# immediately after its h2's closing tag) reaches 0, but NOT because the
+# span moved or was deleted -- it is now passed as card()'s `controls=`
+# argument, so the source-text sequence after the literal `</h2>` is the
+# macro's OWN (invisible, Jinja-expression) CONTROLS div, not a literal
+# `</h2>` followed by the span at all: converting the card to
+# {% call card(...) %} makes the h2's closing tag itself disappear from
+# this file's source text, the same macro-invisibility effect
+# HEADING_BASELINE's own comment documents. The span's CONTENT and
+# POSITION in the rendered page are unchanged. Entry deleted rather than
+# kept at 0, matching this ratchet's established convention.
 HEADING_UNDERTEXT_BASELINE: dict[str, int] = {
     "dashboard.html": 1,
     "network.html": 1,
-    "partials/active_actions.html": 1,
     "partials/server_comparison.html": 1,
     "partials/services_table.html": 1,
     "scan.html": 1,
     "setup.html": 1,
 }
 
-HEADING_UNDERTEXT_TOTAL = 7
+HEADING_UNDERTEXT_TOTAL = 6
 
 
 def test_no_prose_sits_directly_under_a_heading():

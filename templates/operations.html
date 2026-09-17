@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "partials/_tip.html" import tip_mirror with context %}
+{% from "partials/_card.html" import card, subblock, subhead with context %}
 {% block page_title %}Operations{% endblock %}
 {% block page_icon %}wrench{% endblock %}
 {% block content %}
@@ -11,25 +12,14 @@
      SECTION — Runbook Library
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  {# Section header: title left, primary action right (matches servers.html / monitoring.html pattern) #}
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="book-open" class="w-5 h-5 text-accent"></i>
-      {{ t.runbooks | default('Runbooks') }}
-    </h2>
-  </div>
-  <div class="bg-card rounded-lg p-5 border border-line space-y-6">
+  {% call card(heading=(t.runbooks | default('Runbooks')), icon='book-open') %}
 
     {# The inventory, in RUN mode: this page is where a runbook is run,
        not where it is defined. Editing moved to Settings -> Operations. #}
     {% with mode = 'run' %}{% include "partials/_runbook_list.html" %}{% endwith %}
 
-    <!-- Execution History -->
-    <div class="border-t border-line pt-4">
-      <h3 class="text-sm font-semibold mb-3 flex items-center gap-2">
-        <i data-lucide="history" class="w-4 h-4 text-accent"></i>
-        {{ t.execution_history | default('Execution History') }}
-      </h3>
+    {% call subblock(rule=true) %}
+      {{ subhead(t.execution_history | default('Execution History'), icon='history') }}
       <div class="overflow-x-auto">
         <table class="w-full text-xs">
           <thead>
@@ -49,27 +39,19 @@
           </tbody>
         </table>
       </div>
-    </div>
+    {% endcall %}
 
-  </div>
+  {% endcall %}
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION — System & Tools
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="wrench" class="w-5 h-5 text-accent"></i>
-    {{ t.get('system_tools', 'System & Tools') }}
-  </h2>
-  <div class="bg-card rounded-lg p-5 border border-line space-y-5">
+  {% call card(heading=t.get('system_tools', 'System & Tools'), icon='wrench') %}
 
-    <!-- Config Backup & Restore -->
-    <div>
-      <div class="text-sm font-medium mb-3 flex items-center gap-1.5">
-        <i data-lucide="archive" class="w-4 h-4 text-accent"></i>
-        {{ t.config_backups }}
-      </div>
+    {% call subblock(rule=true) %}
+      {{ subhead(t.config_backups, icon='archive') }}
       <div class="space-y-4">
         <!-- Backup info & actions -->
         <div class="flex items-center justify-between flex-wrap gap-3">
@@ -113,51 +95,51 @@
           </div>
         </div>
       </div>
-    </div>
+    {% endcall %}
 
-    <hr class="border-line">
-
-    <!-- System Health & Diagnostics -->
-    <div>
-      <div class="text-sm font-medium mb-3 flex items-center gap-1.5">
-        <i data-lucide="heart-pulse" class="w-4 h-4 text-accent"></i>
-        {{ t.system_health }}
-      </div>
+    {% call subblock(rule=true) %}
+      {{ subhead(t.system_health, icon='heart-pulse') }}
+      {# §4.4/§4.5 tile idiom -- these seven were bg-page dark:bg-page/50,
+         the idiom whose light-mode/dark-mode overrides invert the nesting
+         between themes (§7.7). TILE (bg-raised rounded border border-line
+         p-3) is a real surface in both themes, so no dark: variant is
+         needed once it is used -- 7 of the ~10 dark: variants this step's
+         brief names are these. #}
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <!-- Collector Status -->
-        <div class="bg-page dark:bg-page/50 rounded-lg p-3 border border-line">
+        <div class="bg-raised rounded border border-line p-3">
           <div class="text-xs font-medium text-muted mb-1">{{ t.collector_status }}</div>
           <div id="health-collector" class="text-sm font-semibold">
             <span class="inline-block w-2 h-2 rounded-full bg-muted mr-1"></span>--
           </div>
         </div>
         <!-- Last Collection -->
-        <div class="bg-page dark:bg-page/50 rounded-lg p-3 border border-line">
+        <div class="bg-raised rounded border border-line p-3">
           <div class="text-xs font-medium text-muted mb-1">{{ t.last_collection }}</div>
           <div id="health-last-cycle" class="text-sm font-mono">--</div>
         </div>
         <!-- DB Size -->
-        <div class="bg-page dark:bg-page/50 rounded-lg p-3 border border-line">
+        <div class="bg-raised rounded border border-line p-3">
           <div class="text-xs font-medium text-muted mb-1">{{ t.db_size }}</div>
           <div id="health-db-size" class="text-sm font-semibold">--</div>
         </div>
         <!-- Records Count -->
-        <div class="bg-page dark:bg-page/50 rounded-lg p-3 border border-line">
+        <div class="bg-raised rounded border border-line p-3">
           <div class="text-xs font-medium text-muted mb-1">{{ t.records_count }}</div>
           <div id="health-records" class="text-sm font-semibold">--</div>
         </div>
         <!-- DB Backup freshness (feature 1.8) -->
-        <div class="bg-page dark:bg-page/50 rounded-lg p-3 border border-line">
+        <div class="bg-raised rounded border border-line p-3">
           <div class="text-xs font-medium text-muted mb-1">{{ t.get('health_db_backup', 'DB Backup') }}</div>
           <div id="health-backup" class="text-sm font-semibold">--</div>
         </div>
         <!-- Audit integrity -->
-        <div class="bg-page dark:bg-page/50 rounded-lg p-3 border border-line">
+        <div class="bg-raised rounded border border-line p-3">
           <div class="text-xs font-medium text-muted mb-1">{{ t.get('health_audit', 'Audit Integrity') }}</div>
           <div id="health-audit" class="text-sm font-semibold">--</div>
         </div>
         <!-- Scheduler thread liveness -->
-        <div class="bg-page dark:bg-page/50 rounded-lg p-3 border border-line">
+        <div class="bg-raised rounded border border-line p-3">
           <div class="text-xs font-medium text-muted mb-1">{{ t.get('health_threads', 'Scheduler Threads') }}</div>
           <div id="health-threads" class="text-sm font-semibold">--</div>
         </div>
@@ -170,16 +152,10 @@
         </button>
         <span id="vacuum-result" class="text-xs text-muted"></span>
       </div>
-    </div>
+    {% endcall %}
 
-    <hr class="border-line">
-
-    <!-- Audit Trail -->
-    <div>
-      <div class="text-sm font-medium mb-3 flex items-center gap-1.5">
-        <i data-lucide="scroll-text" class="w-4 h-4 text-accent"></i>
-        {{ t.audit_trail }}
-      </div>
+    {% call subblock(rule=true) %}
+      {{ subhead(t.audit_trail, icon='scroll-text') }}
       <div class="space-y-4">
         <div class="flex items-center justify-between flex-wrap gap-3">
           <div class="flex items-center gap-2">
@@ -220,24 +196,48 @@
           </button>
         </div>
       </div>
-    </div>
-  </div>
+    {% endcall %}
+
+  {% endcall %}
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION — Data Management (Danger Zone)
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="database" class="w-5 h-5 text-critical"></i>
-    <span class="text-critical">{{ t.data_management }}</span>
-  </h2>
-  <div class="bg-card rounded-lg p-5 border border-critical/30 space-y-4">
-    <div class="text-xs text-muted">{{ t.data_management_desc }}</div>
+  {# JUDGEMENT CALL (step 16): Part I §3.4's status-icon carve-out ("a
+     section icon takes a status hue only when the section's subject IS
+     that status -- Danger Zone (critical)") is superseded here the same
+     way reports.html's text-healthy activity icon is: this step's own
+     brief converts THAT icon "with no exception", and Part II §2.4's rule
+     is unqualified ("an H2's leading icon is violet with its text").
+     card()'s H2_ICON is hardcoded text-brand with no colour-override
+     parameter, so heading + icon both go fully canonical (violet) rather
+     than staying critical-red. The danger signal does not disappear: the
+     card SHELL keeps its border-critical/30 (via extra=, below), and the
+     three action buttons/borders inside stay warning/critical-coloured
+     exactly as before -- only the SECTION HEADING itself stops shouting
+     in red, which is arguably more correct under a ladder where colour
+     means "position", not "severity". Flagged prominently in this step's
+     own report as a real, debatable design decision. #}
+  {% call card(heading=t.data_management, icon='database', extra='border-critical/30') %}
+    <div class="text-xs text-muted mb-4">{{ t.data_management_desc }}</div>
 
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {# These three keep their own button (a "Clean"/"Delete"/"Factory
+         reset" call to action) and so are NOT the tile idiom (§4.4: "if
+         it needs a button, it is a card and belongs at the page level").
+         Since nesting a second card here is also forbidden (§4.4) and
+         restructuring the Danger Zone into three page-level cards is a
+         bigger structural change than this step's own brief asks for,
+         the fix applied is the one §7.7 actually names as the DEFECT --
+         bg-page dark:bg-page/50 inverts which theme reads as "recessed"
+         -- swapped for the real, theme-correct bg-raised surface (still
+         one radius step down: rounded, not rounded-lg, since these nest
+         inside this card). They stay a counted card-shape exception
+         (CARD_EXCEPTIONS), unchanged in count from before this step. #}
       <!-- Clean Data -->
-      <div class="bg-page dark:bg-page/50 rounded-lg p-4 border border-line flex flex-col">
+      <div class="bg-raised rounded p-4 border border-line flex flex-col">
         <div class="flex items-center gap-2 mb-2">
           <i data-lucide="eraser" class="w-4 h-4 text-warning"></i>
           <span class="text-sm font-medium">{{ t.clean_data }}</span>
@@ -251,7 +251,7 @@
       </div>
 
       <!-- Delete All -->
-      <div class="bg-page dark:bg-page/50 rounded-lg p-4 border border-line flex flex-col">
+      <div class="bg-raised rounded p-4 border border-line flex flex-col">
         <div class="flex items-center gap-2 mb-2">
           <i data-lucide="trash-2" class="w-4 h-4 text-critical"></i>
           <span class="text-sm font-medium">{{ t.delete_all }}</span>
@@ -265,7 +265,7 @@
       </div>
 
       <!-- Factory Reset -->
-      <div class="bg-page dark:bg-page/50 rounded-lg p-4 border border-critical/20 flex flex-col">
+      <div class="bg-raised rounded p-4 border border-critical/20 flex flex-col">
         <div class="flex items-center gap-2 mb-2">
           <i data-lucide="bomb" class="w-4 h-4 text-critical"></i>
           <span class="text-sm font-medium text-critical">{{ t.factory_reset }}</span>
@@ -278,7 +278,7 @@
         </button>
       </div>
     </div>
-  </div>
+  {% endcall %}
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════
@@ -387,8 +387,10 @@
             <span id="rb-run-status" class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium"></span>
             <span id="rb-run-duration" class="text-[10px] text-faint"></span>
           </div>
-          {# Rounded shell clips; the <pre> inside scrolls. See activity_feed. #}
-          <div class="bg-page rounded border border-line overflow-hidden"><pre id="rb-run-content" class="px-3 py-2 text-[10px] font-mono whitespace-pre-wrap max-h-48 overflow-y-auto"></pre></div>
+          {# §4.5 code-shell idiom: bg-raised rounded border border-line
+             overflow-hidden -- was bg-page (WP-6 step 16 fix); the <pre>
+             inside scrolls. See activity_feed. #}
+          <div class="bg-raised rounded border border-line overflow-hidden"><pre id="rb-run-content" class="px-3 py-2 text-[10px] font-mono whitespace-pre-wrap max-h-48 overflow-y-auto"></pre></div>
         </div>
       </div>
       <div class="flex justify-end gap-2 p-4 border-t border-line">
