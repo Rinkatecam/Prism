@@ -22,13 +22,25 @@
    own request and a per-request CSP nonce would not match the host page's.
    Both `data-action` handlers inside (_sdAckAnomaly, _sdToggleNextSibling)
    go through the delegated dispatcher in base.html, which works on swapped-in
-   content without rebinding. #}
+   content without rebinding.
+
+   WP-6 step 17 (Batch D): all four bg-card shells below (the per-anomaly
+   tile, the no-anomalies notice, and the two forecast tiles) now go through
+   card(). None of them carry heading= -- they are repeating grid items, not
+   page sections with their own H2, exactly like the already-converted
+   TILE-shaped boxes elsewhere; the "metric name"/"forecast label" line
+   inside each stays exactly what it was (a <span>, not a heading). The one
+   real nested-card shape in this tree, the snooze popover at :96 (bg-card,
+   absolute-positioned, exempted from C-8 by _is_floating in
+   tests/test_design_cards.py), is UNCHANGED -- its positioning classes are
+   untouched, only the OUTER anomaly card became a {% call card(...) %}. #}
+  {% from "partials/_card.html" import card with context %}
 
   {% if analytics and analytics.anomalies | length > 0 %}
   <!-- Anomaly cards -->
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
     {% for a in analytics.anomalies %}
-    <div class="bg-card rounded-lg p-4 border {% if a.severity == 'critical' %}border-critical dark:border-critical{% else %}border-warning {% endif %}">
+    {% call card(extra=('border-critical' if a.severity == 'critical' else 'border-warning')) %}
       <div class="flex items-center justify-between mb-2">
         <span class="text-sm font-medium text-muted">
           {{ t.get(a.metric, a.metric) }}
@@ -103,18 +115,28 @@
           </div>
         </div>
       </div>
-    </div>
+    {% endcall %}
     {% endfor %}
   </div>
   {% else %}
-  {# Empty state — same centered icon + message + hint pattern used elsewhere #}
-  <div class="bg-card rounded-lg p-6 border border-line mb-4">
+  {# Not one of the three empty_state() folds (§7 Batch D names p-8 shapes
+     only -- this is p-6) and deliberately NOT run through empty_state()
+     even so: the macro has no way to express the healthy-green message
+     ({{ t.no_anomalies }} renders text-healthy here, a genuinely POSITIVE
+     "no anomalies" result, not a neutral absence) or this box's own
+     py-4/opacity-40 numbers, and inventing a colour parameter on the shared
+     macro for one caller is exactly the kind of one-off the macro's own
+     "no desc parameter and there will not be one" rule (_card.html §4.3)
+     argues against. Only the outer p-6 shell moves to card() -- same
+     canonical shell as every other card, the hand-rolled icon+message+hint
+     body inside is untouched. #}
+    {% call card(extra='mb-4') %}
     <div class="text-sm text-faint text-center py-4">
       <i data-lucide="check-circle" class="w-8 h-8 mx-auto mb-2 text-healthy opacity-40"></i>
       <p class="text-healthy">{{ t.no_anomalies }}</p>
       <p class="text-[10px] mt-1 opacity-60">{{ t.get('no_anomalies_hint', 'Detected anomalies will appear here with severity, deviation, and acknowledgement controls') }}</p>
     </div>
-  </div>
+    {% endcall %}
   {% endif %}
 
   <!-- Disk, RAM & CPU Forecasts -->
@@ -144,7 +166,7 @@
     {% set label = t.get('cpu_forecast', 'CPU') if metric_key == 'cpu' else (t.get('ram_forecast', 'RAM') if metric_key == 'ram' else t.get(metric_key, metric_key)) %}
     {% set full_label = t.get('threshold_in', 'Threshold in') if is_stationary_metric else t.get('disk_full_in', 'Full in') %}
     {% if fc.enough_data %}
-    <div class="bg-card rounded-lg p-4 border border-line">
+    {% call card() %}
       <div class="flex items-center gap-2 mb-2">
         <i data-lucide="{{ icon }}" class="w-4 h-4 text-muted"></i>
         <span class="text-sm font-medium text-muted">{{ label }}</span>
@@ -241,9 +263,9 @@
           | {{ t.get('forecast_7d', '7d forecast') }}: {{ fc.forecast_7d }}%
         </div>
       {% endif %}
-    </div>
+    {% endcall %}
     {% else %}
-    <div class="bg-card rounded-lg p-4 border border-line">
+    {% call card() %}
       <div class="flex items-center gap-2 mb-2">
         <i data-lucide="{{ icon }}" class="w-4 h-4 text-muted"></i>
         <span class="text-sm font-medium text-muted">{{ label }}</span>
@@ -252,7 +274,7 @@
         <i data-lucide="info" class="w-3 h-3 inline"></i>
         {{ t.not_enough_data }}
       </div>
-    </div>
+    {% endcall %}
     {% endif %}
     {% endfor %}
   </div>

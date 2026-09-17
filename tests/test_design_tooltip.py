@@ -879,6 +879,25 @@ def test_the_panel_is_reachable_by_a_pointer_when_visible():
 #     `controls=`.
 #   partials/updates_overview.html (2 -> 3): the "Checked: <timestamp>"
 #     status span, now `controls=`.
+# Raised 2026-09-17 by WP-6 step 17 -- same "unshadowing" effect as step 16
+# above, three more sites. Confirmed by diffing this detector's own output
+# against `git show HEAD:<file>` before writing this comment, exactly as
+# step 16's own comment did:
+#   partials/server_analytics.html (7 -> 8): the no-anomalies box's own
+#     icon+message+hint <div> (bg-card rounded-lg p-6...) sat one nesting
+#     level shallower, past the first swallowed `</div>`, now that the
+#     outer shell is card(extra='mb-4') and not a literal <div>.
+#   partials/server_comparison.html (1 -> 2): the card's own subtitle
+#     paragraph ({{ t.comparison_desc }}), previously swallowed inside the
+#     outer bg-card div's own non-greedy match, now the first real tag
+#     card(heading=...)'s caller body starts with.
+#   server_detail.html (13 -> 14): Config Changes' "Loading..." <div>,
+#     previously swallowed the same way inside #config-changes-container's
+#     own bg-card shell, now visible the instant that shell became
+#     card(flush=true, ...).
+# None of these three lines changed its own tag, class or text by a single
+# character -- all three are pre-existing content the outer shell's own
+# removal revealed to this regex, not new description-line prose.
 DESC_LINE_BASELINE: dict[str, int] = {
     "500.html": 1,
     "compliance.html": 3,
@@ -891,9 +910,9 @@ DESC_LINE_BASELINE: dict[str, int] = {
     "partials/active_actions.html": 2,
     "partials/activity_feed.html": 1,
     "partials/critical_issues.html": 1,
-    "partials/server_analytics.html": 7,
+    "partials/server_analytics.html": 8,
     "partials/server_card.html": 3,
-    "partials/server_comparison.html": 1,
+    "partials/server_comparison.html": 2,
     "partials/services_table.html": 1,
     "partials/settings/_compliance.html": 2,
     "partials/settings/_detection.html": 11,
@@ -907,7 +926,7 @@ DESC_LINE_BASELINE: dict[str, int] = {
     "partials/updates_overview.html": 3,
     "reports.html": 16,
     "scan.html": 2,
-    "server_detail.html": 13,
+    "server_detail.html": 14,
     "servers.html": 4,
     "services.html": 1,
     "settings.html": 19,
@@ -982,7 +1001,9 @@ def test_no_description_line_outside_the_templates_that_already_have_one():
 # Raised from 114 to 118 by WP-6 step 16 -- see DESC_LINE_BASELINE's own
 # comment above for the full account of why (a documented detector
 # blind-spot losing its cover, not new content).
-DESC_LINE_TOTAL = 118
+# Raised from 118 to 121 by WP-6 step 17 -- same reason, three more sites,
+# same comment block.
+DESC_LINE_TOTAL = 121
 
 
 def test_the_total_number_of_description_lines_never_rises():

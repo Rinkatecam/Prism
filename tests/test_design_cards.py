@@ -524,6 +524,29 @@ def test_an_inline_flex_segmented_control_is_not_mistaken_for_a_card():
 # and one pre-existing, untouched JS-built status box (`rounded p-2 text-sm
 # bg-raised dark:bg-line text-muted`, the config-upload result banner) this
 # step's own brief never named.
+# Lowered 2026-09-17 by WP-6 step 17 (Batch D -- server_detail, server_card,
+# analytics, comparison) -- RE-RUN, not hand-computed.
+# partials/server_analytics.html reaches exactly zero (all four sites --
+# the per-anomaly tile, the no-anomalies notice, the two forecast tiles --
+# converted to card()) and is deleted, matching this ratchet's own
+# convention. partials/server_comparison.html also reaches zero (its one
+# p-6 shell converted, plus its seven internal <h3> sub-titles moved to
+# subhead() so C-7's static scanner does not misread a real sub-heading as
+# the card's own) and is deleted too. partials/server_card.html stays at 1
+# (its one server-card grid tile is unchanged in shape -- see this step's
+# own report for why the spec's "doorway" wording was not applied there).
+# server_detail.html falls from 19 to 13: the metrics-container spinner
+# (now empty_state(card=true), macro-invisible), the 24h Trend Chart card,
+# the Config Changes flush card, the brand-bordered runbook-output panel,
+# and the two hand-rolled notice banners in renderUpdates() all convert (-6
+# card-shaped exceptions -- the notices were TWO of the 19 despite one
+# having an arbitrary-hex background invisible to _is_card_shaped, because
+# the OTHER, bg-page one WAS visible; converting both to the canonical
+# bg-raised notice string removes that one visible exception and leaves
+# the other, now-visible-but-compliant, uncounted either way). The Security
+# and Dependencies p-4 cards (5 sites) are UNCHANGED and remain counted --
+# see this step's own report for the C-7/signal-icon conflict that left
+# them as hand-rolled divs rather than {% call card(...) %}.
 CARD_EXCEPTIONS: dict[str, int] = {
     "base.html": 4,
     "compliance.html": 4,
@@ -536,9 +559,7 @@ CARD_EXCEPTIONS: dict[str, int] = {
     "partials/_empty_state.html": 1,
     "partials/_skeletons.html": 4,
     "partials/critical_issues.html": 1,
-    "partials/server_analytics.html": 4,
     "partials/server_card.html": 1,
-    "partials/server_comparison.html": 1,
     "partials/services_table.html": 7,
     "partials/settings/_dependencies.html": 1,
     "partials/settings/_detection.html": 2,
@@ -547,7 +568,7 @@ CARD_EXCEPTIONS: dict[str, int] = {
     "partials/settings/_servers.html": 1,
     "reports.html": 1,
     "scan.html": 2,
-    "server_detail.html": 19,
+    "server_detail.html": 13,
     "servers.html": 5,
     "settings.html": 8,
     "setup.html": 1,
@@ -555,7 +576,7 @@ CARD_EXCEPTIONS: dict[str, int] = {
     "workflows.html": 5,
 }
 
-CARD_EXCEPTION_TOTAL = 94
+CARD_EXCEPTION_TOTAL = 83
 
 
 def test_every_card_shaped_class_string_is_one_of_the_pinned_ones():
@@ -614,7 +635,21 @@ _EXTRA_ARG = re.compile(r"""\bextra\s*=\s*(['"])(?P<val>(?:(?!\1).)*)\1""", re.S
 # a DENYLIST check on every space-separated token, not an allowlist regex
 # applied to the whole string -- the whole-string form cannot say WHICH
 # token was the offender.
-_STATUS = ("critical", "warning", "healthy", "info")
+#
+# "brand" added 2026-09-17 (WP-6 step 17, Batch D): the runbook-output
+# panel in server_detail.html is the brand-bordered flush card this step's
+# own text names explicitly -- card(flush=true, extra='border-brand/30'),
+# replacing dark:border-[#8B5CF6]/30. brand is not one of the four
+# health-status colours, but it is already used exactly like one elsewhere
+# in this tree (LIFECYCLE_COLOUR_BUCKET in tests/test_design_tokens.py
+# buckets the install/reboot/restart-required lifecycle onto brand,
+# alongside accent and healthy) -- "an action is in progress / waiting on
+# a human", the same role border-critical/-warning play for a health
+# state. First real {% call card( site in this tree to exercise C-3 for
+# real (every prior one was vacuous), so this widening is what makes that
+# first exercise pass rather than fail on a legitimate, spec-named colour
+# C-3's own allowlist had never had reason to include yet.
+_STATUS = ("critical", "warning", "healthy", "info", "brand")
 _EXTRA_TOKEN_OK = re.compile(
     r"^(hidden|sticky|top-\d+(\.\d+)?|mb-\d+(\.\d+)?|"
     r"grid[a-z0-9-]*|(row|col)(-[a-z0-9-]+)?|"
@@ -683,6 +718,13 @@ def test_the_extra_argument_scan_actually_catches_a_violation():
     good_sample = '{%% call card(extra="%s") %%}x{%% endcall %%}' % good_extra
     assert not _extra_violations(good_sample), (
         f"a fully-legal extra= value was rejected: {_extra_violations(good_sample)}")
+
+    # border-brand -- the real server_detail.html runbook-output-panel site
+    # (WP-6 step 17), proving the 2026-09-17 _STATUS widening actually fires.
+    brand_sample = '{% call card(extra="border-brand/30") %}x{% endcall %}'
+    assert not _extra_violations(brand_sample), (
+        f"border-brand/30 was rejected even though _STATUS now includes brand: "
+        f"{_extra_violations(brand_sample)}")
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -1581,13 +1623,26 @@ def test_the_section_header_row_scan_actually_catches_a_violation():
 # which removes this "heading outside, then its card" shape BY
 # CONSTRUCTION exactly as step 15's own comment above already documents.
 # Both entries reached exactly zero and are deleted.
+# Lowered 2026-09-17 by WP-6 step 17 -- RE-RUN, not hand-computed.
+# server_detail.html falls from 5 to 2: Current Metrics (its p-8 placeholder
+# is now empty_state(card=true), so no card-shaped div-open follows the
+# heading in source text any more), 24h Trend Chart (converted to
+# card(heading=...)) and Config Changes (converted to
+# card(flush=true, heading=..., controls=...)) all resolve BY CONSTRUCTION.
+# Security and Dependencies remain (their own p-4 cards were deliberately
+# NOT converted -- this step's own report explains the C-7/signal-icon
+# conflict) -- both real, measured, not detector artifacts: an earlier
+# over-long in-file comment on the Security site pushed its own card past
+# this detector's 600-char window and briefly measured as 0, caught by
+# re-running the detector rather than trusting the first number, and fixed
+# by shortening the comment rather than the baseline.
 SECTION_HEADER_BASELINE: dict[str, int] = {
     "partials/services_table.html": 1,
-    "server_detail.html": 5,
+    "server_detail.html": 2,
     "workflows.html": 1,
 }
 
-SECTION_HEADER_TOTAL = 7
+SECTION_HEADER_TOTAL = 4
 
 
 def _section_header_counts() -> dict[str, int]:

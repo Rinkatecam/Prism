@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% from "partials/_skeletons.html" import forecast_cards %}
 {% from "partials/_tip.html" import tip_mirror with context %}
+{% from "partials/_card.html" import card with context %}
+{% from "partials/_empty_state.html" import empty_state %}
 
 {# WP-6 D7 — this page's title is DATA, not a page name: the chip shows the
    server's own name, capped at the chip's max-w + truncate (not by Jinja),
@@ -211,10 +213,14 @@
     {{ t.current_metrics }}
   </h2>
   <div id="metrics-container">
-    <!-- Populated by JS -->
-    <div class="bg-card rounded-lg p-8 border border-line text-center">
-      <i data-lucide="loader" class="w-10 h-10 mx-auto mb-3 text-muted animate-spin"></i>
-    </div>
+    {# Populated by JS (renderMetrics) the instant fetchServerData resolves --
+       this is only what paints for the one frame before that. WP-6 step 17
+       (Batch D): one of the three p-8 text-center shapes folded into
+       empty_state(card=true); heading stays OUTSIDE (unchanged) because the
+       real content renderMetrics() swaps in is a MULTI-card grid, not one
+       card (§7.2: a section with more than one card keeps its heading
+       outside). #}
+    {{ empty_state('clock', t.waiting_collection, t.get('waiting_collection_hint', "This server's CPU, RAM and disk metrics will appear here once the next collection cycle completes."), card=true) }}
   </div>
 
 </section>
@@ -246,11 +252,10 @@
 
 <!-- 24h Trend Chart -->
 <section class="mb-8">
-  <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">
-    <i data-lucide="trending-up" class="w-5 h-5 text-accent"></i>
-    {{ t.trends_24h }}
-  </h2>
-  <div class="bg-card rounded-lg p-5 border border-line">
+  {# WP-6 step 17 (Batch D): clean 1:1 heading-then-card site -- absorbed
+     into card(heading=..., icon=...) per C25 (the card conversion IS the
+     H2 migration here; nothing else shares this heading). #}
+  {% call card(heading=t.trends_24h, icon='trending-up') %}
     <div class="flex gap-2 mb-4">
       <button data-action="_sdLoadChart" data-hours="6" class="chart-range-btn px-3 py-1 text-xs rounded border border-line hover:bg-page">6h</button>
       <button data-action="_sdLoadChart" data-hours="12" class="chart-range-btn px-3 py-1 text-xs rounded border border-line hover:bg-page">12h</button>
@@ -263,7 +268,7 @@
     <div id="chart-loading" class="text-center py-8 text-sm text-muted">
       {{ t.loading_chart }}
     </div>
-  </div>
+  {% endcall %}
 </section>
 
 <!-- Recent Events (JS-rendered for auto-refresh) -->
@@ -294,6 +299,7 @@
     <!-- Populated by JS analysis -->
   </div>
 
+  {# WP-6 step 17: NOT converted to card() -- C-7/signal-icon conflict, see step report. #}
   <!-- Security Status Panel -->
   <div class="bg-card rounded-lg p-4 border border-line mb-4">
     <h3 class="text-sm font-semibold flex items-center gap-2 mb-3">
@@ -346,6 +352,10 @@
     <i data-lucide="network" class="w-5 h-5 text-accent"></i>
     {{ t.dependencies }}
   </h2>
+  {# WP-6 step 17 -- JUDGEMENT CALL, same shape as the Security section
+     above (full reasoning in this step's own report): left as hand-rolled
+     divs rather than resolving the same C-7 heading conflict two different
+     ways in one file. #}
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <!-- Depends on -->
     <div class="bg-card rounded-lg p-4 border border-line">
@@ -372,21 +382,25 @@
 
 <!-- Configuration Drift Detection (F6) -->
 <section class="mt-8">
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="git-compare" class="w-5 h-5 text-accent"></i>
-      {{ t.get('config_changes', 'Config Changes') }}
-    </h2>
+  {# WP-6 step 17 (Batch D): clean 1:1 heading-then-card site, already using
+     the §7.3 section-header-row idiom with a controls cluster -- absorbed
+     into card(flush=true, controls=...) per C25, the same pattern
+     reports.html's q_* cards already use for a heading with a button beside
+     it. id= keeps "config-changes-container" on the OUTER shell (_card.html
+     §4.3's id= parameter), exactly where JS's
+     getElementById('config-changes-container').innerHTML already expects
+     it -- unchanged call site, unchanged element identity. #}
+  {% set _config_controls %}
     <button data-action="takeConfigSnapshot"
             class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-brand text-brand hover:bg-brand/10 transition-colors"
             title="{{ t.get('take_snapshot', 'Take Snapshot') }}">
       <i data-lucide="camera" class="w-3.5 h-3.5"></i>
       {{ t.get('take_snapshot', 'Take Snapshot') }}
     </button>
-  </div>
-  <div id="config-changes-container" class="bg-card rounded-lg border border-line overflow-hidden">
+  {% endset %}
+  {% call card(flush=true, heading=t.get('config_changes', 'Config Changes'), icon='git-compare', controls=_config_controls, id='config-changes-container') %}
     <div class="text-xs text-faint text-center py-4">{{ t.get('loading', 'Loading...') }}</div>
-  </div>
+  {% endcall %}
 </section>
 
 <!-- Windows Logs -->
@@ -798,13 +812,23 @@
 
   function renderMetrics(data) {
     const container = document.getElementById('metrics-container');
+    // WP-6 step 17 (Batch D): the other two of the three p-8 text-center
+    // shapes -- these are JS-built, so they cannot call the Jinja
+    // empty_state() macro; window.prismEmptyState (base.html) is its JS
+    // twin, already used elsewhere in this file (loadRunbooks' "No
+    // runbooks available"), and it throws if a hint is omitted, same as
+    // the macro's own required argument.
     if (data.status === 'offline') {
-      container.innerHTML = '<div class="bg-card rounded-lg p-8 border border-line text-center"><i data-lucide="wifi-off" class="w-10 h-10 mx-auto mb-3 text-faint"></i><p class="text-sm text-muted">{{ t.server_unreachable }}</p></div>';
+      container.innerHTML = window.prismEmptyState('wifi-off', {{ t.server_unreachable | tojson }},
+        {{ t.get('server_unreachable_hint', 'Check that the server is powered on and that the collector can reach it over the network.') | tojson }},
+        { cardWrap: true });
       lucide.createIcons({ nodes: [container] });
       return;
     }
     if (data.status === 'unknown' || (data.cpu == null && data.ram == null)) {
-      container.innerHTML = '<div class="bg-card rounded-lg p-8 border border-line text-center"><i data-lucide="loader" class="w-10 h-10 mx-auto mb-3 text-muted animate-spin"></i></div>';
+      container.innerHTML = window.prismEmptyState('clock', {{ t.waiting_collection | tojson }},
+        {{ t.get('waiting_collection_hint', "This server's CPU, RAM and disk metrics will appear here once the next collection cycle completes.") | tojson }},
+        { cardWrap: true });
       lucide.createIcons({ nodes: [container] });
       return;
     }
@@ -938,8 +962,10 @@
     if (checkError && count === 0 && !pendingReboot) {
       if (installBtn) { installBtn.classList.add('hidden'); installBtn.classList.remove('inline-flex'); }
       const checkedStr = data.checked_at ? (' · {{ t.get("checked", "Checked") }}: ' + formatTs(data.checked_at)) : '';
+      {# WP-6 step 17 (Batch D): the §4.5 "notice" idiom, exact base string
+         (no status suffix -- this one is neutral, not warning/critical). #}
       banner.innerHTML =
-        '<div class="rounded-lg border border-muted bg-page dark:bg-card p-4 flex items-start gap-3">' +
+        '<div class="rounded border border-line bg-raised p-4 flex items-start gap-3">' +
           '<i data-lucide="alert-octagon" class="w-5 h-5 flex-shrink-0 mt-0.5 text-muted"></i>' +
           '<div class="flex-1 min-w-0">' +
             '<div class="text-sm font-semibold">{{ t.get("update_check_failed", "Update check failed") }}</div>' +
@@ -969,8 +995,13 @@
     if (count === 0 && pendingReboot) {
       if (installBtn) { installBtn.classList.add('hidden'); installBtn.classList.remove('inline-flex'); }
       const lastInstallStr = data.last_install ? (' · {{ t.get("last_install", "Last install") }}: ' + formatTs(data.last_install)) : '';
+      {# WP-6 step 17 (Batch D): the §4.5 "notice" idiom + its named
+         border-critical suffix. The data-action="powerAction" button
+         inside is UNTOUCHED -- same trigger as the top-of-page restart
+         button (opens the confirmation modal; executePowerAction only runs
+         after the user confirms there), not the confirm button itself. #}
       banner.innerHTML =
-        '<div class="rounded-lg border border-critical bg-[#FEF2F2] dark:bg-critical-tint/30 p-4 flex items-start gap-3">' +
+        '<div class="rounded border border-line bg-raised p-4 flex items-start gap-3 border-critical">' +
           '<i data-lucide="alert-triangle" class="w-5 h-5 flex-shrink-0 mt-0.5 text-critical"></i>' +
           '<div class="flex-1 min-w-0">' +
             '<div class="text-sm font-semibold text-critical">' + (T.restart_pending || 'Restart pending') + '</div>' +
@@ -3520,19 +3551,33 @@
 
 <!-- Runbook Execution Output Panel (expandable, appears below updates banner) -->
 <div id="runbook-output-panel" class="hidden mb-6">
-  <div class="bg-card rounded-lg border border-brand/30 dark:border-[#8B5CF6]/30 overflow-hidden">
-    <div class="flex items-center justify-between px-4 py-3 bg-brand/5 dark:bg-[#8B5CF6]/10 border-b border-line">
-      <div class="flex items-center gap-2">
-        <i data-lucide="terminal" class="w-4 h-4 text-accent"></i>
-        <span class="text-sm font-semibold" id="runbook-output-title">{{ t.runbook_output | default('Runbook Output') }}</span>
-        <span id="runbook-exec-status" class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium"></span>
-      </div>
-      <button data-action="closeRunbookOutput" class="p-1 text-muted hover:text-ink dark:hover:text-white">
-        <i data-lucide="x" class="w-4 h-4"></i>
-      </button>
-    </div>
+  {# WP-6 step 17 (Batch D): the brand-bordered flush card ->
+     card(flush=true, extra='border-brand/30'), removing
+     dark:border-[#8B5CF6]/30. heading= carries the title AND the status
+     badge together (both id-bearing spans, exactly as they sat side by
+     side before) rather than plain text, because executeRunbook()'s
+     title.textContent = ... (below, in this file's own <script>) must
+     keep landing on a node that does NOT also hold the icon -- card()'s
+     head row renders the icon as a sibling <i> inside the SAME <h2>, and
+     .textContent on the <h2> itself would delete that icon the first time
+     the title updates. controls= keeps only the close button, which is
+     what the macro's own right-hand controls slot is for. One deliberate,
+     visible simplification: HEAD_FLUSH's string is fixed
+     ("flex flex-wrap items-start justify-between gap-3 px-5 py-4
+     border-b border-line"), with no parameter for a per-card background
+     tint, so the header's own dark:bg-[#8B5CF6]/10 violet wash is dropped
+     -- the 30%-alpha brand border alone now carries the "this is a
+     runbook-output panel" colour cue. Flagged prominently in this step's
+     own report. #}
+  {% set _rb_title %}<span id="runbook-output-title">{{ t.runbook_output | default('Runbook Output') }}</span> <span id="runbook-exec-status" class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium"></span>{% endset %}
+  {% set _rb_controls %}
+    <button data-action="closeRunbookOutput" class="p-1 text-muted hover:text-ink dark:hover:text-white">
+      <i data-lucide="x" class="w-4 h-4"></i>
+    </button>
+  {% endset %}
+  {% call card(flush=true, heading=_rb_title, icon='terminal', controls=_rb_controls, extra='border-brand/30') %}
     <pre id="runbook-output-content" class="px-4 py-3 text-xs font-mono text-ink whitespace-pre-wrap max-h-64 overflow-y-auto bg-page"></pre>
-  </div>
+  {% endcall %}
 </div>
 
 <!-- Runbook Confirmation Modal -->

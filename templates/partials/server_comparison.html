@@ -19,16 +19,43 @@
    Chart.js is loaded globally by base.html, so no extra <script> is needed.
 #}
 {% from "partials/_tip.html" import tip_mirror with context %}
+{% from "partials/_card.html" import card, subhead with context %}
 
+{# WP-6 step 17 (Batch D). The one bg-card shell below (p-6, non-canonical
+   order/padding) becomes a card() call, absorbing its own heading and icon
+   per C25 ("converting a card IS the H2 migration for that card") -- a
+   clean one-to-one heading-then-card site, nothing else in this section
+   shares it. The subtitle paragraph underneath keeps its already-canonical
+   "text-xs text-muted mb-4" string (spec Part I section 7.5) unchanged as
+   the card's own first body line.
+
+   The card's seven internal h3 sub-titles (four chart titles, plus
+   Statistics / Business-hours / Common Events / Unique Events) all move to
+   subhead() too -- not optional here, unlike server_analytics.html's
+   tiles: the card-shell test suite's C-7 check statically scans a card
+   call's own body text for the first literal heading tag (any level from
+   h-one to h-four), with no way to tell "a real h3 subheading" from "a
+   demoted card-level heading", so a raw h3 anywhere in this card's (long)
+   body was flagged as if it were the card's own heading. A subhead() call
+   does not exist as literal heading-tag text in the template source (it
+   is a macro call, expanded only at render time), which is what the
+   static scanner is blind to -- the same "invisible until rendered"
+   property the card's own heading argument already relies on, not a
+   loophole invented for this file.
+
+   JUDGEMENT CALL, flagged prominently in this step's own report:
+   subhead()'s own icon colour is a fixed muted grey, so Business Hours'
+   clock icon (was an accent turquoise), Common Events' check-mark icon
+   (was a healthy green) and Unique Events' split icon (was a warning
+   amber) all recolour to muted. The four chart titles (CPU/RAM/Disk C/
+   Disk D) carry no icon at all today, so subhead(text) with no icon
+   argument is a byte-for-byte visual match for them; Statistics' icon was
+   already muted, so no change there either. #}
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 4 — Server Comparison
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  <div class="bg-card rounded-lg border border-line p-6">
-    <h2 class="text-lg font-semibold mb-1 flex items-center gap-2">
-      <i data-lucide="bar-chart-3" class="w-5 h-5 text-accent"></i>
-      {{ t.server_comparison }}
-    </h2>
+  {% call card(heading=t.server_comparison, icon='bar-chart-3') %}
     <p class="text-xs text-muted mb-4">{{ t.comparison_desc }}</p>
 
     <!-- Controls -->
@@ -105,19 +132,19 @@
     <div id="compare-charts" class="hidden space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="border border-line rounded-lg p-4">
-          <h3 class="text-sm font-semibold mb-2">{{ t.cpu }}</h3>
+          {{ subhead(t.cpu) }}
           <div class="relative h-[200px]"><canvas id="chart-cpu"></canvas></div>
         </div>
         <div class="border border-line rounded-lg p-4">
-          <h3 class="text-sm font-semibold mb-2">{{ t.ram }}</h3>
+          {{ subhead(t.ram) }}
           <div class="relative h-[200px]"><canvas id="chart-ram"></canvas></div>
         </div>
         <div class="border border-line rounded-lg p-4">
-          <h3 class="text-sm font-semibold mb-2">{{ t.disk_c }}</h3>
+          {{ subhead(t.disk_c) }}
           <div class="relative h-[200px]"><canvas id="chart-disk-c"></canvas></div>
         </div>
         <div class="border border-line rounded-lg p-4">
-          <h3 class="text-sm font-semibold mb-2">{{ t.disk_d }}</h3>
+          {{ subhead(t.disk_d) }}
           <div class="relative h-[200px]"><canvas id="chart-disk-d"></canvas></div>
         </div>
       </div>
@@ -157,10 +184,7 @@
 
       <!-- Statistics table -->
       <div id="compare-stats" class="hidden">
-        <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
-          <i data-lucide="bar-chart-2" class="w-4 h-4 text-muted"></i>
-          {{ t.statistics }}
-        </h3>
+        {{ subhead(t.statistics, icon='bar-chart-2') }}
         <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
           <table class="w-full text-xs">
             <thead data-sort-table="compare-stats">
@@ -182,10 +206,7 @@
 
       <!-- Business-hours annotations -->
       <div id="compare-annotations" class="hidden">
-        <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
-          <i data-lucide="clock" class="w-4 h-4 text-accent"></i>
-          {{ t.business_hours_avg }} / {{ t.off_hours_avg }}
-        </h3>
+        {{ subhead(t.business_hours_avg ~ ' / ' ~ t.off_hours_avg, icon='clock') }}
         <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
           <table class="w-full text-xs">
             <thead data-sort-table="compare-hourly">
@@ -241,11 +262,8 @@
       </div>
       <!-- Common events (on all servers) -->
       <div>
-        <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
-          <i data-lucide="check-check" class="w-4 h-4 text-healthy"></i>
-          {{ t.common_events | default('Common Events') }}
-          <span id="common-events-count" class="text-xs font-normal text-muted"></span>
-        </h3>
+        {% set _common_events_title %}{{ t.common_events | default('Common Events') }} <span id="common-events-count" class="text-xs font-normal text-muted"></span>{% endset %}
+        {{ subhead(_common_events_title, icon='check-check') }}
         <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
           <table class="w-full text-xs">
             <thead data-sort-table="compare-events-common">
@@ -264,11 +282,8 @@
       </div>
       <!-- Unique events (not on all servers) -->
       <div>
-        <h3 class="text-sm font-semibold mb-2 flex items-center gap-2">
-          <i data-lucide="split" class="w-4 h-4 text-warning"></i>
-          {{ t.unique_events | default('Unique Events') }}
-          <span id="unique-events-count" class="text-xs font-normal text-muted"></span>
-        </h3>
+        {% set _unique_events_title %}{{ t.unique_events | default('Unique Events') }} <span id="unique-events-count" class="text-xs font-normal text-muted"></span>{% endset %}
+        {{ subhead(_unique_events_title, icon='split') }}
         <div class="border border-line rounded-lg overflow-hidden"><div class="overflow-x-auto">
           <table class="w-full text-xs">
             <thead data-sort-table="compare-events-unique">
@@ -287,7 +302,7 @@
         <div id="unique-pager" class="hidden flex items-center justify-center gap-3 mt-2"></div>
       </div>
     </div>
-  </div>
+  {% endcall %}
 </section>
 
 <script nonce="{{ csp_nonce }}">

@@ -492,7 +492,20 @@ LITERAL_BASELINE: dict[str, int] = {
     # went with it. Nothing was added or removed — see LITERAL_TOTAL, which
     # is what stops a file split being used to launder new literals past the
     # "new templates start clean" rule.
-    "server_detail.html": 46,
+    # 46 -> 43 with WP-6 step 17 (Batch D): RE-MEASURED, not hand-counted --
+    # running _literal_counts() after the conversion found 43, not "46 minus
+    # the four named hex literals" (which would have implied 42, since only
+    # dark:border-[#8B5CF6]/30 lived in this file; the other three named
+    # literals are partials/server_card.html's, below). The runbook-output
+    # panel's dark:border-[#8B5CF6]/30 AND dark:bg-[#8B5CF6]/10 both left
+    # with the brand-bordered-flush-card conversion (card(flush=true,
+    # extra='border-brand/30') has no head-row tint parameter, so the
+    # second one is simply gone, not folded onto a token), and the two
+    # notice-box conversions took bg-[#FEF2F2] with them (the neutral
+    # "update check failed" notice had no hex to begin with). Three
+    # literals, not one — measuring beat the arithmetic exactly as this
+    # step's own instructions warned it would.
+    "server_detail.html": 43,
     "partials/server_analytics.html": 1,
     "workflows.html": 33,
     # 16 -> 0. The dashboard redesign rewrote every region that held one: the
@@ -530,7 +543,13 @@ LITERAL_BASELINE: dict[str, int] = {
     #                           extracted to partials/settings/_detection.html
     #                           in WP-4 D2, and were tokenised on the way
     #                           rather than given a baseline of their own
-    "partials/server_card.html": 4,
+    # 4 -> 1 with WP-6 step 17 (Batch D): the three named hex literals on
+    # the status-border conditional (!border-l-[#6366F1] -> brand,
+    # dark:!border-l-[#EF4444] -> critical, dark:!border-l-[#FBBF24] ->
+    # warning) are gone. The fourth, text-[#B45309] on the "why flagged"
+    # reason line, is untouched -- not one of this step's four named
+    # literals, and left as measured debt rather than guessed at.
+    "partials/server_card.html": 1,
     # 5 -> 4. WP-6 step 12 deleted compliance.html's in-page <h1> (its title
     # moved to the topbar chip via page_title/page_icon), taking its
     # `dark:text-[#F9FAFB]` with it. The h2 four lines below carries the
@@ -700,7 +719,12 @@ def test_no_colour_literal_outside_the_templates_that_already_have_one():
 # modal <h3> that carried it.
 # 113 -> 112 with WP-6 step 12: compliance.html's in-page <h1> is deleted
 # (its title moved to the topbar chip), taking its dark:text-[#F9FAFB] with it.
-LITERAL_TOTAL = 112
+# 112 -> 106 with WP-6 step 17 (Batch D): RE-MEASURED by running
+# _literal_counts() over the post-conversion tree, not computed as
+# "112 - 4" for the four named literals -- the real delta is 6: three from
+# partials/server_card.html's status-border fold and three (not one) from
+# server_detail.html, per that file's own LITERAL_BASELINE comment above.
+LITERAL_TOTAL = 106
 
 
 def test_the_total_number_of_literals_never_rises():

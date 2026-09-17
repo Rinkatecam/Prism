@@ -169,16 +169,22 @@ def test_the_one_page_title_icon_is_violet():
 # operations.html falls from 3 to 0 (Runbooks, System & Tools and Data
 # Management were its only three H2 icons). Four entries deleted rather
 # than kept at 0, matching this ratchet's own convention.
+# Lowered 2026-09-17 by WP-6 step 17 -- RE-RUN, not hand-computed.
+# partials/server_comparison.html reaches 0 (its one H2 icon, bar-chart-3,
+# now renders via card()'s H2_ICON constant) and is deleted. server_detail
+# .html falls from 9 to 7: the 24h Trend Chart (trending-up) and Config
+# Changes (git-compare) H2 icons both convert the same way; the Security
+# and Dependencies section H2 icons are unchanged (deliberately not
+# converted -- see this step's own report).
 H2_ICON_BASELINE: dict[str, int] = {
     "dashboard.html": 1,
     "partials/critical_issues.html": 1,
-    "partials/server_comparison.html": 1,
     "partials/services_table.html": 1,
-    "server_detail.html": 9,
+    "server_detail.html": 7,
     "servers.html": 1,
     "workflows.html": 1,
 }
-H2_ICON_TOTAL = 15
+H2_ICON_TOTAL = 12
 
 # Lowered 2026-09-17 by WP-6 step 16 -- RE-RUN, not hand-computed.
 # operations.html falls from 3 to 2: its "Execution History" h3 (inside
@@ -189,9 +195,15 @@ H2_ICON_TOTAL = 15
 # the Run Runbook modal's play icon (text-healthy) -- both dialog titles,
 # neither yet marked data-role="dialog-title", so both still counted here
 # until step 19 ("every dialog declares itself").
+# Lowered 2026-09-17 by WP-6 step 17 -- RE-RUN, not hand-computed.
+# partials/server_comparison.html reaches 0: its three coloured H3 icons
+# (clock/text-accent on Business Hours, check-check/text-healthy on Common
+# Events, split/text-warning on Unique Events) all convert to subhead(),
+# whose icon is the macro's own H3_ICON constant (text-muted) -- a real,
+# flagged recolour (see this step's own report), not a detector blind
+# spot. Entry deleted rather than kept at 0.
 H3_ICON_BASELINE: dict[str, int] = {
     "operations.html": 2,
-    "partials/server_comparison.html": 3,
     "partials/settings/_server_config.html": 2,
     "server_detail.html": 4,
     "servers.html": 1,
@@ -199,7 +211,7 @@ H3_ICON_BASELINE: dict[str, int] = {
     "topology.html": 1,
     "workflows.html": 1,
 }
-H3_ICON_TOTAL = 18
+H3_ICON_TOTAL = 15
 
 
 def _non_compliant_heading_icons(level: str, target: str) -> dict[str, int]:
@@ -225,17 +237,17 @@ def test_every_section_heading_icon_is_violet():
     companion LITERAL_TOTAL exists for in tests/test_design_tokens.py, for
     the same reason: a per-file ceiling alone still permits adding one new
     entry to the dict), and the baseline must come down when the real count
-    does. The `seen >= 15` guard is a positive control — a scan finding
+    does. The `seen >= 12` guard is a positive control — a scan finding
     fewer than that means the pattern itself has drifted, not that the tree
-    improved. (Lowered from 40 to 28 by WP-6 step 15, and from 28 to 15 by
-    step 16: every H2 icon each step converted now renders violet via
-    card()'s own H2_ICON constant, a macro-generated `<h2><i>` pair that is
-    invisible to this file's source-text scan the same way it is to
-    test_design_headings.py's HEADING_BASELINE -- see H2_ICON_BASELINE's
-    own comment.)"""
+    improved. (Lowered from 40 to 28 by WP-6 step 15, from 28 to 15 by
+    step 16, and from 15 to 12 by step 17: every H2 icon each step converted
+    now renders violet via card()'s own H2_ICON constant, a macro-generated
+    `<h2><i>` pair that is invisible to this file's source-text scan the
+    same way it is to test_design_headings.py's HEADING_BASELINE -- see
+    H2_ICON_BASELINE's own comment.)"""
     counts = _non_compliant_heading_icons("2", "text-brand")
     seen = sum(counts.values())
-    assert seen >= 15, f"only {seen} <h2><i> pairs matched — the pattern has drifted"
+    assert seen >= 12, f"only {seen} <h2><i> pairs matched — the pattern has drifted"
 
     grew = {f: (H2_ICON_BASELINE.get(f, 0), n)
             for f, n in counts.items() if n > H2_ICON_BASELINE.get(f, 0)}
@@ -336,9 +348,19 @@ def test_the_icon_scan_can_see_a_digit_in_the_name():
         "settings-2 is in templates/settings.html but the scan does not "
         "report it — the character class has been narrowed")
     digits = sorted(n for n in names if any(c.isdigit() for c in n))
-    assert len(digits) >= 11, (
+    # 11 -> 9 with WP-6 step 17: bar-chart-2 (Statistics) and bar-chart-3
+    # (the card's own heading icon) were server_comparison.html's only
+    # sites for those two exact names anywhere in the tree, and both moved
+    # behind card()/subhead() as `icon='bar-chart-2'`/`icon='bar-chart-3'`
+    # MACRO ARGUMENTS -- a string literal in a Jinja call, not literal
+    # `data-lucide="..."` markup -- the same "moved behind a macro" effect
+    # the `sites` history below already documents. The other nine
+    # digit-bearing names (settings-2, volume-2, grid-3x3, table-2, trash-2,
+    # undo-2, edit-3, loader-2, file-code-2 -- unaffected) still sit in
+    # untouched markup elsewhere.
+    assert len(digits) >= 9, (
         f"only {len(digits)} digit-bearing icon names visible: {digits} — "
-        "measured 11 across 34 sites")
+        "measured 9 across 34 sites")
     # 470 -> 459 with WP-6 step 12: 11 page-title icons (one per page,
     # `<h1><i data-lucide="LITERAL">`) disappeared from the templates this
     # scan reads, not because they were deleted, but because they moved
@@ -378,7 +400,21 @@ def test_the_icon_scan_can_see_a_digit_in_the_name():
     # literal `<i data-lucide="...">` sites this generic scan counted --
     # converting them to real subhead()-owned h3s moves their icons behind
     # the macro too, for the identical reason.
-    assert sites >= 416, f"only {sites} icon sites scanned — measured 416 post-WP-6-step-16"
+    #
+    # 416 -> 405 with WP-6 step 17 (Batch D): eleven more icons moved behind
+    # a macro `icon=` argument. Six in server_detail.html -- the 24h Trend
+    # Chart and Config Changes h2 icons (card()), the runbook-output panel's
+    # terminal h2 icon (card()), and the metrics-container placeholder's
+    # loader/wifi-off/loader icons (three sites, all now
+    # empty_state()/prismEmptyState() icon ARGUMENTS rather than literal
+    # markup, one server-rendered and two JS-built). Five in
+    # server_comparison.html -- its own bar-chart-3 heading icon plus
+    # Statistics/Business-hours/Common-events/Unique-events' bar-chart-2/
+    # clock/check-check/split sub-heading icons (card()/subhead()).
+    # bar-chart-2 and bar-chart-3 were this file's only sites for those two
+    # exact names anywhere in the tree, which is what also moves
+    # `digits >= 11` above down to 9.
+    assert sites >= 405, f"only {sites} icon sites scanned — measured 405 post-WP-6-step-17"
 
 
 def test_no_primary_button_is_left_on_the_informational_blue():

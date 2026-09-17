@@ -188,7 +188,15 @@ def test_the_partial_renders_with_exactly_what_its_view_passes():
     assert "_sdAckAnomaly" in out, (
         "the acknowledge control vanished; no live host currently produces an "
         "anomaly, so this synthetic render is the only thing exercising it")
-    assert out.count("bg-card rounded-lg p-4 border border-line") == 4, (
+    # WP-6 step 17 (Batch D): the four forecast tiles now render through
+    # card() -- the canonical "bg-card rounded-lg border border-line p-5"
+    # string, not the old p-4 literal. Matched on the exact class attribute
+    # rather than a bare substring search: this test's one anomaly (ram,
+    # critical) ALSO renders card()'s CARD string, with " border-critical"
+    # appended via extra=, so a plain .count() on the bare string would
+    # find 5 (the anomaly's suffixed class contains it as a substring),
+    # over-counting the very thing this assertion means to isolate.
+    assert out.count('class="bg-card rounded-lg border border-line p-5"') == 4, (
         "expected four forecast cards for a host reporting both disks")
 
 

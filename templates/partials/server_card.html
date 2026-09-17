@@ -51,7 +51,21 @@
    data-server-host="{{ host }}"
    data-status="{{ status }}"
    {% if istatus %}data-install-status="{{ istatus }}"{% endif %}
-   class="server-card block bg-card rounded-lg p-4 border border-line cursor-pointer {% if istatus %}border-l-4 {{ _install_border.get(istatus, '!border-l-[#6366F1]') }}{% elif status == 'critical' %}border-l-4 !border-l-critical dark:!border-l-[#EF4444]{% elif status == 'warning' %}border-l-4 !border-l-warning dark:!border-l-[#FBBF24]{% elif status == 'offline' %}border-l-4 !border-l-faint opacity-60{% endif %}">
+   {# WP-6 step 17 (Batch D): the three status-border hex literals folded
+      onto their token equivalents -- !border-l-[#6366F1] (the install-
+      lifecycle fallback, never actually hit today since every _install_border
+      key is covered, kept only as a defensive .get() default) -> brand;
+      dark:!border-l-[#EF4444] -> critical; dark:!border-l-[#FBBF24] ->
+      warning. The `dark:` overrides are DELETED rather than re-spelled as
+      `dark:!border-l-critical`/`dark:!border-l-warning`: border-critical/
+      border-warning are themselves theme-aware custom-property tokens (see
+      tools/design_tokens.TOKENS), so a `dark:` variant of the SAME token
+      the light rule already set is a byte-for-byte no-op, not a value that
+      would go missing (contrast test_an_orphan_dark_utility_is_never_deleted
+      in tests/test_design_tokens.py, which is about a dark: utility whose
+      value would otherwise disappear -- not this case, where light and dark
+      already resolve to the identical token). #}
+   class="server-card block bg-card rounded-lg p-4 border border-line cursor-pointer {% if istatus %}border-l-4 {{ _install_border.get(istatus, '!border-l-brand') }}{% elif status == 'critical' %}border-l-4 !border-l-critical{% elif status == 'warning' %}border-l-4 !border-l-warning{% elif status == 'offline' %}border-l-4 !border-l-faint opacity-60{% endif %}">
 
   <!-- Header: name + badge -->
   <div class="flex items-center justify-between mb-3">

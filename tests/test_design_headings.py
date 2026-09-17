@@ -430,6 +430,15 @@ def _heading_violations() -> dict[str, int]:
 # step 19's job ("every dialog declares itself"), same carve-out reasoning
 # as the settings-family modal h3s above, not yet marked
 # data-role="dialog-title" so still counted here.
+# Lowered 2026-09-17 by WP-6 step 17 (Batch D) -- RE-RUN, not hand-computed.
+# partials/server_comparison.html reaches exactly zero and is deleted: its
+# own h2 (card(heading=...)) and all seven internal h3s (subhead()) all
+# vanish behind the macros, the same source-invisibility effect documented
+# above. server_detail.html falls from 17 to 15: the 24h Trend Chart h2
+# (card(heading=...)) and the Config Changes h2 (card(flush=true,
+# heading=...)) both convert; the Security and Dependencies section h2s,
+# and every h3 in this file, are UNCHANGED (this step's own report explains
+# why those five p-4 cards were deliberately left as hand-rolled divs).
 HEADING_BASELINE: dict[str, int] = {
     "compliance.html": 2,
     "dashboard.html": 3,
@@ -437,14 +446,13 @@ HEADING_BASELINE: dict[str, int] = {
     "operations.html": 2,
     "partials/_runbook_form.html": 1,
     "partials/critical_issues.html": 1,
-    "partials/server_comparison.html": 9,
     "partials/server_grid.html": 1,
     "partials/services_table.html": 1,
     "partials/settings/_maintenance.html": 1,
     "partials/settings/_server_config.html": 3,
     "partials/verdict_header.html": 2,
     "scan.html": 1,
-    "server_detail.html": 17,
+    "server_detail.html": 15,
     "servers.html": 3,
     "settings.html": 4,
     "setup.html": 1,
@@ -452,7 +460,7 @@ HEADING_BASELINE: dict[str, int] = {
     "workflows.html": 16,
 }
 
-HEADING_TOTAL = 71
+HEADING_TOTAL = 60
 
 
 def test_every_heading_uses_its_level_s_canonical_classes():
@@ -905,16 +913,21 @@ def test_the_undertext_scan_actually_catches_a_violation():
 # HEADING_BASELINE's own comment documents. The span's CONTENT and
 # POSITION in the rendered page are unchanged. Entry deleted rather than
 # kept at 0, matching this ratchet's established convention.
+# Lowered 2026-09-17 by WP-6 step 17 -- RE-RUN, not hand-computed.
+# partials/server_comparison.html reaches 0 for the identical reason: its
+# subtitle paragraph sat directly under the raw <h2>, and now sits directly
+# under card(heading=...)'s invisible-to-source-text macro call instead --
+# the paragraph's own text and position in the rendered card are unchanged.
+# Entry deleted rather than kept at 0.
 HEADING_UNDERTEXT_BASELINE: dict[str, int] = {
     "dashboard.html": 1,
     "network.html": 1,
-    "partials/server_comparison.html": 1,
     "partials/services_table.html": 1,
     "scan.html": 1,
     "setup.html": 1,
 }
 
-HEADING_UNDERTEXT_TOTAL = 6
+HEADING_UNDERTEXT_TOTAL = 5
 
 
 def test_no_prose_sits_directly_under_a_heading():
