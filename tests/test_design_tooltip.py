@@ -1253,16 +1253,31 @@ DESC_LINE_INLINE_EXEMPTIONS: dict[str, str] = {
     # from a normal gate-2/3/4 call: the gate isn't what kept these
     # inline, the missing anchor is.
     "reports.html: reports_by_question_desc":
-        "gate 5, no anchor -- page lede, no in-file heading to attach a tip to",
+        "gate 4-adjacent, not gate 5 -- 'Every section is a question. Pick "
+        "the question, then pick the format' orients the reader to the "
+        "PAGE, it does not explain a control's meaning or a default; same "
+        "category as network_lede/scan_lede, which §5.7's own worked "
+        "examples already class gate 4",
     "compliance.html: compliance_subtitle":
-        "gate 5, no anchor -- same reasoning as reports.html's lede",
+        "gate 4-adjacent, not gate 5 -- 'GAMP 5 CSV operational status -- "
+        "SOPs, audit chain, findings' is the identical page-scope-statement "
+        "shape as reports.html's lede, same reasoning",
     "compliance.html: csv_docs_at":
-        "gate 5 by elimination, but reads as wayfinding chrome ('the files "
-        "live here'), not explanation; also has no anchor",
+        "gate 4-adjacent -- wayfinding chrome ('CSV docs at docs/csv/'), "
+        "not explanation of a control",
     "services.html: services_lede":
-        "gate 5, no anchor -- the file has no heading/label of its own; "
-        "the natural home (partials/services_table.html's own H2 tip) is "
-        "outside this line's file. Flagged for owner sign-off, not resolved",
+        "gate 4-adjacent, not gate 5 -- 'Every probe Prism runs... and how "
+        "it last answered' orients the reader to what the whole page shows, "
+        "the same page-scope-statement shape as reports.html's lede. "
+        "(Re-examined after first being filed as 'gate 5, no anchor': "
+        "partials/services_table.html, the file that would have to carry "
+        "the tip under C21's 'or the relevant card's H2', has no general "
+        "overview heading of its own -- only a narrower 'Switched off (N)' "
+        "sub-heading, the wrong place to attach a whole-page lede. Once "
+        "that turned out to be a dead end, gate-classifying the line "
+        "itself properly -- rather than treating the missing anchor as the "
+        "thing to work around -- is what settled it: it was never gate 5 "
+        "to begin with.)",
 
     # Content built entirely in JS (string concatenation / innerHTML),
     # with no Jinja-rendered path tip()/tip_button() could reach. Hand-
