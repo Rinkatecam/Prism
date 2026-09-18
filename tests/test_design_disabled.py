@@ -37,9 +37,16 @@ WHAT THESE ARE BLIND TO:
     `aria-describedby` already names the reason regardless of focus, per
     §5.2/§5.3 — while the `[data-action]` dispatcher's own `data-inert`
     check keeps a focusable-but-unavailable control from also being
-    operable. Neither this file nor T-15 presses Tab in a real browser,
-    though; that measurement is step 10's, per DESIGN_SYSTEM_SPEC.md's own
-    step-10 entry ("(a) Tab reaches every tip button"). MACHINE WORKING
+    operable. Neither this file nor T-15 presses Tab in a real browser
+    against a control disabled BY THIS MECHANISM specifically — step 10
+    (a)'s live measurement (tests/test_design_tooltip.py's own docstring
+    has the full account) was taken on a standalone `.ps-tip` button, and
+    the finding is extended to an aria-disabled+data-inert carrier by
+    shared code rather than a second live test: both are served by the
+    exact same `bindAll()`/`onFocusIn` listener pair in base.html,
+    registered against `[data-tip-title]` generally, not against `.ps-tip`
+    specifically, so nothing in the mechanism distinguishes one carrier
+    shape from the other at the point Tab actually reaches it. MACHINE WORKING
     controls are unaffected by any of this — they carry no reason to make
     reachable in the first place (see above) — and stay hover/pointer-only
     by design; nothing here claims otherwise for them.

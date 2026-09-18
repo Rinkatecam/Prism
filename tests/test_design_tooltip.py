@@ -23,10 +23,122 @@ WHAT THIS FILE CANNOT SEE — read before trusting a green run:
     are registered (`document.addEventListener('keydown', ...)` exists).
     It cannot press Escape and observe the panel actually close, hold a
     finger down for 600ms, or tap outside a panel on a real touchscreen.
-    That needs a live browser — step 10, not this file.
+    That needed a live browser — step 10, measured 2026-09-18 against
+    settings.html's poll_interval tip (a) and data_retention tip (b), a
+    server_analytics.html cpu/ram forecast tip inside base.html's shared
+    `#prism-modal` (c, d), settings/general's tip under mobile touch
+    emulation (e), a `tip_overflow()` carrier on /servers' card view (f),
+    /settings/general's tip at all four viewport edges (g), and
+    server_detail.html's htmx-loaded analytics partial (j):
+      (a) A real (not scripted) Shift+Tab lands `:focus-visible` on the
+          `.ps-tip` button and the panel opens with the correct content,
+          zero delay — `.focus()` alone does NOT do this (Chromium does
+          not grant `:focus-visible` to a scripted focus call the same way
+          it does to real keyboard navigation; the app's own onFocusIn
+          correctly gates on `:focus-visible` for exactly this reason, so
+          testing it needs an actual Tab keypress, not a shortcut).
+      (b) Escape closes the panel; `document.activeElement` is still the
+          `.ps-tip` button afterward — focus provably did not move.
+      (c) With `#prism-modal` open (z-index 9999) and a tip open on a
+          relocated real trigger inside its rect, one Escape closes only
+          the tip (`#ps-tooltip` hidden) — the modal stayed open
+          (`!classList.contains('hidden')` true throughout).
+      (d) With the same modal+tip both open and their rects overlapping,
+          `document.elementFromPoint()` at the overlap returns the
+          tooltip panel's own child, not the modal — the panel is the
+          actually-painted, actually-hit-testable element, not just a
+          higher z-index number on paper. T-8 already pins the numbers
+          (10000 > every other z-index in the tree, including this
+          modal's 9999); this is the live confirmation the numbers
+          actually resolve the tie in paint order too.
+      (e) Under `resize_window` mobile-touch emulation (`navigator.
+          maxTouchPoints` confirmed 5), a tap on the info-icon carrier
+          opens the panel with the right content; a tap elsewhere on the
+          page closes it.
+      (f) A real `PointerEvent('pointerdown', {pointerType: 'touch'})` on
+          a `tip_overflow()` carrier, held past PRESS_MS (600ms) before
+          `pointerup`, opens the panel PINNED (stays open through the
+          release) — confirming `longPressed` gates the synthesized
+          click that follows so it does not immediately toggle the panel
+          shut. A `contextmenu` event dispatched on the same carrier
+          during/after the hold comes back `defaultPrevented: true` — no
+          OS text-selection callout. (One methodology note from getting
+          this measurement right: a scripted `pointerdown` with no
+          matching event loop tick between dispatch and check can read
+          `visible: false` even though `show()` already ran and the panel
+          holds the correct content — an artifact of checking across
+          separate tool calls with an unrelated intervening action, not
+          the app closing early. Measuring dispatch, the 650ms wait and
+          the visibility check all inside ONE script, so nothing else
+          can run in between, is what makes this measurement reliable.)
+      (g) `anchor()`'s own placement algorithm, exercised directly by
+          relocating a real trigger (inline `position: fixed`) to each
+          edge in turn: moved to the bottom edge, the panel flips ABOVE
+          the trigger (`panelBottom <= buttonTop`, with the GAP honoured)
+          instead of running off the bottom of the viewport. Moved to the
+          left edge, the panel's own left edge holds at the EDGE margin
+          (12px) rather than going negative. Moved to the right edge, the
+          panel's right edge holds at `viewport width - EDGE` rather than
+          overflowing — clamped, never flipped horizontally, exactly as
+          the code's own comment describes. The top edge is the ordinary,
+          default below-placement case, exercised implicitly by every
+          other measurement here.
+      (j) Opening a tip inside server_detail.html's htmx-loaded
+          `#server-analytics` partial, then issuing a real `htmx.ajax()`
+          reload of that same partial (not `htmx.trigger(el, 'load')` —
+          that call does NOT re-fire an already-consumed one-shot `load`
+          trigger, confirmed by instrumenting `htmx:beforeSwap`/
+          `afterSwap` and observing neither fired; it produced a false
+          "still open" reading on the first attempt, which turned out to
+          be a test-methodology gap, not an app bug): the OLD carrier
+          element is confirmed detached (`isConnected: false`) after the
+          swap, and the panel is confirmed closed (`visible: false`) —
+          `htmx:afterSwap`'s own `if (!current.isConnected) closeTip()`
+          backstop firing correctly, not stranding the panel on a removed
+          node.
+      (a) was measured on a standalone `.ps-tip` button specifically;
+      whether Tab equally reaches an `aria-disabled`+`data-inert`
+      REASONED carrier (tests/test_design_disabled.py's own remaining
+      step-10 note, below) was not separately re-measured live — the
+      carrier is served by this exact same `bindAll()`/`onFocusIn`
+      listener pair, registered identically regardless of which HTML
+      attribute made the element a tip carrier, so the finding is
+      inferred from shared code rather than re-tested against a second
+      live control. The one real candidate found for a live re-test
+      (settings/servers' delete-confirm-btn) sits behind a delete
+      confirmation for a real fleet server; re-testing it was judged not
+      worth that risk for a claim already covered by code-sharing.
   * RENDERED CONTRAST. T-11 pins the panel to the token scale (border-radius,
     transition, no stray `!important`). It cannot read a pixel off a
-    rendered page in either theme. Also step 10.
+    rendered page in either theme. Step 10 (h), measured 2026-09-18 on
+    settings.html's poll_interval tip (title "Per-server cadence" + its
+    desc), reading `getComputedStyle` off the actually-rendered
+    `#ps-tooltip` in both themes and computing WCAG contrast against its
+    own background, not against a token value:
+      light: bg rgb(255,255,255); title rgb(2,6,23) → 20.17:1; desc
+        rgb(71,85,105) → 7.58:1.
+      dark: bg rgb(15,22,35); title rgb(241,245,249) → 16.53:1; desc
+        rgb(163,178,199) → 8.41:1.
+    All four clear AA's 4.5:1 with large margins (the tightest, light
+    desc at 7.58:1, still clears AAA's 7:1).
+  * PREFERS-REDUCED-MOTION, LIVE. Step 10 (i) was NOT measured via an
+    actual OS/browser-level media-feature toggle — the browser automation
+    available for this measurement had no such emulation control exposed
+    (`resize_window` emulates viewport and colour scheme, not this
+    feature; no other tool in reach did either). Verified instead,
+    honestly short of a live toggle: app.css's global rule (`*, *::before,
+    *::after { transition-duration: 0.01ms !important; ... }`) uses the
+    universal selector at `!important`, which no per-element rule can
+    escape unless it ALSO carries `!important` at higher specificity —
+    `#ps-tooltip`'s own transition rule does not, confirmed by reading it
+    directly — and `test_reduced_motion_is_honoured_globally_not_rule_by_
+    rule` (this file, passing) independently pins that no rule anywhere in
+    the tree carries such an override. The delay custom properties
+    (`--tip-delay-open`/`close`, T-12) are separate, unrelated CSS values
+    the reduced-motion media query never touches, so "the delays are
+    unchanged" holds by construction, not by a specific measurement. If a
+    tool with real media-feature emulation becomes available, this is the
+    one step-10 item still worth a genuine live re-check.
   * CARRIERS BUILT BY CLIENT-SIDE JAVASCRIPT AFTER THE PAGE LOADS. T-2/T-3/
     T-4 render every route through Flask's test client, which executes
     Jinja but no JavaScript — so a carrier that only exists after a script
