@@ -2244,7 +2244,7 @@
         // and a current item that is the only match still gets found on
         // the final iteration (cycle of size one).
         const idx = (start + step) % list.length;
-        if (normalize(list[idx].textContent).indexOf(needle) === 0) {
+        if (normalize(list[idx].textContent.trim()).indexOf(needle) === 0) {
           move(list, idx);
           return;
         }

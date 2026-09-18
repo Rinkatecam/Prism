@@ -1673,13 +1673,31 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   /* Position/size is §7.3's own literal block, verbatim, plus the entrance
      transition (see the comment below the title rule for both halves of
      that addition and why there is no matching close animation) folded
-     into the same declaration rather than a second one. */
-  .settings-theme-menu { position: fixed; left: 0; right: 0; bottom: 0; top: auto;
+     into the same declaration rather than a second one.
+
+     Prefixed with `#settings-theme-wrap` — NOT to change the hook back to
+     an id (the comment above still governs: the matched selector stays
+     `.settings-theme-menu`, decoupled from the panel's own id), but purely
+     as a specificity boost. This element's own template markup also
+     carries `absolute`/`mt-1`/`rounded-md`/`py-1`, and a bare one-class
+     selector here (0,1,0) ties every one of those Tailwind utilities
+     (also 0,1,0) — a tie this codebase's own #page-title rule two blocks
+     up already documents as resolving on stylesheet order, not intent.
+     Measured live: without this prefix, `position` stayed `absolute` (this
+     panel's positioning parent, #settings-theme-wrap, sits ~28px from the
+     top), which anchored the sheet's `bottom:0` there instead of the
+     viewport and pushed the entire 11-item list off-screen above it —
+     margin, border-radius and padding-bottom were separately losing to
+     mt-1/rounded-md/py-1 the same way. The ancestor id is scoped to the
+     wrap, an element whose id nothing here proposes to rename, so this
+     does not reintroduce the id/rename coupling the class hook was chosen
+     to avoid. */
+  #settings-theme-wrap .settings-theme-menu { position: fixed; left: 0; right: 0; bottom: 0; top: auto;
     width: auto; margin: 0; max-height: 60vh; border-radius: 1rem 1rem 0 0;
     border-bottom: 0; padding-bottom: env(safe-area-inset-bottom, 0.5rem);
     transform: translateY(100%);
     transition: transform var(--dur-base) var(--ease-out); }
-  .settings-theme-menu.settings-theme-sheet-open { transform: translateY(0); }
+  #settings-theme-wrap .settings-theme-menu.settings-theme-sheet-open { transform: translateY(0); }
 
   /* The sheet's own visible title, from `data-sheet-title` (base.html's
      _settings_nav.html sets it from the SAME string step 21 already
