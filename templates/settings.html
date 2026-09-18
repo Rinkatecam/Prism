@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/_tip.html" import tip with context %}
+{% from "partials/_tip.html" import tip, tip_button, tip_mirror, tip_overflow with context %}
 {% from "partials/_card.html" import card, subhead with context %}
 {% block page_title %}{{ t.settings }}{% endblock %}
 {% block page_icon %}settings{% endblock %}
@@ -56,8 +56,10 @@
        General is now purely locale + retention. #}
     <div class="flex items-center justify-between">
       <div>
-        <div class="text-sm font-medium">{{ t.data_retention }}</div>
-        <div class="text-xs text-muted">{{ t.data_retention_desc }}</div>
+        <div class="text-sm font-medium flex items-center gap-1.5">
+          {{ t.data_retention }}
+          {{ tip('data_retention_desc', 'How long to keep historical metric data') }}
+        </div>
       </div>
       <div class="flex items-center gap-1">
         <input type="number" id="retention-days" value="{{ settings.retention_days or 30 }}" min="1" max="365" required
@@ -67,8 +69,10 @@
     </div>
     <div class="flex items-center justify-between">
       <div>
-        <div class="text-sm font-medium">{{ t.language }}</div>
-        <div class="text-xs text-muted">{{ t.language_desc }}</div>
+        <div class="text-sm font-medium flex items-center gap-1.5">
+          {{ t.language }}
+          {{ tip('language_desc', 'Display language for the dashboard') }}
+        </div>
       </div>
       <select id="setting-language" class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="en" {% if settings.language == 'en' %}selected{% endif %}>{{ t.lang_en }}</option>
@@ -80,8 +84,10 @@
     </div>
     <div class="flex items-center justify-between">
       <div>
-        <div class="text-sm font-medium">{{ t.timezone }}</div>
-        <div class="text-xs text-muted">{{ t.timezone_desc }}</div>
+        <div class="text-sm font-medium flex items-center gap-1.5">
+          {{ t.timezone }}
+          {{ tip('timezone_desc', 'Timezone for timestamps and event logs') }}
+        </div>
       </div>
       <select id="setting-timezone" class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="Europe/Berlin" {% if settings.timezone == 'Europe/Berlin' %}selected{% endif %}>Europe/Berlin (CET/CEST)</option>
@@ -98,8 +104,10 @@
     </div>
     <div class="flex items-center justify-between">
       <div>
-        <div class="text-sm font-medium">{{ t.date_format }}</div>
-        <div class="text-xs text-muted">{{ t.date_format_desc }}</div>
+        <div class="text-sm font-medium flex items-center gap-1.5">
+          {{ t.date_format }}
+          {{ tip('date_format_desc', 'How dates are displayed across the dashboard') }}
+        </div>
       </div>
       <select id="setting-date-format" class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="DD.MM.YYYY" {% if settings.date_format == 'DD.MM.YYYY' %}selected{% endif %}>DD.MM.YYYY (31.12.2026)</option>
@@ -110,8 +118,10 @@
     </div>
     <div class="flex items-center justify-between">
       <div>
-        <div class="text-sm font-medium">{{ t.time_format }}</div>
-        <div class="text-xs text-muted">{{ t.time_format_desc }}</div>
+        <div class="text-sm font-medium flex items-center gap-1.5">
+          {{ t.time_format }}
+          {{ tip('time_format_desc', '12-hour or 24-hour clock') }}
+        </div>
       </div>
       <select id="setting-time-format" class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="24h" {% if settings.time_format == '24h' %}selected{% endif %}>24-hour (14:30)</option>
@@ -161,7 +171,6 @@
                  'Every server is polled on its own schedule, offset by a hash so the fleet does not stampede on a tick boundary. Setting 60s means each server is polled every ~60s independently — not that all servers are polled together once per minute.',
                  title_key='per_server_cadence_title', title_fallback='Per-server cadence') }}
         </div>
-        <div class="text-xs text-muted">{{ t.poll_interval_desc }}</div>
       </div>
       <div class="flex items-center gap-2">
         <button type="button" data-action="syncNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors whitespace-nowrap">
@@ -183,7 +192,6 @@
                  'Event-log scrape runs on each server independently at this cadence. Higher value = lower WinRM load on the targets, but event-log warnings take longer to surface in the dashboard. Decoupled from the metrics interval — these run on their own clock.',
                  title_key='per_server_cadence_title', title_fallback='Per-server cadence') }}
         </div>
-        <div class="text-xs text-muted">{{ t.get('log_collection_interval_desc', 'How often to pull Windows event logs + failed login events from each server. Higher = less load on the targets.') }}</div>
       </div>
       <div class="flex items-center gap-2">
         <button type="button" data-action="syncLogsNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors whitespace-nowrap">
@@ -204,7 +212,6 @@
                  'Windows Update queries are spread across the fleet — at any given time only a small subset of servers is hitting the WU COM API, not all of them at once. This cadence is the per-server interval; the scheduler shards calls so collector load stays flat.',
                  title_key='per_server_cadence_title', title_fallback='Per-server cadence') }}
         </div>
-        <div class="text-xs text-muted">{{ t.get('update_check_interval_desc', 'How often to check each server for pending Windows Updates.') }}</div>
       </div>
       <div class="flex items-center gap-2">
         <button type="button" data-action="syncUpdatesNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors whitespace-nowrap">
@@ -227,7 +234,6 @@
                  'Number of worker threads pulling check items from the queue and executing WinRM probes against your servers. Default 15 handles ~150 servers with comfortable headroom (each worker can sit on a slow Windows Update query for up to 120 s). Increase for larger fleets or if the operations page shows workers active_count consistently near the pool size.',
                  title_key='collector_v2_workers_tip_title', title_fallback='Concurrent WinRM probes') }}
         </div>
-        <div class="text-xs text-muted mt-1">{{ t.get('collector_v2_workers_desc', 'Concurrent WinRM probes. Default 15 handles ~150 servers with headroom. Increase for larger fleets.') }}</div>
       </div>
       <div class="flex items-center gap-1">
         <input type="number" id="collector-v2-workers" min="2" max="100" step="1"
@@ -459,6 +465,7 @@
             <div class="text-xs font-medium flex items-center gap-1.5">
               <i data-lucide="shield" class="w-3.5 h-3.5 text-warning"></i>
               {{ t.admin_account }}
+              {{ tip('admin_account_desc', 'Local backup admin for when LDAP/AD is unavailable') }}
             </div>
             {% if _ba_configured %}
             <span class="badge badge-healthy text-[10px]">{{ t.get('configured', 'Configured') }}</span>
@@ -468,7 +475,6 @@
             <span class="text-[10px] px-2 py-0.5 rounded-full bg-raised dark:bg-line text-muted">{{ t.get('not_set_up', 'Not set up') }}</span>
             {% endif %}
           </div>
-          <div class="text-[10px] text-muted">{{ t.admin_account_desc }}</div>
 
           {% if _ba_configured %}
           <div class="mt-2 flex items-center justify-between">
@@ -875,8 +881,10 @@
   <div class="space-y-4">
     <div class="flex items-center justify-between">
       <div>
-        <div class="text-sm font-medium">{{ t.default_time_range }}</div>
-        <div class="text-xs text-muted">{{ t.get('time_range_desc', 'Default time range for charts and reports') }}</div>
+        <div class="text-sm font-medium flex items-center gap-1.5">
+          {{ t.default_time_range }}
+          {{ tip('time_range_desc', 'Default time range for charts and reports') }}
+        </div>
       </div>
       <select id="pref-time-range" data-change="savePreferences"
               class="px-2 py-1 text-sm rounded border border-line bg-field">
@@ -890,8 +898,10 @@
     </div>
     <div class="flex items-center justify-between">
       <div>
-        <div class="text-sm font-medium">{{ t.auto_refresh_interval }}</div>
-        <div class="text-xs text-muted">{{ t.get('refresh_desc', 'How often the dashboard checks for new data') }}</div>
+        <div class="text-sm font-medium flex items-center gap-1.5">
+          {{ t.auto_refresh_interval }}
+          {{ tip('refresh_desc', 'How often the dashboard checks for new data') }}
+        </div>
       </div>
       <select id="pref-refresh-interval" data-change="savePreferences"
               class="px-2 py-1 text-sm rounded border border-line bg-field">

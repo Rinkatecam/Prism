@@ -21,6 +21,7 @@
    is compliant on one surface and not the other, and nothing in the class
    name says which. #}
 {% from "partials/_card.html" import card, subhead with context %}
+{% from "partials/_tip.html" import tip, tip_button, tip_mirror, tip_overflow with context %}
   {# WP-6 step 15 / C9: no page-level "Detection" H2 in settings.html any
      more -- this card now owns that exact heading text (and icon) as its
      own canonical H2. id="baseline-security-card" is preserved verbatim
@@ -117,7 +118,11 @@
           </label>
           {# CPU N-of-M smoothing — gates noisy CPU warnings. Critical bypasses. #}
           <div class="mt-2 pt-2 border-t border-line">
-            <div class="text-[10px] font-semibold text-muted mb-1">{{ t.get('cpu_smoothing', 'CPU smoothing') }}</div>
+            <div class="flex items-center gap-1.5 text-[10px] font-semibold text-muted mb-1">
+              {{ t.get('cpu_smoothing', 'CPU smoothing') }}
+              {{ tip('cpu_smoothing_help', 'Legacy CPU smoothing. Since 2026-08-05 the badge is driven by the spike gate below; this now only filters which CPU anomalies appear in the event feed.',
+                     title_key='cpu_smoothing', title_fallback='CPU smoothing') }}
+            </div>
             <div class="flex items-center gap-1">
               <input type="number" id="anomaly-cpu-consec" min="1" max="20"
                      value="{{ settings.get('anomaly_detection', {}).get('cpu_warning_consecutive_cycles', 3) }}"
@@ -128,7 +133,6 @@
                      class="general-input w-12 px-1.5 py-0.5 text-xs rounded border border-line bg-field text-right">
               <span class="text-xs text-muted">{{ t.get('cycles_must_be_warning', 'cycles must be warning') }}</span>
             </div>
-            <p class="text-[10px] text-muted mt-1">{{ t.get('cpu_smoothing_help', 'Legacy CPU smoothing. Since 2026-08-05 the badge is driven by the spike gate below; this now only filters which CPU anomalies appear in the event feed.') }}</p>
           </div>
           {# Static-breach spike gate — the badge-level "is this a condition or
              just a blip?" control for CPU and RAM. Replaces the CPU-only
@@ -156,11 +160,10 @@
           <div class="flex items-center gap-2">
             <i data-lucide="brain" class="w-4 h-4 text-accent"></i>
             <span class="text-sm font-medium">{{ t.get('baseline_smart', 'Baseline (Smart)') }}</span>
+            {{ tip('baseline_card_help', 'Hour-of-week Z-score. The smartest detector — when on, it owns CPU/RAM/Disk warning alerts.',
+                   title_key='baseline_smart', title_fallback='Baseline (Smart)') }}
             <span class="ml-auto text-[10px] font-semibold text-brand uppercase" data-detection-priority="baseline"></span>
           </div>
-          <p class="text-xs text-muted mt-1">
-            {{ t.get('baseline_card_help', 'Hour-of-week Z-score. The smartest detector — when on, it owns CPU/RAM/Disk warning alerts.') }}
-          </p>
           <p class="text-xs text-brand mt-2 font-medium">
             {{ t.get('baseline_configure_below', 'Configure below ↓') }}
           </p>
@@ -225,6 +228,8 @@
             <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
           </label>
           <span class="text-xs text-muted">{{ t.get('allow_baseline_downgrade', 'Allow baseline to downgrade') }}</span>
+          {{ tip('allow_baseline_downgrade_help', 'A mature baseline may mark a static warning/critical as normal-for-this-server.',
+                 title_key='allow_baseline_downgrade', title_fallback='Allow baseline to downgrade') }}
         </div>
         <div class="flex items-center gap-1">
           <label class="text-xs text-muted">{{ t.get('baseline_warmup_weeks', 'Warm-up (weeks)') }}</label>
@@ -239,7 +244,6 @@
                  class="general-input w-16 px-2 py-1 text-sm rounded border border-line bg-field text-right">
         </div>
       </div>
-      <p class="text-[10px] text-muted mb-3">{{ t.get('allow_baseline_downgrade_help', 'A mature baseline may mark a static warning/critical as normal-for-this-server.') }}</p>
       {# Deviation-from-self RAISE gates — docs/plans/
          ALERT_NOISE_AND_VERDICT_UX_PLAN.md §3. The mirror image of the
          downgrade-authority block above: these decide when a deviation is
@@ -247,8 +251,10 @@
          warnings where only 4 had a real threshold breach. Setting
          Both / 0 / off reproduces the pre-2026-08-03 behaviour exactly. #}
       <div class="flex flex-wrap items-center gap-3 mb-3">
-        <div class="flex items-center gap-1">
+        <div class="flex items-center gap-1.5">
           <label class="text-xs text-muted">{{ t.get('deviation_direction', 'Deviation alarms on') }}</label>
+          {{ tip('deviation_gates_help', 'Controls when "differs from its own baseline" raises a warning. Rising-only ignores a metric dropping below its normal (an emptier disk is not a fault). The percentage requires the value to actually approach its warning threshold, so a statistical blip well inside safe limits stays quiet.',
+                 title_key='deviation_direction', title_fallback='Deviation alarms on') }}
           <select id="baseline-deviation-direction"
                   class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
             {% set _dir = settings.get('baseline_detection', {}).get('deviation_direction', 'high') %}
@@ -271,7 +277,6 @@
           <span class="text-xs text-muted">{{ t.get('deviation_requires_authority', 'Require mature baseline to alarm') }}</span>
         </div>
       </div>
-      <p class="text-[10px] text-muted mb-3">{{ t.get('deviation_gates_help', 'Controls when "differs from its own baseline" raises a warning. Rising-only ignores a metric dropping below its normal (an emptier disk is not a fault). The percentage requires the value to actually approach its warning threshold, so a statistical blip well inside safe limits stays quiet.') }}</p>
       <div class="flex items-center">
         <button data-action="recalculateBaselines" class="px-3 py-1.5 text-xs font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1">
           <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>

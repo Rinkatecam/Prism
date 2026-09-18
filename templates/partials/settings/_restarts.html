@@ -16,6 +16,7 @@
    simply takes the canonical string plus a stable id, now rendered by
    card()'s own head row. #}
 {% from "partials/_card.html" import card with context %}
+{% from "partials/_tip.html" import tip, tip_button, tip_mirror, tip_overflow with context %}
   {% call card(heading=t.scheduled_restarts, icon='timer-reset',
                heading_id='scheduled-restarts-heading') %}
   <div class="space-y-5">
@@ -25,8 +26,9 @@
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
         <i data-lucide="refresh-cw" class="w-4 h-4 text-accent"></i>
         {{ t.flask_restart_schedule }}
+        {{ tip('flask_restart_desc', 'Automatically restart the Prism service on a schedule',
+               title_key='flask_restart_schedule', title_fallback='Prism Service Restart') }}
       </div>
-      <div class="text-[10px] text-muted mb-3">{{ t.flask_restart_desc }}</div>
       <div class="flex flex-wrap items-center gap-3">
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" id="flask-restart-enabled" class="sr-only peer">
@@ -66,8 +68,9 @@
       <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
         <i data-lucide="server" class="w-4 h-4 text-accent"></i>
         {{ t.server_restart_schedule }}
+        {{ tip('server_restart_desc', 'Schedule automatic restarts for monitored servers',
+               title_key='server_restart_schedule', title_fallback='Server Restart Schedule') }}
       </div>
-      <div class="text-[10px] text-muted mb-3">{{ t.server_restart_desc }}</div>
 
       <!-- Global schedule for all server restarts -->
       <div class="flex flex-wrap items-center gap-2 mb-3 p-2.5 rounded-lg border border-line bg-page dark:bg-page/50">

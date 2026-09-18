@@ -916,6 +916,22 @@ def test_the_panel_is_reachable_by_a_pointer_when_visible():
 # the first intervening `</div>` the identical way steps 16/17's own three
 # "unshadowed" sites were previously swallowed the other direction. Also
 # confirmed by diffing against `git show HEAD:compliance.html`.
+# Lowered by WP-6 step 25 (D3 wave A -- the Settings family's own gate-5
+# lines converted to tip()), four files, each re-measured by running
+# _desc_line_counts() before and after, not hand-computed:
+#   settings.html               19 -> 7   (12 converted/merged into tip())
+#   partials/settings/_detection.html   11 -> 7   (4 converted)
+#   partials/settings/_compliance.html   2 -> 1   (1 converted)
+#   partials/settings/_restarts.html     2 -> 0   (2 converted)
+# The other four Settings-family files this step also reviewed --
+# _tls.html, _rbac.html, _server_config.html, _health_checks.html -- kept
+# their exact counts: every candidate line in them resolved to gate 1-4,
+# not gate 5, so nothing there was a tooltip candidate at all. Every line
+# that stayed inline anywhere in the family, in every one of the eight
+# files, is recorded with its gate number in DESC_LINE_INLINE_EXEMPTIONS
+# immediately below -- per §5.7, "the exemption table records the gate
+# number for every line that stayed, so a reviewer sees the reasoning
+# rather than a bare number."
 DESC_LINE_BASELINE: dict[str, int] = {
     "500.html": 1,
     "compliance.html": 2,
@@ -931,12 +947,12 @@ DESC_LINE_BASELINE: dict[str, int] = {
     "partials/server_card.html": 3,
     "partials/server_comparison.html": 2,
     "partials/services_table.html": 1,
-    "partials/settings/_compliance.html": 2,
-    "partials/settings/_detection.html": 11,
+    "partials/settings/_compliance.html": 1,
+    "partials/settings/_detection.html": 7,
     "partials/settings/_health_checks.html": 1,
     "partials/settings/_maintenance.html": 1,
     "partials/settings/_rbac.html": 2,
-    "partials/settings/_restarts.html": 2,
+    "partials/settings/_restarts.html": 0,
     "partials/settings/_server_config.html": 2,
     "partials/settings/_tls.html": 1,
     "partials/tls_overview.html": 1,
@@ -946,11 +962,78 @@ DESC_LINE_BASELINE: dict[str, int] = {
     "server_detail.html": 14,
     "servers.html": 4,
     "services.html": 1,
-    "settings.html": 19,
+    "settings.html": 7,
     "setup.html": 1,
     "topology.html": 1,
     "workflows.html": 2,
 }
+
+
+# §5.7's exemption table (step 25). Every explanation-shaped line in the
+# Settings family that stayed INLINE rather than becoming a tooltip,
+# because a gate ahead of gate 5 fired first. Keyed by "file: i18n key"
+# (or a short description where there is no key, e.g. a hardcoded native
+# `title=`). This table is reviewer-facing, not machine-checked against
+# the gate text itself -- test_every_inline_exemption_names_a_gate below
+# only proves every entry gives SOME reason, the same shallow guarantee
+# _EXEMPT_CONTAINERS-style tables give elsewhere in this codebase.
+DESC_LINE_INLINE_EXEMPTIONS: dict[str, str] = {
+    "settings.html: ldap_bind_desc":
+        "gate 3 -- UPN input format rule ('user@domain.com'), unreadable "
+        "mid-focus if it closed on blur behind a tooltip",
+    "settings.html: allowed_users_desc":
+        "gate 3 -- one-per-line format rule for the textarea directly below it",
+    "settings.html: ldap_picker_hint":
+        "gate 2 -- caveat on data about to be read (results capped at 200)",
+    "partials/settings/_detection.html: detection_mode_help":
+        "gate 2 -- CRITICAL threshold alerts always fire regardless of the "
+        "chosen mode, a safety-net caveat",
+    "partials/settings/_detection.html: thresholds_help":
+        "gate 2 -- always-on safety net at the critical level",
+    "partials/settings/_detection.html: exhaustion_floor_help":
+        "gate 2 -- 'the baseline can never downgrade it'",
+    "partials/settings/_detection.html: anomaly_help":
+        "gate 2 -- alert coverage that survives detector-priority suppression",
+    "partials/settings/_detection.html: spike_gate_help":
+        "gates 1+2+3 -- embeds the exhaustion floors' live default values, "
+        "a safety-net caveat (disk is never gated), and a format rule "
+        "('set to 1 to disable')",
+    "partials/settings/_restarts.html: no_server_restarts":
+        "gate 1 -- empty-state title reporting live state",
+    "partials/settings/_restarts.html: no_server_restarts_hint":
+        "gate 4 -- only next-step guidance in an otherwise empty region",
+    "partials/settings/_tls.html: no_certificates":
+        "gate 1/4 -- empty-state title",
+    "partials/settings/_tls.html: no_certificates_hint":
+        "gate 4 -- only next-step guidance in an otherwise empty region",
+    "partials/settings/_rbac.html: rbac_grant_hint":
+        "gate 2 -- consequence of the grant about to be submitted",
+    "partials/settings/_compliance.html: compliance_off_means":
+        "gate 2 -- caveat about what disabling the module actually does",
+    "partials/settings/_compliance.html: compliance_evidence_kept":
+        "gate 2 -- a guarantee about evidence, attached to a toggle about "
+        "to be flipped",
+    "partials/settings/_server_config.html: skip-cert-verify title=":
+        "gate 2 -- caveat on the security implication of an action about "
+        "to be taken. Hardcoded English in a native title= attribute, not "
+        "a t.get() call at all -- a separate, pre-existing §5.3 issue this "
+        "step did not create and did not fix, since its content is gate 2 "
+        "either way and no markup change was needed",
+    "partials/settings/_server_config.html: delete_server_warning":
+        "gate 2 -- consequence-of-action warning in the delete-confirm modal",
+    "partials/settings/_health_checks.html: hc_verify_tls_hint":
+        "gate 2 -- caveat about what the check verdict actually proves, "
+        "not what it feels like it proves",
+}
+
+
+def test_every_inline_exemption_names_a_gate():
+    missing = [k for k, v in DESC_LINE_INLINE_EXEMPTIONS.items()
+               if "gate" not in v.lower()]
+    assert not missing, (
+        "exemption(s) with no gate number named -- §5.7 requires the "
+        "reviewer see WHICH gate fired, not just that one did:\n  "
+        + "\n  ".join(missing))
 
 _DESC_SMALL_SIZE = r"text-xs|text-sm|text-\[1[01]px\]"
 _DESC_MUTED_FAINT = r"text-muted|text-faint"
@@ -1025,7 +1108,10 @@ def test_no_description_line_outside_the_templates_that_already_have_one():
 # (-1); compliance.html loses one to a macro-nesting shadow effect, the
 # mirror image of steps 16/17's own unshadowing (-1) -- see
 # DESC_LINE_BASELINE's own step-18 comment for both.
-DESC_LINE_TOTAL = 119
+# Lowered from 119 to 100 by WP-6 step 25 -- RE-RUN, not hand-computed:
+# the four Settings-family reductions in DESC_LINE_BASELINE's own step-25
+# comment above sum to -19 (12 + 4 + 1 + 2).
+DESC_LINE_TOTAL = 100
 
 
 def test_the_total_number_of_description_lines_never_rises():

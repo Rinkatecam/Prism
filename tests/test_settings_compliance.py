@@ -221,17 +221,22 @@ def test_each_fallback_is_exactly_its_english_entry():
     missing, so a fallback that has drifted from the English entry is a page
     that says two different things depending on a lookup nobody sees. The
     first version of this section wrapped its fallbacks across lines, and
-    Jinja put the newlines and the indentation IN the string."""
+    Jinja put the newlines and the indentation IN the string.
+
+    Matches `t.get(key, 'fallback')` OR `tip(key, 'fallback', ...)` — WP-6
+    step 25 converted compliance_enable_desc's call site from the former to
+    the latter (gate 5: explanation, not a caveat or live value), and tip()
+    takes further keyword arguments after the fallback, so the closing `)`
+    is no longer immediately before `}}`. Capturing up to the fallback's own
+    matching quote (rather than up to the call's closing paren) is what
+    makes this work for both shapes without caring how many arguments follow."""
     from i18n import TRANSLATIONS
     src = _SRC.read_text(encoding="utf-8")
     for key in _KEYS:
-        m = re.search(r"t\.get\(\s*'" + re.escape(key) + r"'\s*,\s*(.*?)\)\s*\}\}",
-                      src, re.S)
-        assert m, f"no t.get call for {key}"
-        literal = m.group(1).strip()
-        quote = literal[0]
-        assert quote in "'\"", f"{key}'s fallback is not a string literal"
-        fallback = literal[1:literal.rindex(quote)]
+        m = re.search(r"(?:t\.get|tip)\(\s*'" + re.escape(key) + r"'\s*,\s*"
+                      r"(['\"])((?:(?!\1).)*)\1", src, re.S)
+        assert m, f"no t.get/tip call for {key}"
+        fallback = m.group(2)
         assert fallback == TRANSLATIONS["en"][key], (
             f"{key}'s fallback has drifted from its English entry:\n"
             f"  fallback: {fallback!r}\n  english:  {TRANSLATIONS['en'][key]!r}")
