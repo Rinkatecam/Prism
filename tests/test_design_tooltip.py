@@ -932,20 +932,65 @@ def test_the_panel_is_reachable_by_a_pointer_when_visible():
 # immediately below -- per §5.7, "the exemption table records the gate
 # number for every line that stayed, so a reviewer sees the reasoning
 # rather than a bare number."
+#
+# Lowered by WP-6 step 26 (D3 wave B -- the rest of the tree), seven
+# files, each re-measured by running _desc_line_counts() before and
+# after, not hand-computed:
+#   reports.html                       16 -> 14  (fleet_report_desc,
+#                                                  csv_metrics_desc,
+#                                                  csv_events_desc converted)
+#   operations.html                     6 -> 1   (data_management_desc,
+#                                                  clean_data_desc,
+#                                                  delete_all_desc,
+#                                                  factory_reset_desc,
+#                                                  dry_run_help converted)
+#   partials/server_analytics.html      8 -> 7   (cpu_stationary_hint /
+#                                                  ram_stationary_hint
+#                                                  merged into one tip())
+#   network.html                        2 -> 1   (network_today_desc
+#                                                  converted; network_lede
+#                                                  stays, gate 4)
+#   scan.html                           2 -> 1   (scan_today_desc
+#                                                  converted; scan_lede
+#                                                  stays, gate 4)
+#   partials/server_comparison.html     2 -> 1   (comparison_desc
+#                                                  converted via card()'s
+#                                                  own tip_desc_key=)
+#   setup.html                          1 -> 0, ENTRY DELETED
+#                                       (first_run_setup_desc converted;
+#                                        this also clears its one
+#                                        HEADING_UNDERTEXT_BASELINE site,
+#                                        see that dict's own comment)
+# compliance.html, compliance_sop.html, server_detail.html, monitoring.html,
+# partials/services_table.html, topology.html, dashboard.html, 500.html,
+# login.html, servers.html, services.html, workflows.html, and the
+# remaining Settings-adjacent partials were all reviewed too and needed no
+# edit at all -- every candidate in them resolved to gate 1-4, or (a small
+# number of cases, recorded individually in DESC_LINE_INLINE_EXEMPTIONS
+# below) had no reachable heading/label to attach a tip() to, or would
+# have required a hand-written data-tip-* carrier the T-9 ratchet forbids
+# because the content is built entirely in JS with no Jinja-rendered path.
+# One line, monitoring.html's noise_digest/alert_scoring under "Alert
+# Fatigue", was deliberately NOT reviewed for conversion at all: a step-16
+# comment in that file blocks it "until steps 10/24 clear it," and while
+# step 24 has landed, step 10 (DESIGN_SYSTEM_SPEC.md's browser-measurement
+# gate, which the spec's own text says GATES STEPS 25 AND 26) has no
+# recorded measurement anywhere in this tree as of this commit -- flagged
+# here rather than silently converted or silently ignored.
 DESC_LINE_BASELINE: dict[str, int] = {
     "500.html": 1,
     "compliance.html": 2,
     "compliance_sop.html": 1,
     "login.html": 2,
     "monitoring.html": 1,
-    "network.html": 2,
-    "operations.html": 6,
+    "network.html": 1,
+    "operations.html": 1,
     "partials/active_actions.html": 2,
     "partials/activity_feed.html": 1,
     "partials/critical_issues.html": 1,
-    "partials/server_analytics.html": 8,
+    "partials/server_analytics.html": 7,
     "partials/server_card.html": 3,
-    "partials/server_comparison.html": 2,
+    "partials/server_comparison.html": 1,
     "partials/services_table.html": 1,
     "partials/settings/_compliance.html": 1,
     "partials/settings/_detection.html": 7,
@@ -957,13 +1002,12 @@ DESC_LINE_BASELINE: dict[str, int] = {
     "partials/settings/_tls.html": 1,
     "partials/tls_overview.html": 1,
     "partials/updates_overview.html": 3,
-    "reports.html": 16,
-    "scan.html": 2,
+    "reports.html": 14,
+    "scan.html": 1,
     "server_detail.html": 14,
     "servers.html": 4,
     "services.html": 1,
     "settings.html": 7,
-    "setup.html": 1,
     "topology.html": 1,
     "workflows.html": 2,
 }
@@ -1024,6 +1068,107 @@ DESC_LINE_INLINE_EXEMPTIONS: dict[str, str] = {
     "partials/settings/_health_checks.html: hc_verify_tls_hint":
         "gate 2 -- caveat about what the check verdict actually proves, "
         "not what it feels like it proves",
+
+    # -- WP-6 step 26 (D3 wave B) additions below --
+
+    # The four caveats DESIGN_SYSTEM_SPEC.md §5.7 names by key, all four
+    # confirmed (by grep, not assumed) to live in reports.html alone.
+    "reports.html: csv_latest_500":
+        "gate 2 -- always returns the most recent 500 events",
+    "reports.html: posture_no_history":
+        "gate 2 -- current state only, no date range applies",
+    "reports.html: evidence_contains":
+        "gate 2 -- caveat on what the evidence export does and does not contain",
+    "reports.html: firewall_in_export":
+        "gate 2 -- caveat on firewall data's presence in the export",
+    "operations.html: no_audit_entries":
+        "gate 1 -- reports the actual current state (the audit log is empty)",
+    "partials/services_table.html: services_switched_off_note":
+        "gate 2 -- excludes switched-off rows from the counts above; this "
+        "is also the one HEADING_UNDERTEXT_BASELINE site that legitimately "
+        "stays at 1 rather than 0, because gate 2 fires before gate 5",
+    "partials/server_comparison.html: select_servers":
+        "gate 4 -- only content in the empty comparison area before servers are picked",
+    "topology.html: topology_hint":
+        "gate 4 -- the only interaction instruction for the SVG canvas "
+        "(drag to pan, scroll to zoom, click a node)",
+    "network.html: vitals_network_tip_desc":
+        "gate 4 -- the absence card's own continuation of the page lede; "
+        "reused verbatim as this same card's dashboard-quadrant tooltip "
+        "elsewhere, kept visible here on purpose",
+    "scan.html: vitals_scan_tip_desc":
+        "gate 4 -- same reasoning as network.html's identical site",
+    "500.html: error_unexpected":
+        "gate 4 -- the only content on a blocked error page with one link back",
+    "login.html: sign_in_to_continue":
+        "gate 4 -- what to do on a page with no heading and one form",
+    "login.html: ad_credentials_hint":
+        "gate 3 -- source/format rule for the username and password fields below it",
+    "workflows.html: no_workflows":
+        "gate 4 -- classic empty-state hint",
+    "partials/critical_issues.html: click_details":
+        "gate 4 -- a navigational affordance repeated per card, not an "
+        "explanation of a control; tooltipping 'click for details' would "
+        "be self-defeating",
+    "server_detail.html: heatmap/recent-failed-logins scope tags":
+        "gate 2 -- '(last 4 weeks)' / '(last 24h)' are limits on the data "
+        "range being read, same shape as posture_no_history/csv_latest_500",
+
+    # Page-level ledes with no reachable heading or label in the file that
+    # actually owns them (the real <h1> lives in base.html's #page-title
+    # chip, outside every step-26 file's own scope) or that read as
+    # wayfinding chrome rather than explanation. Gate 5 by content, but
+    # tip()/tip_button() both need an anchor point this file does not
+    # have -- inventing one (a new heading, an orphan trigger) would
+    # exceed "touch only description-line markup." A distinct category
+    # from a normal gate-2/3/4 call: the gate isn't what kept these
+    # inline, the missing anchor is.
+    "reports.html: reports_by_question_desc":
+        "gate 5, no anchor -- page lede, no in-file heading to attach a tip to",
+    "compliance.html: compliance_subtitle":
+        "gate 5, no anchor -- same reasoning as reports.html's lede",
+    "compliance.html: csv_docs_at":
+        "gate 5 by elimination, but reads as wayfinding chrome ('the files "
+        "live here'), not explanation; also has no anchor",
+    "services.html: services_lede":
+        "gate 5, no anchor -- the file has no heading/label of its own; "
+        "the natural home (partials/services_table.html's own H2 tip) is "
+        "outside this line's file. Flagged for owner sign-off, not resolved",
+
+    # Content built entirely in JS (string concatenation / innerHTML),
+    # with no Jinja-rendered path tip()/tip_button() could reach. Hand-
+    # writing a new data-tip-* carrier outside partials/_tip.html is
+    # exactly what T-9's TIP_CARRIER_TOTAL ratchets toward zero -- adding
+    # one here would be a real, mechanical regression, not a workaround.
+    # Gate-5-shaped content stays inline for a MECHANICAL reason, not a
+    # gate one; a structural fix (e.g. a Jinja-rendered hidden template
+    # clone) is possible but is bigger than this step's own scope.
+    "reports.html: events_window_note":
+        "gate 2-shaped caveat, JS-built in renderFleetDetail() -- no "
+        "compliant carrier mechanism reaches it",
+    "reports.html: observed_note":
+        "gate 5-shaped explanation, JS-built -- same mechanical limitation",
+    "server_detail.html: update_check_retry_note":
+        "gate 5-shaped explanation, JS-built in renderUpdates() -- same "
+        "mechanical limitation",
+    "server_detail.html: restart_pending_desc":
+        "gate 5-shaped explanation, JS-built -- same mechanical limitation",
+
+    # Opt-in help surfaces: content already hidden behind a deliberate
+    # click (a "Setup Guide" button, a floating builder-help panel), not
+    # part of the page's default view. D3 exists to reduce clutter ON THE
+    # PAGE; fragmenting a linear how-to guide the operator already chose
+    # to open into separate hover-triggered pieces would make it harder
+    # to read, not easier, and works against the same goal it would
+    # nominally serve. A structural carve-out, the same shape as
+    # partials/_empty_state.html's existing filename-based exclusion, but
+    # recorded here rather than in the detector since only part of each
+    # file qualifies.
+    "servers.html: Setup Guide modal (four WinRM how-to lines)":
+        "gates 2/3/3/3 by content, but the modal is opt-in help the "
+        "operator already chose to open -- not default-view clutter",
+    "workflows.html: Workflow Builder Guide panel (event-trigger note)":
+        "gate 5 by content, same opt-in-help-surface reasoning",
 }
 
 
@@ -1111,7 +1256,10 @@ def test_no_description_line_outside_the_templates_that_already_have_one():
 # Lowered from 119 to 100 by WP-6 step 25 -- RE-RUN, not hand-computed:
 # the four Settings-family reductions in DESC_LINE_BASELINE's own step-25
 # comment above sum to -19 (12 + 4 + 1 + 2).
-DESC_LINE_TOTAL = 100
+# Lowered from 100 to 88 by WP-6 step 26 -- RE-RUN, not hand-computed: the
+# seven reductions in DESC_LINE_BASELINE's own step-26 comment above sum
+# to -12 (2 + 5 + 1 + 1 + 1 + 1 + 1).
+DESC_LINE_TOTAL = 88
 
 
 def test_the_total_number_of_description_lines_never_rises():

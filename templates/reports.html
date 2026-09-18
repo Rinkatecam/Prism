@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "partials/_card.html" import card with context %}
+{% from "partials/_tip.html" import tip, tip_button, tip_mirror, tip_overflow with context %}
 
 {#
   /reports — organised by QUESTION, not by file format.  WP-5.
@@ -128,9 +129,8 @@
         <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>
         {{ t.get('fleet_report', 'Fleet report') }}
       </button>
-      <span class="text-[10px] text-faint">
-        {{ t.get('fleet_report_desc', 'Servers ranked by how much of their reachable time was spent outside thresholds.') }}
-      </span>
+      {{ tip('fleet_report_desc', 'Servers ranked by how much of their reachable time was spent outside thresholds.',
+             title_key='fleet_report', title_fallback='Fleet report') }}
     </div>
   {% endcall %}
 </section>
@@ -292,9 +292,11 @@
       <div class="border border-line rounded-lg p-4">
         <div class="flex items-center gap-2 mb-2">
           <i data-lucide="line-chart" class="w-4 h-4 text-muted"></i>
-          <span class="font-medium text-sm">{{ t.download_metrics }}</span>
+          <span class="font-medium text-sm flex items-center gap-1.5">
+            {{ t.download_metrics }}
+            {{ tip('csv_metrics_desc', 'CSV — CPU, RAM, Disk') }}
+          </span>
         </div>
-        <p class="text-xs text-muted mb-3">{{ t.csv_metrics_desc }}</p>
         <div class="flex flex-wrap items-center gap-2 mb-3">
           <select id="metrics-server" data-change="updateExportPreviews"
                   aria-label="{{ t.get('server', 'Server') }}"
@@ -324,9 +326,11 @@
       <div class="border border-line rounded-lg p-4">
         <div class="flex items-center gap-2 mb-2">
           <i data-lucide="alert-triangle" class="w-4 h-4 text-muted"></i>
-          <span class="font-medium text-sm">{{ t.download_events }}</span>
+          <span class="font-medium text-sm flex items-center gap-1.5">
+            {{ t.download_events }}
+            {{ tip('csv_events_desc', 'CSV — Recent Events') }}
+          </span>
         </div>
-        <p class="text-xs text-muted mb-3">{{ t.csv_events_desc }}</p>
         <div class="flex flex-wrap items-center gap-2 mb-3">
           <select id="events-server" data-change="updateExportPreviews"
                   aria-label="{{ t.get('server', 'Server') }}"

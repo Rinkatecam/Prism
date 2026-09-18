@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "partials/_card.html" import card with context %}
+{% from "partials/_tip.html" import tip, tip_button, tip_mirror, tip_overflow with context %}
 
 {# ── /network — an honest surface over an absence ────────────────────────
 
@@ -64,14 +65,26 @@
      heading and its "named routes onward" used to sit inside is GONE: its
      rounded-md shell dissolves entirely rather than converting, because
      nothing is left to wrap once the heading moves out and the link list
-     below becomes its own grid of doorway cards (WP-6 step 18). #}
+     below becomes its own grid of doorway cards (WP-6 step 18).
+
+     WP-6 step 26 (D3 gate sweep): the paragraph that used to sit directly
+     under this heading (network_today_desc) is gate 5 -- plain explanation
+     of why Services/Infrastructure Map are the relevant links, no live
+     value, no caveat on data, no format rule, and this section is NOT an
+     empty/blocked region (the doorway grid below is fully functional) --
+     so it moves to a tooltip. Still a BARE h2 (not wrapped in card()) per
+     the rule above; tip_button()/tip_mirror() is the only mechanism that
+     can attach a tip to a heading this file writes literally. #}
+  {% set hid = next_tip_id() %}
   <h2 class="text-base font-bold text-brand flex items-center gap-2 min-w-0">
     {{ t.get('overview_today', 'What Prism watches today') }}
+    {{ tip_button('network_today_desc',
+                  'Reachability is already measured from the server side: every health check proves a port, a URL or a host answered, and the map shows how the servers relate.',
+                  hid, title_key='overview_today', title_fallback='What Prism watches today') }}
   </h2>
-  <p class="text-xs text-muted mb-4">
-    {{ t.get('network_today_desc',
-             'Reachability is already measured from the server side: every health check proves a port, a URL or a host answered, and the map shows how the servers relate.') }}
-  </p>
+  {{ tip_mirror('network_today_desc',
+                'Reachability is already measured from the server side: every health check proves a port, a URL or a host answered, and the map shows how the servers relate.',
+                hid) }}
   {# Named routes onward, now doorway cards (§4.5) rather than inline pills --
      "a page about an absence that offers nowhere to go is the dead end the
      empty-state rule exists to prevent" reads more like the app's other

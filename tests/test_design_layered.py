@@ -148,8 +148,12 @@ def test_the_partial_renders_with_exactly_what_its_view_passes():
     blank region in production and nothing anywhere says why. StrictUndefined
     turns that into a failure here instead.
 
-    The view passes server, metrics and analytics; `t` and the time filters
-    come from context processors."""
+    The view passes server, metrics and analytics; `t`, the time filters and
+    next_tip_id come from context processors (WP-6 step 26 added this
+    file's first tip() call, at which point this test's own hand-built
+    context needed the same third global partials/_tip.html's macros
+    already documented as a context-processor global, not a macro
+    parameter — see that file's own header comment)."""
     env = jinja2.Environment(
         loader=jinja2.FileSystemLoader(str(TEMPLATES)),
         undefined=jinja2.StrictUndefined, autoescape=True)
@@ -164,8 +168,11 @@ def test_the_partial_renders_with_exactly_what_its_view_passes():
     class _D(dict):
         __getattr__ = dict.get
 
+    _tip_ids = (f"tip-test-{i}" for i in range(1000))
+
     ctx = dict(
         t=_T(), fmt_ts=lambda v: "now", fmt_time=lambda v: "now",
+        next_tip_id=lambda: next(_tip_ids),
         server=_D(name="HOST01", type="domain_controller"),
         metrics=_D(disk_c_percent=40.0, disk_d_percent=10.0),
         analytics=_D(

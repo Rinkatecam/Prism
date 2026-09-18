@@ -55,9 +55,17 @@
      SECTION 4 — Server Comparison
      ═══════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  {% call card(heading=t.server_comparison, icon='bar-chart-3') %}
-    <p class="text-xs text-muted mb-4">{{ t.comparison_desc }}</p>
-
+  {# WP-6 step 26 (D3 gate sweep): comparison_desc is gate 5 -- plain
+     explanation of what this card does, no live value, no caveat, no
+     format rule -- and the card's heading comes from THIS macro, so the
+     tip lives on card()'s own tip_desc_key/tip_desc_fallback rather than a
+     hand-written tip_button()/tip_mirror() pair: the macro already renders
+     the button inside its <h2> and the mirror as the sibling right after
+     it (see partials/_card.html's own header comment), and there is no
+     literal <h2> here for a caller to add markup inside. #}
+  {% call card(heading=t.server_comparison, icon='bar-chart-3',
+                tip_desc_key='comparison_desc',
+                tip_desc_fallback='Compare metrics across servers side by side') %}
     <!-- Controls -->
     <div class="flex flex-wrap items-end gap-3 mb-4">
       <div class="flex-1 min-w-[200px]">

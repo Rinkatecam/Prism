@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "partials/_card.html" import card with context %}
+{% from "partials/_tip.html" import tip, tip_button, tip_mirror, tip_overflow with context %}
 
 {# ── /scan — an honest surface over an absence ───────────────────────────
 
@@ -47,14 +48,21 @@
      explicitly ("scan.html:44"). Names the grid of doorway cards below it,
      stays bare on `page` with the canonical H2 string -- see network.html's
      identical site for the full account of why the card this used to sit
-     inside dissolves entirely (WP-6 step 18). #}
+     inside dissolves entirely (WP-6 step 18).
+
+     WP-6 step 26 (D3 gate sweep): same gate-5 call as network.html's
+     identical site, for the identical reason -- see that file's own
+     comment rather than repeating the argument here. #}
+  {% set hid = next_tip_id() %}
   <h2 class="text-base font-bold text-brand flex items-center gap-2 min-w-0">
     {{ t.get('overview_today', 'What Prism watches today') }}
+    {{ tip_button('scan_today_desc',
+                  'Patch state is already tracked per server, and configuration drift is detected against each server\'s own baseline. Both are per-host rather than a sweep of the network.',
+                  hid, title_key='overview_today', title_fallback='What Prism watches today') }}
   </h2>
-  <p class="text-xs text-muted mb-4">
-    {{ t.get('scan_today_desc',
-             'Patch state is already tracked per server, and configuration drift is detected against each server\'s own baseline. Both are per-host rather than a sweep of the network.') }}
-  </p>
+  {{ tip_mirror('scan_today_desc',
+                'Patch state is already tracked per server, and configuration drift is detected against each server\'s own baseline. Both are per-host rather than a sweep of the network.',
+                hid) }}
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
     <a href="/servers" class="card-clickable bg-card rounded-lg border border-line p-5 flex items-start gap-3">
       <i data-lucide="server" class="w-5 h-5 text-accent flex-shrink-0 mt-0.5" aria-hidden="true"></i>

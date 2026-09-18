@@ -978,14 +978,28 @@ def test_the_undertext_scan_actually_catches_a_violation():
 # only the heading's OWN class string and position (bare on `page` now,
 # not inside a card) changed; the heading-then-paragraph SHAPE this
 # detector keys on is identical before and after.
+#
+# Lowered by WP-6 step 26 (D3 wave B), all three reaching 0 and deleted,
+# matching this ratchet's established convention -- RE-RUN, not
+# hand-computed:
+#   network.html: the `..._today_desc` paragraph named above is now a
+#     tip_button()/tip_mirror() pair -- the heading stays exactly as bare
+#     as before (never wrapped in card(), which a separate rule (§2.3)
+#     forbids for this specific heading), only the paragraph is gone.
+#   scan.html: identical conversion, identical reasoning.
+#   setup.html: `first_run_setup_desc` under the "Welcome to Prism" h2
+#     converted the same way (tip_button()/tip_mirror(), not card() --
+#     this h2 is deliberately non-canonical per a step-20 judgement call
+#     kept as-is).
+# partials/services_table.html is UNCHANGED at 1: its one site,
+# services_switched_off_note, is gate 2 (excludes switched-off rows from
+# the counts above it) -- gate 2 fires before gate 5, so it stays inline
+# and this file's undertext site legitimately survives.
 HEADING_UNDERTEXT_BASELINE: dict[str, int] = {
-    "network.html": 1,
     "partials/services_table.html": 1,
-    "scan.html": 1,
-    "setup.html": 1,
 }
 
-HEADING_UNDERTEXT_TOTAL = 4
+HEADING_UNDERTEXT_TOTAL = 1
 
 
 def test_no_prose_sits_directly_under_a_heading():

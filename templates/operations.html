@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "partials/_tip.html" import tip_mirror with context %}
+{% from "partials/_tip.html" import tip, tip_mirror with context %}
 {% from "partials/_card.html" import card, subblock, subhead with context %}
 {% block page_title %}Operations{% endblock %}
 {% block page_icon %}wrench{% endblock %}
@@ -220,8 +220,9 @@
      in red, which is arguably more correct under a ladder where colour
      means "position", not "severity". Flagged prominently in this step's
      own report as a real, debatable design decision. #}
-  {% call card(heading=t.data_management, icon='database', extra='border-critical/30') %}
-    <div class="text-xs text-muted mb-4">{{ t.data_management_desc }}</div>
+  {% call card(heading=t.data_management, icon='database', extra='border-critical/30',
+                tip_desc_key='data_management_desc', tip_desc_fallback='Manage monitoring data and system state',
+                tip_title_key='data_management', tip_title_fallback='Data Management') %}
 
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
       {# These three keep their own button (a "Clean"/"Delete"/"Factory
@@ -241,8 +242,9 @@
         <div class="flex items-center gap-2 mb-2">
           <i data-lucide="eraser" class="w-4 h-4 text-warning"></i>
           <span class="text-sm font-medium">{{ t.clean_data }}</span>
+          {{ tip('clean_data_desc', 'Delete all metrics, events, and logs but keep servers and settings',
+                 title_key='clean_data', title_fallback='Clean Data') }}
         </div>
-        <p class="text-[10px] text-muted mb-3 flex-1">{{ t.clean_data_desc }}</p>
         <button data-action="showDataActionModal" data-args='["clean"]'
                 class="w-full px-3 py-1.5 text-xs font-medium rounded border border-warning text-warning hover:bg-warning/10 flex items-center justify-center gap-1">
           <i data-lucide="eraser" class="w-3.5 h-3.5"></i>
@@ -255,8 +257,9 @@
         <div class="flex items-center gap-2 mb-2">
           <i data-lucide="trash-2" class="w-4 h-4 text-critical"></i>
           <span class="text-sm font-medium">{{ t.delete_all }}</span>
+          {{ tip('delete_all_desc', 'Delete all data and remove all servers, but keep settings',
+                 title_key='delete_all', title_fallback='Delete All') }}
         </div>
-        <p class="text-[10px] text-muted mb-3 flex-1">{{ t.delete_all_desc }}</p>
         <button data-action="showDataActionModal" data-args='["delete"]'
                 class="w-full px-3 py-1.5 text-xs font-medium rounded border border-critical text-critical hover:bg-critical/10 flex items-center justify-center gap-1">
           <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
@@ -269,8 +272,9 @@
         <div class="flex items-center gap-2 mb-2">
           <i data-lucide="bomb" class="w-4 h-4 text-critical"></i>
           <span class="text-sm font-medium text-critical">{{ t.factory_reset }}</span>
+          {{ tip('factory_reset_desc', 'Delete everything and start fresh — all data, servers, and settings',
+                 title_key='factory_reset', title_fallback='Factory Reset') }}
         </div>
-        <p class="text-[10px] text-muted mb-3 flex-1">{{ t.factory_reset_desc }}</p>
         <button data-action="showDataActionModal" data-args='["factory-reset"]'
                 class="w-full px-3 py-1.5 text-xs font-medium rounded bg-critical text-white hover:opacity-90 flex items-center justify-center gap-1">
           <i data-lucide="bomb" class="w-3.5 h-3.5"></i>
@@ -377,9 +381,10 @@
         </div>
         <label class="flex items-center gap-2 cursor-pointer p-2 rounded border border-line">
           <input type="checkbox" id="rb-run-dry" checked>
-          <div>
+          <div class="flex items-center gap-1.5">
             <span class="text-xs font-medium">{{ t.get('dry_run', 'Dry Run') }}</span>
-            <div class="text-[10px] text-faint">{{ t.get('dry_run_help', 'Validate steps without executing them on the server') }}</div>
+            {{ tip('dry_run_help', 'Validate steps without executing them on the server',
+                   title_key='dry_run', title_fallback='Dry Run') }}
           </div>
         </label>
         <div id="rb-run-output" class="hidden mt-2">

@@ -35,6 +35,7 @@
    tests/test_design_cards.py), is UNCHANGED -- its positioning classes are
    untouched, only the OUTER anomaly card became a {% call card(...) %}. #}
   {% from "partials/_card.html" import card with context %}
+  {% from "partials/_tip.html" import tip with context %}
 
   {% if analytics and analytics.anomalies | length > 0 %}
   <!-- Anomaly cards -->
@@ -188,27 +189,24 @@
            The 'Elevated but stable' / 'Normal usage' strings are metric-neutral
            in all 5 languages, so RAM and CPU deliberately share them rather
            than duplicating 10 identical translations. #}
+        {% set _stationary_hint_key = 'cpu_stationary_hint' if metric_key == 'cpu' else 'ram_stationary_hint' %}
+        {% set _stationary_hint_fallback = 'No sustained climb detected — CPU is oscillating around its workload steady state' if metric_key == 'cpu' else 'No memory leak detected — RAM is oscillating around its workload steady state' %}
         {% if fc.elevated_but_stable %}
         <div class="text-lg font-bold text-warning flex items-center gap-1.5">
           <i data-lucide="alert-triangle" class="w-4 h-4"></i>
           {{ t.get('ram_elevated_stable', 'Elevated but stable') }}
+          {{ tip(_stationary_hint_key, _stationary_hint_fallback, title_fallback=label) }}
         </div>
         {% else %}
-        <div class="text-lg font-bold text-healthy">
+        <div class="text-lg font-bold text-healthy flex items-center gap-1.5">
           {{ t.get('ram_normal', 'Normal usage') }}
+          {{ tip(_stationary_hint_key, _stationary_hint_fallback, title_fallback=label) }}
         </div>
         {% endif %}
         <div class="text-xs text-muted mt-1">
           {{ t.get('range_label', 'Range') }}: {{ fc.range_min }}% – {{ fc.range_max }}%
           | {{ t.get('avg_label', 'avg') }}: {{ fc.range_avg }}%
           | {{ t.get('current_label', 'now') }}: {{ fc.current }}%
-        </div>
-        <div class="text-[10px] text-faint mt-1 italic">
-          {% if metric_key == 'cpu' %}
-          {{ t.get('cpu_stationary_hint', 'No sustained climb detected — CPU is oscillating around its workload steady state') }}
-          {% else %}
-          {{ t.get('ram_stationary_hint', 'No memory leak detected — RAM is oscillating around its workload steady state') }}
-          {% endif %}
         </div>
 
       {% elif fc.kind == 'leak' %}
