@@ -1073,7 +1073,7 @@ def test_the_panel_is_reachable_by_a_pointer_when_visible():
 #                                        this also clears its one
 #                                        HEADING_UNDERTEXT_BASELINE site,
 #                                        see that dict's own comment)
-# compliance.html, compliance_sop.html, server_detail.html, monitoring.html,
+# compliance.html, compliance_sop.html, server_detail.html,
 # partials/services_table.html, topology.html, dashboard.html, 500.html,
 # login.html, servers.html, services.html, workflows.html, and the
 # remaining Settings-adjacent partials were all reviewed too and needed no
@@ -1083,18 +1083,35 @@ def test_the_panel_is_reachable_by_a_pointer_when_visible():
 # have required a hand-written data-tip-* carrier the T-9 ratchet forbids
 # because the content is built entirely in JS with no Jinja-rendered path.
 # One line, monitoring.html's noise_digest/alert_scoring under "Alert
-# Fatigue", was deliberately NOT reviewed for conversion at all: a step-16
-# comment in that file blocks it "until steps 10/24 clear it," and while
-# step 24 has landed, step 10 (DESIGN_SYSTEM_SPEC.md's browser-measurement
-# gate, which the spec's own text says GATES STEPS 25 AND 26) has no
-# recorded measurement anywhere in this tree as of this commit -- flagged
-# here rather than silently converted or silently ignored.
+# Fatigue", was deliberately NOT reviewed for conversion during step 26
+# itself: a step-16 comment in that file blocked it "until steps 10/24
+# clear it," and step 10 (DESIGN_SYSTEM_SPEC.md's own browser-measurement
+# gate, which its own text says GATES STEPS 25 AND 26) had no recorded
+# measurement anywhere in this tree at the time -- flagged then rather
+# than silently converted or silently ignored.
+#
+# Lowered by a follow-up once step 10 landed and cleared that precondition
+# (monitoring.html: 1 -> 0, entry deleted). Resolving it surfaced a real
+# disagreement the step-16 comment had only flagged, not settled: an
+# OLDER spec section (Part I §7.4) named this exact text a muted <p> doing
+# a heading's job ("becomes an <h3> ... or is deleted"), while step 16's
+# own brief separately read it as a §5.7 gate-5 EXPLANATORY-prose
+# candidate (tooltip-worthy) -- two different fixes for the same line.
+# The text itself ("Noise Digest — Alert Scoring") is a label pair, not a
+# sentence explaining a control or a default, so §7.4's original reading
+# is the one applied: subhead() (templates/monitoring.html), a real H3,
+# no tip -- the label explains itself, there is no separate sentence of
+# explanation to attach one to. Word count for THIS specific line was
+# checked against the raw Jinja source the detector actually scans, not
+# the rendered text: the two `if ... is defined else '...'` conditionals'
+# own keywords and variable names push it over the 5-word threshold even
+# though the rendered label is four words, which is why it appears here
+# and not as a same-count no-op.
 DESC_LINE_BASELINE: dict[str, int] = {
     "500.html": 1,
     "compliance.html": 2,
     "compliance_sop.html": 1,
     "login.html": 2,
-    "monitoring.html": 1,
     "network.html": 1,
     "operations.html": 1,
     "partials/active_actions.html": 2,
@@ -1371,7 +1388,11 @@ def test_no_description_line_outside_the_templates_that_already_have_one():
 # Lowered from 100 to 88 by WP-6 step 26 -- RE-RUN, not hand-computed: the
 # seven reductions in DESC_LINE_BASELINE's own step-26 comment above sum
 # to -12 (2 + 5 + 1 + 1 + 1 + 1 + 1).
-DESC_LINE_TOTAL = 88
+# Lowered from 88 to 87 by the step-10 follow-up -- RE-RUN, not
+# hand-computed: monitoring.html's noise_digest/alert_scoring line,
+# converted to subhead() once step 10 cleared the precondition blocking
+# it during step 26 itself. See DESC_LINE_BASELINE's own comment above.
+DESC_LINE_TOTAL = 87
 
 
 def test_the_total_number_of_description_lines_never_rises():
