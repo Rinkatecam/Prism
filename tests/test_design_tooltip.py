@@ -775,12 +775,55 @@ def test_the_tooltip_outranks_every_other_layer():
 # already treats a missing key identically to an explicit 0 for every
 # test below, so this changes no test's behaviour, only removes
 # now-redundant bookkeeping for files with nothing left to track.
+#
+# 18 -> 106, WP-6 D9 close-out (2026-09-18, the step found missing during
+# step 27's own review of the internal spec doc -- see the step 27/28
+# commit for the full account). D9 said every native `title="..."`
+# attribute would be converted to this tooltip system; step 26 was
+# supposed to finish that job and didn't. 92 real sites across 18 files
+# (a corrected count -- the spec's own recount command silently excluded
+# any line that also happened to contain the substring "aria-label", which
+# is not a valid exclusion criterion and was hiding 5 genuine base.html
+# sites) got the same treatment as step 7's original carriers: the
+# existing element becomes the carrier directly wherever a macro would
+# have glued on a redundant second trigger (icon-only buttons, draggable
+# palette blocks, table cells, badges), tip()/tip_overflow() macro calls
+# where a fresh bare trigger or a plain overflow-echo genuinely fit.
+# base.html and settings.html un-reach their step 27 zero for exactly this
+# reason -- both gain real, reviewed hand-written carriers, not drift.
+# partials/server_card.html's two sites both went through tip_overflow(),
+# so it stays at 0. Re-measured by running _tip_carrier_counts() itself
+# after all conversions landed, not computed by adding up per-worker
+# estimates.
 TIP_CARRIER_BASELINE: dict[str, int] = {
-    "operations.html": 1,
-    "partials/server_comparison.html": 2,
-    "partials/settings/_server_config.html": 2,
+    "base.html": 5,
+    "compliance_doc.html": 1,
+    "dashboard.html": 1,
+    "operations.html": 3,
+    "partials/_runbooks_manage.html": 2,
+    "partials/_runbooks_run.html": 1,
+    "partials/active_actions.html": 2,
+    "partials/activity_feed.html": 1,
+    "partials/server_comparison.html": 6,
+    "partials/settings/_dependencies.html": 4,
+    "partials/settings/_health_checks.html": 3,
+    "partials/settings/_server_config.html": 5,
     "partials/vitals_quadrant.html": 2,
-    "server_detail.html": 11,
+    "server_detail.html": 22,
+    "servers.html": 3,
+    "settings.html": 9,
+    # 36 -> 13. The first D9 pass gave all 23 palette blocks a hand-written
+    # carrier alongside their native title=; testing live showed
+    # applyBlockTip() (this file's own JS, bound on DOMContentLoaded)
+    # unconditionally overwrites title/desc/aria-describedby/mirror on
+    # every one of them from BLOCK_DEFS[type].tip, and removes the native
+    # title= itself once it runs. The hand-written half was dead on
+    # arrival -- reverted (see NATIVE_TITLE_BASELINE below for where those
+    # 23 sites live now). The remaining 13 are the canvas controls,
+    # category chip pair, insert-variable and browse buttons -- real,
+    # live hand-written carriers with no equivalent JS already doing the
+    # same job.
+    "workflows.html": 13,
 }
 
 _TIP_TITLE_ATTR = re.compile(r"\bdata-tip-title\s*=")
@@ -826,7 +869,7 @@ def test_no_tip_carrier_outside_the_templates_that_already_have_one():
     assert not new, f"new template(s) with hand-written tip carriers: {new}"
 
 
-TIP_CARRIER_TOTAL = 18
+TIP_CARRIER_TOTAL = 83  # WP-6 D9 close-out -- see TIP_CARRIER_BASELINE's own comment
 
 
 def test_the_total_number_of_tip_carriers_never_rises():
@@ -837,6 +880,104 @@ def test_the_total_number_of_tip_carriers_never_rises():
     assert total == TIP_CARRIER_TOTAL, (
         f"total fell to {total}; lower TIP_CARRIER_TOTAL to match, or the "
         "headroom step 7 just won is silently available to spend again")
+
+
+# ── NATIVE_TITLE — every native title="..." became a real tooltip ─────────
+#
+# D9 (an early WP-6 decision) said every native `title="..."` attribute in
+# the templates would be converted to this file's tooltip system, starting
+# in step 7. Step 7 only converted the pre-existing hand-written data-tip-*
+# carriers; the native-title sweep itself was never actually done, and no
+# ratchet ever existed to catch that it hadn't been. Found during step 27's
+# own close-out review of the internal spec doc (its own correction note,
+# embedded in step 26's section, said to finish this "in this same commit"
+# and add exactly this ratchet -- neither happened). Fixed as the D9
+# close-out: 92 real sites across 18 files (re-measured live -- the spec's
+# own recount command excluded any line containing the substring
+# "aria-label" as if that were a valid exclusion, which is not, and was
+# silently hiding 5 genuine sites in base.html), converted the same way
+# T-9's own hand-written carriers are: the existing element becomes the
+# carrier wherever a macro would glue on a redundant second trigger,
+# tip()/tip_overflow() where a fresh bare trigger or a plain overflow-echo
+# fits. Seeded at 0 by running the detector below against the tree
+# immediately after every site was converted -- not assumed from the
+# conversion count, which is why this is a separate ratchet from T-9's
+# rather than folded into it (a site can leave the native-title count at
+# zero via tip_overflow(), contributing nothing to TIP_CARRIER_BASELINE,
+# so the two totals are not required to move together).
+#
+# 0 -> 23, immediately after, once workflows.html's own JS proved the
+# first pass wrong for its 23 `.drag-block` palette sites. Those are not
+# leftover debt: applyBlockTip() (workflows.html's own function, bound on
+# DOMContentLoaded for every `.drag-block`) reads a per-block-type
+# BLOCK_DEFS[type].tip.desc/.example -- richer than anything a bare title
+# ever held -- builds the real tabindex/aria-describedby/data-tip-title/
+# data-tip-desc/mirror itself, and removes the native title= as its own
+# last step. That function's own comment says what the attribute is for:
+# "only ever a no-JS/loading-race fallback" -- content for the gap before
+# that script runs, not a carrier this ratchet should ever drive to zero.
+# Converting it by hand produced a second, static carrier that JS
+# silently overwrote on every load, satisfying this ratchet's letter while
+# doing nothing for anyone -- caught by testing the rendered result live,
+# not by reading the source. The other 69 sites (92 total minus these 23)
+# have no such script and stay at the general rule: real conversion,
+# zero baseline.
+NATIVE_TITLE_BASELINE: dict[str, int] = {
+    "workflows.html": 23,
+}
+NATIVE_TITLE_TOTAL = 23
+
+_NATIVE_TITLE_ATTR = re.compile(
+    r"(?<!data-tip-)(?<!data-sheet-)(?<!page_)(?<!\.)\btitle=[\"']")
+
+
+def _native_title_counts() -> dict[str, int]:
+    out: dict[str, int] = {}
+    for p in sorted(TEMPLATES.rglob("*.html")):
+        rel = p.relative_to(TEMPLATES).as_posix()
+        text = _code_only(p.read_text(encoding="utf-8"))
+        n = len(_NATIVE_TITLE_ATTR.findall(text))
+        if n:
+            out[rel] = n
+    return out
+
+
+def test_no_native_title_appears_outside_the_baseline():
+    """D9. Baseline/total 23, all in workflows.html's own JS-driven block
+    palette -- every OTHER native title="..." in the tree was converted
+    during the WP-6 close-out (see the comment above NATIVE_TITLE_BASELINE
+    for the full history, including why these 23 are a permanent
+    exception rather than debt). A JS bare variable or `.title`
+    DOM-property assignment does not count -- the detector requires
+    `title=` with no space and no leading `.`, which a real HTML
+    attribute in this codebase always satisfies and neither of those two
+    JS shapes ever does (checked against both live in server_detail.html
+    and settings.html before trusting the regex)."""
+    counts = _native_title_counts()
+    grew = [f"{f}: {n} (baseline {NATIVE_TITLE_BASELINE.get(f, 0)})"
+            for f, n in counts.items() if n > NATIVE_TITLE_BASELINE.get(f, 0)]
+    assert not grew, (
+        "native title=\"...\" reappeared -- convert it to a data-tip-* "
+        "carrier via tip()/tip_button()/tip_overflow(), or hand-write one "
+        "directly onto the existing element per T-9's own precedent:\n  "
+        + "\n  ".join(grew))
+
+
+def test_the_native_title_baseline_is_not_left_behind():
+    counts = _native_title_counts()
+    slack = {f: (b, counts.get(f, 0))
+             for f, b in NATIVE_TITLE_BASELINE.items() if counts.get(f, 0) < b}
+    assert not slack, (
+        "these files now carry FEWER native title= sites than the "
+        "baseline; lower it:\n  "
+        + "\n  ".join(f"{f}: baseline {b} -> {n}" for f, (b, n) in slack.items()))
+
+
+def test_the_native_title_total_matches_the_baseline_sum():
+    total = sum(_native_title_counts().values())
+    assert total == NATIVE_TITLE_TOTAL, (
+        f"NATIVE_TITLE_TOTAL says {NATIVE_TITLE_TOTAL}, tree has {total} -- "
+        "update the constant to match a real re-measurement")
 
 
 # ── T-10 — every tip() key exists in English ──────────────────────────────

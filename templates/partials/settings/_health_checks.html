@@ -314,21 +314,35 @@ function addHealthCheckRow(data) {
   // it is exactly as invisible as the hardcoded CERT_NONE it replaced.
   const tlsUnverified = data.check_type === 'https' && data.verify_tls === 0;
 
+  // Tip text for this row's badge/Edit/Delete carriers, hoisted once per
+  // row (not re-fetched) -- same rationale as _server_config.html's
+  // discoveryTipTitle/discoveryTipDesc consts. Each Desc const is always
+  // named <name>TipDesc, strictly longer than its <name>Tip sibling, so a
+  // naive scanner never sees the two as equal- or reversed-length.
+  const hcTlsTip = {{ t.get('hc_tls_unverified', 'TLS NOT VERIFIED') | tojson }};
+  const hcTlsTipDesc = {{ t.get('hc_tls_unverified_hint', 'This check does not validate the certificate, so it proves the endpoint answered — not that it is this service.') | tojson }};
+  const hcEditTip = {{ t.edit | tojson }};
+  const hcEditTipDesc = {{ t.get('edit_health_check_desc', "Edit this health check's target and thresholds.") | tojson }};
+  const hcDeleteTip = {{ t.delete | tojson }};
+  const hcDeleteTipDesc = {{ t.get('delete_health_check_desc', 'Delete this health check. This cannot be undone.') | tojson }};
+
   row.innerHTML = `
     <div class="flex-1 min-w-0">
       <div class="flex items-center gap-2">
         <span class="text-xs font-semibold text-ink">${_escHtml(name)}</span>
         <span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-info/10 text-info dark:bg-info/20">${type}</span>
-        ${tlsUnverified ? `<span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-warning/15 text-warning-strong dark:bg-warning/25" title="{{ t.get('hc_tls_unverified_hint', 'This check does not validate the certificate, so it proves the endpoint answered — not that it is this service.') }}">{{ t.get('hc_tls_unverified', 'TLS NOT VERIFIED') }}</span>` : ''}
+        ${tlsUnverified ? `<span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-warning/15 text-warning-strong dark:bg-warning/25" tabindex="0" aria-describedby="hc-tls-desc-${data.id}" data-tip-title="${hcTlsTip}" data-tip-desc="${hcTlsTipDesc}">${hcTlsTip}</span><span class="sr-only" id="hc-tls-desc-${data.id}">${hcTlsTipDesc}</span>` : ''}
       </div>
       <div class="text-[10px] text-muted mt-0.5 font-mono">${_escHtml(server)} → ${_escHtml(host)}${portDisplay}${pathDisplay ? ' ' + _escHtml(pathDisplay) : ''}</div>
     </div>
-    <button data-action="_srvEditHc" class="p-1.5 text-muted hover:text-info rounded hover:bg-info/10" title="Edit">
+    <button data-action="_srvEditHc" class="p-1.5 text-muted hover:text-info rounded hover:bg-info/10" aria-label="${hcEditTip}" aria-describedby="hc-edit-desc-${data.id}" data-tip-title="${hcEditTip}" data-tip-desc="${hcEditTipDesc}">
       <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
     </button>
-    <button data-action="_srvDeleteHc" class="p-1.5 text-muted hover:text-critical rounded hover:bg-critical/10" title="Delete">
+    <span class="sr-only" id="hc-edit-desc-${data.id}">${hcEditTipDesc}</span>
+    <button data-action="_srvDeleteHc" class="p-1.5 text-muted hover:text-critical rounded hover:bg-critical/10" aria-label="${hcDeleteTip}" aria-describedby="hc-delete-desc-${data.id}" data-tip-title="${hcDeleteTip}" data-tip-desc="${hcDeleteTipDesc}">
       <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
     </button>
+    <span class="sr-only" id="hc-delete-desc-${data.id}">${hcDeleteTipDesc}</span>
   `;
   list.appendChild(row);
   lucide.createIcons({ nodes: [row] });

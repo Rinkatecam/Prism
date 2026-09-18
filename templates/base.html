@@ -365,15 +365,19 @@
           </span>
         </div>
         <!-- Desktop collapse toggle (mobile uses the header menu button instead). -->
-        <button data-action="toggle-sidebar" class="sidebar-collapse-btn hidden md:flex items-center justify-center p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted flex-shrink-0" title="Toggle sidebar" aria-label="Collapse sidebar">
+        {% set _collapse_tip = next_tip_id() %}
+        <button data-action="toggle-sidebar" class="sidebar-collapse-btn hidden md:flex items-center justify-center p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted flex-shrink-0" aria-label="{{ t.get('toggle_sidebar', 'Toggle sidebar') }}" aria-describedby="{{ _collapse_tip }}" data-tip-title="{{ t.get('toggle_sidebar', 'Toggle sidebar') }}" data-tip-desc="{{ t.get('toggle_sidebar_desc', 'Show or hide the navigation menu') }}">
           <i data-lucide="panel-left" class="w-5 h-5"></i>
         </button>
+        <span class="sr-only" id="{{ _collapse_tip }}">{{ t.get('toggle_sidebar_desc', 'Show or hide the navigation menu') }}</span>
       </div>
       {% if session.get('username') %}
-      <a href="/logout" class="sidebar-link text-critical hover:bg-critical-tint dark:hover:bg-critical-tint/30" title="{{ t.sign_out }}">
+      {% set _signout_tip = next_tip_id() %}
+      <a href="/logout" class="sidebar-link text-critical hover:bg-critical-tint dark:hover:bg-critical-tint/30" aria-label="{{ t.sign_out }}" aria-describedby="{{ _signout_tip }}" data-tip-title="{{ t.sign_out }}" data-tip-desc="{{ t.get('sign_out_desc', 'End your session and return to the login screen') }}">
         <i data-lucide="log-out" class="w-5 h-5 flex-shrink-0"></i>
         <span class="sidebar-label text-sm">{{ t.sign_out }}</span>
       </a>
+      <span class="sr-only" id="{{ _signout_tip }}">{{ t.get('sign_out_desc', 'End your session and return to the login screen') }}</span>
       {% endif %}
     </div>
   </aside>
@@ -384,9 +388,11 @@
   <header id="topbar" class="fixed top-0 left-0 right-0 z-[51] h-14 bg-card border-b border-line flex items-center gap-3 px-3 transition-colors duration-base">
     <!-- Mobile-only menu toggle (opens the off-canvas nav). Desktop uses the
          collapse control in the sidebar footer, next to the username. -->
-    <button data-action="toggle-sidebar" class="md:hidden p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted flex-shrink-0" title="{{ t.get('toggle_sidebar', 'Toggle sidebar') }}" aria-label="{{ t.get('toggle_sidebar', 'Toggle sidebar') }}">
+    {% set _mobile_nav_tip = next_tip_id() %}
+    <button data-action="toggle-sidebar" class="md:hidden p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted flex-shrink-0" aria-label="{{ t.get('toggle_sidebar', 'Toggle sidebar') }}" aria-describedby="{{ _mobile_nav_tip }}" data-tip-title="{{ t.get('toggle_sidebar', 'Toggle sidebar') }}" data-tip-desc="{{ t.get('toggle_sidebar_desc', 'Show or hide the navigation menu') }}">
       <i data-lucide="panel-left" class="w-5 h-5"></i>
     </button>
+    <span class="sr-only" id="{{ _mobile_nav_tip }}">{{ t.get('toggle_sidebar_desc', 'Show or hide the navigation menu') }}</span>
     <!-- Brand -->
     <a href="/" class="flex items-center gap-2 text-info font-bold text-lg whitespace-nowrap">
       <img src="{{ url_for('static', filename='img/logo.png') }}" alt="" class="w-7 h-7 flex-shrink-0" width="28" height="28">
@@ -496,18 +502,25 @@
     </div>
     <!-- Own error indicator — does NOT share #htmx-error-banner, which
          is silenced by every successful HTMX swap (audit H2). -->
-    <span id="pulse-error" class="pulse-error" role="status" style="display:none"
-          title="{{ t.get('pulse_error_unreachable', 'Cannot reach collector — retrying') }}">
+    {% set _pulse_err_tip = next_tip_id() %}
+    <span id="pulse-error" class="pulse-error" role="status" style="display:none" tabindex="0"
+          aria-label="{{ t.get('pulse_error_unreachable_title', 'Collector unreachable') }}"
+          aria-describedby="{{ _pulse_err_tip }}"
+          data-tip-title="{{ t.get('pulse_error_unreachable_title', 'Collector unreachable') }}"
+          data-tip-desc="{{ t.get('pulse_error_unreachable', 'Cannot reach collector — retrying') }}">
       <i data-lucide="cloud-off" class="w-3.5 h-3.5"></i>
     </span>
+    <span class="sr-only" id="{{ _pulse_err_tip }}">{{ t.get('pulse_error_unreachable', 'Cannot reach collector — retrying') }}</span>
     <!-- Hover dropdown panel — populated dynamically by PulseMonitor. -->
     <div id="pulse-panel" class="pulse-panel" role="region"
          aria-label="{{ t.get('pulse_aria_panel', 'Collector activity detail') }}"
          style="display:none"></div>
-    <button data-action="toggle-theme" class="p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted" title="{{ t.get('toggle_theme', 'Toggle dark mode') }}" aria-label="{{ t.get('toggle_theme', 'Toggle dark mode') }}">
+    {% set _theme_tip = next_tip_id() %}
+    <button data-action="toggle-theme" class="p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted" aria-label="{{ t.get('toggle_theme', 'Toggle dark mode') }}" aria-describedby="{{ _theme_tip }}" data-tip-title="{{ t.get('toggle_theme', 'Toggle dark mode') }}" data-tip-desc="{{ t.get('toggle_theme_desc', 'Switch between light and dark colour themes') }}">
       <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
       <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
     </button>
+    <span class="sr-only" id="{{ _theme_tip }}">{{ t.get('toggle_theme_desc', 'Switch between light and dark colour themes') }}</span>
   </header>
 
   <!-- HTMX error banner -->

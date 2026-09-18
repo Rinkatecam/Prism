@@ -157,9 +157,13 @@ function pollRunbookExecution(execId) {
 // The row actions this page offers: run it. Editing a definition is
 // configuration and lives in Settings -> Operations.
 function runbookRowActions(rb) {
+  const runLbl = {{ t.get('run_action_label', 'Run') | tojson }};
+  const runDesc = {{ t.get('run_runbook', 'Run on a server') | tojson }};
+  const runTipId = 'rb-run-tip-' + rb.id;
   const runBtn = '<button data-action="openRunbookRunModal" data-args="[' + rb.id + ']" ' +
-          'title="' + {{ t.get('run_runbook', 'Run on a server') | tojson }} + '" ' +
+          'aria-label="' + runLbl + '" aria-describedby="' + runTipId + '" data-tip-title="' + runLbl + '" data-tip-desc="' + runDesc + '" ' +
           'class="inline-flex items-center justify-center w-7 h-7 rounded border border-healthy text-healthy hover:bg-healthy/10">' +
-          '<i data-lucide="play" class="w-3.5 h-3.5"></i></button>';
+          '<i data-lucide="play" class="w-3.5 h-3.5"></i></button>' +
+          '<span class="sr-only" id="' + runTipId + '">' + runDesc + '</span>';
   return runBtn;
 }

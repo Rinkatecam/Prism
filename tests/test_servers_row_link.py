@@ -140,8 +140,13 @@ def servers_html() -> str:
         ]),
         autoescape=True,
     )
+    # next_tip_id stand-in, same reason and shape as tests/test_design_loading.py's
+    # servers_html fixture: servers.html's manage-tags tip (WP-6 D9 close-out)
+    # needs it in this stub context too.
+    _tip_ids = (f"tip-test-{i}" for i in range(1000))
     return env.get_template("servers.html").render(
-        t=_T(), csp_nonce="test", servers=FLEET, settings={},
+        t=_T(), next_tip_id=lambda: next(_tip_ids),
+        csp_nonce="test", servers=FLEET, settings={},
         app_settings={}, max_compare_servers=4,
     )
 

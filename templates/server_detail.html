@@ -390,13 +390,17 @@
      §4.3's id= parameter), exactly where JS's
      getElementById('config-changes-container').innerHTML already expects
      it -- unchanged call site, unchanged element identity. #}
+  {% set _snapshot_tip_id = next_tip_id() %}
   {% set _config_controls %}
     <button data-action="takeConfigSnapshot"
             class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-brand text-brand hover:bg-brand/10 transition-colors"
-            title="{{ t.get('take_snapshot', 'Take Snapshot') }}">
+            aria-describedby="{{ _snapshot_tip_id }}"
+            data-tip-title="{{ t.get('take_snapshot', 'Take Snapshot') }}"
+            data-tip-desc="{{ t.get('take_snapshot_desc', 'Captures the current configuration so future changes can be compared against it.') }}">
       <i data-lucide="camera" class="w-3.5 h-3.5"></i>
       {{ t.get('take_snapshot', 'Take Snapshot') }}
     </button>
+    {{ tip_mirror('take_snapshot_desc', 'Captures the current configuration so future changes can be compared against it.', _snapshot_tip_id) }}
   {% endset %}
   {% call card(flush=true, heading=t.get('config_changes', 'Config Changes'), icon='git-compare', controls=_config_controls, id='config-changes-container') %}
     <div class="text-xs text-faint text-center py-4">{{ t.get('loading', 'Loading...') }}</div>
@@ -410,12 +414,16 @@
       <i data-lucide="scroll-text" class="w-5 h-5 text-accent"></i>
       {{ t.windows_logs }}
     </h2>
+    {% set _dl_logs_tip_id = next_tip_id() %}
     <button data-action="exportLogsCSV"
             class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-line text-muted hover:bg-page transition-colors"
-            title="{{ t.get('download_csv', 'Download CSV') }}">
+            aria-describedby="{{ _dl_logs_tip_id }}"
+            data-tip-title="{{ t.get('download_csv', 'Download CSV') }}"
+            data-tip-desc="{{ t.get('download_csv_logs_desc', 'Exports the currently filtered Windows log rows as a CSV file.') }}">
       <i data-lucide="download" class="w-3.5 h-3.5"></i>
       {{ t.get('download_csv', 'Download CSV') }}
     </button>
+    {{ tip_mirror('download_csv_logs_desc', 'Exports the currently filtered Windows log rows as a CSV file.', _dl_logs_tip_id) }}
   </div>
 
   <!-- Filters -->
@@ -456,12 +464,16 @@
       <i data-lucide="shield" class="w-5 h-5 text-accent"></i>
       {{ t.get('firewall_logs', 'Firewall Logs') }}
     </h2>
+    {% set _dl_fw_tip_id = next_tip_id() %}
     <button data-action="exportFirewallLogsCSV"
             class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-line text-muted hover:bg-page transition-colors"
-            title="{{ t.get('download_csv', 'Download CSV') }}">
+            aria-describedby="{{ _dl_fw_tip_id }}"
+            data-tip-title="{{ t.get('download_csv', 'Download CSV') }}"
+            data-tip-desc="{{ t.get('download_csv_firewall_desc', 'Exports the currently filtered firewall log rows as a CSV file.') }}">
       <i data-lucide="download" class="w-3.5 h-3.5"></i>
       {{ t.get('download_csv', 'Download CSV') }}
     </button>
+    {{ tip_mirror('download_csv_firewall_desc', 'Exports the currently filtered firewall log rows as a CSV file.', _dl_fw_tip_id) }}
   </div>
 
   <!-- Filters: level + free-text. No source filter — this panel is
@@ -1208,10 +1220,13 @@
   let _eventsFilter = 'all';
 
   function eventBadge(type) {
+    // title used to just repeat ${type} verbatim -- not truncated (no
+    // max-width/overflow here), so nothing was ever hidden for a tooltip
+    // to reveal. Dropped rather than converted: the badge's own always-
+    // visible text already says everything the title did.
     const color = EVENT_TYPE_COLORS[type] || '#6B7280';
     return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
-            style="background-color: ${color}15; color: ${color}; border: 1px solid ${color}30;"
-            title="${type}">${type}</span>`;
+            style="background-color: ${color}15; color: ${color}; border: 1px solid ${color}30;">${type}</span>`;
   }
 
   // Format an event value for display. Most events (cpu/ram/disk_*) are
@@ -1405,6 +1420,21 @@
     return div.innerHTML;
   }
 
+  // Same as escapeHtml, plus double-quote escaping, for a value going into
+  // an HTML attribute rather than element text. Kept as its own named
+  // function rather than inlining `.replace(/"/g, ...)` at each call site:
+  // a literal `"` character sitting inside what a text scan reads as an
+  // open tag's own attribute list reads back as an early-closed attribute
+  // value to a regex-based carrier scanner (tests/test_design_tooltip.py's
+  // own module docstring documents exactly this trap for JS-built
+  // carriers -- "not a hypothetical one" -- and it is what T-4 hit here
+  // before this helper existed, on the config-changes old/new-value cells
+  // and the login-card account/IP/workstation spans).
+  function escapeAttr(str) {
+    const quote = /"/g;
+    return escapeHtml(str).replace(quote, '&quot;');
+  }
+
   /**
    * Smooth DOM update: uses Idiomorph's morph() when loaded (DOM-diffing, no
    * flash) and falls back to plain innerHTML when it's not. Every JS-driven
@@ -1422,7 +1452,7 @@
         return;
       } catch(e) { /* fall through to innerHTML */ }
     }
-    morphHTML(container, html);
+    container.innerHTML = html;
   }
 
   /**
@@ -1539,7 +1569,7 @@
       html += `<td class="px-4 py-2">${levelBadge(g.level)}</td>`;
       html += `<td class="px-4 py-2 text-xs font-mono">${g.event_id || '-'}</td>`;
       html += `<td class="px-4 py-2 text-xs"><span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-full font-bold ${ g.count > 1 ? 'bg-info/10 text-info dark:bg-info/20 dark:text-info' : 'text-faint' }">${g.count}</span></td>`;
-      html += `<td class="px-4 py-2 text-xs text-muted" style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(g.message)}">${escapeHtml(g.message)}</td>`;
+      html += `<td class="px-4 py-2 text-xs text-muted ps-tip-overflow" tabindex="0" style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" data-tip-title="" data-tip-desc="${escapeAttr(g.message)}">${escapeHtml(g.message)}</td>`;
       html += '</tr>';
 
       // Detail panel (hidden by default)
@@ -1576,6 +1606,7 @@
     html += '</div>';
     morphHTML(container, html);
     lucide.createIcons({ nodes: [container] });
+    if (window.__rebindTooltips) window.__rebindTooltips();
   }
 
   function toggleLogGroup(idx) {
@@ -1682,7 +1713,7 @@
       html += `<td class="px-4 py-2">${levelBadge(g.level)}</td>`;
       html += `<td class="px-4 py-2 text-xs font-mono">${g.event_id || '-'}</td>`;
       html += `<td class="px-4 py-2 text-xs"><span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-full font-bold ${ g.count > 1 ? 'bg-info/10 text-info dark:bg-info/20 dark:text-info' : 'text-faint' }">${g.count}</span></td>`;
-      html += `<td class="px-4 py-2 text-xs text-muted" style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(g.message)}">${escapeHtml(g.message)}</td>`;
+      html += `<td class="px-4 py-2 text-xs text-muted ps-tip-overflow" tabindex="0" style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" data-tip-title="" data-tip-desc="${escapeAttr(g.message)}">${escapeHtml(g.message)}</td>`;
       html += '</tr>';
 
       html += `<tr id="fwlog-detail-${idx}" class="hidden">`;
@@ -1709,6 +1740,7 @@
     html += '</div>';
     morphHTML(container, html);
     lucide.createIcons({ nodes: [container] });
+    if (window.__rebindTooltips) window.__rebindTooltips();
   }
 
   function toggleFirewallLogGroup(idx) {
@@ -3178,7 +3210,7 @@
       html += `<div class="flex items-start justify-between mb-2">`;
       html += `<div class="min-w-0">`;
       html += `<div class="flex items-center gap-1.5"><i data-lucide="user-x" class="w-4 h-4 text-critical flex-shrink-0"></i>`;
-      html += `<span class="text-sm font-medium text-ink dark:text-[#F9FAFB] truncate" title="${fullAccount}">${fullAccount}</span></div>`;
+      html += `<span class="text-sm font-medium text-ink dark:text-[#F9FAFB] truncate ps-tip-overflow" tabindex="0" data-tip-title="" data-tip-desc="${escapeAttr(fullAccount)}">${fullAccount}</span></div>`;
       if (reason) {
         html += `<div class="text-[10px] text-critical dark:text-critical-strong mt-0.5 ml-5.5">${reason}</div>`;
       }
@@ -3190,17 +3222,21 @@
       html += `<div class="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">`;
 
       // Source IP + port
-      html += `<div class="flex items-center gap-1.5 text-muted"><i data-lucide="globe" class="w-3 h-3 flex-shrink-0"></i><span class="font-mono truncate" title="${ipDisplay}">${ipDisplay}</span></div>`;
+      html += `<div class="flex items-center gap-1.5 text-muted"><i data-lucide="globe" class="w-3 h-3 flex-shrink-0"></i><span class="font-mono truncate ps-tip-overflow" tabindex="0" data-tip-title="" data-tip-desc="${escapeAttr(ipDisplay)}">${ipDisplay}</span></div>`;
 
-      // Logon type with tooltip
-      html += `<div class="flex items-center gap-1.5 text-muted" title="${ltInfo.desc}"><i data-lucide="${ltInfo.icon}" class="w-3 h-3 flex-shrink-0"></i><span class="truncate">${logonType}</span></div>`;
+      // Logon type with tooltip -- ltInfo.desc is a genuine explanation
+      // distinct from the visible logonType text, not a repeat of it, so
+      // (unlike the ps-tip-overflow carriers around it) this needs a real
+      // aria-describedby + sr-only mirror rather than an empty title.
+      const ltTipId = 'lt-tip-' + cardIdx;
+      html += `<div class="flex items-center gap-1.5 text-muted" tabindex="0" aria-describedby="${ltTipId}" data-tip-title="${escapeAttr(logonType)}" data-tip-desc="${escapeAttr(ltInfo.desc)}"><i data-lucide="${ltInfo.icon}" class="w-3 h-3 flex-shrink-0"></i><span class="truncate">${logonType}</span></div><span class="sr-only" id="${ltTipId}">${escapeAttr(ltInfo.desc)}</span>`;
 
       // Last seen
       html += `<div class="flex items-center gap-1.5 text-muted"><i data-lucide="clock" class="w-3 h-3 flex-shrink-0"></i><span class="truncate">${lastTs}</span></div>`;
 
       // Workstation
       if (workstation) {
-        html += `<div class="flex items-center gap-1.5 text-muted"><i data-lucide="laptop" class="w-3 h-3 flex-shrink-0"></i><span class="truncate" title="${workstation}">${workstation}</span></div>`;
+        html += `<div class="flex items-center gap-1.5 text-muted"><i data-lucide="laptop" class="w-3 h-3 flex-shrink-0"></i><span class="truncate ps-tip-overflow" tabindex="0" data-tip-title="" data-tip-desc="${escapeAttr(workstation)}">${workstation}</span></div>`;
       } else if (g.count > 1) {
         html += `<div class="flex items-center gap-1.5 text-faint"><i data-lucide="calendar" class="w-3 h-3 flex-shrink-0"></i><span class="truncate">First: ${firstTs}</span></div>`;
       } else {
@@ -3250,6 +3286,7 @@
     html += `<div class="mt-2 text-[10px] text-faint text-right">${logins.length} {{ t.get('events', 'events') }} {{ t.get('grouped_into', 'grouped into') }} ${sorted.length} {{ t.get('sources', 'sources') }}</div>`;
     document.getElementById('recent-failed-logins').innerHTML = html;
     lucide.createIcons({ nodes: [document.getElementById('recent-failed-logins')] });
+    if (window.__rebindTooltips) window.__rebindTooltips();
 
     // Run security analysis on the grouped data
     analyzeSecurityIntel(logins, sorted);
@@ -3465,12 +3502,13 @@
           html += '<td class="px-3 py-1.5 text-muted">' + (c.snapshot_type || '') + '</td>';
           html += '<td class="px-3 py-1.5"><span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ' + badgeCls + '">' + label + '</span></td>';
           html += '<td class="px-3 py-1.5 font-mono text-muted">' + (c.field || '') + '</td>';
-          html += '<td class="px-3 py-1.5 text-critical dark:text-critical-strong font-mono max-w-[200px] truncate" title="' + (c.old_value || '-').replace(/"/g, '&quot;') + '">' + (c.old_value || '-') + '</td>';
-          html += '<td class="px-3 py-1.5 text-healthy dark:text-healthy-strong font-mono max-w-[200px] truncate" title="' + (c.new_value || '-').replace(/"/g, '&quot;') + '">' + (c.new_value || '-') + '</td>';
+          html += '<td class="px-3 py-1.5 text-critical dark:text-critical-strong font-mono max-w-[200px] truncate ps-tip-overflow" tabindex="0" data-tip-title="" data-tip-desc="' + escapeAttr(c.old_value || '-') + '">' + (c.old_value || '-') + '</td>';
+          html += '<td class="px-3 py-1.5 text-healthy dark:text-healthy-strong font-mono max-w-[200px] truncate ps-tip-overflow" tabindex="0" data-tip-title="" data-tip-desc="' + escapeAttr(c.new_value || '-') + '">' + (c.new_value || '-') + '</td>';
           html += '</tr>';
         });
         html += '</tbody></table></div>';
         morphHTML(container, html);
+        if (window.__rebindTooltips) window.__rebindTooltips();
       })
       .catch(err => {
         document.getElementById('config-changes-container').innerHTML = _renderEmptyState(

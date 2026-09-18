@@ -2,6 +2,7 @@
 {% from "partials/_skeletons.html" import vitals_cards, banner %}
 {% from "partials/_empty_state.html" import empty_state %}
 {% from "partials/_card.html" import card with context %}
+{% from "partials/_tip.html" import tip_mirror with context %}
 
 {# 1280 -> 2560 is the design's range, and the top end is the requirement that
    does not survive being ignored: a wall-screen dashboard must not be a
@@ -96,10 +97,15 @@
         </div>
       </div>
     </div>
-    <button type="button" data-action="dismissRestartBanner" title="Dismiss"
+    {%- set _dismiss_tip_id = next_tip_id() %}
+    <button type="button" data-action="dismissRestartBanner" aria-label="{{ t.dismiss }}"
+      aria-describedby="{{ _dismiss_tip_id }}"
+      data-tip-title="{{ t.dismiss }}"
+      data-tip-desc="{{ t.get('dismiss_restart_banner_tip', 'Hide this notification. It reappears on your next visit if restarts are still active.') }}"
       class="flex-shrink-0 p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors bg-transparent border-0 cursor-pointer">
       <i data-lucide="x" class="w-4 h-4 text-muted"></i>
     </button>
+    {{ tip_mirror('dismiss_restart_banner_tip', 'Hide this notification. It reappears on your next visit if restarts are still active.', _dismiss_tip_id) }}
   </div>
 </section>
 

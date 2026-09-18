@@ -62,8 +62,14 @@ def dashboard_html() -> str:
         ]),
         autoescape=True,
     )
+    # next_tip_id is a context-processor global in the real app (see
+    # partials/_tip.html's own header); dashboard.html's dismiss-restart-
+    # banner tip (WP-6 D9 close-out) is its first caller, so this stub
+    # context needs the same stand-in test_design_layered.py already uses.
+    _tip_ids = (f"tip-test-{i}" for i in range(1000))
     return env.get_template("dashboard.html").render(
-        t=_T(), server_count=29, summary=None, csp_nonce="test",
+        t=_T(), next_tip_id=lambda: next(_tip_ids),
+        server_count=29, summary=None, csp_nonce="test",
         # The shape routes.views._estate_vitals returns. Spelled out rather
         # than imported so this stays a template test: importing the view
         # would drag in Flask, the config manager and a database handle to
@@ -113,8 +119,12 @@ def servers_html() -> str:
         def __getattr__(self, item):
             return None
 
+    # Same next_tip_id stand-in as dashboard_html above -- servers.html's
+    # manage-tags tip (WP-6 D9 close-out) is its first caller here.
+    _tip_ids = (f"tip-test-{i}" for i in range(1000))
     return env.get_template("servers.html").render(
-        t=_T(), csp_nonce="test", servers=[_Server()], settings={},
+        t=_T(), next_tip_id=lambda: next(_tip_ids),
+        csp_nonce="test", servers=[_Server()], settings={},
         app_settings={}, max_compare_servers=4,
     )
 

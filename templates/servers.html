@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "partials/_skeletons.html" import server_band, feed_rows %}
 {% from "partials/_empty_state.html" import empty_state %}
+{% from "partials/_tip.html" import tip_mirror with context %}
 {% block page_title %}{{ t.servers }}{% endblock %}
 {% block page_icon %}server{% endblock %}
 
@@ -139,18 +140,34 @@
             <td class="px-4 py-2">
               <span class="font-medium">{{ s.name }}</span>
               <span class="server-tags-{{ loop.index0 }} inline-flex flex-wrap gap-1 ml-2"></span>
-              <button data-action="_srvAssignTagMenu" data-args='[{{ s.name | tojson }}, {{ loop.index0 }}]' class="p-0.5 text-faint hover:text-brand align-middle" title="Manage tags">
+              {# Icon-only, already a real action (data-action=) -- the
+                 button itself stays the carrier (tip() would add a
+                 redundant second trigger), title= was hardcoded English
+                 with no t.get() at all, moved onto data-tip-title/
+                 aria-label as-is rather than inventing a translation this
+                 step did not otherwise touch. #}
+              {% set _manage_tags_tip_id = next_tip_id() %}
+              <button data-action="_srvAssignTagMenu" data-args='[{{ s.name | tojson }}, {{ loop.index0 }}]' class="p-0.5 text-faint hover:text-brand align-middle"
+                      aria-label="{{ t.get('manage_tags', 'Manage tags') }}" aria-describedby="{{ _manage_tags_tip_id }}"
+                      data-tip-title="{{ t.get('manage_tags', 'Manage tags') }}"
+                      data-tip-desc="{{ t.get('manage_tags_desc', 'Add or remove tags for this server.') }}">
                 <i data-lucide="tag" class="w-3 h-3"></i>
               </button>
+              {{ tip_mirror('manage_tags_desc', 'Add or remove tags for this server.', _manage_tags_tip_id) }}
             </td>
             <td class="px-4 py-2 text-muted font-mono text-xs">{{ s.host }}</td>
             <td class="px-4 py-2 whitespace-nowrap" data-server-status="{{ s.name }}"><span class="text-[10px] text-faint uppercase">&mdash;</span></td>
             <td class="px-4 py-2 text-muted text-xs hidden sm:table-cell">{{ s.type | replace('_', ' ') | title }}</td>
             <td class="px-4 py-2 text-muted text-xs hidden md:table-cell">{{ s.port }}</td>
             <td class="px-4 py-2 text-right whitespace-nowrap">
-              <button data-action="testConnection" data-args="[{{ loop.index0 }}]" class="p-1 text-accent hover:text-accent-strong" title="{{ t.test_connection }}" aria-label="{{ t.test_connection }}" id="test-btn-{{ loop.index0 }}">
+              {% set _test_conn_tip_id = next_tip_id() %}
+              <button data-action="testConnection" data-args="[{{ loop.index0 }}]" class="p-1 text-accent hover:text-accent-strong" aria-label="{{ t.test_connection }}" aria-describedby="{{ _test_conn_tip_id }}"
+                      data-tip-title="{{ t.test_connection }}"
+                      data-tip-desc="{{ t.get('test_connection_desc', 'Attempt to connect to this server now and report whether it responds.') }}"
+                      id="test-btn-{{ loop.index0 }}">
                 <i data-lucide="plug" class="w-4 h-4"></i>
               </button>
+              {{ tip_mirror('test_connection_desc', 'Attempt to connect to this server now and report whether it responds.', _test_conn_tip_id) }}
             </td>
           </tr>
           <tr id="server-info-{{ loop.index0 }}" style="display:none;">
@@ -904,6 +921,24 @@ function _tagReadableInk(hex, tintAlpha) {
   };
 }
 
+// Escaping helpers for the tag pill below, each kept as its own named
+// function rather than an inline `.replace(/"/g, ...)`/`.replace(/'/g, ...)`
+// at the call site: a literal quote sitting inside what a text-based tag
+// scanner reads as an open tag's own attribute list reads back as an
+// early-closed attribute value (tests/test_design_tooltip.py's module
+// docstring documents exactly this trap for JS-built carriers -- "not a
+// hypothetical one" -- and the pre-existing inline `data-args=` escaping
+// just below used to hit it too, once a data-tip-desc= carrier made this
+// element one the carrier scanner actually inspects).
+function _escAttrDouble(str) {
+  const amp = /&/g, quote = /"/g;
+  return String(str == null ? '' : str).replace(amp, '&amp;').replace(quote, '&quot;');
+}
+function _escAttrSingle(str) {
+  const amp = /&/g, apos = /'/g;
+  return String(str == null ? '' : str).replace(amp, '&amp;').replace(apos, '&#39;');
+}
+
 function renderServerTagPills(serverName, idx) {
   const container = document.querySelector('.server-tags-' + idx);
   if (!container) return;
@@ -920,10 +955,12 @@ function renderServerTagPills(serverName, idx) {
                   bg-[var(--tag-bg)] hover:bg-[var(--tag-bg-h)] text-[var(--tag-ink-l)] dark:text-[var(--tag-ink-d)]
                   transition-colors duration-fast ease-standard"
            style="--tag-bg:${c.bg};--tag-bg-h:${c.bgHover};--tag-ink-l:${c.inkLight};--tag-ink-d:${c.inkDark};border-color:${c.border};"
-           data-action="_srvRemoveTag" tabindex="0" role="button" data-args='${JSON.stringify([serverName, t.id, idx]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}'
-           aria-label="Remove tag ${t.name}"
-           title="Click to remove">${t.name} ×</span>`;
+           data-action="_srvRemoveTag" tabindex="0" role="button" data-args='${_escAttrSingle(JSON.stringify([serverName, t.id, idx]))}'
+           aria-label="Remove tag ${_escAttrDouble(t.name)}" aria-describedby="tag-remove-tip-${idx}-${t.id}"
+           data-tip-title="${_escAttrDouble(t.name)}"
+           data-tip-desc="Removes this tag from the server. The tag itself is not deleted.">${t.name} ×</span><span class="sr-only" id="tag-remove-tip-${idx}-${t.id}">Removes this tag from the server. The tag itself is not deleted.</span>`;
   }).join('');
+  if (window.__rebindTooltips) window.__rebindTooltips();
 }
 
 // ── data-action bridges (CSP: no inline on* handlers) ──

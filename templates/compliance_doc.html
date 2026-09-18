@@ -60,7 +60,7 @@
         <dl class="text-xs text-muted space-y-1">
           <div class="flex justify-between gap-3"><dt>ID:</dt><dd class="text-right font-mono">{{ doc.id }}</dd></div>
           <div class="flex justify-between gap-3"><dt>Category:</dt><dd class="text-right">{{ doc.category }}</dd></div>
-          <div class="flex justify-between gap-3"><dt>Path:</dt><dd class="text-right text-[10px] truncate" title="{{ doc.doc_path }}">{{ doc.doc_path }}</dd></div>
+          <div class="flex justify-between gap-3"><dt>Path:</dt><dd class="text-right text-[10px] truncate ps-tip-overflow" tabindex="0" data-tip-title="" data-tip-desc="{{ doc.doc_path }}">{{ doc.doc_path }}</dd></div>
         </dl>
 
         <p class="text-xs text-ink dark:text-line mt-3">{{ doc.short_desc }}</p>

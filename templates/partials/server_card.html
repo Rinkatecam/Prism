@@ -77,7 +77,13 @@
        the lifecycle is active. The threshold status is still computed and
        still drives alert dispatch underneath — the operator just sees
        what the server is DOING right now, not "offline" during a reboot. #}
-    <span class="badge badge-{{ istatus }} flex-shrink-0 ml-2 flex items-center gap-1" title="{{ istate.message or '' }}">
+    {# title= used to duplicate istate.message -- estate-produced live
+       status text, not translatable UI copy, same reasoning as the
+       severity-dot reasons below -- so tip_overflow() is the sanctioned
+       carrier: it appends the message as its own (now visible, truncated)
+       text rather than hiding it behind a hover-only attribute on an
+       otherwise icon+label badge. #}
+    <span class="badge badge-{{ istatus }} flex-shrink-0 ml-2 flex items-center gap-1">
       {% if istatus in ('downloading', 'installing') %}
       <i data-lucide="loader" class="w-3 h-3 animate-spin"></i>
       {% elif istatus == 'searching' %}
@@ -96,6 +102,7 @@
       <i data-lucide="alert-circle" class="w-3 h-3"></i>
       {% endif %}
       <span>{{ _install_labels.get(istatus, istatus) }}</span>
+      {% if istate.message %}{{ tip_overflow(istate.message, extra_class='truncate max-w-[120px] normal-case font-normal cursor-help') }}{% endif %}
     </span>
     {% else %}
     <span class="badge badge-{{ status }} flex-shrink-0 ml-2">{{ status }}</span>
@@ -329,9 +336,16 @@
   {% if server.timestamp %}
   <div class="flex items-center justify-end gap-2 mt-2">
     {% if server.is_stale %}
-    <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30"
-          title="Last collection {{ (server.staleness_seconds // 60) | int }}m ago — collector may have timed out for this server.">
+    {# title= used to carry the full explanation while only "stale" was ever
+       visible. tip_overflow() needs ONE string to be both the visible body
+       and the tip desc, so it cannot replace "stale" outright without
+       losing the at-a-glance keyword this flag exists for -- kept as fixed
+       text instead, with the explanation appended as its own adjacent
+       (now visible, truncated) tip_overflow() span, same shape as the
+       stale-since text used to be reachable only on hover. #}
+    <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30 inline-flex items-center gap-1">
       stale
+      {{ tip_overflow(t.get('stale_since_desc', 'Last collection {minutes}m ago — collector may have timed out for this server.').format(minutes=(server.staleness_seconds // 60) | int), extra_class='truncate max-w-[130px] normal-case font-normal cursor-help') }}
     </span>
     {% endif %}
     <span class="text-[10px] text-faint">

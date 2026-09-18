@@ -150,14 +150,18 @@
                 <input type="text" id="srv-custom-type" placeholder="{{ t.get('custom_type_name', 'e.g. proxy_server') }}"
                        class="w-full pl-3 pr-16 py-1.5 text-sm rounded border border-healthy dark:border-healthy bg-field focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
                 <div class="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5">
-                  <button type="button" data-action="confirmCustomType" title="{{ t.get('save', 'Save') }}"
+                  <button type="button" data-action="confirmCustomType" aria-label="{{ t.get('save', 'Save') }}" aria-describedby="srv-custom-save-desc"
+                    data-tip-title="{{ t.get('save', 'Save') }}" data-tip-desc="{{ t.get('confirm_custom_type_desc', 'Add this custom server type to the list and select it.') }}"
                     class="p-1 rounded hover:bg-healthy/20 text-healthy">
                     <i data-lucide="check" class="w-3.5 h-3.5"></i>
                   </button>
-                  <button type="button" data-action="cancelCustomType" title="{{ t.get('cancel', 'Cancel') }}"
+                  <span class="sr-only" id="srv-custom-save-desc">{{ t.get('confirm_custom_type_desc', 'Add this custom server type to the list and select it.') }}</span>
+                  <button type="button" data-action="cancelCustomType" aria-label="{{ t.get('cancel', 'Cancel') }}" aria-describedby="srv-custom-cancel-desc"
+                    data-tip-title="{{ t.get('cancel', 'Cancel') }}" data-tip-desc="{{ t.get('cancel_custom_type_desc', 'Discard this custom type and go back to the dropdown.') }}"
                     class="p-1 rounded hover:bg-critical/20 text-critical">
                     <i data-lucide="x" class="w-3.5 h-3.5"></i>
                   </button>
+                  <span class="sr-only" id="srv-custom-cancel-desc">{{ t.get('cancel_custom_type_desc', 'Discard this custom type and go back to the dropdown.') }}</span>
                 </div>
               </div>
             </div>
@@ -188,9 +192,10 @@
             </label>
             <span id="srv-https-skip-wrap" class="hidden flex items-center gap-1 ml-2">
               <input type="checkbox" id="srv-https-skip" class="h-3.5 w-3.5">
-              <label for="srv-https-skip" class="text-[10px] text-warning" title="Disables certificate validation. Use only during initial cert rollout.">
+              <label for="srv-https-skip" class="text-[10px] text-warning" tabindex="0" aria-describedby="srv-https-skip-desc" data-tip-title="{{ t.get('skip_cert_verify', 'Skip cert verify') }}" data-tip-desc="{{ t.get('skip_cert_verify_desc', 'Disables certificate validation. Use only during initial cert rollout.') }}">
                 {{ t.get('skip_cert_verify', 'Skip cert verify') }}
               </label>
+              <span class="sr-only" id="srv-https-skip-desc">{{ t.get('skip_cert_verify_desc', 'Disables certificate validation. Use only during initial cert rollout.') }}</span>
             </span>
           </div>
           <div>

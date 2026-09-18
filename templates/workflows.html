@@ -451,9 +451,11 @@
          workflow-level dropdown was removed 2026-05-22 to eliminate
          duplicate UI for the same concept. -->
     <div class="ml-auto flex items-center gap-2">
-      <button data-action="testRunWorkflow" title="Preview the plan without touching any server (no WinRM actions, no notifications)" aria-label="Dry run — preview only, no servers touched" class="px-3 py-1 text-xs font-medium rounded border border-warning text-warning hover:bg-warning/10 flex items-center gap-1">
+      {% set _dry_run_tip = next_tip_id() %}
+      <button data-action="testRunWorkflow" aria-label="Dry run — preview only, no servers touched" aria-describedby="{{ _dry_run_tip }}" data-tip-title="Dry Run" data-tip-desc="{{ t.get('wf_dry_run_desc', 'Preview the plan without touching any server (no WinRM actions, no notifications)') }}" class="px-3 py-1 text-xs font-medium rounded border border-warning text-warning hover:bg-warning/10 flex items-center gap-1">
         <i data-lucide="flask-conical" class="w-3.5 h-3.5"></i> Dry Run
       </button>
+      <span class="sr-only" id="{{ _dry_run_tip }}">{{ t.get('wf_dry_run_desc', 'Preview the plan without touching any server (no WinRM actions, no notifications)') }}</span>
       <button data-action="saveWorkflow" class="px-3 py-1 text-xs font-medium rounded bg-healthy text-white hover:opacity-90 flex items-center gap-1">
         <i data-lucide="save" class="w-3.5 h-3.5"></i> Save
       </button>
@@ -469,6 +471,16 @@
     </div>
 
     <!-- Left: Block Palette (floating overlay) -->
+    {#- WP-6 D9 close-out: every .drag-block below keeps its native
+        title="..." on purpose -- do not convert these to data-tip-title/
+        desc by hand. applyBlockTip() (below, bound on DOMContentLoaded)
+        already reads each block's richer BLOCK_DEFS[type].tip.desc/
+        .example, builds the real title/desc/aria-describedby/mirror, and
+        removes this title= itself once it runs -- see that function's own
+        comment for why the native attribute stays in the SOURCE as the
+        no-JS/loading-race fallback. A first pass at this close-out added a
+        second, static, always-overwritten carrier here; reverted once
+        testing showed applyBlockTip() replacing every value on load. #}
     <div class="absolute top-0 left-0 bottom-0 w-48 border-r border-[#404040] bg-[#1E293B] overflow-y-auto p-3" style="z-index: 30;">
       <div class="text-[10px] font-bold uppercase tracking-wider text-faint mb-2">Blocks</div>
 
@@ -589,39 +601,55 @@
     <!-- Canvas controls (floating bottom-right) -->
     <div class="absolute bottom-3 flex items-center gap-1 bg-[#2D2D2D] rounded-lg border border-[#404040] shadow-lg px-1 py-1" style="z-index: 30; right: 16px;">
       <!-- Pan arrows -->
-      <button data-mousedown="startContinuousPan" data-args='["left"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" title="Pan left (←)">
+      {% set _pan_l_tip = next_tip_id() %}
+      <button data-mousedown="startContinuousPan" data-args='["left"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" aria-label="Pan left (←)" aria-describedby="{{ _pan_l_tip }}" data-tip-title="Pan left (←)" data-tip-desc="{{ t.get('wf_pan_desc', 'Move the canvas view. Hold to pan continuously.') }}">
         <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
       </button>
-      <button data-mousedown="startContinuousPan" data-args='["up"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" title="Pan up (↑)">
+      <span class="sr-only" id="{{ _pan_l_tip }}">{{ t.get('wf_pan_desc', 'Move the canvas view. Hold to pan continuously.') }}</span>
+      {% set _pan_u_tip = next_tip_id() %}
+      <button data-mousedown="startContinuousPan" data-args='["up"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" aria-label="Pan up (↑)" aria-describedby="{{ _pan_u_tip }}" data-tip-title="Pan up (↑)" data-tip-desc="{{ t.get('wf_pan_desc', 'Move the canvas view. Hold to pan continuously.') }}">
         <i data-lucide="arrow-up" class="w-3.5 h-3.5"></i>
       </button>
-      <button data-mousedown="startContinuousPan" data-args='["down"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" title="Pan down (↓)">
+      <span class="sr-only" id="{{ _pan_u_tip }}">{{ t.get('wf_pan_desc', 'Move the canvas view. Hold to pan continuously.') }}</span>
+      {% set _pan_d_tip = next_tip_id() %}
+      <button data-mousedown="startContinuousPan" data-args='["down"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" aria-label="Pan down (↓)" aria-describedby="{{ _pan_d_tip }}" data-tip-title="Pan down (↓)" data-tip-desc="{{ t.get('wf_pan_desc', 'Move the canvas view. Hold to pan continuously.') }}">
         <i data-lucide="arrow-down" class="w-3.5 h-3.5"></i>
       </button>
-      <button data-mousedown="startContinuousPan" data-args='["right"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" title="Pan right (→)">
+      <span class="sr-only" id="{{ _pan_d_tip }}">{{ t.get('wf_pan_desc', 'Move the canvas view. Hold to pan continuously.') }}</span>
+      {% set _pan_r_tip = next_tip_id() %}
+      <button data-mousedown="startContinuousPan" data-args='["right"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" aria-label="Pan right (→)" aria-describedby="{{ _pan_r_tip }}" data-tip-title="Pan right (→)" data-tip-desc="{{ t.get('wf_pan_desc', 'Move the canvas view. Hold to pan continuously.') }}">
         <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
       </button>
+      <span class="sr-only" id="{{ _pan_r_tip }}">{{ t.get('wf_pan_desc', 'Move the canvas view. Hold to pan continuously.') }}</span>
       <div class="w-px h-5 bg-[#404040] mx-0.5"></div>
       <!-- Zoom -->
-      <button data-action="_wfZoomOut" class="p-1.5 text-faint hover:text-white rounded" title="Zoom out (-)">
+      {% set _zoom_out_tip = next_tip_id() %}
+      <button data-action="_wfZoomOut" class="p-1.5 text-faint hover:text-white rounded" aria-label="Zoom out (-)" aria-describedby="{{ _zoom_out_tip }}" data-tip-title="Zoom out (-)" data-tip-desc="{{ t.get('wf_zoom_out_desc', 'Zoom the canvas out') }}">
         <i data-lucide="minus" class="w-3.5 h-3.5"></i>
       </button>
+      <span class="sr-only" id="{{ _zoom_out_tip }}">{{ t.get('wf_zoom_out_desc', 'Zoom the canvas out') }}</span>
       <span class="px-1.5 py-0.5 text-[10px] text-faint min-w-[36px] text-center" id="zoom-level">100%</span>
-      <button data-action="_wfZoomIn" class="p-1.5 text-faint hover:text-white rounded" title="Zoom in (+)">
+      {% set _zoom_in_tip = next_tip_id() %}
+      <button data-action="_wfZoomIn" class="p-1.5 text-faint hover:text-white rounded" aria-label="Zoom in (+)" aria-describedby="{{ _zoom_in_tip }}" data-tip-title="Zoom in (+)" data-tip-desc="{{ t.get('wf_zoom_in_desc', 'Zoom the canvas in') }}">
         <i data-lucide="plus" class="w-3.5 h-3.5"></i>
       </button>
+      <span class="sr-only" id="{{ _zoom_in_tip }}">{{ t.get('wf_zoom_in_desc', 'Zoom the canvas in') }}</span>
       <div class="w-px h-5 bg-[#404040] mx-0.5"></div>
       <!-- Home / reset view -->
-      <button data-action="resetCanvasView" class="p-1.5 text-faint hover:text-white rounded" title="Reset view (Home)">
+      {% set _reset_tip = next_tip_id() %}
+      <button data-action="resetCanvasView" class="p-1.5 text-faint hover:text-white rounded" aria-label="Reset view (Home)" aria-describedby="{{ _reset_tip }}" data-tip-title="Reset view (Home)" data-tip-desc="{{ t.get('wf_reset_view_desc', 'Re-centre and reset the canvas zoom to 100%') }}">
         <i data-lucide="home" class="w-3.5 h-3.5"></i>
       </button>
+      <span class="sr-only" id="{{ _reset_tip }}">{{ t.get('wf_reset_view_desc', 'Re-centre and reset the canvas zoom to 100%') }}</span>
     </div>
 
     <!-- Guide button (floating bottom-left, to the right of palette) -->
-    <button data-action="toggleWorkflowGuide" class="absolute bottom-3 flex items-center gap-1.5 bg-[#2D2D2D] rounded-lg border border-[#404040] shadow-lg px-3 py-2 text-faint hover:text-white transition-colors" style="z-index: 30; left: 208px;" title="How to use">
+    {% set _guide_tip = next_tip_id() %}
+    <button data-action="toggleWorkflowGuide" class="absolute bottom-3 flex items-center gap-1.5 bg-[#2D2D2D] rounded-lg border border-[#404040] shadow-lg px-3 py-2 text-faint hover:text-white transition-colors" style="z-index: 30; left: 208px;" aria-describedby="{{ _guide_tip }}" data-tip-title="How to use" data-tip-desc="{{ t.get('wf_guide_desc', 'Open a short walkthrough of the workflow builder') }}">
       <i data-lucide="book-open" class="w-4 h-4"></i>
       <span class="text-[10px] font-medium">Guide</span>
     </button>
+    <span class="sr-only" id="{{ _guide_tip }}">{{ t.get('wf_guide_desc', 'Open a short walkthrough of the workflow builder') }}</span>
 
     {# WP-6 step 19: shadow-2xl -> shadow-lg only (elevation ban, §4.6 --
        applies unconditionally, everywhere). Everything else here is
@@ -1099,7 +1127,16 @@ function loadExecutionHistory() {
 // _categories, so this loop never tries to render a delete on it.
 function renderCategoryButtons() {
   const wrap = document.getElementById('category-buttons');
+  // JS-built carrier (WP-6 D9 close-out): the two t.get() calls run once
+  // here, outside the per-chip map(), since the text is identical for
+  // every category -- matching partials/settings/_server_config.html's
+  // established reference shape for a JS-built tip carrier.
+  const _catChipTip = {{ t.get('wf_category_chip_desc', 'Click to filter; × to delete') | tojson }};
+  const _catDeleteTip = {{ t.get('delete_category', 'Delete this category') | tojson }};
+  const _catDeleteDesc = {{ t.get('delete_category_desc', 'Remove this category. Workflows using it are not deleted.') | tojson }};
   wrap.innerHTML = _categories.map(c => {
+    const catTipId = 'wf-cat-tip-' + c.id;
+    const catDeleteTipId = 'wf-cat-del-tip-' + c.id;
     const active = _activeCategory === c.id;
     const style = active
       ? `border-color:${c.color};color:${c.color};background:${c.color}15`
@@ -1117,11 +1154,13 @@ function renderCategoryButtons() {
     // keyboard could not press. The delete <button> inside keeps its own
     // branch of that listener and stops propagation, so pressing × does not
     // also filter.
-    return `<span data-cat="${c.id}" data-cat-id="${c.id}" data-cat-name="${escapeHtml(c.name)}" data-action="filterByCategory" data-args="[${c.id}]" tabindex="0" role="button" class="wf-cat-chip inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full border cursor-pointer" style="${style}" title="Click to filter; × to delete">
+    return `<span data-cat="${c.id}" data-cat-id="${c.id}" data-cat-name="${escapeHtml(c.name)}" data-action="filterByCategory" data-args="[${c.id}]" tabindex="0" role="button" class="wf-cat-chip inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full border cursor-pointer" style="${style}" aria-describedby="${catTipId}" data-tip-title="${escapeHtml(c.name)}" data-tip-desc="${_catChipTip}">
       <span class="wf-cat-label">${escapeHtml(c.name)}</span>
-      <button type="button" class="wf-cat-delete -mr-1 flex items-center opacity-60 hover:opacity-100 hover:text-critical" title="Delete this category">
+      <button type="button" class="wf-cat-delete -mr-1 flex items-center opacity-60 hover:opacity-100 hover:text-critical" aria-label="${_catDeleteTip}" aria-describedby="${catDeleteTipId}" data-tip-title="${_catDeleteTip}" data-tip-desc="${_catDeleteDesc}">
         <i data-lucide="x" class="w-3 h-3 pointer-events-none"></i>
       </button>
+      <span class="sr-only" id="${catTipId}">${_catChipTip}</span>
+      <span class="sr-only" id="${catDeleteTipId}">${_catDeleteDesc}</span>
     </span>`;
   }).join('');
   // Update "All" tab style
@@ -2547,6 +2586,12 @@ function showNodeProperties(nodeId) {
       + (controlsOthers ? ' data-controls-others="1"' : '');
   }
 
+  // JS-built carrier (WP-6 D9 close-out): computed once per panel render,
+  // outside the per-field loop below, matching
+  // partials/settings/_server_config.html's reference shape.
+  const _pickerTipDesc = {{ t.get('wf_insert_variable_desc', 'Insert output of a previous block') | tojson }};
+  const _browseTipDesc = {{ t.get('wf_browse_desc', 'Look up a live value from the target server instead of typing one') | tojson }};
+
   let html = '';
   def.fields.forEach(f => {
     if (!_isVisible(f)) return;
@@ -2557,10 +2602,11 @@ function showNodeProperties(nodeId) {
     // Variable picker button — only on text/textarea fields that opted
     // in. Inserts ``{% raw %}{{step.<id>.output}}{% endraw %}`` at the
     // cursor position of the associated input/textarea.
+    const pickerTipId = 'wf-picker-tip-' + f.key + '-' + nodeId;
     const pickerBtn = f.supports_variables
-      ? `<button type="button" class="px-1.5 py-0.5 text-[10px] font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1" data-action="_wfOpenVarPicker" data-node-id="${nodeId}" data-target-input="prop-${f.key}-${nodeId}" title="Insert output of a previous block">
+      ? `<button type="button" class="px-1.5 py-0.5 text-[10px] font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1" data-action="_wfOpenVarPicker" data-node-id="${nodeId}" data-target-input="prop-${f.key}-${nodeId}" aria-describedby="${pickerTipId}" data-tip-title="Insert variable" data-tip-desc="${_pickerTipDesc}">
           <i data-lucide="braces" class="w-3 h-3"></i> Insert variable
-        </button>`
+        </button><span class="sr-only" id="${pickerTipId}">${_pickerTipDesc}</span>`
       : '';
 
     const labelRow = `<div class="flex items-center justify-between mb-0.5">
@@ -2585,12 +2631,14 @@ function showNodeProperties(nodeId) {
       const browseLabel = browseType === 'ports' ? 'Browse open ports'
         : (browseType === 'processes' ? 'Browse running processes' : 'Browse services');
       const inputType = browseType === 'ports' ? 'number' : 'text';
+      const browseTipId = 'wf-browse-tip-' + f.key + '-' + nodeId;
       html += `<div class="mb-2">${labelRow}
         <div class="flex gap-1">
           <input type="${inputType}" id="prop-${f.key}-${nodeId}" class="flex-1 text-xs px-2 py-1 rounded border border-line bg-field" value="${escapeHtml(val)}" data-input="_wfNodeInput" data-node-id="${nodeId}" data-field-key="${f.key}">
-          <button data-action="browseFromServer" data-args='[${nodeId}, "${f.key}", "${browseType}"]' class="px-2 py-1 text-[10px] font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1 whitespace-nowrap" title="${browseLabel}">
+          <button data-action="browseFromServer" data-args='[${nodeId}, "${f.key}", "${browseType}"]' class="px-2 py-1 text-[10px] font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1 whitespace-nowrap" aria-describedby="${browseTipId}" data-tip-title="${browseLabel}" data-tip-desc="${_browseTipDesc}">
             <i data-lucide="list" class="w-3 h-3"></i> Browse
           </button>
+          <span class="sr-only" id="${browseTipId}">${_browseTipDesc}</span>
         </div>
       </div>`;
     } else if (f.type === 'number') {
@@ -3336,8 +3384,15 @@ function renderBrowseList() {
       const proc = item.process || '';
       const pid = item.pid || '';
       detail = proc ? (proc + (pid ? ` (pid ${pid})` : '')) : (item.address || '');
-      // Ports always have a coloured dot to indicate they're listening
-      leftDot = '<span class="w-1.5 h-1.5 rounded-full bg-healthy flex-shrink-0" title="Listening"></span>';
+      // Ports always have a coloured dot to indicate they're listening -- the
+      // SAME colour on every row in this branch (only listening ports are
+      // ever in this list), so it discriminates nothing between rows and is
+      // decoration, not information -- aria-hidden, matching the sibling
+      // dots below (running/stopped/no-status) that also carry no name of
+      // their own; the row's own visible name+detail text is what a
+      // keyboard/screen-reader user actually needs, not a fourth carrier
+      // nested inside an already-focusable row (WP-6 D9 close-out).
+      leftDot = '<span class="w-1.5 h-1.5 rounded-full bg-healthy flex-shrink-0" aria-hidden="true"></span>';
     } else {
       detail = display ? display : (mem ? mem + ' MB' : '');
       leftDot = isRunning

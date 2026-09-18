@@ -554,19 +554,27 @@ function loadBackups() {
         tbody.innerHTML = '<tr><td colspan="3" class="px-3 py-4 text-center text-xs text-muted">' + {{ t.no_backups | tojson }} + '</td></tr>';
         return;
       }
-      tbody.innerHTML = backups.map(b => {
+      const dlLbl = {{ t.download_backup | tojson }};
+      const dlDesc = {{ t.get('download_backup_tip', 'Download this configuration backup file to your computer.') | tojson }};
+      const rsLbl = {{ t.restore | tojson }};
+      const rsDesc = {{ t.get('restore_backup_tip', "Restore Prism's configuration from this backup. Your current configuration is backed up first.") | tojson }};
+      tbody.innerHTML = backups.map((b, i) => {
         const size = (b.size_bytes / 1024).toFixed(1) + ' KB';
         const ts = formatTs(b.timestamp);
+        const dlTipId = 'backup-dl-tip-' + i;
+        const rsTipId = 'backup-rs-tip-' + i;
         return `<tr class="border-b border-line last:border-0">
           <td class="px-3 py-2 text-xs font-mono text-muted">${ts}</td>
           <td class="px-3 py-2 text-xs text-muted">${size}</td>
           <td class="px-3 py-2 text-right whitespace-nowrap">
-            <a href="/api/config/backups/download/${b.filename}" download class="p-1 text-accent hover:text-accent-strong" title="${{ t.download_backup | tojson }}">
+            <a href="/api/config/backups/download/${b.filename}" download class="p-1 text-accent hover:text-accent-strong" aria-label="${dlLbl}" aria-describedby="${dlTipId}" data-tip-title="${dlLbl}" data-tip-desc="${dlDesc}">
               <i data-lucide="download" class="w-3.5 h-3.5 inline"></i>
             </a>
-            <button data-action="restoreBackup" data-args='["${b.filename}"]' class="p-1 text-accent hover:text-accent-strong ml-1" title="${{ t.restore | tojson }}">
+            <span class="sr-only" id="${dlTipId}">${dlDesc}</span>
+            <button data-action="restoreBackup" data-args='["${b.filename}"]' class="p-1 text-accent hover:text-accent-strong ml-1" aria-label="${rsLbl}" aria-describedby="${rsTipId}" data-tip-title="${rsLbl}" data-tip-desc="${rsDesc}">
               <i data-lucide="undo-2" class="w-3.5 h-3.5 inline"></i>
             </button>
+            <span class="sr-only" id="${rsTipId}">${rsDesc}</span>
           </td>
         </tr>`;
       }).join('');

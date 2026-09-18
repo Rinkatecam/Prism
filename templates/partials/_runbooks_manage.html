@@ -83,14 +83,23 @@ async function deleteRunbook(rbId, name) {
 // read-only, which is why both are empty strings for them. Running a
 // runbook is an action and lives on /operations.
 function runbookRowActions(rb) {
+  const editLbl = {{ t.edit | default('Edit') | tojson }};
+  const editDesc = {{ t.get('edit_runbook_tip', "Edit this runbook's name, steps and category.") | tojson }};
+  const delLbl = {{ t.delete | default('Delete') | tojson }};
+  const delDesc = {{ t.get('delete_runbook_tip', 'Permanently delete this runbook. This cannot be undone.') | tojson }};
+  const editTipId = 'rb-edit-tip-' + rb.id;
+  const delTipId = 'rb-delete-tip-' + rb.id;
   const editBtn = rb.is_builtin ? '' :
-          '<button data-action="editRunbook" data-args="[' + rb.id + ']" title="' + {{ t.edit | default('Edit') | tojson }} + '" ' +
+          '<button data-action="editRunbook" data-args="[' + rb.id + ']" ' +
+          'aria-label="' + editLbl + '" aria-describedby="' + editTipId + '" data-tip-title="' + editLbl + '" data-tip-desc="' + editDesc + '" ' +
           'class="inline-flex items-center justify-center w-7 h-7 rounded border border-line text-info hover:bg-info/10">' +
-          '<i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>';
+          '<i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>' +
+          '<span class="sr-only" id="' + editTipId + '">' + editDesc + '</span>';
   const delBtn = rb.is_builtin ? '' :
           '<button data-action="deleteRunbook" data-args="[' + rb.id + ', ' + JSON.stringify(rb.name).replace(/"/g, '&quot;') + ']" ' +
-          'title="' + {{ t.delete | default('Delete') | tojson }} + '" ' +
+          'aria-label="' + delLbl + '" aria-describedby="' + delTipId + '" data-tip-title="' + delLbl + '" data-tip-desc="' + delDesc + '" ' +
           'class="inline-flex items-center justify-center w-7 h-7 rounded border border-critical text-critical hover:bg-critical/10">' +
-          '<i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>';
+          '<i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>' +
+          '<span class="sr-only" id="' + delTipId + '">' + delDesc + '</span>';
   return editBtn + delBtn;
 }

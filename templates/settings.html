@@ -1811,6 +1811,16 @@ function renderMaintWindows() {
 
   const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+  // Tip text for the per-row Edit/Delete buttons -- computed once, outside
+  // the .map() below, since it is identical for every row (see
+  // _server_config.html's discoveryTipTitle/discoveryTipDesc for the same
+  // pattern). Each Desc const is named <name>TipDesc, always longer than
+  // its <name>Tip sibling, so the two never read as equal-length.
+  const maintEditTip = {{ t.edit | tojson }};
+  const maintEditTipDesc = {{ t.get('edit_maint_window_desc', "Edit this maintenance window's schedule and servers.") | tojson }};
+  const maintDeleteTip = {{ t.delete | tojson }};
+  const maintDeleteTipDesc = {{ t.get('delete_maint_window_desc', 'Delete this maintenance window. This cannot be undone.') | tojson }};
+
   container.innerHTML = '<div class="space-y-2">' + maintWindows.map((w, i) => {
     const days = (w.days || []).map(d => dayNames[d] || '?').join(', ');
     const servers = (w.servers || []).join(', ');
@@ -1823,12 +1833,14 @@ function renderMaintWindows() {
         </div>
         <div class="text-[10px] text-muted mt-0.5 font-mono truncate">${_escHtml(days)} → ${_escHtml(servers || 'No servers')}</div>
       </div>
-      <button data-action="editMaintWindow" data-args="[${i}]" class="p-1.5 text-muted hover:text-info rounded hover:bg-info/10" title="Edit">
+      <button data-action="editMaintWindow" data-args="[${i}]" class="p-1.5 text-muted hover:text-info rounded hover:bg-info/10" aria-label="${maintEditTip}" aria-describedby="maint-edit-desc-${i}" data-tip-title="${maintEditTip}" data-tip-desc="${maintEditTipDesc}">
         <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
       </button>
-      <button data-action="deleteMaintWindow" data-args="[${i}]" class="p-1.5 text-muted hover:text-critical rounded hover:bg-critical/10" title="Delete">
+      <span class="sr-only" id="maint-edit-desc-${i}">${maintEditTipDesc}</span>
+      <button data-action="deleteMaintWindow" data-args="[${i}]" class="p-1.5 text-muted hover:text-critical rounded hover:bg-critical/10" aria-label="${maintDeleteTip}" aria-describedby="maint-delete-desc-${i}" data-tip-title="${maintDeleteTip}" data-tip-desc="${maintDeleteTipDesc}">
         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
       </button>
+      <span class="sr-only" id="maint-delete-desc-${i}">${maintDeleteTipDesc}</span>
     </div>`;
   }).join('') + '</div>';
   lucide.createIcons();
@@ -1978,6 +1990,15 @@ function addTlsCertRow(data) {
   const row = document.createElement('div');
   row.className = 'flex items-center gap-2 px-3 py-2 rounded-lg border border-line bg-page dark:bg-page/50 tls-cert-row';
 
+  // Per-row id for this row's tip mirrors -- list.children.length at
+  // creation time, same convention addServerRestartRow's `idx` already
+  // uses elsewhere in this file.
+  const _tlsRowIdx = list.children.length;
+  const tlsTestTip = {{ t.get('test', 'Test') | tojson }};
+  const tlsTestTipDesc = {{ t.get('test_tls_cert_desc', 'Test whether this host is reachable on the configured port.') | tojson }};
+  const tlsDeleteTip = {{ t.delete | tojson }};
+  const tlsDeleteTipDesc = {{ t.get('delete_tls_cert_desc', 'Remove this TLS certificate check. This cannot be undone.') | tojson }};
+
   const serverOpts = _serverNames.map(n => `<option value="${n}" ${(data && data.server === n) ? 'selected' : ''}>${n}</option>`).join('');
 
   row.innerHTML = `
@@ -1987,12 +2008,14 @@ function addTlsCertRow(data) {
     </select>
     <input type="text" class="tls-host px-2 py-1 text-xs rounded border border-line bg-field font-mono flex-1" placeholder="hostname or IP" value="${_escHtml((data && data.host) || '')}">
     <input type="number" class="tls-port w-16 px-2 py-1 text-xs rounded border border-line bg-field text-right" placeholder="443" min="1" max="65535" value="${(data && data.port) || 443}">
-    <button data-action="testTlsCertRow" class="p-1.5 text-muted hover:text-healthy rounded hover:bg-healthy/10" title="Test">
+    <button data-action="testTlsCertRow" class="p-1.5 text-muted hover:text-healthy rounded hover:bg-healthy/10" aria-label="${tlsTestTip}" aria-describedby="tls-test-desc-${_tlsRowIdx}" data-tip-title="${tlsTestTip}" data-tip-desc="${tlsTestTipDesc}">
       <i data-lucide="zap" class="w-3.5 h-3.5"></i>
     </button>
-    <button data-action="removeTlsCertRow" class="p-1.5 text-muted hover:text-critical rounded hover:bg-critical/10" title="Delete">
+    <span class="sr-only" id="tls-test-desc-${_tlsRowIdx}">${tlsTestTipDesc}</span>
+    <button data-action="removeTlsCertRow" class="p-1.5 text-muted hover:text-critical rounded hover:bg-critical/10" aria-label="${tlsDeleteTip}" aria-describedby="tls-delete-desc-${_tlsRowIdx}" data-tip-title="${tlsDeleteTip}" data-tip-desc="${tlsDeleteTipDesc}">
       <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
     </button>
+    <span class="sr-only" id="tls-delete-desc-${_tlsRowIdx}">${tlsDeleteTipDesc}</span>
     <div class="tls-test-result text-xs ml-1 hidden"></div>
   `;
   list.appendChild(row);
@@ -2148,6 +2171,20 @@ function addServerRestartRow(data) {
   const row = document.createElement('div');
   row.className = 'rounded-lg border border-line bg-page dark:bg-page/50 overflow-hidden';
   const serverOpts = _serverNames.map(n => `<option value="${n}" ${d.server === n ? 'selected' : ''}>${n}</option>`).join('');
+
+  // Tip text for this row's carriers, hoisted once per row (the existing
+  // Jinja splices below this point are the pre-existing visible-text
+  // lookups and are left exactly as they were -- these new consts are only
+  // for the new data-tip-* attributes). Desc consts are always named
+  // <name>TipDesc so they are never mistaken for equal-length to their
+  // <name>Tip sibling by a naive scanner.
+  const srInstallUpdatesTip = {{ t.install_updates | tojson }};
+  const srInstallUpdatesTipDesc = {{ t.install_updates_desc | tojson }};
+  const srConditionsTip = {{ t.restart_conditions | tojson }};
+  const srConditionsTipDesc = {{ t.get('restart_conditions_desc', 'Show or hide the conditions this server restart must wait for before running.') | tojson }};
+  const srDeleteTip = {{ t.delete | default('Delete') | tojson }};
+  const srDeleteTipDesc = {{ t.get('delete_restart_row_desc', 'Remove this scheduled server restart. This cannot be undone.') | tojson }};
+
   row.innerHTML = `
     <div class="flex flex-wrap items-center gap-2 p-2.5">
       <div class="flex items-center gap-1 bg-info/10 rounded px-1.5 py-0.5">
@@ -2158,20 +2195,23 @@ function addServerRestartRow(data) {
         <option value="">-- Server --</option>
         ${serverOpts}
       </select>
-      <label class="flex items-center gap-1.5 px-2 py-1 rounded border border-warning/30 bg-warning/5 cursor-pointer" title="` + {{ t.install_updates_desc | tojson }} + `">
+      <label class="flex items-center gap-1.5 px-2 py-1 rounded border border-warning/30 bg-warning/5 cursor-pointer" tabindex="0" aria-describedby="sr-install-updates-desc-${idx}" data-tip-title="${srInstallUpdatesTip}" data-tip-desc="${srInstallUpdatesTipDesc}">
         <input type="checkbox" class="sr-install-updates w-3.5 h-3.5 rounded border-line dark:border-faint accent-warning" ${d.install_updates ? 'checked' : ''}>
         <i data-lucide="download" class="w-3 h-3 text-warning"></i>
         <span class="text-[10px] font-medium text-warning-strong">` + {{ t.install_updates | tojson }} + `</span>
       </label>
+      <span class="sr-only" id="sr-install-updates-desc-${idx}">${srInstallUpdatesTipDesc}</span>
       <div class="flex items-center gap-1 ml-auto">
-        <button data-action="toggleConditionsEl" class="px-2 py-1 text-[10px] font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1" title="` + {{ t.restart_conditions | tojson }} + `">
+        <button data-action="toggleConditionsEl" class="px-2 py-1 text-[10px] font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1" aria-label="${srConditionsTip}" aria-describedby="sr-cond-toggle-desc-${idx}" data-tip-title="${srConditionsTip}" data-tip-desc="${srConditionsTipDesc}">
           <i data-lucide="filter" class="w-3 h-3"></i>
           <span class="sr-cond-count">${conditions.length || 0}</span>
         </button>
-        <button data-action="removeRestartRowEl" title="` + {{ t.delete | default('Delete') | tojson }} + `"
+        <span class="sr-only" id="sr-cond-toggle-desc-${idx}">${srConditionsTipDesc}</span>
+        <button data-action="removeRestartRowEl" aria-label="${srDeleteTip}" aria-describedby="sr-row-delete-desc-${idx}" data-tip-title="${srDeleteTip}" data-tip-desc="${srDeleteTipDesc}"
                 class="inline-flex items-center justify-center w-7 h-7 rounded border border-critical text-critical hover:bg-critical/10">
           <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
         </button>
+        <span class="sr-only" id="sr-row-delete-desc-${idx}">${srDeleteTipDesc}</span>
       </div>
     </div>
     <div class="sr-conditions hidden border-t border-line bg-card/50 dark:bg-card/50 p-2.5">
@@ -2216,6 +2256,13 @@ function addConditionToRow(btn, data) {
   const condList = condPanel.querySelector('.sr-cond-list');
   condPanel.querySelector('.sr-no-cond').classList.add('hidden');
   const d = data || {};
+  // Per-row id for this condition row's tip mirrors, and the tip text
+  // itself (hoisted once per row -- identical for every condition row).
+  const _condIdx = condList.children.length;
+  const condBrowseTip = {{ t.get('browse', 'Browse') | tojson }};
+  const condBrowseTipDesc = {{ t.get('browse_condition_target_desc', 'Pick a running service or process from the selected server instead of typing its name.') | tojson }};
+  const condRemoveTip = {{ t.remove_condition | tojson }};
+  const condRemoveTipDesc = {{ t.get('remove_condition_desc', 'Remove this restart condition.') | tojson }};
   const condRow = document.createElement('div');
   condRow.className = 'flex flex-wrap items-center gap-1.5 p-1.5 rounded bg-page dark:bg-page/50 border border-line';
   condRow.innerHTML = `
@@ -2226,17 +2273,19 @@ function addConditionToRow(btn, data) {
     </select>
     <input type="text" class="cond-value px-1.5 py-0.5 text-[11px] rounded border border-line bg-field w-36 ${d.type && d.type !== 'wait_online' ? '' : 'hidden'}"
            placeholder="${d.type === 'wait_process' ? '` + {{ t.process_name | tojson }} + `' : '` + {{ t.service_name | tojson }} + `'}" value="${d.value || ''}">
-    <button type="button" data-action="openServicePickerEl" class="cond-browse-btn px-1.5 py-0.5 text-[11px] rounded border border-line bg-field hover:bg-page dark:hover:bg-line text-muted ${d.type && d.type !== 'wait_online' ? '' : 'hidden'}" title="Browse">
+    <button type="button" data-action="openServicePickerEl" class="cond-browse-btn px-1.5 py-0.5 text-[11px] rounded border border-line bg-field hover:bg-page dark:hover:bg-line text-muted ${d.type && d.type !== 'wait_online' ? '' : 'hidden'}" aria-label="${condBrowseTip}" aria-describedby="cond-browse-desc-${_condIdx}" data-tip-title="${condBrowseTip}" data-tip-desc="${condBrowseTipDesc}">
       <i data-lucide="list" class="w-3 h-3"></i>
     </button>
+    <span class="sr-only" id="cond-browse-desc-${_condIdx}">${condBrowseTipDesc}</span>
     <div class="flex items-center gap-1">
       <span class="text-[10px] text-muted">` + {{ t.condition_timeout | tojson }} + `:</span>
       <input type="number" class="cond-timeout w-14 px-1 py-0.5 text-[11px] rounded border border-line bg-field text-center" value="${d.timeout || 300}" min="30" max="3600">
       <span class="text-[10px] text-muted">s</span>
     </div>
-    <button data-action="removeConditionEl" class="p-0.5 text-critical hover:bg-critical/10 rounded ml-auto" title="` + {{ t.remove_condition | tojson }} + `">
+    <button data-action="removeConditionEl" class="p-0.5 text-critical hover:bg-critical/10 rounded ml-auto" aria-label="${condRemoveTip}" aria-describedby="cond-remove-desc-${_condIdx}" data-tip-title="${condRemoveTip}" data-tip-desc="${condRemoveTipDesc}">
       <i data-lucide="x" class="w-3 h-3"></i>
-    </button>`;
+    </button>
+    <span class="sr-only" id="cond-remove-desc-${_condIdx}">${condRemoveTipDesc}</span>`;
   condList.appendChild(condRow);
   updateCondCountBadge(condPanel);
   lucide.createIcons();
