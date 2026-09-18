@@ -274,7 +274,13 @@ def test_the_anchor_exists_where_the_link_points():
     The fragment never reaches the server, so a link to a moved section is a
     link to the top of whatever page answers — silently, with no 404 and
     nothing in a log."""
-    src = _HEALTH.read_text(encoding="utf-8")
+    # Comments stripped first: this file's own step-15 comment quotes
+    # `id="health-checks"` in prose (explaining why the id is load-bearing),
+    # and a bare substring check cannot tell that quote from the real
+    # attribute -- WP-6 step 24 found this blind: a guardrails mutation
+    # that renamed the real element's id still left this assertion passing
+    # off the comment alone.
+    src = re.sub(r"\{#.*?#\}", " ", _HEALTH.read_text(encoding="utf-8"), flags=re.S)
     assert 'id="health-checks"' in src, "the anchor did not travel with the section"
 
     services = (_ROOT / "templates" / "services.html").read_text(encoding="utf-8")

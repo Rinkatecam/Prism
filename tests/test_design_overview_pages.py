@@ -294,7 +294,13 @@ def test_the_route_to_configuration_is_named_and_exists():
     # The anchor has to exist WHERE THE LINK POINTS. A 301 cannot help here:
     # the fragment never reaches the server, so a link to a moved section is
     # a link to the top of some other page, silently.
-    target = _src(TEMPLATES / "partials" / "settings" / "_health_checks.html")
+    # _code_only(), not bare _src(): _health_checks.html's own step-15
+    # comment quotes `id="health-checks"` in prose, and an unstripped
+    # substring check cannot tell that quote from the real attribute (the
+    # same OPS-LEARNINGS #36 shape this file's _code_only() exists for) --
+    # WP-6 step 24 found this blind: a guardrails mutation that renamed the
+    # real element's id still left this assertion passing off the comment.
+    target = _code_only(_src(TEMPLATES / "partials" / "settings" / "_health_checks.html"))
     assert 'id="health-checks"' in target, (
         "the anchor /services links to does not exist at its destination")
 

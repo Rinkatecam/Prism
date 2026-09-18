@@ -190,19 +190,25 @@
      one real site this step converts: partials/settings/_detection.html's
      `baseline-security-card`. That id is not read by any live template or
      JS (checked by grep across templates/ and static/js/ before
-     converting), but tools/verify_guardrails.py's own mutation harness
-     anchors a mutation to the literal source string
-     `<div id="baseline-security-card"` (path-and-string search-and-
-     replace over the TEMPLATE SOURCE FILE, not rendered output) for
-     test_every_control_lives_in_the_section_that_saves_it. Dropping the
-     id would not break that test today, but would make the mutation's
-     own anchor drift (verify_guardrails.py's own step 1 calls this out
-     explicitly: "a mutation whose anchor has drifted is reported as NOT
-     APPLIED rather than passing silently") -- so the id is preserved via
-     this new parameter rather than silently dropped. See this step's own
-     report for the full account; tools/verify_guardrails.py itself is
-     deliberately not run or edited here (out of this step's scope, and
-     the house rule against running it).
+     converting), so it is preserved via this new parameter purely as a
+     stable hook for whatever wants it next, rather than dropped for lack
+     of a current reader.
+
+     At the time this step was written, tools/verify_guardrails.py's own
+     mutation harness anchored a mutation (for
+     test_every_control_lives_in_the_section_that_saves_it) to the literal
+     source string `<div id="baseline-security-card"`, and this paragraph
+     used to warn that dropping the id would make that anchor drift.
+     Deliberately not run or edited at the time (out of this step's scope,
+     and the house rule against running it) -- which meant nobody had
+     actually checked, this whole step, whether that anchor still matched
+     ANYTHING. It did not: the string only ever existed in
+     _detection.html's own prose comment, never in real markup (the actual
+     element is `id='baseline-security-card'`, a single-quoted Jinja macro
+     kwarg, not an HTML attribute) -- discovered and fixed at step 24,
+     retargeting the mutation at real markup instead. The id stays; only
+     the mutation harness's anchor changed. See _detection.html's own
+     comment for the full account.
 
      `heading_id=` sets an id on the HEADING TAG ITSELF (h2, or h{level}),
      which is the separate thing DESIGN_SYSTEM_SPEC.md's own Step 15 text

@@ -26,11 +26,20 @@
      own canonical H2. id="baseline-security-card" is preserved verbatim
      via card()'s new id= (not dropped, not a heading_id=): grepped
      across templates/ and static/js/ before converting and it is
-     referenced nowhere there, but tools/verify_guardrails.py's own
-     mutation harness anchors a mutation to the literal source string
-     <div id="baseline-security-card" for
-     test_every_control_lives_in_the_section_that_saves_it -- see
-     _card.html's own comment on id= for the full account. #}
+     referenced nowhere there. See _card.html's own comment on id= for
+     the full account of why the id is kept regardless.
+
+     Step 24 update: this comment used to warn that
+     tools/verify_guardrails.py's mutation harness anchored a mutation to
+     the literal source string `<div id="baseline-security-card"` for
+     test_every_control_lives_in_the_section_that_saves_it -- that string
+     only ever existed in THIS comment's own prose, never in real markup
+     (the actual element is the `id='baseline-security-card'` kwarg below,
+     single-quoted Jinja, not an HTML attribute), so the mutation's stray
+     control was being discarded along with the comment before the test's
+     section regex ever ran. Fixed at step 24 by retargeting the mutation
+     at `<div class="space-y-4">` just below instead -- real markup, not
+     prose about it. #}
   {% call card(heading=t.get('settings_section_detection', 'Detection'), icon='radar',
                id='baseline-security-card') %}
   <div class="space-y-4">

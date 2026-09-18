@@ -146,9 +146,13 @@ suite(
              "  transform: translateY(-2px);",
              "box-shadow: 0 0 0 3px rgb(var(--c-brand) / 0.25), var(--shadow-md);",
              "test_focus_is_not_weaker_than_hover"),
+    # Updated at WP-6 step 24: this card's layout changed from a `block`
+    # element at `p-4` to a `flex items-start gap-3` row at `p-5` (icon +
+    # text), unrelated to this mutation's own concern — only the exact
+    # class string needed to catch up.
     Mutation("a new clickable card skips the class", "templates/compliance.html",
-             'class="card-clickable block bg-card rounded-lg border border-line p-4"',
-             'class="block bg-card rounded-lg border border-line p-4"',
+             'class="card-clickable bg-card rounded-lg border border-line p-5 flex items-start gap-3"',
+             'class="bg-card rounded-lg border border-line p-5 flex items-start gap-3"',
              "test_every_card_shaped_control_opts_in"),
     Mutation("narrow tailwind transition left alongside the class",
              "templates/partials/critical_issues.html",
@@ -258,9 +262,15 @@ suite(
              '      <p class="text-[10px] mt-1 opacity-60">Add a probe under Operations</p>\n'
              "    </div>",
              "test_no_new_empty_state_hand_rolls_the_markup"),
+    # servers.html's own hand-rolled count was driven to 0 since this
+    # mutation was written (the baseline may only shrink, and now has),
+    # so the literal "5," it used to bump to "6," no longer exists.
+    # Retargeted at WP-6 step 24 to the same file's current value: any
+    # baseline above the true count (0) reproduces the same "left behind
+    # above the real count" defect this mutation is for.
     Mutation("a converted site leaves its baseline behind",
              "tests/test_design_empty_states.py",
-             '    "servers.html": 5,', '    "servers.html": 6,',
+             '    "servers.html": 0,', '    "servers.html": 1,',
              "test_the_hand_rolled_baseline_comes_down_when_a_site_is_converted"),
     Mutation("the detector stops telling a caller from a copy",
              "tests/test_design_empty_states.py",
@@ -273,14 +283,35 @@ suite(
 # ── disabled controls: a reason, kept in step with the state ─────────────
 suite(
     "disabled",
-    Mutation("a markup-disabled control loses its reason", "templates/servers.html",
+    # Relocated at WP-6 step 24: this control moved from templates/servers.html
+    # to templates/partials/settings/_server_config.html in an earlier,
+    # pre-WP-6 settings-consolidation pass; the literal anchor text itself is
+    # unchanged, only the file.
+    Mutation("a markup-disabled control loses its reason",
+             "templates/partials/settings/_server_config.html",
              "data-tip-title=\"{{ t.get('disabled_type_name_title', 'Type the server name first') }}\"",
              "", "test_every_markup_disabled_control_says_why"),
-    Mutation("the reason hides behind an interpolation again", "templates/servers.html",
-             '${monitored ? \'data-tip-title="Already monitored" data-tip-desc="This host is '
-             'already in Prism — remove it from the Servers list first if you want to re-add it."\' : \'\'}',
-             "${tipAttrs}",
-             "test_every_markup_disabled_control_says_why"),
+    # REMOVED at WP-6 step 24, not relocated. This mutation targeted
+    # servers.html's discovered-server checkbox, which built its
+    # disabled/reason payload as `${monitored ? 'disabled ...
+    # data-tip-title="Already monitored" ...' : ''}` — a ternary with the
+    # reason inlined as a literal string, which _defuse() (blanks stray
+    # `<`/`>` inside `${}` only, never resolves a variable's value) can see
+    # straight through. That control now lives in _server_config.html and
+    # has since been refactored to `const tipAttrs = monitored ? '...' :
+    # ''` assigned on its own line, with the tag itself reading only
+    # `${tipAttrs}` — no literal "disabled" or "data-tip-title" text in the
+    # tag anymore. _markup_disabled()'s tag-shaped regex can no longer see
+    # this control as disabled AT ALL (it silently drops out of the scan
+    # rather than failing it), which is precisely the blind spot this
+    # mutation was written to catch — the code has drifted INTO the bug,
+    # not past the mutation's anchor. There is no longer anywhere in the
+    # tree with a literal, checkable ternary-in-tag of this shape to write
+    # a faithful replacement against, and restoring one is a real
+    # application-code change outside this checkpoint step's "no code
+    # changes" scope. Flagged as a live finding rather than papered over
+    # with an anchor that would not actually test anything (see the task
+    # spawned during step 24 for _server_config.html's discovery-checkbox).
     Mutation("pointer-events removed from disabled controls", "static/css/app.css",
              '[disabled],\n[aria-disabled="true"],\n.is-disabled {\n  opacity: 0.72;\n}',
              '[disabled],\n[aria-disabled="true"],\n.is-disabled {\n  opacity: 0.72;\n'
@@ -1006,13 +1037,16 @@ suite(
              "                        http_path = excluded.http_path,",
              "test_editing_one_field_does_not_blank_the_others"),
     # The UI carrier. A setting reachable from no screen is not a setting.
+    # Relocated at WP-6 step 24: both controls moved from templates/servers.html
+    # to templates/partials/settings/_health_checks.html in an earlier,
+    # pre-WP-6 settings-consolidation pass; anchor text unchanged.
     Mutation("the form stops sending the checkbox",
-             "templates/servers.html",
+             "templates/partials/settings/_health_checks.html",
              "name: name, verify_tls: verifyTls }),",
              "name: name }),",
              "test_the_form_sends_the_setting_when_saving"),
     Mutation("editing forgets the opt-out and re-enables verification",
-             "templates/servers.html",
+             "templates/partials/settings/_health_checks.html",
              "checked = hc.verify_tls !== 0;",
              "checked = true;",
              "test_editing_a_check_repopulates_the_setting"),
@@ -2310,9 +2344,13 @@ suite(
              '"network_lede": "Prism does not watch network equipment yet. This is what '
              'that would mean, and what it watches instead today.", "_was": "Prism a',
              "test_no_locale_silently_carries_the_english_sentence"),
+    # Updated at WP-6 step 24: the English hint now reads "Add a probe
+    # under Settings → Servers" (health-check config moved under Settings
+    # in the same pre-WP-6 pass as the other servers.html relocations
+    # above), so the old "under Servers" prefix stopped matching.
     Mutation("the hint goes back to sending operators to Operations for a probe",
              "i18n.py",
-             '"vitals_no_services_hint": "Add a probe under Servers',
+             '"vitals_no_services_hint": "Add a probe under Settings',
              '"vitals_no_services_hint": "Add a probe under Operations',
              "test_no_surface_still_sends_the_operator_to_operations_for_a_probe"),
 
@@ -2322,11 +2360,19 @@ suite(
              "{{ t.get('overview_today', 'What Prism watches today') }}",
              "0 {{ t.get('overview_today', 'What Prism watches today') }}",
              "test_a_page_about_an_absence_renders_no_number"),
+    # Retargeted at WP-6 step 18: scan.html's doorway grid moved from a
+    # `<ul class="flex flex-wrap gap-2">` to a `<div class="grid ...">`
+    # (see that page's own H2-conversion comment), so the literal anchor
+    # is gone. Both this mutation and the next only need SOME point inside
+    # the page — their tests scan the whole file (`"<table" not in
+    # _code_only(_src(path))` / `"<script" not in ...`), not a location —
+    # so `{% block content %}` is anchored to the one Jinja tag every page
+    # template has exactly once, rather than to markup that keeps moving.
     Mutation("an empty table promises rows that are not coming",
              "templates/scan.html",
-             '<ul class="flex flex-wrap gap-2">',
-             '<table><thead><tr><th>Device</th></tr></thead><tbody></tbody></table>'
-             '<ul class="flex flex-wrap gap-2">',
+             "{% block content %}",
+             "{% block content %}\n"
+             "<table><thead><tr><th>Device</th></tr></thead><tbody></tbody></table>",
              "test_a_page_about_an_absence_has_no_table"),
     Mutation("the page grows a live region for data nobody collects",
              "templates/network.html",
@@ -2338,10 +2384,11 @@ suite(
              "{{ t.get('overview_not_collected', 'Nothing here is being collected yet.') }}",
              "",
              "test_a_page_about_an_absence_says_so_in_words"),
+    # Same anchor swap and reason as the mutation above.
     Mutation("a script arrives, and with it every defect a script can carry",
              "templates/scan.html",
-             '<ul class="flex flex-wrap gap-2">',
-             '<script></script><ul class="flex flex-wrap gap-2">',
+             "{% block content %}",
+             "{% block content %}\n<script></script>",
              "test_the_new_pages_run_no_script"),
     Mutation("an inline style slips past the colour ratchet's blind spot",
              "templates/services.html",
@@ -2370,10 +2417,23 @@ suite(
              "rejectattr('enabled')",
              "selectattr('enabled')",
              "test_the_disabled_probes_are_outside_the_counted_table"),
+    # Relocated at WP-6 step 24: the test itself already checks
+    # partials/settings/_health_checks.html (it was correctly updated when
+    # the section moved there in the pre-WP-6 WP-4 D4b pass, per its own
+    # comment) — only this mutation's `path` field was left pointing at
+    # servers.html.
+    # `find` must be the FULL `<div ... id="health-checks">`, not the bare
+    # attribute: this file's own step-15 comment quotes `id="health-checks"`
+    # in prose too, earlier in the file than the real element, and
+    # replace(..., 1) landed on that first (comment) occurrence, leaving
+    # the real markup untouched — the mutation was not applying to the
+    # anchor at all. Found at step 24 the same way the bare-attribute
+    # version of this mistake was found in the sibling mutation (settings-
+    # servers suite) targeting the same file.
     Mutation("the anchor /services links to disappears from /servers",
-             "templates/servers.html",
-             'id="health-checks"',
-             'id="health-checks-moved"',
+             "templates/partials/settings/_health_checks.html",
+             '<div class="mb-8" id="health-checks">',
+             '<div class="mb-8" id="health-checks-moved">',
              "test_the_route_to_configuration_is_named_and_exists"),
 
     # A failed read reported as an empty estate.
@@ -2538,13 +2598,20 @@ suite(
              'config["settings"] = settings',
              "test_a_narrowed_save_preserves_everything_it_did_not_send"),
     # WP-4 D1d: one section per page.
-    # Anchored on the tuple's TAIL rather than the whole line: naming every
-    # element meant this mutation drifted each time a section was added,
-    # and a drifted anchor is reported as NOT APPLIED rather than caught.
+    # Anchored on the tuple's TAIL — the LAST SettingsTheme(...) entry,
+    # currently "display" — rather than naming every element, for the same
+    # reason the comment above this one always gave: a section added later
+    # should not drift this anchor. Retargeted at WP-6 step 24: step 21
+    # replaced the flat `("general", ..., "display")` tuple this used to
+    # match with the SettingsTheme NamedTuple registry (routes/views.py),
+    # so `, "display")` stopped existing verbatim anywhere in the file.
+    # Removing the entire last entry (rather than trimming its own tail)
+    # is what "the router loses a section" means now: SETTINGS_THEMES loses
+    # a row, and _SETTINGS_SECTIONS (derived from it) loses "display" too.
     Mutation("the router loses a section the page still renders",
              "routes/views.py",
-             ', "display")',
-             ')',
+             '    SettingsTheme("display",       "sliders",         "display_preferences",                   "Display Preferences"),\n',
+             '',
              "test_the_router_and_the_markup_agree_about_the_sections"),
     Mutation("an unknown section falls back to the first instead of 404ing",
              "routes/views.py",
@@ -2558,16 +2625,6 @@ suite(
              "{% if section == 'notifications' %}",
              "{% if True %}",
              "test_every_section_renders_only_when_it_is_the_active_one"),
-    Mutation("the nav hardcodes its own list instead of the router's",
-             "templates/settings.html",
-             "{% for name in settings_sections %}",
-             "{% for name in ['general', 'collector'] %}",
-             "test_the_nav_is_generated_from_the_router_list"),
-    Mutation("the active tab is marked by colour alone",
-             "templates/settings.html",
-             '{% if name == section %}aria-current="page"{% endif %}',
-             "",
-             "test_the_nav_is_generated_from_the_router_list"),
     Mutation("a section-scoped initialiser stops checking its controls are there",
              "templates/settings.html",
              "  if (!httpsToggle || !httpsWarning) return;",
@@ -2584,10 +2641,26 @@ suite(
              "      security_alerts: {\n        failed_login_tracking:",
              "      _security_alerts_removed: {\n        failed_login_tracking:",
              "test_the_section_builders_cover_exactly_the_keys_the_page_owns"),
+    # Retargeted at WP-6 step 24. The old anchor, `<div id="baseline-
+    # security-card"`, only ever existed inside this file's own step-15
+    # comment (prose quoting what the rendered output looks like) — the
+    # real element is `{% call card(..., id='baseline-security-card') %}`,
+    # single-quoted Jinja-macro-kwarg syntax, never `<div id="..."` in the
+    # template SOURCE this mutation edits. _markup() strips comments before
+    # its section regex ever runs, so a stray control landing inside the
+    # (correctly found) comment text was discarded along with the comment
+    # -- invisible to the test regardless of what the test itself asserts.
+    # This exact trap is independently documented, in more detail, in both
+    # _detection.html's own step-15 comment and _card.html's comment on
+    # `id=` (search either for "baseline-security-card") -- both flagged it
+    # as a known, deliberately-deferred gap rather than something to fix
+    # silently now that verify_guardrails.py is actually being run.
+    # `<div class="space-y-4">` is the macro call's own first line of real
+    # HTML (the caller body), unique in this file, and not inside a comment.
     Mutation("a control lands in the section without the builder reading it",
              "templates/partials/settings/_detection.html",
-             '  <div id="baseline-security-card"',
-             '  <input type="text" id="detection-stray-control">\n  <div id="baseline-security-card"',
+             '  <div class="space-y-4">',
+             '  <input type="text" id="detection-stray-control">\n  <div class="space-y-4">',
              "test_every_control_lives_in_the_section_that_saves_it"),
     Mutation("the demoted detector cards are faded again",
              "templates/settings.html",
@@ -2646,6 +2719,32 @@ suite(
              "_check_scheduled_reports(db, get_servers(), get_settings())",
              "_check_scheduled_reports(db, get_servers(), {})",
              "test_scheduled_reports_really_do_take_effect_without_a_restart"),
+)
+
+
+# ── settings-nav: the top-bar theme menu (WP-6 D4, steps 21-23) ──────────
+# New at WP-6 step 24: tests/test_settings_nav.py (S-1..S-16) had zero
+# mutation coverage until now — steps 21-23 each said editing this file was
+# "deliberately not run or edited here (out of this step's scope, and the
+# house rule against running it)". These two also used to live in the
+# settings-tracking suite, testing settings.html's OLD `<nav
+# id="settings-section-nav">` tab strip (deleted step 23); see that suite's
+# test_the_nav_is_generated_from_the_router_list for the full account of
+# why they moved here instead of just being deleted.
+suite(
+    "settings-nav",
+    Mutation("the nav hardcodes its own list instead of the router's",
+             "templates/partials/_settings_nav.html",
+             "{%- for theme in settings_themes %}",
+             "{%- for theme in settings_themes[:2] %}",
+             "test_every_theme_is_a_menuitem_link_to_its_own_url"),
+    Mutation("the active tab is marked by colour alone",
+             "templates/partials/_settings_nav.html",
+             '       {%- if _is_current %}\n'
+             '       aria-current="page"\n'
+             '       {%- endif %}',
+             "",
+             "test_the_current_theme_is_marked_by_more_than_colour"),
 )
 
 
@@ -3369,6 +3468,7 @@ SUITE_FILES = {
     "health-overview": "tests/test_health_check_overview.py",
     "overview-pages": "tests/test_design_overview_pages.py",
     "settings-tracking": "tests/test_settings_change_tracking.py",
+    "settings-nav": "tests/test_settings_nav.py",
     "action-dispatch": "tests/test_action_dispatch.py",
     "pages-render": "tests/test_pages_render.py",
     "permissions": "tests/test_design_permissions.py",

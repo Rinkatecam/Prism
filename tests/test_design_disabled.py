@@ -178,12 +178,22 @@ def test_the_helper_clears_the_reason_when_it_enables():
     assert "window.prismSetDisabled" in base, "the helper is gone"
     body = base[base.index("window.prismSetDisabled"):]
     body = body[:body.index("\n      };") + 10]
-    assert re.search(r"if\s*\(\s*!\s*title\s*\)", body), (
-        "no enable branch — a falsy reason must enable the control")
+    m = re.search(r"if\s*\(\s*!\s*title\s*\)\s*\{", body)
+    assert m, "no enable branch — a falsy reason must enable the control"
+    # Scoped to JUST the enable branch, not the whole function body: the
+    # disable branch below ALSO contains `el.disabled = false` (for a
+    # different, documented reason — see that branch's own comment), so an
+    # unscoped substring search cannot tell "the enable branch resets it"
+    # from "some branch, somewhere, does". WP-6 step 24 found this blind:
+    # a guardrails mutation deleting only the enable branch's copy still
+    # left this assertion passing, because the disable branch's copy was
+    # untouched and the check was never scoped to distinguish the two.
+    end = body.index("return;", m.end()) + len("return;")
+    enable_branch = body[m.end():end]
     for attr in ("data-tip-title", "data-tip-desc", "aria-disabled"):
-        assert f"removeAttribute('{attr}')" in body, (
+        assert f"removeAttribute('{attr}')" in enable_branch, (
             f"the enable branch does not clear {attr}, so it goes stale")
-    assert "el.disabled = false" in body, "the enable branch never enables"
+    assert "el.disabled = false" in enable_branch, "the enable branch never enables"
 
 
 def test_a_confirm_control_is_not_also_toggled_by_a_bare_assignment():
