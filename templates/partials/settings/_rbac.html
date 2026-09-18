@@ -193,9 +193,9 @@
       if (!data.ok) { div.textContent = data.error || RBAC_T.failedToLoad; return; }
       const head = `
         <div class="mb-2"><b>${_escHtml(data.user || RBAC_T.noAuth)}</b>
-          ${data.is_backup_admin ? '<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-brand/15 text-brand font-bold">${RBAC_T.backupAdmin}</span>' : ''}
-          ${data.permissive_mode ? '<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-warning/15 text-warning font-bold">${RBAC_T.permissive}</span>' : ''}
-          ${!data.auth_enabled ? '<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-raised text-muted font-bold">${RBAC_T.authOff}</span>' : ''}
+          ${data.is_backup_admin ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-brand/15 text-brand font-bold">${RBAC_T.backupAdmin}</span>` : ''}
+          ${data.permissive_mode ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-warning/15 text-warning font-bold">${RBAC_T.permissive}</span>` : ''}
+          ${!data.auth_enabled ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-raised text-muted font-bold">${RBAC_T.authOff}</span>` : ''}
         </div>`;
       const rows = Object.entries(data.permissions || {}).map(([srv, p]) => {
         const tierBadge = p.tier === 0

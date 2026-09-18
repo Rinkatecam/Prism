@@ -138,7 +138,11 @@ WHAT THIS FILE CANNOT SEE — read before trusting a green run:
     the reduced-motion media query never touches, so "the delays are
     unchanged" holds by construction, not by a specific measurement. If a
     tool with real media-feature emulation becomes available, this is the
-    one step-10 item still worth a genuine live re-check.
+    one step-10 item still worth a genuine live re-check. Step 27 (WP-6
+    close-out) checked again, while taking the RENDERED CONTRAST readings
+    below, for any new tool offering that emulation: none had appeared,
+    so this stays the reasoned-not-measured finding above rather than
+    being silently re-labelled "done" or quietly dropped at close-out.
   * CARRIERS BUILT BY CLIENT-SIDE JAVASCRIPT AFTER THE PAGE LOADS. T-2/T-3/
     T-4 render every route through Flask's test client, which executes
     Jinja but no JavaScript — so a carrier that only exists after a script
@@ -765,10 +769,13 @@ def test_the_tooltip_outranks_every_other_layer():
 # it never had a hand-written version of; the rest hold steady because their
 # shape genuinely does not fit any of the four macros without changing what
 # the page looks like more than this step's brief asked for.
+# base.html, settings.html and partials/server_card.html reached 0 (see
+# the comment above for base.html's own account) and their entries are
+# deleted here as part of WP-6 step 27's close-out sweep -- .get(f, 0)
+# already treats a missing key identically to an explicit 0 for every
+# test below, so this changes no test's behaviour, only removes
+# now-redundant bookkeeping for files with nothing left to track.
 TIP_CARRIER_BASELINE: dict[str, int] = {
-    "base.html": 0,
-    "settings.html": 0,
-    "partials/server_card.html": 0,
     "operations.html": 1,
     "partials/server_comparison.html": 2,
     "partials/settings/_server_config.html": 2,
@@ -883,6 +890,27 @@ def _tooltip_css_block() -> str:
 
 
 def test_the_panel_stays_on_the_pinned_scales():
+    """T-11. `#ps-tooltip` stays on the pinned radius/motion scales and
+    introduces no `!important` that could escape the global
+    reduced-motion block. This test only reads CSS source -- it cannot
+    see a rendered pixel in either theme.
+
+    RENDERED CONTRAST (step 27, WP-6 close-out; first measured step 10
+    (h), 2026-09-18, on settings.html's poll_interval tip): reading
+    `getComputedStyle` off the actually-rendered `#ps-tooltip` in both
+    themes and computing WCAG contrast against its own background, not a
+    token value --
+      light: bg rgb(255,255,255); title rgb(2,6,23) -> 20.17:1; desc
+        rgb(71,85,105) -> 7.58:1.
+      dark: bg rgb(15,22,35); title rgb(241,245,249) -> 16.53:1; desc
+        rgb(163,178,199) -> 8.41:1.
+    All four clear AA's 4.5:1 with large margins (the tightest, light
+    desc at 7.58:1, still clears AAA's 7:1). desc's fg/ratio pair is
+    identical to H-2's rendered H3 number (test_design_headings.py) --
+    both are the `muted` token on a card-coloured surface, the tooltip
+    panel's background and a card's background being the same rendered
+    colour in both themes. See this module's own docstring (RENDERED
+    CONTRAST bullet) for the full step-10 record this reuses verbatim."""
     block = _tooltip_css_block()
     assert "border-radius: 0.5rem" in block, (
         "#ps-tooltip's border-radius left the two-value scale "
@@ -1126,7 +1154,6 @@ DESC_LINE_BASELINE: dict[str, int] = {
     "partials/settings/_health_checks.html": 1,
     "partials/settings/_maintenance.html": 1,
     "partials/settings/_rbac.html": 2,
-    "partials/settings/_restarts.html": 0,
     "partials/settings/_server_config.html": 2,
     "partials/settings/_tls.html": 1,
     "partials/tls_overview.html": 1,

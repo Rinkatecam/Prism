@@ -485,6 +485,15 @@ def test_css_and_tailwind_cover_exactly_the_same_tokens():
 # An allowlist of forty-odd colours would assert nothing. A RATCHET does:
 # the count per file may fall, never rise. That is the property §7 actually
 # wanted — "without it this regrows" — and it is enforceable.
+#
+# WP-6 step 27's close-out sweep deletes every entry below that had already
+# reached 0 (dashboard.html, reports.html, servers.html, partials/
+# active_actions.html, monitoring.html, partials/verdict_header.html,
+# operations.html, base.html) -- dict.get(f, 0) already treats a missing
+# key identically to an explicit 0 in every test below, so this changes no
+# test's behaviour, only removes now-redundant bookkeeping. Each file's own
+# "how it got to 0" narrative stays in the comment immediately above where
+# its entry used to sit.
 
 LITERAL_BASELINE: dict[str, int] = {
     # 47 -> 46 + 1: the anomalies/forecasts region moved to
@@ -513,7 +522,6 @@ LITERAL_BASELINE: dict[str, int] = {
     # spelled as tokens (the `dark:` literal halves were pre-token leftovers —
     # `border-faint` already resolves per theme, so they were deleted rather
     # than moved), and the restart banner's four were the same story.
-    "dashboard.html": 0,
     # rbac.html left the baseline entirely in WP-4 D4: its fourteen
     # literals were replaced by tokens rather than relocated when the
     # page became a settings partial. Twelve were in script-built class
@@ -528,11 +536,7 @@ LITERAL_BASELINE: dict[str, int] = {
     # `bg-accent hover:bg-accent-strong` idiom. The four bare hexes that
     # remain are SVG stroke and bar-fill values, not class utilities, and
     # are invisible to this ratchet by design: a mark needs 3:1, not 4.5:1.
-    "reports.html": 0,
-    "servers.html": 0,
     "settings.html": 10,
-    "partials/active_actions.html": 0,
-    "monitoring.html": 0,
     # The toggle idiom's dark override, relocated with the TLS block in
     # WP-4 D2b. settings.html carries nine identical copies; WP-8 takes
     # them in one pass rather than leaving one fixed and nine behind.
@@ -560,14 +564,11 @@ LITERAL_BASELINE: dict[str, int] = {
     # 5 -> 0. Two went with the deleted all-healthy branch; the other three
     # were the light/dark halves of status washes that the `-tint` / `-strong`
     # pairs express in one class.
-    "partials/verdict_header.html": 0,
-    "operations.html": 0,
     "partials/server_comparison.html": 4,
     # 1 -> 0. WP-6 step 11 gave the global confirm/prompt dialog's <h3> the
     # canonical dialog-title string (data-role="dialog-title", §2.6) in the
     # same commit that dropped `dark:text-[#F9FAFB]` for the `text-ink` token
     # it was redundantly restating.
-    "base.html": 0,
     "partials/critical_issues.html": 1,
     "setup.html": 1,
 }
@@ -845,8 +846,7 @@ Z_LITERAL_BASELINE: dict[str, int] = {
     # CSS, including its own `z-index: 9999;` declaration — one of the eight
     # 9999 sites named in the cluster comment above. Nothing else in this
     # file used a raw z-index, so the count reaches zero rather than merely
-    # falling.
-    "templates/topology.html": 0,
+    # falling. Entry itself deleted at WP-6 step 27's close-out sweep.
     # 19 -> 18. WP-6 step 8 deleted #block-tooltip along with the rest of
     # its CSS, including its own `z-index: 9999;` declaration — the OTHER
     # rival-panel 9999 named in the cluster comment above. The editor's own

@@ -308,7 +308,49 @@ def test_the_ladder_is_monotone_in_both_themes():
 
 def test_every_rung_clears_aa_on_the_surface_it_sits_on():
     """H-2. H1 (ink) sits on page inside the bar's cut-out; H2/H3/H4
-    (brand/muted/faint) sit on card. All >= 4.5 in both themes."""
+    (brand/muted/faint) sit on card. All >= 4.5 in both themes.
+
+    RENDERED CONTRAST, step 27 (WP-6 close-out), measured 2026-09-18 by
+    reading `getComputedStyle` off the actually-rendered elements (not
+    computed from token values) via the browser tool, one rung per real
+    page/theme combination, backgrounds resolved by walking up from each
+    heading to the first ancestor with a non-transparent
+    `background-color` (H1 carries `bg-page` on itself -- the bar's
+    cut-out -- so it resolves to its own background, not its parent's):
+      H1 `#page-title` ("Settings", /settings/*): light bg
+        rgb(241,245,249), fg rgb(2,6,23) -> 18.41:1; dark bg rgb(5,7,13),
+        fg rgb(241,245,249) -> 18.38:1.
+      H2 (card heading "Security", /settings/security): light bg
+        rgb(255,255,255), fg rgb(91,33,182) -> 8.98:1; dark bg
+        rgb(15,22,35), fg rgb(196,181,253) -> 9.81:1.
+      H3 (subhead "Communication", /settings/security): light bg
+        rgb(255,255,255), fg rgb(71,85,105) -> 7.58:1; dark bg
+        rgb(15,22,35), fg rgb(163,178,199) -> 8.41:1. (Same fg/ratio as
+        T-11's tooltip "desc" text -- both are the `muted` token on the
+        same card-coloured surface.)
+      H4 ("Procedures executed", /reports): light bg rgb(255,255,255),
+        fg rgb(100,116,139) -> 4.76:1; dark bg rgb(15,22,35), fg
+        rgb(126,141,163) -> 5.37:1. This is the one rung with no
+        naturally-visible instance anywhere in the tree today --
+        `subhead()` is never called with `level=4` (§4's H4 is a defined
+        but not-yet-adopted rung); the only real markup using H4's exact
+        canonical string is reports.html's JS-built disclosure detail,
+        which sits behind a `.hidden` ancestor until a report row is
+        expanded. `getComputedStyle().color`/`.backgroundColor` resolve
+        correctly for a `display: none` subtree (colour is a computed,
+        not a used/layout, value), so the number is real, but it is the
+        only rung measured without also confirming the element paints
+        on-screen at that colour -- flagged rather than silently treated
+        as equivalent to the other three.
+      All four clear AA (4.5:1) in both themes; H4 light (4.76:1) is the
+      tightest of the twelve, consistent with H-3's positive control
+      (faint fails AA on raised/page -- 4.04/4.34 -- which is exactly why
+      §2.3 restricts H4 to card). These eight rendered numbers match
+      H-1's token-derived ones (`test_the_ladder_is_monotone_in_both_themes`,
+      18.41/8.98/7.58/4.76 light, 18.38/9.81/8.41/5.37 dark) to two decimal
+      places -- confirmation that, unlike the mobile theme-menu sheet
+      (base.html/app.css, this same WP-6), the ladder's cascade carries the
+      token values to the screen with no intervening specificity defect."""
     for index_, theme in ((0, "light"), (1, "dark")):
         checks = (
             ("H1 ink/page", dt.TOKENS["ink"][index_], dt.TOKENS["page"][index_]),
