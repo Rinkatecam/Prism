@@ -860,12 +860,9 @@ function discoverServers() {
       const opacity = s.already_monitored ? 'opacity-50' : '';
       const badge = s.already_monitored ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-raised dark:bg-line text-muted">Monitored</span>' : '';
       const tipId = 'discovery-tip-' + i;
-      const tipAttrs = monitored
-        ? 'disabled tabindex="0" aria-describedby="' + tipId + '" data-tip-title="' + discoveryTipTitle + '" data-tip-desc="' + discoveryTipDesc + '"'
-        : '';
       const mirror = monitored ? '<span class="sr-only" id="' + tipId + '">' + discoveryTipDesc + '</span>' : '';
       return `<label class="flex items-center gap-3 p-2 rounded hover:bg-page dark:hover:bg-page/50 cursor-pointer ${opacity}">
-        <input type="checkbox" class="discovery-cb rounded border-gray-300" data-index="${i}" ${tipAttrs}>
+        <input type="checkbox" class="discovery-cb rounded border-gray-300" data-index="${i}" ${monitored ? 'disabled tabindex="0" aria-label="' + s.name + '" aria-describedby="' + tipId + '" data-tip-title="' + discoveryTipTitle + '" data-tip-desc="' + discoveryTipDesc + '"' : ''}>
         <div class="flex-1 min-w-0">
           <div class="text-sm font-medium truncate">${s.name} ${badge}</div>
           <div class="text-xs text-muted truncate">${s.host} ${s.os ? '\u2014 ' + s.os : ''}</div>
