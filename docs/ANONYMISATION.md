@@ -20,6 +20,15 @@ push that would publish a real identifier fails before it leaves the machine.
 Author attribution in `LICENSE` and `README.md` is deliberate and exempt. The
 point is to protect the estate, not the maintainer's byline.
 
+The exemption only lifts terms explicitly tagged `person:` in
+`.anonymisation-denylist` (e.g. `person:j.doe`) — never a whole file, and
+never inferred from shape. A `person:` term is still forbidden everywhere
+else; only in `LICENSE`/`README.md` is it lifted, and a real hostname or
+address in either file is still caught exactly as anywhere. An untagged
+term already in the deny-list for the same person stays forbidden there
+too, until someone deliberately re-tags it — nothing is assumed on your
+behalf.
+
 ## What to write instead
 
 A fictional fleet, role-named so the docs stay readable:

@@ -215,6 +215,67 @@ def test_local_denylist_is_gitignored():
     assert result.returncode == 0, ".anonymisation-denylist must be gitignored"
 
 
+# ── the LICENSE/README author-attribution exemption ─────────────────────────
+#
+# docs/ANONYMISATION.md: "Author attribution in LICENSE and README.md is
+# deliberate and exempt. The point is to protect the estate, not the
+# maintainer's byline." Found not actually implemented when a real relicense
+# tried to name a real Licensor and the config-derived check fired anyway —
+# the term came from `.anonymisation-denylist` (a personal account, not
+# config.json), which load_person_terms() did not yet look at.
+
+def test_person_prefix_is_both_a_forbidden_term_and_an_exempt_one(tmp_path):
+    """The prefix does not weaken the default: a `person:` term is still in
+    load_local_terms() (forbidden everywhere) AND in load_local_person_terms()
+    (additionally eligible for the attribution exemption). An untagged term
+    is in the first set only -- opt-in, never inferred."""
+    path = tmp_path / "denylist"
+    path.write_text("person:j.doe\nSomeCodename\n", encoding="utf-8")
+
+    assert guard.load_local_terms(path) == {"j.doe", "somecodename"}
+    assert guard.load_local_person_terms(path) == {"j.doe"}
+
+
+def test_attribution_exempt_files_are_exactly_license_and_readme():
+    assert guard._is_attribution_exempt("LICENSE")
+    assert guard._is_attribution_exempt("README.md")
+    assert not guard._is_attribution_exempt("docs/README.md")
+    assert not guard._is_attribution_exempt("readme.md")
+    assert not guard._is_attribution_exempt("SECURITY.md")
+
+
+def test_a_person_term_is_lifted_in_an_exempt_file_but_nowhere_else():
+    person = {"j.doe"}
+    line = "Licensor: Jane J.Doe, trading as Whatever"
+
+    # Scanned as LICENSE/README content (caller supplies the exemption):
+    assert guard.scan_text(line, {"j.doe"}, exempt_terms=person) == []
+
+    # The identical text, scanned as any other file (no exemption passed),
+    # still fires -- the lift is per-call, not global.
+    assert guard.scan_text(line, {"j.doe"}) != []
+
+
+def test_the_attribution_exemption_never_covers_hostnames_or_addresses():
+    """As narrow as the reason for it, same as the SELF exemption above: only
+    the specific person terms the caller passes are lifted. A real hostname
+    shape or a real address in LICENSE/README is still a real leak."""
+    person = {"j.doe"}
+    rules = [("local-pattern", SYNTHETIC_CONVENTION, "test convention")]
+
+    # The person term is lifted...
+    assert guard.scan_text("Licensor: J.Doe", {"j.doe"}, rules,
+                           exempt_terms=person) == []
+    # ...but a hostname-shaped term in the SAME call is not, because it was
+    # never in exempt_terms to begin with.
+    assert guard.scan_text("Licensor: J.Doe, host ACMEFS01", {"j.doe", "acmefs01"},
+                           rules, exempt_terms=person) != []
+    # ...and neither is an actual shape-rule or address match.
+    assert guard.scan_text("see ACMEFS01", set(), rules, exempt_terms=person) != []
+    assert guard.scan_text(f'host {FIXTURE_ADDRS["ten"]}', set(), rules,
+                           exempt_terms=person) != []
+
+
 # ── the gate itself ──────────────────────────────────────────────────────
 
 def test_require_config_refuses_when_config_is_absent(tmp_path, monkeypatch, capsys):

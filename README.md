@@ -313,3 +313,32 @@ Workflow `run_powershell` and `condition` blocks pass user-authored scripts thro
 - Embedded credentials rejected
 - Host must match the allowed list (Teams / Slack / Discord by default; extensible via `settings.webhooks.allowed_hosts`)
 - Message body sanitised (strips control chars, caps at 2 KB) so a crafted message can't smuggle headers
+
+## License
+
+Prism is source-available under the [Business Source License 1.1](./LICENSE) (`BUSL-1.1`).
+
+**In short:**
+- You can read, run, modify, and self-host Prism for free — including to
+  monitor your own servers, or your clients' servers as part of your own
+  IT/managed-services work.
+- You cannot take Prism itself (as-is or modified, branded or white-labeled)
+  and sell, redistribute, or offer it as a stand-alone product or service
+  that someone else could obtain independently of you.
+- On **2030-09-21**, this version of Prism automatically converts to the
+  [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) — fully
+  open, no restrictions.
+
+Later releases of Prism may carry their own, later Change Date. See the
+[LICENSE](./LICENSE) file for the exact legal terms — this section is a
+plain-language summary, not the license itself, and the LICENSE file
+governs in case of any conflict.
+
+> **Note on earlier versions:** commits/releases published up to and
+> including commit `e8b7671` (2026-09-21) were made available under the MIT
+> License. Those specific versions remain under MIT for anyone who already
+> obtained them — this relicensing applies to every commit after
+> `e8b7671`, not retroactively.
+
+For a commercial license (e.g. to offer Prism as a hosted service), contact
+info@vestixa.com.
