@@ -51,7 +51,15 @@ def app_obj():
 
 @pytest.fixture(scope="module")
 def client(app_obj):
-    return app_obj.test_client()
+    c = app_obj.test_client()
+    # A fresh CI checkout has no config.json, so no backup admin exists and
+    # auth.check_setup's before_request hook redirects every page to /setup
+    # (see tests/test_reset_password_authz.py's _client(), the established
+    # fix for this same gap). A logged-in session is realistic -- these
+    # tests exercise rendered markup, not the first-run gate itself.
+    with c.session_transaction() as sess:
+        sess["username"] = "tester"
+    return c
 
 
 # ── the registry's own structural invariants ────────────────────────────

@@ -722,6 +722,10 @@ def test_an_unknown_section_is_a_404_rather_than_a_silent_fallback():
     forgot the operator's setting."""
     import app as prism_app
     client = prism_app.app.test_client()
+    # Logged-in session so check_setup's fresh-CI-checkout /setup redirect
+    # (no config.json) doesn't shadow the 200s/404 under test (test_reset_password_authz.py's _client()).
+    with client.session_transaction() as sess:
+        sess["username"] = "tester"
     assert client.get("/settings").status_code == 200
     for name in _router_sections():
         assert client.get(f"/settings/{name}").status_code == 200, name
@@ -732,7 +736,12 @@ def test_settings_renders_the_first_section_without_redirecting():
     """`/settings` is the URL every operator has bookmarked. Keeping it a
     real page means the split costs nobody a redirect."""
     import app as prism_app
-    r = prism_app.app.test_client().get("/settings")
+    client = prism_app.app.test_client()
+    # Logged-in session so check_setup's fresh-CI-checkout /setup redirect
+    # (no config.json) doesn't shadow the 200 under test (test_reset_password_authz.py's _client()).
+    with client.session_transaction() as sess:
+        sess["username"] = "tester"
+    r = client.get("/settings")
     assert r.status_code == 200
     body = r.get_data(as_text=True)
     # Scripts stripped first: `settingsSectionPresent` builds the very same
@@ -934,6 +943,10 @@ def test_the_old_rbac_url_still_resolves():
     redirects because its destination landed in the same commit."""
     import app as prism_app
     client = prism_app.app.test_client()
+    # Logged-in session so check_setup's fresh-CI-checkout /setup redirect
+    # (no config.json) doesn't shadow the 301 under test (test_reset_password_authz.py's _client()).
+    with client.session_transaction() as sess:
+        sess["username"] = "tester"
     r = client.get("/admin/rbac")
     assert r.status_code == 301, r.status_code
     assert r.headers["Location"].endswith("/settings/rbac")

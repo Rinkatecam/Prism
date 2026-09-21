@@ -232,7 +232,15 @@ def app_obj():
 
 @pytest.fixture(scope="module")
 def client(app_obj):
-    return app_obj.test_client()
+    c = app_obj.test_client()
+    # A fresh CI checkout has no config.json, so no backup admin exists and
+    # auth.check_setup's before_request hook redirects every page to /setup
+    # (see tests/test_reset_password_authz.py's _client(), the established
+    # fix for this same gap). A logged-in session is realistic -- these
+    # tests exercise rendered markup, not the first-run gate itself.
+    with c.session_transaction() as sess:
+        sess["username"] = "tester"
+    return c
 
 
 def _page_routes() -> list[str]:
@@ -1217,7 +1225,16 @@ def test_the_settings_theme_repeat_scan_is_not_vacuous():
     it happens to leave one violation standing."""
     import app as prism_app
     prism_app.app.config["TESTING"] = True
-    counts = _settings_theme_repeats(prism_app.app.test_client())
+    client = prism_app.app.test_client()
+    # A fresh CI checkout has no config.json, so check_setup's before_request
+    # hook would redirect every /settings/<slug> to /setup, and _settings_
+    # theme_repeats' own `if status != 200: continue` would silently skip
+    # every section -- the exact "always finds zero" failure this ratchet
+    # exists to catch, but from the harness rather than the detector
+    # (test_reset_password_authz.py's _client() is the established fix).
+    with client.session_transaction() as sess:
+        sess["username"] = "tester"
+    counts = _settings_theme_repeats(client)
     assert sum(counts.values()) >= 7, (
         f"only {sum(counts.values())} settings theme-repeat(s) found across "
         f"{counts} -- measured 7 across 7 sections after WP-6 step 15 "

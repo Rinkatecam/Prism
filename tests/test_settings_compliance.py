@@ -43,7 +43,15 @@ _KEYS = ["compliance_enable", "compliance_enable_desc", "compliance_off_means",
 def client():
     import app as prism_app
     prism_app.app.config["TESTING"] = True
-    return prism_app.app.test_client()
+    c = prism_app.app.test_client()
+    # A fresh CI checkout has no config.json, so no backup admin exists and
+    # auth.check_setup's before_request hook redirects every page to /setup
+    # (see tests/test_reset_password_authz.py's _client(), the established
+    # fix for this same gap). A logged-in session is realistic -- these
+    # tests exercise rendered markup, not the first-run gate itself.
+    with c.session_transaction() as sess:
+        sess["username"] = "tester"
+    return c
 
 
 # ── the flag now has a control ────────────────────────────────────────────

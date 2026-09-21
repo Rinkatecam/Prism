@@ -34,6 +34,8 @@ from pathlib import Path
 
 import pytest
 
+from models import ServerConfig
+
 _ROOT = Path(__file__).resolve().parent.parent
 _PARTIAL = _ROOT / "templates" / "partials" / "settings" / "_servers.html"
 _SERVERS = _ROOT / "templates" / "servers.html"
@@ -48,7 +50,15 @@ _STAYED = ["loadServerTags", "renderServerTagPills", "_tagReadableInk",
 def client():
     import app as prism_app
     prism_app.app.config["TESTING"] = True
-    return prism_app.app.test_client()
+    c = prism_app.app.test_client()
+    # A fresh CI checkout has no config.json, so no backup admin exists and
+    # auth.check_setup's before_request hook redirects every page to /setup
+    # (see tests/test_reset_password_authz.py's _client(), the established
+    # fix for this same gap). A logged-in session is realistic -- these
+    # tests exercise rendered markup, not the first-run gate itself.
+    with c.session_transaction() as sess:
+        sess["username"] = "tester"
+    return c
 
 
 def _code(path: Path) -> str:
@@ -468,9 +478,15 @@ def test_the_actions_and_the_view_stayed():
     assert not missing, f"taken from /servers by mistake: {missing}"
 
 
-def test_no_configuration_control_is_left_on_the_fleet_page(client):
+def test_no_configuration_control_is_left_on_the_fleet_page(client, monkeypatch):
     """Asserted against the RENDERED page: a control removed from the table
     but left on the card view is still a control."""
+    # testConnection is per-row; a fresh CI checkout's empty fleet would never
+    # render one and the assertion below would pass for the wrong reason.
+    import routes.views as views
+    monkeypatch.setattr(views._config, "get_servers",
+                         lambda: [ServerConfig(name="TESTSRV", host="testsrv.example.com",
+                                                username="u", password="p")])
     body = client.get("/servers").get_data(as_text=True)
     for action in ("showAddForm", "editServer", "deleteServer",
                    "discoverServers", "exportServersCSV"):
@@ -486,10 +502,17 @@ def test_the_fleet_page_says_where_its_configuration_went(client):
     assert 'href="/settings/servers"' in body
 
 
-def test_the_settings_page_has_a_table_to_act_on(client):
+def test_the_settings_page_has_a_table_to_act_on(client, monkeypatch):
     """The one part of D4 that is a build rather than a move: /servers keeps
     its table for READING the fleet, so Settings needs its own narrow one for
     changing it."""
+    # editServer/deleteServer are per-row; a fresh CI checkout's empty fleet
+    # would never render one and the assertion below would pass for the wrong
+    # reason.
+    import routes.views as views
+    monkeypatch.setattr(views._config, "get_servers",
+                         lambda: [ServerConfig(name="TESTSRV", host="testsrv.example.com",
+                                                username="u", password="p")])
     body = client.get("/settings/servers").get_data(as_text=True)
     assert 'id="settings-server-table"' in body
     for action in ("showAddForm", "editServer", "deleteServer", "discoverServers"):

@@ -34,6 +34,8 @@ from pathlib import Path
 
 import pytest
 
+from models import ServerConfig
+
 _BASE = Path(__file__).resolve().parent.parent / "templates" / "base.html"
 
 
@@ -52,13 +54,31 @@ def index(app_obj):
 
 @pytest.fixture(scope="module")
 def client(app_obj):
-    return app_obj.test_client()
+    c = app_obj.test_client()
+    # A fresh CI checkout has no config.json, so no backup admin exists and
+    # auth.check_setup's before_request hook redirects every page to /setup
+    # (see tests/test_reset_password_authz.py's _client(), the established
+    # fix for this same gap). A logged-in session is realistic -- these
+    # tests exercise the search endpoint, not the first-run gate itself.
+    with c.session_transaction() as sess:
+        sess["username"] = "tester"
+    return c
 
 
 # ── the index ─────────────────────────────────────────────────────────────
 
-def test_the_index_covers_all_four_kinds(index):
-    kinds = {e["kind"] for e in index}
+def test_the_index_covers_all_four_kinds(app_obj, monkeypatch):
+    # The "server" kind comes from config.get_servers(); a fresh CI checkout's
+    # empty fleet would never produce one, making this assertion fail for an
+    # environment reason rather than an indexing one. Rebuilt locally (not via
+    # the shared `index` fixture) so seeding a server here can't leak into the
+    # other module-scoped-index tests.
+    import app as prism_app
+    import search_index
+    monkeypatch.setattr(prism_app.config, "get_servers",
+                         lambda: [ServerConfig(name="TESTSRV", host="testsrv.example.com",
+                                                username="u", password="p")])
+    kinds = {e["kind"] for e in search_index.build(app_obj)}
     assert kinds == {"server", "settings", "page", "heading"}, sorted(kinds)
 
 

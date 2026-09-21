@@ -157,6 +157,15 @@ def build(app, settings: dict | None = None, lang: str = "en") -> list[dict]:
 
         # ── settings sections ──────────────────────────────────────────
         client = app.test_client()
+        # On a genuinely fresh install (no backup admin yet), auth.py's
+        # check_setup before_request hook redirects every page to /setup --
+        # including this internal crawl, which would otherwise index
+        # nothing. A logged-in session sidesteps the gate the same way
+        # tests/test_reset_password_authz.py's _client() already does for
+        # the test suite; it does not affect what an actual visitor sees,
+        # since this client is never exposed outside this function.
+        with client.session_transaction() as sess:
+            sess["username"] = "search-index-crawler"
         for name in _SETTINGS_SECTIONS:
             theme = _theme_by_slug[name]
             entries.append({
