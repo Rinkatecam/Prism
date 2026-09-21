@@ -1,9 +1,40 @@
 {% extends "base.html" %}
+{% from "partials/_skeletons.html" import vitals_cards, banner %}
+{% from "partials/_empty_state.html" import empty_state %}
+{% from "partials/_card.html" import card with context %}
+{% from "partials/_tip.html" import tip_mirror with context %}
+
+{# 1280 -> 2560 is the design's range, and the top end is the requirement that
+   does not survive being ignored: a wall-screen dashboard must not be a
+   fixed-width island. See `.page-dashboard` in app.css for the measured
+   number and why it is capped rather than unbounded. #}
+{% block content_width %}page-dashboard{% endblock %}
+
+{% block page_title %}{{ t.dashboard }}{% endblock %}
+{% block page_icon %}layout-dashboard{% endblock %}
+
 {% block content %}
 
-{# Verdict header — "is anything wrong right now?". Rendered server-side on
-   first paint via {% include %}, AND refreshed on every prismRefresh (same
-   trigger as the stat cards / grid) so it never freezes at page-load values. #}
+{# WP-6 D2/C22 — this page no longer has its own top-level heading. base.html's
+   topbar H1 (`#page-title`, filled in by the page_title/page_icon blocks above)
+   is now the ONLY h1 on every page, present in the DOM always. Here on '/'
+   it is visually clipped by the `#page-title[data-home="true"]` rule in
+   app.css — CSS on an element that stays in the accessibility tree, not a
+   deleted heading — because the brand mark already names this destination
+   and a visible "Dashboard" chip would repeat it back 400px below the
+   logo. A visible title is also not worth the vertical space on a wall
+   screen (the nav already says where you are). This used to be a second,
+   `sr-only` h1 of its own; two h1s on one page is a worse document outline
+   than a single one that CSS hides, and keeping base's h1 in the DOM on
+   every page — rather than the dashboard omitting one entirely — is what
+   keeps search_index.build()'s "/" -> path fallback provably dead (§6.1)
+   instead of merely unexercised. #}
+
+{# Hero banner — CONDITIONAL: renders only when something is wrong. Painted
+   server-side on first paint via {% include %}, AND refreshed on every
+   prismRefresh (same trigger as the quadrant) so it never freezes at
+   page-load values. All-healthy is expressed by the vitals circle beating
+   slowly, not by a green banner — see the partial's header. #}
 <section class="mb-6" aria-live="polite"
          hx-get="/partials/verdict-header" hx-trigger="prismRefresh from:body"
          hx-swap="morph:innerHTML">
@@ -12,22 +43,26 @@
 
 {% if server_count == 0 %}
 {# Onboarding empty state — shown to brand-new admins before any server is
-   configured. Without this, the dashboard is a sea of skeletons + nothing. #}
+   configured. Without this, the dashboard is a sea of skeletons + nothing.
+
+   WP-6 step 18: was the tree's only p-10 dashed shape (border-2 border-dashed),
+   now empty_state(card=true) per DESIGN_SYSTEM_SPEC.md Part II §7 Batch E --
+   this deletes the only p-10 and the only border-2 anywhere in the tree.
+   message/hint are the EXACT pair servers.html's own empty fleet-table state
+   already uses (line ~62) rather than new copy: same underlying situation
+   (no servers configured), same words, and zero new i18n keys to translate.
+   Real, visible losses from the conversion, flagged rather than absorbed
+   silently: the "Welcome to Prism" heading, the large accent-tinted circular
+   icon badge, and the dedicated "Add Your First Server" CTA button are all
+   gone -- empty_state() has no heading/button parameter (D3/§4's own
+   "no desc parameter, and there will not be one" logic: this macro has a
+   fixed, deliberately small shape). The operator is not stranded: the
+   Overview doorway grid a few lines below still links to /servers. #}
 <section class="mb-8">
-  <div class="bg-card rounded-md border-2 border-dashed border-line p-10 text-center">
-    <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-info/10 dark:bg-info/20 flex items-center justify-center">
-      <i data-lucide="server" class="w-8 h-8 text-accent"></i>
-    </div>
-    <h2 class="text-xl font-semibold mb-2">{{ t.get('welcome_to_prism', 'Welcome to Prism') }}</h2>
-    <p class="text-sm text-muted mb-6 max-w-md mx-auto">
-      {{ t.get('no_servers_yet', "You haven't added any servers yet. Add your first server to start monitoring CPU, RAM, disk, and Windows updates across your fleet.") }}
-    </p>
-    <a href="/servers"
-       class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors">
-      <i data-lucide="plus" class="w-4 h-4"></i>
-      {{ t.get('add_first_server', 'Add Your First Server') }}
-    </a>
-  </div>
+  {{ empty_state('server', t.no_servers,
+                 t.get('no_servers_hint_fleet',
+                       'Add the first one under Settings → Servers — nothing is collected until a server is listed there'),
+                 card=true) }}
 </section>
 {% endif %}
 
@@ -62,33 +97,163 @@
         </div>
       </div>
     </div>
-    <button type="button" data-action="dismissRestartBanner" title="Dismiss"
+    {%- set _dismiss_tip_id = next_tip_id() %}
+    <button type="button" data-action="dismissRestartBanner" aria-label="{{ t.dismiss }}"
+      aria-describedby="{{ _dismiss_tip_id }}"
+      data-tip-title="{{ t.dismiss }}"
+      data-tip-desc="{{ t.get('dismiss_restart_banner_tip', 'Hide this notification. It reappears on your next visit if restarts are still active.') }}"
       class="flex-shrink-0 p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors bg-transparent border-0 cursor-pointer">
       <i data-lucide="x" class="w-4 h-4 text-muted"></i>
     </button>
+    {{ tip_mirror('dismiss_restart_banner_tip', 'Hide this notification. It reappears on your next visit if restarts are still active.', _dismiss_tip_id) }}
   </div>
 </section>
 
-<!-- Status Overview Section -->
-<section class="mb-8">
-  <div hx-get="/partials/status-overview" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML">
-    <div class="animate-pulse grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="bg-card rounded-lg p-6 border border-line h-24"></div>
-      <div class="bg-card rounded-lg p-6 border border-line h-24"></div>
-      <div class="bg-card rounded-lg p-6 border border-line h-24"></div>
-      <div class="bg-card rounded-lg p-6 border border-line h-24"></div>
+{# ── The vitals quadrant ─────────────────────────────────────────────────
+
+   Four cards in a 2x2 with the estate circle overlapping their inner
+   corners. Replaces the four flat stat boxes that used to sit here (and
+   `/partials/status-overview` with them, which had no other caller).
+
+   TWO PARTS, and the split is not cosmetic:
+
+   * The CARDS are a swapped partial, so their numbers stay live.
+   * The CIRCLE is static markup that no swap touches, because it owns a
+     <canvas>. `morph:innerHTML` replaces the elements it swaps, so a canvas
+     in the fragment would be discarded and rebuilt on every prismRefresh
+     — roughly every 5s — and the beat would never get past its first
+     cycle. static/js/vitals-monitor.js bridges the two: it reads the
+     fragment's `data-vitals-*` after each settle, so the counts and the
+     tempo always come from the same render and cannot disagree.
+
+   The circle's readout is rendered server-side here as well as being
+   updated by JS. Without that it would be three dashes until the first
+   swap lands, on the one element the whole page is arranged around. #}
+{% set vitals_labels = {
+     'calm':     t.get('vitals_state_calm', 'Stable'),
+     'elevated': t.get('vitals_state_elevated', 'Elevated'),
+     'urgent':   t.get('vitals_state_urgent', 'Critical'),
+     'flat':     t.get('vitals_state_flat', 'No signal'),
+     'idle':     t.get('vitals_state_idle', 'Nothing monitored'),
+     'unmeasured': t.get('vitals_state_unmeasured', 'Awaiting data')
+   } %}
+<section id="vitals-section" class="vitals-quadrant mb-8">
+  <div hx-get="/partials/vitals" hx-trigger="load, prismRefresh from:body"
+       hx-swap="morph:innerHTML">
+    {{ vitals_cards() }}
+  </div>
+  {# One definition of the severity->word map, consumed twice: by Jinja for
+     first paint and by the JS for every refresh after it. Two copies is how
+     the two drift, and a state word that lags the tempo it labels is worse
+     than no word. #}
+  <div id="estate-vitals" class="vitals-core vitals-core--{{ vitals.severity }}"
+       data-severity="{{ vitals.severity }}" data-bpm="{{ vitals.bpm }}"
+       data-rail="{{ vitals.rail or '' }}"
+       data-beating="false" data-unacknowledged="false"
+       data-vitals-labels='{{ vitals_labels | tojson }}'>
+    <span class="vitals-core-label">{{ t.get('vitals_estate', 'Estate') }}</span>
+
+    {# ── The heart (WP-2) ──
+       The owner's brief in one line: "97% answers nothing". The percentage,
+       the count and the state word are gone from the face; what is left is
+       the word ESTATE and a heart whose COLOUR carries the severity and whose
+       BEAT carries only one thing — that something changed and nobody has
+       looked yet.
+
+       It is a <button> because it is the one gesture that reaches everything
+       the readout used to show, plus the things that actually answer the
+       question. A div with a click handler would need focus, Enter, Space and
+       a role reimplemented, and would get one of them wrong.
+
+       This is also the ONLY hit-testable thing inside the circle. `.vitals-core`
+       covers all four quadrant cards and two of them reveal their reason on
+       hover, so the disc stays transparent to the pointer and the heart takes
+       it back for itself — see app.css. #}
+    <button type="button" class="vitals-heart" data-vitals-detail-toggle
+            aria-expanded="false" aria-controls="estate-vitals-detail"
+            aria-label="{{ t.get('vitals_detail_toggle', 'Show what this reading means') }}">
+      <svg class="vitals-heart-svg" viewBox="0 0 48 44" aria-hidden="true" focusable="false">
+        <path class="vitals-heart-shape"
+              d="M24 41C24 41 3 27.5 3 14.5C3 7.6 8.6 2 15.5 2C19.8 2 23.1 4.4 24 6.5C24.9 4.4 28.2 2 32.5 2C39.4 2 45 7.6 45 14.5C45 27.5 24 41 24 41Z" />
+      </svg>
+      {# The trace runs THROUGH the heart and out both sides, which is what
+         makes the pair read as one object rather than an icon with a graph
+         next to it. Decorative: everything it encodes is available as text in
+         the detail below, which is also the reduced-motion argument. #}
+      <canvas class="vitals-canvas" aria-hidden="true"></canvas>
+    </button>
+
+    {# The severity word left the FACE, not the page. Colour cannot be the only
+       carrier of a state: a screen reader gets nothing from a fill, and neither
+       does a reader who cannot separate red from amber. So the word is here for
+       assistive technology and announced when it changes, and it is visible to
+       everyone else one gesture away, in the detail. #}
+    <span class="sr-only" data-vitals-state-out="" aria-live="polite"
+          role="status">{{ vitals_labels[vitals.severity] }}</span>
+
+    {# ── The one-gesture detail ──
+       First paint is server-rendered; every refresh after it is written by
+       vitals-monitor.js from the swapped partial's data attributes, the same
+       way the counts always were. The circle sits OUTSIDE the swapped region
+       because it owns a canvas, so without that the detail would freeze at
+       whatever was true when the page loaded. #}
+    <div id="estate-vitals-detail" class="vitals-detail" hidden>
+      <p class="vitals-detail-state" data-vitals-detail-state="">{{ vitals_labels[vitals.severity] }}</p>
+
+      <div class="vitals-detail-row" data-vitals-rail-row{% if not vitals.rail %} hidden{% endif %}>
+        <span class="vitals-detail-key">{{ t.get('vitals_detail_cause', 'What is driving this') }}</span>
+        <span class="vitals-detail-value" data-vitals-rail-out="">{{ vitals.rail or '' }}</span>
+      </div>
+
+      <div class="vitals-detail-row" data-vitals-contributors-row{% if not vitals.contributors %} hidden{% endif %}>
+        <span class="vitals-detail-key">{{ t.get('vitals_detail_contributors', 'Biggest contributors') }}</span>
+        <ul class="vitals-detail-list" data-vitals-contributors-out="">
+          {% for c in vitals.contributors %}
+          <li><span class="vitals-detail-name">{{ c.name }}</span><span class="vitals-detail-dim">{{ c.status }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="vitals-detail-row" data-vitals-why-row{% if not vitals.why_not_higher %} hidden{% endif %}>
+        <span class="vitals-detail-key">{{ t.get('vitals_detail_not_higher', 'Why it is not worse') }}</span>
+        <span class="vitals-detail-value" data-vitals-why-out="">{{ vitals.why_not_higher or '' }}</span>
+      </div>
+
+      {# `settling` is the fold deliberately holding a cautious answer while the
+         estate keeps changing its mind. An operator watching a reading refuse
+         to move is owed the reason. #}
+      <p class="vitals-detail-settling" data-vitals-settling-row{% if not vitals.settling %} hidden{% endif %}>
+        {{ t.get('vitals_detail_settling',
+                 'Settling — the reading is being held steady while the estate stops changing') }}</p>
+
+      <p class="vitals-detail-clear" data-vitals-clear-row{% if vitals.rail or vitals.contributors %} hidden{% endif %}>
+        {{ t.get('vitals_detail_all_clear', 'Nothing is pushing the estate above calm.') }}</p>
+
+      {# The numbers. Moved, not deleted — they answer "how much", which is a
+         real question once you already know what. #}
+      <p class="vitals-detail-counts">
+        <span data-vitals-percent-out="">{% if vitals.percent is not none %}{{ vitals.percent }}%{% else %}&mdash;{% endif %}</span>
+        <span class="vitals-detail-dim" data-vitals-count-out="">{{ vitals.ok }}/{{ vitals.monitored }}</span>
+      </p>
     </div>
   </div>
 </section>
 
 <!-- Critical Issues Section -->
-<section class="mb-8">
+<section id="critical-issues-section" class="mb-8">
   <div id="htmx-critical" hx-get="/partials/critical-issues" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML">
-    <div class="animate-pulse bg-card rounded-lg p-6 border border-line">
-      <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48"></div>
-    </div>
+    {{ banner() }}
   </div>
 </section>
+
+{# The four `data-toggle-empty` regions below — TLS, active actions, updates,
+   incidents — deliberately carry NO skeleton, and that is not an oversight.
+   Each sits in a section that starts `hidden` and is only unhidden once its
+   partial comes back non-empty (base.html's htmx:afterSwap handler). A ghost
+   inside a hidden section is invisible, so it would buy nothing; unhiding the
+   section to show one would promise a panel that most of the time resolves to
+   nothing and vanishes again. A skeleton is a claim that content is coming.
+   Only make it where content is actually coming. #}
 
 <!-- TLS Certificate Alerts (only shown when certs are expiring/expired/error) -->
 <section id="tls-alerts-section" class="mb-6 hidden">
@@ -128,127 +293,98 @@
   </div>
 </section>
 
-<!-- Server Grid + Activity Feed 2-column layout -->
-<div class="lg:grid lg:grid-cols-3 lg:gap-6">
+{# ── The four doorways ───────────────────────────────────────────────────
 
-  <!-- Server Grid Section -->
-  <section class="mb-8 lg:col-span-2 lg:mb-0">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-      <div class="flex items-center gap-3 flex-wrap">
-        <h2 class="text-xl font-semibold flex items-center gap-2">
-          <i data-lucide="monitor" class="w-5 h-5 text-accent"></i>
-          {{ t.servers }}
-        </h2>
-        <div id="status-filter" class="flex items-center gap-1 flex-wrap">
-          <button type="button" data-action="setStatusFilter" data-args='["all"]' data-filter="all"
-            class="status-filter-btn active px-2.5 py-1 text-xs font-medium rounded-full transition-colors bg-brand text-white">
-            All
-          </button>
-          <button type="button" data-action="setStatusFilter" data-args='["critical"]' data-filter="critical"
-            class="status-filter-btn px-2.5 py-1 text-xs font-medium rounded-full transition-colors border border-critical text-critical hover:bg-critical hover:text-white">
-            Critical
-          </button>
-          <button type="button" data-action="setStatusFilter" data-args='["warning"]' data-filter="warning"
-            class="status-filter-btn px-2.5 py-1 text-xs font-medium rounded-full transition-colors border border-warning text-warning hover:bg-warning hover:text-white">
-            Warning
-          </button>
-          <button type="button" data-action="setStatusFilter" data-args='["healthy"]' data-filter="healthy"
-            class="status-filter-btn px-2.5 py-1 text-xs font-medium rounded-full transition-colors border border-healthy text-healthy hover:bg-healthy hover:text-white">
-            Healthy
-          </button>
-          <button type="button" data-action="setStatusFilter" data-args='["offline"]' data-filter="offline"
-            class="status-filter-btn px-2.5 py-1 text-xs font-medium rounded-full transition-colors border border-faint text-faint dark:border-[#6B7280] dark:text-[#6B7280] hover:bg-faint hover:text-white dark:hover:bg-[#6B7280]">
-            Offline
-          </button>
-        </div>
-      </div>
-      <div class="relative flex-shrink-0">
-        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted"></i>
-        <input type="text" id="server-search" placeholder="{{ t.search_servers }}"
-          data-input="applyFilters"
-          class="pl-9 pr-4 py-1.5 text-sm rounded border border-line bg-card text-ink placeholder-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand w-48 sm:w-64">
-      </div>
-    </div>
-    <div id="server-grid-container" hx-get="/partials/server-grid" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML">
-      <div class="animate-pulse grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {% for _ in range(8) %}
-        <div class="bg-card rounded-lg p-6 border border-line h-48"></div>
-        {% endfor %}
-      </div>
-    </div>
-  </section>
+   Where the activity feed used to be. The feed moved to /servers, next to
+   the servers it is about; what takes its place is the way OUT of the
+   dashboard, in the order the quadrant reads: Servers, Services, Network,
+   Scan.
 
-  <!-- Activity Feed Section (sidebar on desktop) -->
-  <section class="lg:col-span-1">
-    <h2 class="text-xl font-semibold flex items-center gap-2 mb-4">
-      <i data-lucide="activity" class="w-5 h-5 text-accent"></i>
-      {{ t.activity_feed }}
-    </h2>
-    <div hx-get="/partials/activity-feed" hx-trigger="load, prismRefresh from:body" hx-swap="morph:innerHTML">
-      <div class="animate-pulse bg-card rounded-lg p-6 border border-line">
-        <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-64 mb-3"></div>
-        <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48 mb-3"></div>
-        <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-56"></div>
-      </div>
-    </div>
-  </section>
+   EACH LINE IS A CONFIGURATION FACT, NOT A MEASUREMENT, and that is the
+   whole design. The quadrant above already reports state and Issues
+   Detected already reports problems; a third copy of the same numbers is
+   noise, and worse, a copy that can disagree. These say how much is
+   MANAGED here — a count that only changes when an operator changes the
+   config, on a different page — so they need no refresh, no skeleton and
+   no JavaScript, and they cannot contradict the circle because they are
+   not answering its question.
 
-</div>
+   Both numbers come from the page context the circle was already rendered
+   from (`server_count`, `services`), so there is no second query either.
+
+   `services` is None when the health-check read failed. A dash, not a
+   zero: nothing here should claim the operator has no probes because
+   Prism could not read them — the same distinction /services makes at
+   length. #}
+<section id="overview-sections" class="mt-8">
+  {# WP-6 step 18: "Overview" becomes the H2 of a card WRAPPING the doorway
+     grid (DESIGN_SYSTEM_SPEC.md Part II §2.3's own explicit differentiation
+     from its three siblings below, which stay bare on `page` -- see this
+     step's own report for both passages read side by side). id/class on
+     the outer <section> are UNCHANGED: tests/test_design_overview_pages.py's
+     _doorways() slices on `<section id="overview-sections"` verbatim. #}
+  {% call card(heading=t.get('dashboard_overview', 'Overview')) %}
+  <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+
+    {# The four doorway tiles: rounded-md -> rounded-lg (provably inert) and
+       p-4 -> p-5 (the one deliberate, visible gutter change this step's own
+       Risk line names: 16px -> 20px). Every other class is unchanged. #}
+    <a href="/servers" class="card-clickable bg-card rounded-lg border border-line p-5 flex items-start gap-3">
+      <i data-lucide="server" class="w-5 h-5 text-accent flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      <div class="min-w-0">
+        <p class="text-sm font-semibold text-ink">{{ t.servers }}</p>
+        <p class="text-xs text-muted mt-0.5">
+          <span class="tabular-nums font-semibold text-ink">{{ server_count }}</span>
+          {{ t.get('digest_managed', 'managed') }}
+        </p>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-muted flex-shrink-0 ml-auto mt-0.5" aria-hidden="true"></i>
+    </a>
+
+    <a href="/services" class="card-clickable bg-card rounded-lg border border-line p-5 flex items-start gap-3">
+      <i data-lucide="activity" class="w-5 h-5 text-accent flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      <div class="min-w-0">
+        <p class="text-sm font-semibold text-ink">{{ t.get('vitals_services', 'Services') }}</p>
+        <p class="text-xs text-muted mt-0.5">
+          {% if services %}
+          <span class="tabular-nums font-semibold text-ink">{{ services.total }}</span>
+          {{ t.get('digest_probing', 'probing') }}
+          {% else %}&mdash;{% endif %}
+        </p>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-muted flex-shrink-0 ml-auto mt-0.5" aria-hidden="true"></i>
+    </a>
+
+    {# Dashed, like the quadrant cards they mirror — the app's idiom for
+       "nothing here yet". No dim: that treatment was measured under AA on
+       exactly these words. #}
+    <a href="/network" class="card-clickable bg-card rounded-lg border border-dashed border-line p-5 flex items-start gap-3">
+      <i data-lucide="router" class="w-5 h-5 text-muted flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      <div class="min-w-0">
+        <p class="text-sm font-semibold text-ink">{{ t.get('vitals_network', 'Network') }}</p>
+        <p class="text-xs text-muted mt-0.5">{{ t.get('vitals_not_monitored_yet', 'Not monitored yet') }}</p>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-muted flex-shrink-0 ml-auto mt-0.5" aria-hidden="true"></i>
+    </a>
+
+    <a href="/scan" class="card-clickable bg-card rounded-lg border border-dashed border-line p-5 flex items-start gap-3">
+      <i data-lucide="shield" class="w-5 h-5 text-muted flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      <div class="min-w-0">
+        <p class="text-sm font-semibold text-ink">{{ t.get('vitals_scan', 'Scan') }}</p>
+        <p class="text-xs text-muted mt-0.5">{{ t.get('vitals_not_monitored_yet', 'Not monitored yet') }}</p>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-muted flex-shrink-0 ml-auto mt-0.5" aria-hidden="true"></i>
+    </a>
+
+  </div>
+  {% endcall %}
+</section>
 
 <script nonce="{{ csp_nonce }}">
-let activeStatusFilter = 'all';
-
-function setStatusFilter(status) {
-  activeStatusFilter = status;
-  // Update button styles
-  document.querySelectorAll('.status-filter-btn').forEach(btn => {
-    const filter = btn.getAttribute('data-filter');
-    if (filter === status) {
-      btn.classList.add('active', 'bg-info', 'text-white');
-      btn.classList.remove('border', 'hover:bg-critical', 'hover:bg-warning', 'hover:bg-healthy', 'hover:bg-faint',
-        'hover:bg-[#EF4444]', 'hover:bg-[#FBBF24]', 'hover:bg-[#34D399]', 'hover:bg-muted',
-        'text-critical', 'text-warning', 'text-healthy', 'text-faint',
-        'dark:text-critical', 'dark:text-warning', 'dark:text-healthy', 'dark:text-[#6B7280]',
-        'border-critical', 'border-warning', 'border-healthy', 'border-faint',
-        'dark:border-critical', 'dark:border-warning', 'dark:border-healthy', 'dark:border-[#6B7280]');
-    } else {
-      btn.classList.remove('active', 'bg-info', 'text-white');
-      // Restore original border/text classes based on filter type
-      const styles = {
-        all: ['border', 'border-line', 'text-muted', 'dark:border-line', 'dark:text-muted'],
-        critical: ['border', 'border-critical', 'text-critical', 'dark:border-critical', 'dark:text-critical', 'hover:bg-critical', 'hover:text-white', 'dark:hover:bg-critical'],
-        warning: ['border', 'border-warning', 'text-warning', 'dark:border-warning', 'dark:text-warning', 'hover:bg-warning', 'hover:text-white', 'dark:hover:bg-warning'],
-        healthy: ['border', 'border-healthy', 'text-healthy', 'dark:border-healthy', 'dark:text-healthy', 'hover:bg-healthy', 'hover:text-white', 'dark:hover:bg-healthy'],
-        offline: ['border', 'border-faint', 'text-faint', 'dark:border-[#6B7280]', 'dark:text-[#6B7280]', 'hover:bg-faint', 'hover:text-white', 'dark:hover:bg-[#6B7280]']
-      };
-      (styles[filter] || styles.all).forEach(c => btn.classList.add(c));
-    }
-  });
-  applyFilters();
-}
-
-function applyFilters() {
-  const search = document.getElementById('server-search');
-  const q = (search ? search.value : '').toLowerCase().trim();
-  document.querySelectorAll('[data-server-card]').forEach(card => {
-    const name = (card.getAttribute('data-server-name') || '').toLowerCase();
-    const host = (card.getAttribute('data-server-host') || '').toLowerCase();
-    const status = (card.getAttribute('data-status') || '').toLowerCase();
-    const matchesSearch = !q || name.includes(q) || host.includes(q);
-    const matchesStatus = activeStatusFilter === 'all' || status === activeStatusFilter;
-    card.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
-  });
-}
-
-// Keep backward compat for any external callers
-function filterServers(query) { applyFilters(); }
-
-// Re-apply filters after HTMX swap refreshes the grid
+// Auto-hide alert sections when their partial returned empty content.
+// The hx-on::after-swap inline handler was unreliable on some browsers —
+// do it here instead so TLS / Windows Updates reliably appear/disappear.
 document.body.addEventListener('htmx:afterSwap', function(e) {
-  applyFilters();
-  // Auto-hide alert sections when their partial returned empty content.
-  // The hx-on::after-swap inline handler was unreliable on some browsers —
-  // do it here instead so TLS / Windows Updates reliably appear/disappear.
   ['tls-alerts-section', 'updates-alerts-section'].forEach(function(id) {
     const section = document.getElementById(id);
     if (!section) return;
@@ -283,26 +419,39 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
 </script>
 
 <script nonce="{{ csp_nonce }}">
-// Apply dashboard display preferences
+// Apply dashboard display preferences.
+//
+// Every section is now addressed BY ID. The previous version reached the
+// status region with `document.querySelectorAll('section.mb-8')[1]` and the
+// server grid with a class selector on the grid's column span — both of
+// which point at whatever happens to be in that position, so restructuring
+// the page silently repointed a user's preference at an unrelated section
+// rather than failing. This restructure would have done exactly that.
+//
+// The `showServers` preference is gone with the grid it hid: the server
+// cards live on /servers now, and a checkbox that toggles nothing is worse
+// than no checkbox. Its control has been removed from Settings too.
+//
+// `showActivity` went the same way in WP-3, and for the same reason: the
+// activity feed is on /servers now, so the branch that read the preference
+// had no section left to hide. A stored `showActivity: false` from before
+// the move is simply ignored — it cannot hide the feed on a page that no
+// longer owns it, and reinterpreting a dashboard preference as a servers-
+// page preference would silently repurpose a setting the user made about a
+// different page. The Settings control went with it.
+//
+// Nothing was added for the four overview doorways below. They are four
+// links; a preference to hide the way out of a page is a setting nobody
+// asked for and one more thing that can be wrong.
 (function() {
   try {
     const prefs = JSON.parse(localStorage.getItem('prism-dashboard-prefs') || '{}');
-    if (prefs.showCritical === false) {
-      const el = document.getElementById('htmx-critical');
-      if (el && el.parentElement) el.parentElement.style.display = 'none';
-    }
-    if (prefs.showStatus === false) {
-      const sections = document.querySelectorAll('section.mb-8');
-      if (sections[1]) sections[1].style.display = 'none';
-    }
-    if (prefs.showServers === false) {
-      const el = document.querySelector('section.mb-8.lg\\:col-span-2');
+    const hide = function(id) {
+      const el = document.getElementById(id);
       if (el) el.style.display = 'none';
-    }
-    if (prefs.showActivity === false) {
-      const el = document.querySelector('section.lg\\:col-span-1');
-      if (el) el.style.display = 'none';
-    }
+    };
+    if (prefs.showCritical === false) hide('critical-issues-section');
+    if (prefs.showStatus === false) hide('vitals-section');
   } catch(e) {}
 })();
 </script>
@@ -343,8 +492,8 @@ function loadRestartStatus() {
       const icon = document.getElementById('restart-banner-icon');
       inner.className = 'rounded-lg border p-4 flex items-start gap-3 relative ' +
         (allOk
-          ? 'bg-[#ECFDF5] dark:bg-healthy-tint/30 border-healthy dark:border-healthy/50 text-healthy-strong dark:text-[#A7F3D0]'
-          : 'bg-warning-tint dark:bg-warning-tint/30 border-warning dark:border-warning/50 text-warning-strong dark:text-[#FDE68A]');
+          ? 'bg-healthy-tint dark:bg-healthy-tint/30 border-healthy dark:border-healthy/50 text-healthy-strong'
+          : 'bg-warning-tint dark:bg-warning-tint/30 border-warning dark:border-warning/50 text-warning-strong');
 
       // Title and summary
       document.getElementById('restart-banner-title').textContent =
@@ -352,7 +501,7 @@ function loadRestartStatus() {
       document.getElementById('restart-banner-time').textContent =
         latestRun && latestRun.timestamp ? 'Last run: ' + formatTs(latestRun.timestamp) : '';
       document.getElementById('restart-banner-summary').textContent =
-        total + ' server' + (total !== 1 ? 's' : '') + ' processed \u2014 ' +
+        total + ' server' + (total !== 1 ? 's' : '') + ' processed — ' +
         succeeded + ' succeeded' + (failed > 0 ? ', ' + failed + ' failed' : '');
 
       // Build details table
@@ -365,11 +514,11 @@ function loadRestartStatus() {
         tr.innerHTML =
           '<td class="px-3 py-2 font-medium text-ink">' + escapeHtml(r.server || r.name || 'Unknown') + '</td>' +
           '<td class="px-3 py-2">' +
-            '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ' + (isOk ? 'bg-healthy-tint dark:bg-[#065F46] text-healthy-strong dark:text-[#A7F3D0]' : 'bg-critical-tint text-critical-strong ') + '">' +
+            '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ' + (isOk ? 'bg-healthy-tint text-healthy-strong' : 'bg-critical-tint text-critical-strong ') + '">' +
               (isOk ? 'Success' : 'Failed') +
             '</span>' +
           '</td>' +
-          '<td class="px-3 py-2 text-muted">' + escapeHtml(r.message || r.error || '\u2014') + '</td>';
+          '<td class="px-3 py-2 text-muted">' + escapeHtml(r.message || r.error || '—') + '</td>';
         tbody.appendChild(tr);
       });
 

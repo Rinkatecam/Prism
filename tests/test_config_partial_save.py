@@ -230,7 +230,7 @@ def test_subtree_contract_partial_subtree_resets_its_siblings(app_client):
 
     The merge in save_config makes omitting a whole TOP-LEVEL key safe. It does
     NOT make omitting a key *inside* one of the validated sub-trees safe: the
-    https / auth / email / webhooks / scheduled_reports validators in
+    https / auth / email / webhooks validators in
     routes/api/config.py normalise their sub-tree by writing every field back
     (``email_cfg["smtp_server"] = str(email_cfg.get("smtp_server", "")).strip()``),
     so a fragment posted for one of those keys blanks its siblings BEFORE the
@@ -242,7 +242,9 @@ def test_subtree_contract_partial_subtree_resets_its_siblings(app_client):
     to it is a deliberate, reviewed decision rather than a surprise.
 
     Rule for callers: omit a top-level key freely; never post a partial sub-tree
-    for https / auth / email / webhooks / scheduled_reports.
+    for https / auth / email / webhooks. (`scheduled_reports` was listed here
+    and in the route's own contract comment as a fifth validator; there is no
+    validator for it — corrected while WP-4 traced that save path.)
     """
     client, cfg = app_client
     _seed(client)

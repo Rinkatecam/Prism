@@ -32,6 +32,8 @@ from __future__ import annotations
 
 import logging
 
+from collector_v2 import fleet_walk
+
 from email_alerts import send_alert_email, should_send_email
 
 logger = logging.getLogger("prism.tls_monitor")
@@ -58,12 +60,12 @@ def _check_tls_certificates(db, settings: dict) -> None:
     warning_days = tls_cfg.get("warning_days", 30)
     critical_days = tls_cfg.get("critical_days", 7)
 
-    for cert_cfg in certs_to_check:
+    def _walk_one(cert_cfg):
         host = cert_cfg.get("host", "")
         port = cert_cfg.get("port", 443)
         server_name = cert_cfg.get("server_name", host)
         if not host:
-            continue
+            return
 
         result = check_certificate(host, port, timeout=10, expiry_threshold=warning_days)
 
@@ -94,6 +96,18 @@ def _check_tls_certificates(db, settings: dict) -> None:
                 f"TLS certificate for {host}:{port} expires in {days} days",
             )
             _send_cert_alert(settings, server_name, host, port, days, "warning")
+
+    # Bounded concurrency instead of a serial fleet walk (collector
+    # audit finding 2). A TLS handshake against a dead endpoint waits out its own timeout.
+    # Serial, the cost of the pass was the SUM of every timeout, which
+    # is how a job starts exceeding its own cadence at around 100-150
+    # servers. `collector_v2_periodic_workers: 1` restores the old
+    # serial walk exactly, which is how to rule this out as a cause.
+    fleet_walk.walk(
+        certs_to_check, _walk_one,
+        workers=fleet_walk.worker_count(settings),
+        label="tls",
+        name_of=lambda c: c.get("server_name") or c.get("host") or "?")
 
     logger.info("TLS certificate check completed for %d endpoints", len(certs_to_check))
 

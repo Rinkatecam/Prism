@@ -1,0 +1,186 @@
+{# ── Tooltip authoring surface — DESIGN_SYSTEM_SPEC.md §5.6 ──────────────
+
+   Four macros, and no other sanctioned way to write a data-tip-* carrier
+   from here on (tests/test_design_tooltip.py T-9, step 6, ratchets
+   hand-written `data-tip-title=` outside this file to zero). What each one
+   is for:
+
+     tip(desc_key, desc_fallback, ...)        STANDALONE trigger: sr-only
+                                               mirror + button together,
+                                               because the two must never
+                                               come apart (§5.3).
+     tip_button(desc_key, desc_fallback,
+                tip_id, ...)                  the button ALONE, for a
+                                               heading — see tip_mirror.
+     tip_mirror(desc_key, desc_fallback,
+                tip_id)                       the sr-only span alone, by id.
+     tip_overflow(text, extra_class='')       text that is ALREADY visible
+                                               and clipped: no mirror, no
+                                               describedby (§5.3 — a
+                                               trigger with visible text
+                                               gets aria-describedby only,
+                                               and here there is nothing
+                                               ELSE to describe it with).
+
+   WHY tip_button/tip_mirror split from tip(): §5.3 (C17) — a mirror must
+   never sit inside a heading, because search_index._headings drops any
+   <h2>/<h3> over 80 characters, and a mirror nested inside one either
+   pushes it over that limit or pollutes the jump-search label. tip()
+   covers the common case by emitting both halves together; a heading
+   caller uses tip_button() inside the <h*> and tip_mirror() as a SIBLING
+   after the closing tag, joined by an id the caller mints once:
+
+       {% set hid = next_tip_id() %}
+       <h2 class="flex items-center gap-2">
+         {{ heading_text }}
+         {{ tip_button('some_desc', 'fallback text', hid,
+                        title_fallback=heading_text) }}
+       </h2>
+       {{ tip_mirror('some_desc', 'fallback text', hid) }}
+
+   `t` (the merged translation dict) and `next_tip_id` (app.py's
+   inject_locale, a counter parked on flask.g so it survives more than one
+   render_template() call per request — see that function's docstring) are
+   both context-processor globals, not macro parameters: the spec's own
+   signature for tip() takes no `t` argument, and Jinja macros do not see
+   the importing template's context unless the import says so. Every
+   caller of anything in this file MUST therefore write:
+
+       {% from "partials/_tip.html" import tip, tip_button, tip_mirror,
+                                            tip_overflow with context %}
+
+   Dropping `with context` does not fail loudly. `t` and `next_tip_id`
+   resolve to Jinja's Undefined, autoescape renders that as nothing, and
+   the symptom is a tooltip trigger with a blank aria-label and no text —
+   silent, not a build break.
+
+   BINDALL NEEDS data-tip-title PRESENT, EVEN EMPTY. base.html's
+   `bindAll()` finds carriers with `document.querySelectorAll(
+   '[data-tip-title]')` — an attribute-PRESENCE selector, not a truthiness
+   check. tip_overflow() has no title, but it still renders
+   `data-tip-title=""` for exactly this reason: omit the attribute and the
+   element is invisible to bindAll, gets no listeners at all, and never
+   opens on any input method — even though data-tip-desc is sitting right
+   there on it. `show(e)` separately bails when BOTH title and desc read
+   empty (`if (!title && !desc) return`), which guards a different case (a
+   re-enabled control whose reason was just cleared) and does not excuse
+   dropping data-tip-title from the markup here.
+
+   `.ps-tip` on a button is read by base.html's onPointerDown: a real
+   button already delivers a `click` from a tap, so long-press setup is
+   skipped for anything carrying that class (see the state-machine comment
+   above bindAll in base.html). `.ps-tip-overflow` is the matching marker
+   for the OTHER kind of carrier, so tests/test_design_tooltip.py (T-4,
+   step 6) can exempt it from "every carrier has a mirror" without a
+   tag-name check.
+
+   No `transition-*` utility class on either button, deliberately.
+   Tailwind's sheet is injected after this inline <style> block
+   (base.html, "Tailwind's sheet is injected after app.css"), so at equal
+   specificity a `.transition-colors` utility would win the cascade tie
+   against `[data-tip-title]`'s own `transition: box-shadow …` rule and
+   REPLACE its transition-property — the hover ring would stop fading in.
+   The icon's colour still changes on hover; it just snaps instead of
+   easing, which is not a regression this macro is responsible for.
+
+   No rounding utility either: `[data-tip-title]` already sets
+   `border-radius: 0.35rem`, and for the same cascade-order reason a
+   `rounded-*` class here would silently overwrite it instead of composing
+   with it.
+
+   Colour goes on the BUTTON, not the icon — `text-muted hover:text-accent`
+   — matching every other icon-inside-a-bigger-hit-target button already in
+   this codebase (partials/settings/_dependencies.html's edit button,
+   settings.html's restart-row delete button): the icon itself carries no
+   colour class and picks up `currentColor` from its parent. The button's
+   hit target is w-8 h-8 (32px) with -m-2 so it does not enlarge the
+   heading or row it sits in (§5.4); colouring only the 14px icon would
+   mean the pointer has to land on that inner box, not the 32px one, for
+   the hover feedback to show — a smaller feedback area than the ring
+   `[data-tip-title]:hover` already draws around the whole carrier. #}
+
+{% macro _tip_label(title, label_key, label_fallback) -%}
+{#- Shared by tip() and tip_button() so §5.6's aria-label fallback chain
+    has exactly one implementation. Private (leading underscore): not part
+    of the exported surface, and relies on `t` already being in scope from
+    whatever with-context import brought this module in — see the file
+    header. Order: an explicit label wins outright; otherwise a known
+    title becomes "About <title>" (§5.3's own example is literally "About
+    poll interval"); otherwise the bare generic label. #}
+{%- set _label = t.get(label_key, label_fallback) -%}
+{%- if _label -%}
+{{- _label -}}
+{%- elif title -%}
+{{- t.get('tip_about_named', 'About {title}').format(title=title) -}}
+{%- else -%}
+{{- t.get('tip_about', 'Explain') -}}
+{%- endif -%}
+{%- endmacro %}
+
+{% macro tip(desc_key, desc_fallback, title_key=None, title_fallback=None,
+             label_key=None, label_fallback=None) -%}
+{#- The standalone trigger. Mints its own id via next_tip_id() — the
+    caller never sees it — because both the mirror and the button are
+    emitted together here and nothing outside this macro needs to refer to
+    either by id. For the heading case, where the two DO need separate
+    placement, use tip_button() + tip_mirror() instead. #}
+{%- set _tid = next_tip_id() -%}
+{%- set _desc = t.get(desc_key, desc_fallback) -%}
+{%- set _title = t.get(title_key, title_fallback) -%}
+{%- set _label = _tip_label(_title, label_key, label_fallback) -%}
+<span class="sr-only" id="{{ _tid }}">{{ _desc }}</span>
+<button type="button"
+        class="ps-tip inline-flex items-center justify-center w-8 h-8 -m-2 text-muted hover:text-accent"
+        aria-label="{{ _label }}" aria-describedby="{{ _tid }}"
+        data-tip-title="{{ _title or '' }}" data-tip-desc="{{ _desc }}">
+  <i data-lucide="info" class="w-3.5 h-3.5" aria-hidden="true"></i>
+</button>
+{%- endmacro %}
+
+{% macro tip_button(desc_key, desc_fallback, tip_id, title_key=None, title_fallback=None,
+                     label_key=None, label_fallback=None) -%}
+{#- Button only — for a heading. The caller mints `tip_id` itself (via
+    next_tip_id(), already in scope through the same with-context import)
+    and passes the identical value to tip_mirror(), placed as a sibling
+    AFTER the heading's closing tag — never inside it (C17; see the file
+    header). #}
+{%- set _desc = t.get(desc_key, desc_fallback) -%}
+{%- set _title = t.get(title_key, title_fallback) -%}
+{%- set _label = _tip_label(_title, label_key, label_fallback) -%}
+<button type="button"
+        class="ps-tip inline-flex items-center justify-center w-8 h-8 -m-2 text-muted hover:text-accent"
+        aria-label="{{ _label }}" aria-describedby="{{ tip_id }}"
+        data-tip-title="{{ _title or '' }}" data-tip-desc="{{ _desc }}">
+  <i data-lucide="info" class="w-3.5 h-3.5" aria-hidden="true"></i>
+</button>
+{%- endmacro %}
+
+{% macro tip_mirror(desc_key, desc_fallback, tip_id) -%}
+{#- The sr-only span alone, by id — the other half of tip_button() above.
+    Takes the SAME desc_key/desc_fallback pair the button call used, so its
+    visible-to-screen-readers text is drawn from the same translation as
+    the button's own data-tip-desc; step 6's T-4 checks the two are equal
+    character for character. #}
+<span class="sr-only" id="{{ tip_id }}">{{ t.get(desc_key, desc_fallback) }}</span>
+{%- endmacro %}
+
+{% macro tip_overflow(text, extra_class='') -%}
+{#- text ALREADY visible and clipped (e.g. text-overflow: ellipsis): no
+    mirror, no aria-describedby. A screen reader already has the full text
+    straight from the DOM — CSS clipping is a paint-time effect, not a
+    content one — so this exists only to let a sighted pointer, keyboard or
+    touch user reveal what the layout is hiding. `text` is raw page data,
+    not a translation key: the one deliberate exception in §5.6 to "the
+    macro takes a key, never prose", because this is display data the
+    estate produced, not UI copy anyone would translate.
+
+    tabindex="0": this carrier is a bare <span>, none of the tag types
+    step 6's T-1 accepts as natively focusable (button, a[href], summary),
+    so without it a keyboard user has no way to reach text a mouse user
+    can hover. That is also the whole mechanism — no click handling is
+    added because `focusin` alone already opens and pins the panel (§5.2),
+    and this carrier does not carry the `.ps-tip` class that would mark it
+    as a real button skipping the long-press path. #}
+<span class="ps-tip-overflow{% if extra_class %} {{ extra_class }}{% endif %}"
+      tabindex="0" data-tip-title="" data-tip-desc="{{ text }}">{{ text }}</span>
+{%- endmacro %}

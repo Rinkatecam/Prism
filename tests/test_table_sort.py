@@ -223,7 +223,9 @@ def test_relative_time_is_not_a_registered_sort_type(js_source):
     "template",
     [
         "dashboard.html", "monitoring.html", "operations.html",
-        "partials/server_comparison.html", "rbac.html", "reports.html",
+        "partials/server_comparison.html", "reports.html",
+        # rbac.html became partials/settings/_rbac.html in WP-4 D4.
+        "partials/settings/_rbac.html",
         "servers.html", "server_detail.html", "workflows.html",
     ],
 )
@@ -800,7 +802,10 @@ EXPECTED = {
         ["text", "status", "text"],  # Server, Status, Message
     ("monitoring.html", "monitoring-noise-digest"):
         ["text", "text", "number", "number", "number", "text"],  # Server, Type, Score, Fires, Acked, Suggestion
-    ("operations.html", "ops-runbooks"):
+    # The runbook table moved to a shared partial in WP-4 D3: /operations
+    # renders it to run from, Settings -> Operations to edit from, and one
+    # markup keeps their columns from drifting apart.
+    ("partials/_runbook_list.html", "ops-runbooks"):
         ["text", "text", "status", None],  # Name, Category, Type, Actions
     ("operations.html", "ops-config-backups"):
         ["timestamp", "bytes", None],  # Timestamp, DB Size, Actions
@@ -816,13 +821,20 @@ EXPECTED = {
         ["number", "text", "status", "text", None, None],  # ...Present on, Missing on
     ("partials/server_comparison.html", "compare-event-servers"):
         ["text", "number", "status", "timestamp"],
-    ("rbac.html", "rbac-acl"):
+    # WP-3's /services inventory. An inventory, not a history — the rows are
+    # "what is configured and how it answered", so ordering them by response
+    # time or by status is a real question an operator asks. That is the
+    # distinction the NOT_SORTABLE list below is drawn on.
+    ("partials/services_table.html", "services-probes"):
+        ["text", "text", "text", "text", "status", "number", "timestamp"],  # Name, Server, Type, Target, Status, Response, Last check
+    # The ACL table moved into Settings with the page in WP-4 D4.
+    ("partials/settings/_rbac.html", "rbac-acl"):
         ["text", "text", "status", None, None],  # User, Server, Perm, Granted, <revoke>
     ("reports.html", "reports-fleet"):
         [None, "text", "number", "number", None, None, "number", None],  # chevron, Server, Health, Degraded, Main driver, Capacity, Availability, Trend
     ("servers.html", "servers-list"):
         ["text", "text", "status", "text", "number", None],  # Name, Host, Status, Type, Port, Actions
-    ("servers.html", "servers-dependencies"):
+    ("partials/settings/_dependencies.html", "servers-dependencies"):
         ["text", "text", "status", "text", "text", None],
     ("server_detail.html", "server-updates"):
         ["status", "text", "status", "text", "bytes", "status", "text"],

@@ -11,20 +11,12 @@
    no active install (shown only in Updates) or be mid-reboot with the
    install already complete (shown only in Actions).
 #}
+{% from "partials/_card.html" import card with context %}
+{% from "partials/_tip.html" import tip_mirror with context %}
 {%- if items -%}
-<div class="bg-card rounded-lg border border-line p-4">
-  <div class="flex items-center justify-between mb-3">
-    <h2 class="text-sm font-semibold flex items-center gap-2">
-      <i data-lucide="activity" class="w-4 h-4 text-accent"></i>
-      {{ t.get('server_actions', 'Server Actions') }}
-      <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-brand/10 text-brand dark:bg-brand/20">
-        {{ items | length }}
-      </span>
-    </h2>
-    <span class="text-[10px] text-faint">
-      {{ t.get('actions_live', 'Live') }}
-    </span>
-  </div>
+{% set _actions_heading %}{{ t.get('server_actions', 'Server Actions') }} <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-brand/10 text-brand dark:bg-brand/20">{{ items | length }}</span>{% endset %}
+{% set _actions_controls %}<span class="text-[10px] text-faint">{{ t.get('actions_live', 'Live') }}</span>{% endset %}
+{% call card(heading=_actions_heading, icon='activity', controls=_actions_controls) %}
 
   <div class="space-y-2">
     {% for it in items %}
@@ -62,9 +54,11 @@
       'queued':           t.get('action_queued',           'Queued'),
     }.get(it.status, it.status) -%}
 
+    {%- set _am_tip_id = next_tip_id() %}
     <a href="/server/{{ it.server_name }}"
        class="flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors hover:bg-page {{ _color[0] }}"
-       title="{{ it.message }}">
+       aria-describedby="{{ _am_tip_id }}"
+       data-tip-title="{{ _label }}" data-tip-desc="{{ it.message }}">
       {#- Icon: spinner for in-progress states, rotate for rebooting,
           check-circle for stabilising. Matches the server_card.html
           icon choices so operators see the same visual cues. -#}
@@ -102,11 +96,15 @@
           </span>
           {%- endif %}
           {%- if it.restart_after and it.status in ('installing', 'downloading', 'queued', 'searching') %}
+          {%- set _ar_tip_id = next_tip_id() %}
           <span class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] rounded-full bg-info-tint dark:bg-info-tint/40 text-info-strong"
-                title="{{ t.get('auto_restart_armed_tip', 'Auto-restart is armed — server will reboot when install finishes.') }}">
+                tabindex="0" aria-describedby="{{ _ar_tip_id }}"
+                data-tip-title="{{ t.get('auto_restart_label', 'auto-restart') }}"
+                data-tip-desc="{{ t.get('auto_restart_armed_tip', 'Auto-restart is armed — server will reboot when install finishes.') }}">
             <i data-lucide="rotate-cw" class="w-2.5 h-2.5"></i>
             {{ t.get('auto_restart_label', 'auto-restart') }}
           </span>
+          {{ tip_mirror('auto_restart_armed_tip', 'Auto-restart is armed — server will reboot when install finishes.', _ar_tip_id) }}
           {%- endif %}
         </div>
         <div class="text-[11px] text-muted mt-0.5 truncate">
@@ -121,7 +119,8 @@
       </div>
       <i data-lucide="chevron-right" class="w-4 h-4 text-faint flex-shrink-0"></i>
     </a>
+    <span class="sr-only" id="{{ _am_tip_id }}">{{ it.message }}</span>
     {% endfor %}
   </div>
-</div>
+{% endcall %}
 {%- endif -%}

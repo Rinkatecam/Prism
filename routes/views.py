@@ -1,7 +1,8 @@
 """HTML page routes and HTMX partial routes for Prism."""
 
 import logging
-from flask import Blueprint, render_template, request
+from typing import NamedTuple
+from flask import Blueprint, render_template, request, redirect
 from database import Database
 from config_manager import ConfigManager
 from analytics import get_server_analytics
@@ -21,27 +22,327 @@ def register_view_routes(app, db: Database, config: ConfigManager):
     app.register_blueprint(views_bp)
 
 
+# ── The estate's vitals ──
+#
+# One function, called by the page view AND by the partial view, because the
+# two must agree: the circle's tempo is set from `severity` and its numbers
+# are rendered from the same dict. Two call sites computing "is the estate
+# healthy" separately is how a dashboard ends up beating fast while reading
+# 100%.
+
+# Tempo, in beats per minute, per severity. A status display, not a progress
+# indicator — see the reduced-motion argument in static/js/vitals-monitor.js.
+# The numbers are resting-to-tachycardic on purpose: 60 reads as calm to
+# anyone who has seen a monitor, and 132 reads as wrong before you have read
+# a single label.
+_VITALS_BPM = {"calm": 60, "elevated": 96, "urgent": 132, "flat": 0, "idle": 0,
+               "unmeasured": 0}
+
+
+def _estate_vitals(server_count: int, summary: dict | None,
+                   services: dict | None) -> dict:
+    """Fold servers + services into one health picture for the centre circle.
+
+    The owner's decision is that this measures EVERYTHING MONITORED, not
+    collector liveness — the topbar pulse already owns that signal and they
+    are different questions ("is Prism working" vs "is the estate healthy").
+    Network and scan join the composite when they exist; until then they
+    contribute nothing rather than contributing a flattering zero.
+
+    Every monitored thing lands in exactly one bucket:
+
+      ok      a healthy server, or a service probing up
+      warn    a server over its warning threshold
+      bad     a critical server, or a service probing down
+      dead    an offline server — reachable by nothing
+      unknown configured and never yet measured: a server with no metrics
+              row at all, or a probe whose first poll has not landed
+
+    `unknown` is a bucket rather than a default because both of the
+    plausible defaults lie: folding it into `ok` reports a clean bill of
+    health for something that has never answered, and folding it into `bad`
+    raises an alarm for something that has not failed. It counts toward
+    `monitored` and against `percent`, which is the honest treatment — an
+    estate that cannot be measured is not an estate that is well.
+
+    Severity, in the order tested:
+
+      idle       nothing is monitored at all
+      unmeasured everything monitored is unknown — configured, and not one
+                 thing has reported yet
+      flat       nothing known is ok or warning, and something is bad or
+                 dead — "everything offline", the owner's flatline case
+      urgent     anything bad or dead
+      elevated   anything warning
+      calm       everything else
+
+    Note `flat` is tested BEFORE `urgent` and deliberately does not require
+    literally every server to be offline: one healthy host out of thirty is
+    an estate in trouble, not an estate that is dead, and `ok == 0` is what
+    separates the two.
+
+    `unmeasured` exists because the two severities that would otherwise
+    claim this estate both lie about it. `flat` is unreachable here (it
+    needs something bad or dead), so a fresh install fell through to
+    `calm` — and rendered **"Stable" beside 0%** on a fleet of 29 hosts
+    that had never answered. Each number was true; together they said
+    nothing. Its `percent` is None rather than 0 for the same reason `idle`
+    is: a score computed from no measurements is not a low score, it is not
+    a score. Reachable on a fresh install and for one poll interval after a
+    collector that has never run.
+
+    The trigger is deliberately narrow — EVERY monitored thing unknown, not
+    "mostly". One host that has answered makes the estate measurable and its
+    score real, and hiding a real number behind a dash would need a
+    threshold nobody could defend.
+    """
+    summary = summary or {}
+    services = services or {}
+
+    s_total = int(summary.get("total") or 0)
+    ok = int(summary.get("healthy") or 0) + int(services.get("up") or 0)
+    warn = int(summary.get("warning") or 0)
+    bad = int(summary.get("critical") or 0) + int(services.get("down") or 0)
+    dead = int(summary.get("offline") or 0)
+    # A configured server with no metrics row is absent from get_status_summary
+    # entirely — its `total` is the sum of the status buckets, not the fleet
+    # size — so the gap against the configured count is what surfaces it.
+    # max(0, …) because the two counts come from different places and a
+    # just-deleted server can briefly leave metrics behind.
+    unknown = max(0, int(server_count or 0) - s_total) + int(services.get("unknown") or 0)
+
+    monitored = ok + warn + bad + dead + unknown
+
+    # Per-domain views for the cards. Assembled here rather than in the
+    # template because both of them need arithmetic the template should not
+    # be doing: the servers total is the CONFIGURED fleet, not
+    # get_status_summary's `total` (which is only the hosts that have a
+    # metrics row), and taking the larger of the two is what keeps the card
+    # from reading "27 / 25" for the seconds after a host is deleted.
+    servers_card = {
+        "total": max(int(server_count or 0), s_total),
+        "healthy": int(summary.get("healthy") or 0),
+        "warning": warn,
+        "critical": int(summary.get("critical") or 0),
+        "offline": dead,
+        "unknown": max(0, int(server_count or 0) - s_total),
+    }
+    services_card = {
+        "total": int(services.get("total") or 0),
+        "up": int(services.get("up") or 0),
+        "down": int(services.get("down") or 0),
+        "unknown": int(services.get("unknown") or 0),
+    }
+
+    if monitored == 0:
+        severity = "idle"
+    elif unknown == monitored:
+        # `monitored` is the sum of the five buckets, so this says every
+        # other bucket is empty. Written as the equality rather than
+        # `ok + warn + bad + dead == 0` because it states the condition the
+        # name describes: everything we watch is a thing we have not heard
+        # from.
+        severity = "unmeasured"
+    elif ok == 0 and warn == 0 and (bad + dead) > 0:
+        severity = "flat"
+    elif (bad + dead) > 0:
+        severity = "urgent"
+    elif warn > 0:
+        severity = "elevated"
+    else:
+        severity = "calm"
+
+    # THE SEVERITY NOW COMES FROM THE WEIGHTED FOLD (WP-1). The count-fold
+    # above still runs — it produces the cards, the percent, and the
+    # pre-band gates (idle/unmeasured/flat), and it is the FALLBACK when the
+    # collector has not yet published a verdict (a cold cache on a fresh
+    # start, or any test that never ran the supervisor). But when
+    # estate_service has a verdict, its band is authoritative: it weighs
+    # servers by role and fires the rails ("a DC down is urgent even though
+    # one box of thirty is a small fraction"), which presence-counting
+    # cannot. The two agree on the gates by construction — display_severity
+    # applies the same idle/unmeasured/flat order — so the override only
+    # ever changes the MEASURED band, never the gates.
+    rail = None
+    why_not_higher = ""
+    contributors: list = []
+    settling = False
+    try:
+        import estate_service
+        verdict = estate_service.current_verdict()
+    except Exception:
+        verdict = None
+    if verdict is not None and severity not in ("idle", "unmeasured"):
+        # Trust the weighted band for a measured estate. The gates stay local
+        # because they are about "is there anything to measure", which the
+        # count-fold answers from the same cache the fold used.
+        severity = verdict.get("severity", severity)
+        rail = verdict.get("rail")
+        why_not_higher = verdict.get("why_not_higher", "")
+        contributors = verdict.get("contributors", [])
+        settling = bool(verdict.get("settling"))
+
+    # A score needs something to have been measured. `idle` has no
+    # denominator and `unmeasured` has no numerator that means anything —
+    # both render as a dash, which is the readout saying "ask me later"
+    # rather than "the answer is zero".
+    scored = monitored > 0 and severity != "unmeasured"
+
+    return {
+        "ok": ok, "warn": warn, "bad": bad, "dead": dead, "unknown": unknown,
+        "monitored": monitored,
+        "percent": round(100 * ok / monitored) if scored else None,
+        "severity": severity,
+        "bpm": _VITALS_BPM[severity],
+        "servers": servers_card,
+        "services": services_card,
+        # Dossier fields for the tooltip (WP-1 rails-first; WP-2 renders them).
+        "rail": rail,
+        "why_not_higher": why_not_higher,
+        "contributors": contributors,
+        "settling": settling,
+    }
+
+
+# The four statuses the collector writes, verified against the live database:
+# 83,549 metrics rows hold exactly healthy / warning / critical / offline and
+# nothing else. Spelled out rather than derived from the summary dict's own
+# keys, which is what Database.get_status_summary does — `if status in summary`
+# there would also match the literal key "total" and clobber the running count.
+# It cannot happen today; it is one collector change away from happening
+# silently, and a tuple costs nothing.
+_STATUS_BUCKETS = ("healthy", "warning", "critical", "offline")
+
+
+def _fold_status_summary(rows) -> dict:
+    """Bucket metric rows the way ``Database.get_status_summary`` does.
+
+    Same contract, including the part that looks like a bug and is load
+    bearing: EVERY row counts toward ``total``, but only the four known
+    statuses land in a bucket. So a fifth status would inflate `total` without
+    appearing anywhere else — and `_estate_vitals` derives its `unknown`
+    bucket from `server_count - total`, so such a row would vanish from
+    `monitored` entirely. That hole is inherited deliberately rather than
+    fixed here: closing it changes the numbers the dashboard shows, and this
+    function exists to change only where they come from.
+    """
+    summary = {"total": 0, "healthy": 0, "warning": 0, "critical": 0, "offline": 0}
+    for row in rows:
+        status = row.get("status")
+        if status in _STATUS_BUCKETS:
+            summary[status] += 1
+        summary["total"] += 1
+    return summary
+
+
+def _status_summary_from_cache(configured: set[str]) -> dict | None:
+    """The status summary from the collector's hot cache, or None to say no.
+
+    WHY THIS EXISTS. `Database.get_status_summary()` measures 7.37 ms against
+    the live database: it scans all 83,549 metrics rows through a covering
+    index to answer a question about 29 servers. Two endpoints need it on the
+    same prismRefresh — `/partials/verdict-header` for the hero banner and
+    `/partials/vitals` for the quadrant — so the dashboard paid it twice every
+    five seconds, roughly 14.7 ms of identical work per cycle, forever.
+
+    `partial_critical_issues` and `partial_server_grid` already avoid exactly
+    this by reading `state.latest_by_server` instead, and both say why in a
+    comment. This is that pattern, arriving late: the vitals context copied
+    the DB-reading neighbour rather than the cache-reading one.
+
+    The cache is safe to trust for this. `state.update_latest_metric` is
+    called by the aggregator AFTER the metric row is persisted, so the cache
+    is never AHEAD of the database — at worst it lags by the gap between those
+    two statements — and it holds the same "latest row per server" population
+    the SQL derives with MAX(id).
+
+    RETURNS None RATHER THAN A PARTIAL ANSWER, which is the whole of the
+    care here. The cache fills in incrementally, one server per Result, so for
+    up to a full poll cycle after a restart it covers some of the fleet. The
+    other consumers tolerate that — a server missing from the topology pane or
+    the issues list is simply not listed yet — but a SUMMARY built from a
+    partial cache is a different thing: it would report "5 of 5 healthy" on a
+    fleet of 29 and the hero banner would vanish, because there would be no
+    warning or critical among the five that had reported. So the cache is used
+    only when it covers every configured server, and the caller falls back to
+    the query otherwise. Warm-up keeps today's behaviour and pays today's
+    cost; steady state pays nothing.
+
+    ONE DELIBERATE DIVERGENCE from the SQL, and it is an improvement: this
+    counts only CONFIGURED servers, while the query counts whatever has a
+    metrics row — so a server deleted from the config stops being counted
+    immediately here, instead of lingering until retention prunes its history.
+    `_estate_vitals` already carries a `max(0, …)` clamp for the SQL's version
+    of that problem.
+    """
+    try:
+        import state as _state
+        with _state._state_lock:
+            cache = dict(_state.latest_by_server or {})
+    except Exception:
+        logger.exception("vitals: could not read the metrics cache")
+        return None
+    if not cache:
+        return None
+    missing = configured - cache.keys()
+    if missing:
+        # Debug rather than silent: a cache that never completes would make
+        # this optimisation quietly do nothing, and the count is the clue.
+        logger.debug("vitals: metrics cache covers %d of %d servers, using the "
+                     "query (%d not yet reported)",
+                     len(configured) - len(missing), len(configured), len(missing))
+        return None
+    return _fold_status_summary(cache[name] for name in configured)
+
+
+def _vitals_context() -> dict:
+    """Everything the quadrant and the circle need, from one place.
+
+    Each read is defended separately: a missing `health_check_config` table
+    on an old database must not cost the dashboard its servers card.
+    """
+    try:
+        names = {s.name for s in _config.get_servers()}
+    except Exception:
+        logger.exception("vitals: could not read the server list")
+        names = set()
+    server_count = len(names)
+    summary = _status_summary_from_cache(names)
+    if summary is None:
+        try:
+            summary = _db.get_status_summary()
+        except Exception:
+            logger.exception("vitals: could not read the status summary")
+            summary = None
+    try:
+        services = _db.get_health_check_summary()
+    except Exception:
+        logger.exception("vitals: could not read the health-check summary")
+        services = None
+    return {
+        "server_count": server_count,
+        "summary": summary,
+        "services": services,
+        "vitals": _estate_vitals(server_count, summary, services),
+    }
+
+
 # ── Full page routes ──
 
 @views_bp.route("/")
 def dashboard():
     logger.debug("Serving %s", request.path)
     try:
-        # Pass server count to the template so it can render an empty-state
-        # onboarding card when no servers are configured yet (helps brand-new
-        # admins find the "Add Server" page on /servers instead of staring at
-        # an empty dashboard).
-        server_count = len(_config.get_servers())
-        # Verdict header data — the dashboard should answer "is anything wrong
-        # right now?" server-side on first paint, not after a skeleton + fetch.
-        try:
-            summary = _db.get_status_summary()
-        except Exception:
-            summary = None
-        return render_template("dashboard.html", server_count=server_count, summary=summary)
+        # `server_count` drives the onboarding empty state (a brand-new admin
+        # gets pointed at /servers instead of a page of skeletons), `summary`
+        # the conditional hero banner, and `vitals` the centre circle's first
+        # paint — all server-side, so the page answers "is anything wrong?"
+        # before a single fetch resolves.
+        return render_template("dashboard.html", **_vitals_context())
     except Exception:
         logger.exception("Error rendering dashboard")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/server/<name>")
@@ -55,9 +356,19 @@ def server_detail(name: str):
         events = _db.get_server_events(name, limit=50)
         logs = _db.get_server_logs(name, hours=24, limit=50)
         settings = _config.get_settings()
-        analytics = get_server_analytics(_db, name, server_type=cfg.type,
-                                          timezone_str=settings.get("timezone", "Europe/Berlin"),
-                                          settings=settings, thresholds=cfg.thresholds)
+        # `analytics` is deliberately NOT gathered here — it is fetched after
+        # paint by partial_server_analytics below. Measured on the busiest host
+        # in the fleet, median of seven runs per call:
+        #
+        #   get_latest_by_server        0.01 ms
+        #   get_server_events(50)       0.10 ms
+        #   get_server_logs(24h, 50)    0.10 ms
+        #   get_server_analytics       31.77 ms   <- 99.3% of the total
+        #
+        # So this one call WAS the page's server-side cost, and the other three
+        # are not worth deferring. The template renders the section's heading
+        # and a skeleton, then swaps the region in.
+        #
         # Compute active maintenance window for badge display.
         # Imports the maintenance helper directly (post-R1b canonical home).
         try:
@@ -66,11 +377,12 @@ def server_detail(name: str):
         except Exception:
             active_window = None
         return render_template("server_detail.html", server=cfg, metrics=metrics,
-                               events=events, logs=logs, analytics=analytics,
+                               events=events, logs=logs,
                                settings=settings, active_maintenance=active_window)
     except Exception:
         logger.exception("Error rendering server_detail for %s", name)
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/reports")
@@ -83,19 +395,120 @@ def reports():
         return render_template("reports.html")
     except Exception:
         logger.exception("Error rendering reports")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
+
+
+# WP-6 step 21 (DESIGN_SYSTEM_SPEC.md §7.1) — the Settings menu registry.
+#
+# ONE registry now feeds what used to be three independent lists: the
+# router's own section tuple (derived below, unchanged in value), the
+# top-bar theme menu steps 22-23 add, and search_index.py's jump-to labels
+# (which used to compute `slug.title()` — the exact mechanism that rendered
+# "Rbac" instead of "Permissions"). `key`/`fallback` is the same pair every
+# `t.get(key, fallback)` call in this codebase already uses.
+#
+# Order is the CURRENT nav order — verified against the
+# `{% for name in settings_sections %}` loop in templates/settings.html
+# (which iterated this exact list) BEFORE this step touched anything, not
+# assumed from the spec's own §7.1 table. The two orders happen to already
+# match.
+#
+# WP-6 step 23: that loop, the render_template() keyword argument that fed
+# it, and the always-visible tab strip it built are gone from settings.html
+# and from this view's render_template() call — replaced by the top-bar
+# theme menu (partials/_settings_nav.html, included from base.html), which reads
+# SETTINGS_THEMES directly via the `settings_themes` context processor
+# instead of a per-view kwarg. The order-provenance note above is left as
+# history: it is still how this order was ORIGINALLY verified, the value
+# has not changed since, and `test_every_theme_is_a_menuitem_link_to_its_own_url`
+# (tests/test_settings_nav.py, S-6) is what now pins the rendered order
+# going forward.
+#
+# D10 correction (DESIGN_SYSTEM_SPEC.md §0.0.2, already ratified — resolves
+# Part V owner question 2): the spec's own §7.1 table still literally reads
+#   SettingsTheme("servers", "server", "servers_page", "Servers")
+# which is stale. `servers_page` / "Servers" is the SIDEBAR's top-level
+# Servers page label (see templates/base.html's `nav_servers` and
+# partials/settings/_server_config.html's card heading, both of which
+# legitimately keep using that key for THAT page) — this settings THEME
+# reused the same key, invisibly, only because the tab strip never put the
+# word "Servers" next to the sidebar's own "Servers" entry as prominently as
+# the new top-bar chip (steps 22-23) will. D10 renames the THEME ONLY — not
+# the slug, not the icon, not the sidebar page — to "Server Configuration",
+# behind a brand-new, genuinely five-locale-translated key,
+# `settings_theme_servers_configuration`, rather than reusing servers_page's
+# key or its English string.
+class SettingsTheme(NamedTuple):
+    slug: str
+    icon: str
+    key: str
+    fallback: str
+
+
+SETTINGS_THEMES: tuple[SettingsTheme, ...] = (
+    SettingsTheme("general",       "settings-2",      "general",                               "General"),
+    SettingsTheme("collector",     "cpu",             "collector_engine_section",              "Collector"),
+    SettingsTheme("servers",       "server",          "settings_theme_servers_configuration",  "Server Configuration"),  # D10 — was servers_page/"Servers"
+    SettingsTheme("detection",     "radar",           "settings_section_detection",            "Detection"),
+    SettingsTheme("alerts",        "bell",            "settings_section_alerts",               "Alerts"),
+    SettingsTheme("operations",    "wrench",          "settings_section_operations",           "Operations"),
+    SettingsTheme("security",      "shield-check",    "security",                              "Security"),
+    SettingsTheme("rbac",          "user-check",      "settings_section_permissions",          "Permissions"),
+    SettingsTheme("compliance",    "clipboard-check", "compliance",                            "Compliance"),
+    SettingsTheme("notifications", "send",            "notifications",                         "Notifications"),
+    SettingsTheme("display",       "sliders",         "display_preferences",                   "Display Preferences"),
+)
+
+# The settings sub-pages, in the order they appear in the section nav.
+#
+# DERIVED from SETTINGS_THEMES (WP-6 step 21) rather than a literal tuple, so
+# search_index.py and every test file that imports this name directly need
+# NO change at all — they see the exact same slugs in the exact same order
+# as before this step.
+#
+# The list is still effectively the ROUTER's, not the template's: a name here
+# that the template does not render produces an empty page, and a section the
+# template renders that is missing here is unreachable. Both are caught by
+# tests/test_settings_change_tracking.py, which compares this list against the
+# `data-settings-section` attributes in the markup — the same attributes the
+# save payload is assembled from, so the router, the page and the save cannot
+# disagree about what a section is.
+#
+# `display` is here despite configuring nothing server-side: its four controls
+# are dashboard preferences in localStorage, and they are still settings the
+# operator goes to this page to change.
+_SETTINGS_SECTIONS = tuple(th.slug for th in SETTINGS_THEMES)
 
 
 @views_bp.route("/settings")
-def settings():
+@views_bp.route("/settings/<section>")
+def settings(section: str | None = None):
+    """One settings section per page.
+
+    `/settings` renders the first section rather than redirecting to it. The
+    URL is the one every operator has bookmarked and every existing link
+    points at; keeping it a real page means the split costs nobody a redirect,
+    and `/settings/general` is simply its deep-linkable spelling.
+
+    An unknown section is a 404 rather than a silent fallback to the first
+    one. A typo'd or stale link that quietly shows General looks like the page
+    forgot the operator's setting.
+    """
     logger.debug("Serving %s", request.path)
+    if section is None:
+        section = _SETTINGS_SECTIONS[0]
+    if section not in _SETTINGS_SECTIONS:
+        return render_template("404.html") if _template_exists("404.html") else ("Not Found", 404), 404
     try:
         servers = _config.get_servers()
         settings_data = _config.get_settings()
-        return render_template("settings.html", servers=servers, settings=settings_data)
+        return render_template("settings.html", servers=servers, settings=settings_data,
+                               section=section)
     except Exception:
         logger.exception("Error rendering settings")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/servers")
@@ -107,7 +520,92 @@ def servers_page():
         return render_template("servers.html", servers=servers, settings=settings_data)
     except Exception:
         logger.exception("Error rendering servers")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
+
+
+def _services_context() -> dict:
+    """The probes and their counts, from one place.
+
+    Called by the page view AND by the partial, for the same reason
+    ``_vitals_context`` is: the two must agree. The counts come from
+    ``get_health_check_summary`` (which excludes disabled probes) and the
+    rows from ``get_health_check_overview`` (which does not) — two reads a
+    few milliseconds apart, so a probe switched off between them would make
+    the page's table and its own figures disagree. One call site, one pair.
+
+    Each read is defended separately: a missing ``health_check_config``
+    table on an old database must not cost the page its heading.
+
+    ``readable`` is the part worth stating. Swallowing a failed read into an
+    empty list turns "Prism could not read the inventory" into "you have no
+    health checks configured" — the page's own empty state, hint and all,
+    asserting something about the operator's estate that Prism does not know.
+    That is this repository's most-repeated failure written in the UI layer:
+    a check that reports a clean result when it did not do the work. The flag
+    lets the template say which of the two it is; the caller must not infer
+    it from ``probes`` being empty, because both cases produce that.
+    """
+    readable = True
+    try:
+        probes = _db.get_health_check_overview()
+    except Exception:
+        logger.exception("services: could not read the probe inventory")
+        probes = []
+        readable = False
+    try:
+        summary = _db.get_health_check_summary()
+    except Exception:
+        logger.exception("services: could not read the health-check summary")
+        summary = {"total": 0, "up": 0, "down": 0, "unknown": 0}
+        readable = False
+    return {"probes": probes, "summary": summary, "readable": readable}
+
+
+@views_bp.route("/services")
+def services_page():
+    """The Services quadrant card's landing page — state only.
+
+    Everything it shows is server-rendered on first paint: the inventory is
+    a config-side scan of a dozen rows (see
+    ``Database.get_health_check_overview``), so deferring it would buy a
+    skeleton and nothing else.
+    """
+    logger.debug("Serving %s", request.path)
+    try:
+        return render_template("services.html", **_services_context())
+    except Exception:
+        logger.exception("Error rendering services")
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
+
+
+@views_bp.route("/network")
+def network_page():
+    """An honest surface over an absence — nothing is collected for it.
+
+    It takes no context at all, and that is the point: a view that fetched
+    something would eventually render a zero, and a zero is a measurement.
+    """
+    logger.debug("Serving %s", request.path)
+    try:
+        return render_template("network.html")
+    except Exception:
+        logger.exception("Error rendering network")
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
+
+
+@views_bp.route("/scan")
+def scan_page():
+    """The twin of :func:`network_page`; same argument, same shape."""
+    logger.debug("Serving %s", request.path)
+    try:
+        return render_template("scan.html")
+    except Exception:
+        logger.exception("Error rendering scan")
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/monitoring")
@@ -119,7 +617,8 @@ def monitoring_page():
         return render_template("monitoring.html", servers=servers, settings=settings_data)
     except Exception:
         logger.exception("Error rendering monitoring")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/operations")
@@ -131,7 +630,8 @@ def operations_page():
         return render_template("operations.html", servers=servers, settings=settings_data)
     except Exception:
         logger.exception("Error rendering operations")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/workflows")
@@ -143,7 +643,8 @@ def workflows_page():
         return render_template("workflows.html", servers=servers, settings=settings_data)
     except Exception:
         logger.exception("Error rendering workflows")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/topology")
@@ -154,7 +655,8 @@ def topology():
         return render_template("topology.html", servers=servers)
     except Exception:
         logger.exception("Error rendering topology")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 # ── HTMX partial routes (return HTML fragments, not full pages) ──
@@ -196,27 +698,89 @@ def partial_critical_issues():
         return "Internal Server Error", 500
 
 
-@views_bp.route("/partials/status-overview")
-def partial_status_overview():
+@views_bp.route("/partials/server-analytics/<name>")
+def partial_server_analytics(name: str):
+    """Anomalies and forecasts for one server, fetched after the page paints.
+
+    Split out because it is the whole of /server/<name>'s server-side cost:
+    31.77 ms of 31.98 ms of data gathering, against 0.01-0.10 ms for each of
+    the three DB reads that stayed inline. Deferring the cheap ones would have
+    been motion without effect.
+
+    Returns an empty body for an unknown server rather than a 404 page. The
+    region is swapped straight into the document, so an error page would be
+    injected mid-DOM — and the host cannot normally be unknown here, since the
+    page that issues this request already resolved it.
+    """
     logger.debug("Serving %s", request.path)
     try:
-        summary = _db.get_status_summary()
-        return render_template("partials/status_overview.html", summary=summary)
+        cfg = _config.get_server_by_name(name)
+        if not cfg:
+            return "", 200
+        settings = _config.get_settings()
+        analytics = get_server_analytics(
+            _db, name, server_type=cfg.type,
+            timezone_str=settings.get("timezone", "Europe/Berlin"),
+            settings=settings, thresholds=cfg.thresholds)
+        # Only read to decide which disks exist; 0.01 ms, so re-reading it here
+        # is cheaper than threading it through the request.
+        metrics = _db.get_latest_by_server(name)
+        return render_template("partials/server_analytics.html",
+                               server=cfg, metrics=metrics, analytics=analytics)
     except Exception:
-        logger.exception("Error rendering partial status_overview")
+        logger.exception("Error rendering partial server_analytics for %s", name)
+        return "Internal Server Error", 500
+
+
+# `/partials/status-overview` used to sit here — four flat stat boxes
+# (total / healthy / warning / critical) plus a stacked health bar. The
+# quadrant's Servers card carries the same numbers and the circle carries the
+# proportion the bar was showing, so the route, its template and its skeleton
+# macro were all deleted rather than left as a second way to render the same
+# thing. Nothing else called it; grep confirmed one caller, in dashboard.html.
+
+
+@views_bp.route("/partials/vitals")
+def partial_vitals():
+    """The four quadrant cards, refreshed on every prismRefresh.
+
+    The centre CIRCLE is deliberately not in here. It owns a canvas, and
+    `hx-swap="morph:innerHTML"` would replace that canvas element on every
+    refresh — roughly every 5s under collector v2 — so the animation would
+    restart from a blank buffer several times a minute and never show a
+    steady beat. Instead the circle is static markup in `dashboard.html`
+    that no swap touches, and this fragment's root carries the machine-
+    readable state (`data-vitals-*`) that `vitals-monitor.js` reads after
+    each settle. One render, one set of numbers: the tempo cannot disagree
+    with the counts because it is derived from them.
+    """
+    logger.debug("Serving %s", request.path)
+    try:
+        return render_template("partials/vitals_quadrant.html", **_vitals_context())
+    except Exception:
+        logger.exception("Error rendering partial vitals")
         return "Internal Server Error", 500
 
 
 @views_bp.route("/partials/verdict-header")
 def partial_verdict_header():
     """The 'is anything wrong right now?' banner, as a refreshable partial so
-    it tracks live status instead of freezing at first-paint values."""
+    it tracks live status instead of freezing at first-paint values.
+
+    Shares `_vitals_context()` with the quadrant rather than reading the
+    status summary itself. It used to call `get_status_summary()` directly,
+    which meant the dashboard paid that 7.37 ms query TWICE on every
+    prismRefresh — this endpoint and `/partials/vitals`, five seconds apart,
+    for the same numbers. Reusing the context also means the banner and the
+    quadrant cannot disagree about the fleet, which two independent reads a
+    few milliseconds apart could.
+    """
     logger.debug("Serving %s", request.path)
     try:
-        summary = _db.get_status_summary()
-        server_count = len(_config.get_servers())
+        ctx = _vitals_context()
         return render_template("partials/verdict_header.html",
-                               summary=summary, server_count=server_count)
+                               summary=ctx["summary"],
+                               server_count=ctx["server_count"])
     except Exception:
         logger.exception("Error rendering partial verdict_header")
         return "Internal Server Error", 500
@@ -339,11 +903,26 @@ def partial_server_grid():
             servers = [s for s in servers
                        if any(str(tag["id"]) == active_tag for tag in s["tags"])]
 
-        # Group by type
+        # Group by type, and order BOTH levels. The card view is a horizontal
+        # band with a heading per type, so two orders are visible at once and
+        # neither may be left to chance:
+        #
+        #   * segments, by type key — dict insertion order here is the order
+        #     the metrics cache happened to iterate in, which is not stable
+        #     between refreshes, so the headings would shuffle under the
+        #     pointer every few seconds;
+        #   * cards within a segment, alphabetically by name, case-folded so
+        #     `web-01` does not sort after `DB-02`.
+        #
+        # Sorted here rather than in the template because the template only
+        # ever sees what this hands it — it cannot sort a grouping it was
+        # given pre-grouped, and sorting the display order in one place and
+        # the grouping in another is how the two disagree.
         grouped = {}
-        for s in servers:
+        for s in sorted(servers, key=lambda r: (r.get("server_name") or "").lower()):
             t = s.get("type", "other")
             grouped.setdefault(t, []).append(s)
+        grouped = {k: grouped[k] for k in sorted(grouped)}
 
         return render_template("partials/server_grid.html", grouped=grouped,
                                all_tags=all_tags, active_tag=active_tag)
@@ -354,9 +933,19 @@ def partial_server_grid():
 
 @views_bp.route("/partials/activity-feed")
 def partial_activity_feed():
+    """The consolidated events timeline.
+
+    `?compact=1` is the /servers copy (WP-3): eight rows in a 240px scroller
+    instead of twenty in a 400px one. A FLAG rather than a `?limit=` number,
+    deliberately — a numeric parameter from the query string is a value to
+    validate and clamp on a path that has never needed one, and there are
+    exactly two shapes this region takes. Its PRESENCE is the whole input, so
+    there is nothing to range-check.
+    """
     logger.debug("Serving %s", request.path)
     try:
-        events = _db.get_consolidated_activity(limit=20)
+        compact = bool(request.args.get("compact"))
+        events = _db.get_consolidated_activity(limit=8 if compact else 20)
         # Enrich events with alert fatigue noise scores
         try:
             for ev in events:
@@ -368,9 +957,26 @@ def partial_activity_feed():
                 ev["noise_score"] = score_rec["score"] if score_rec else None
         except Exception:
             pass  # Don't break the feed if scoring fails
-        return render_template("partials/activity_feed.html", events=events)
+        return render_template("partials/activity_feed.html", events=events,
+                               compact=compact)
     except Exception:
         logger.exception("Error rendering partial activity_feed")
+        return "Internal Server Error", 500
+
+
+@views_bp.route("/partials/services-table")
+def partial_services_table():
+    """The /services inventory, refreshed on every prismRefresh.
+
+    There is no `load` trigger on the page's region: it is painted
+    server-side from the same context this returns, so a load-triggered swap
+    would blank a region that is already correct and buy a flicker.
+    """
+    logger.debug("Serving %s", request.path)
+    try:
+        return render_template("partials/services_table.html", **_services_context())
+    except Exception:
+        logger.exception("Error rendering partial services_table")
         return "Internal Server Error", 500
 
 
@@ -602,22 +1208,17 @@ def partial_updates_overview():
 
 
 @views_bp.route("/admin/rbac")
-def rbac_admin_page():
-    """Admin UI for managing per-server ACLs and tier-0 approvals.
+def rbac_admin():
+    """Moved to /settings/rbac in WP-4 D4.
 
-    Access control is server-side: the page renders for any authenticated
-    user, but the API calls it makes (/api/rbac/*) reject anyone who isn't
-    a backup admin or a wildcard-admin. We intentionally don't gate the
-    page itself so a non-admin user gets a clean 403 from the API instead
-    of a confusing redirect loop.
+    A redirect rather than a removal: this URL is in browser histories and in
+    whatever notes an operator keeps. It is written now rather than with the
+    rest of WP-4's redirects because the destination lands in the same commit
+    — the reason redirects are scheduled last is that one written before its
+    destination exists points at a 404.
     """
     logger.debug("Serving %s", request.path)
-    try:
-        servers = sorted(s.name for s in _config.get_servers())
-        return render_template("rbac.html", server_names=servers)
-    except Exception:
-        logger.exception("Error rendering /admin/rbac")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+    return redirect("/settings/rbac", code=301)
 
 
 @views_bp.route("/compliance")
@@ -641,7 +1242,8 @@ def compliance_page():
         )
     except Exception:
         logger.exception("Error rendering /compliance")
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/compliance/sop/<sop_id>")
@@ -663,7 +1265,8 @@ def compliance_sop_page(sop_id: str):
         )
     except Exception:
         logger.exception("Error rendering /compliance/sop/%s", sop_id)
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 @views_bp.route("/compliance/doc/<doc_id>")
@@ -690,7 +1293,8 @@ def compliance_doc_page(doc_id: str):
         )
     except Exception:
         logger.exception("Error rendering /compliance/doc/%s", doc_id)
-        return render_template("500.html") if _template_exists("500.html") else ("Internal Server Error", 500)
+        return (render_template("500.html"), 500) if _template_exists("500.html") \
+            else ("Internal Server Error", 500)
 
 
 def _template_exists(template_name: str) -> bool:

@@ -1,178 +1,103 @@
 {% extends "base.html" %}
+{% from "partials/_card.html" import card with context %}
+{% from "partials/_tip.html" import tip, tip_button, tip_mirror, tip_overflow with context %}
+
+{#
+  /reports — organised by QUESTION, not by file format.  WP-5.
+
+  The page this replaces had seven controls, four of them named after a file
+  format, and three separate buttons reading "Export CSV". Nothing on it said
+  "availability", "capacity" or "who changed what" — the words an operator
+  actually arrives with. The capability was never the problem: uptime and
+  capacity were already computed and already in the fleet export, and the
+  evidence report and correlation engine were both built and reachable only
+  by typing a URL. What was missing was a way to FIND any of it.
+
+  So every <h2> below is a sentence someone says out loud, and the format is a
+  choice at the bottom of the card rather than the heading above it. The
+  headings are static — no Jinja interpolation — because the jump-to index
+  crawls h1/h2 and a heading that ends in a count would change identity every
+  time the fleet did.
+
+  TWO fetches, TWO windows:
+    A) /api/reports/fleet     — feeds §1 §2 §3 §4
+    B) /api/reports/evidence.json — feeds §1 §5 §6
+  /api/correlations is deliberately NOT called on first paint: evidence.build()
+  already calls correlation.analyse() internally and returns it as `verdict`,
+  so fetching both would compute the whole correlation twice per page view.
+  The endpoint is still reachable from §6 as raw JSON.
+
+  A card renders only the controls its endpoint actually honours. Three of
+  these endpoints silently ignore a parameter someone would expect them to
+  take (/api/reports/pdf takes none, csv/fleet ignores scope, csv/events
+  ignores hours and limit), and drawing an inert control is a lie the old page
+  told twice.
+#}
+
+{% block page_title %}{{ t.reports }}{% endblock %}
+{% block page_icon %}file-bar-chart{% endblock %}
 
 {% block content %}
 
-<div class="flex items-center justify-between mb-6">
-  <h1 class="text-2xl font-bold flex items-center gap-2">
-    <i data-lucide="file-bar-chart" class="w-6 h-6 text-brand"></i>
-    {{ t.reports }}
-  </h1>
-  <p class="text-sm text-muted">{{ t.report_desc }}</p>
+<div class="flex items-start justify-between gap-4 mb-6 flex-wrap">
+  <p class="text-sm text-muted max-w-md">
+    {{ t.get('reports_by_question_desc', 'Every section is a question. Pick the question, then pick the format.') }}
+  </p>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     SECTION 1 — Export (CSV / PDF / JSON)
-     ═══════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════════════
+     §1 — Should I be worried right now?
+     A findings strip, ranked severity then breadth. It never reorders the
+     page: DOM order stays tab order stays visual order. Each row is a real
+     <button> that scrolls to the section owning the finding.
+     ═══════════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  <div class="bg-card rounded-lg border border-line p-6">
-    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-      <i data-lucide="download" class="w-5 h-5 text-accent"></i>
-      {{ t.export_csv }} / {{ t.export_pdf }}
-    </h2>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-      <!-- CSV Metrics -->
-      <div class="border border-line rounded-lg p-4">
-        <div class="flex items-center gap-2 mb-2">
-          <i data-lucide="table" class="w-4 h-4 text-healthy"></i>
-          <span class="font-medium text-sm">{{ t.download_metrics }}</span>
-        </div>
-        <p class="text-xs text-muted mb-3">{{ t.csv_metrics_desc }}</p>
-        <div class="flex items-center gap-2 mb-3">
-          <select id="csv-metrics-server" class="flex-1 text-xs rounded border border-line bg-field px-2 py-1.5">
-            <option value="">{{ t.all }} {{ t.servers | lower }}</option>
-          </select>
-          <select id="csv-metrics-hours" class="text-xs rounded border border-line bg-field px-2 py-1.5">
-            <option value="24">{{ t.hours_24 }}</option>
-            <option value="48">{{ t.hours_48 }}</option>
-            <option value="168">{{ t.hours_168 }}</option>
-            <option value="720">{{ t.hours_720 }}</option>
-          </select>
-        </div>
-        <button data-action="downloadCSVMetrics" class="w-full text-xs font-medium px-3 py-2 rounded bg-healthy hover:bg-[#059669] text-white transition-colors">
-          <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>
-          {{ t.export_csv }}
-        </button>
-        <p id="csv-metrics-preview" class="text-[10px] text-muted mt-1.5 leading-tight"></p>
-      </div>
-
-      <!-- CSV Events -->
-      <div class="border border-line rounded-lg p-4">
-        <div class="flex items-center gap-2 mb-2">
-          <i data-lucide="alert-triangle" class="w-4 h-4 text-warning"></i>
-          <span class="font-medium text-sm">{{ t.download_events }}</span>
-        </div>
-        <p class="text-xs text-muted mb-3">{{ t.csv_events_desc }}</p>
-        <div class="flex items-center gap-2 mb-3">
-          <select id="csv-events-server" class="flex-1 text-xs rounded border border-line bg-field px-2 py-1.5">
-            <option value="">{{ t.all }} {{ t.servers | lower }}</option>
-          </select>
-        </div>
-        <button data-action="downloadCSVEvents" class="w-full text-xs font-medium px-3 py-2 rounded bg-warning hover:bg-[#D97706] text-white transition-colors">
-          <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>
-          {{ t.export_csv }}
-        </button>
-        <p id="csv-events-preview" class="text-[10px] text-muted mt-1.5 leading-tight"></p>
-      </div>
-
-      <!-- PDF Report -->
-      <div class="border border-line rounded-lg p-4">
-        <div class="flex items-center gap-2 mb-2">
-          <i data-lucide="file-text" class="w-4 h-4 text-critical"></i>
-          <span class="font-medium text-sm">{{ t.management_report }}</span>
-        </div>
-        <p class="text-xs text-muted mb-3">{{ t.pdf_desc }}</p>
-        <div class="mb-3">&nbsp;</div>
-        <button data-action="downloadPDF" class="w-full text-xs font-medium px-3 py-2 rounded bg-critical hover:bg-[#B91C1C] text-white transition-colors">
-          <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>
-          {{ t.download_pdf_report }}
-        </button>
-      </div>
-
-      <!-- JSON Metrics -->
-      <div class="border border-line rounded-lg p-4">
-        <div class="flex items-center gap-2 mb-2">
-          <i data-lucide="braces" class="w-4 h-4 text-accent"></i>
-          <span class="font-medium text-sm">{{ t.export_json }} — {{ t.get('metrics', 'Metrics') }}</span>
-        </div>
-        <p class="text-xs text-muted mb-3">{{ t.json_metrics_desc }}</p>
-        <div class="flex items-center gap-2 mb-3">
-          <select id="json-metrics-server" class="flex-1 text-xs rounded border border-line bg-field px-2 py-1.5">
-            <option value="">{{ t.all }} {{ t.servers | lower }}</option>
-          </select>
-          <select id="json-metrics-hours" class="text-xs rounded border border-line bg-field px-2 py-1.5">
-            <option value="24">{{ t.hours_24 }}</option>
-            <option value="48">{{ t.hours_48 }}</option>
-            <option value="168">{{ t.hours_168 }}</option>
-            <option value="720">{{ t.hours_720 }}</option>
-          </select>
-        </div>
-        <button data-action="downloadJSONMetrics" class="w-full text-xs font-medium px-3 py-2 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors">
-          <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>
-          {{ t.export_json }}
-        </button>
-      </div>
-
-      <!-- JSON Events -->
-      <div class="border border-line rounded-lg p-4">
-        <div class="flex items-center gap-2 mb-2">
-          <i data-lucide="braces" class="w-4 h-4 text-accent"></i>
-          <span class="font-medium text-sm">{{ t.export_json }} — {{ t.get('events', 'Events') }}</span>
-        </div>
-        <p class="text-xs text-muted mb-3">{{ t.json_events_desc }}</p>
-        <div class="flex items-center gap-2 mb-3">
-          <select id="json-events-server" class="flex-1 text-xs rounded border border-line bg-field px-2 py-1.5">
-            <option value="">{{ t.all }} {{ t.servers | lower }}</option>
-          </select>
-        </div>
-        <button data-action="downloadJSONEvents" class="w-full text-xs font-medium px-3 py-2 rounded bg-brand hover:bg-[#7C3AED] text-white transition-colors">
-          <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>
-          {{ t.export_json }}
-        </button>
-      </div>
-
+  {% call card(heading=t.get('q_right_now', 'Should I be worried right now?'),
+                icon='siren', heading_id='right-now') %}
+    <p id="nowcast-summary" class="text-sm mb-3"></p>
+    <div id="nowcast-skeleton" class="space-y-2" aria-hidden="true">
+      <div class="skeleton skeleton-text w-3/4"></div>
+      <div class="skeleton skeleton-text w-1/2"></div>
     </div>
-  </div>
+    <div id="nowcast-findings" class="space-y-1.5"></div>
+  {% endcall %}
 </section>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     SECTION 2 — Fleet Report
-     Replaces the former SLA/Uptime and Capacity Planning sections.
-     See docs/plans/FLEET_REPORT_SPEC.md.
-
-     Availability does not rank anything: measured over 720 h, 28 of 29
-     servers sat inside a 0.73-POINT band while health ranged 1-100%. The
-     old page rendered availability at text-2xl and health at 10px, so it
-     led with the one number that carries no information. Health leads
-     here; availability is a column, and the band shows its own spread so
-     the reader can see how little it moves.
-     ═══════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════════════
+     §2 — Which servers need attention, and why?
+     The fleet table, structurally unchanged: same 8 columns, same sort
+     vector, same expandable detail row. What changed is that it fetches
+     once at scope=all and filters client-side, so §3 and §4 can read the
+     same payload without a second request and without stub rows whose
+     detail fields read undefined.
+     ═══════════════════════════════════════════════════════════════════ -->
 <section class="mb-8">
-  <div class="bg-card rounded-lg border border-line p-6">
-    <div class="flex flex-wrap items-start justify-between gap-3 mb-1">
-      <h2 class="text-lg font-semibold flex items-center gap-2">
-        <i data-lucide="activity" class="w-5 h-5 text-healthy"></i>
-        {{ t.get('fleet_report', 'Fleet report') }}
-      </h2>
-      <div class="flex items-center gap-2">
-        <select id="fleet-hours" data-change="loadFleetReport"
-                class="text-xs rounded border border-line bg-field px-2 py-1.5">
-          <option value="168">{{ t.hours_168 }}</option>
-          <option value="720" selected>{{ t.hours_720 }}</option>
-        </select>
-        <button data-action="loadFleetReport"
-                class="text-xs font-medium px-3 py-1.5 rounded border border-line hover:bg-page transition-colors">
-          <i data-lucide="refresh-cw" class="w-3.5 h-3.5 inline mr-1"></i>
-          {{ t.get('refresh', 'Refresh') }}
-        </button>
-        <button data-action="downloadFleetCSV"
-                class="text-xs font-medium px-3 py-1.5 rounded border border-line hover:bg-page transition-colors">
-          <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>
-          {{ t.export_csv }}
-        </button>
-      </div>
-    </div>
-    <p class="text-xs text-muted mb-4">
-      {{ t.get('fleet_report_desc', 'Servers ranked by how much of their reachable time was spent outside thresholds.') }}
-    </p>
+  {% set _attention_controls %}<select id="fleet-hours" data-change="setFleetWindow"
+          aria-label="{{ t.get('time_range', 'Time range') }}"
+          class="text-xs rounded border border-line bg-field px-2 py-1.5">
+    <option value="24">{{ t.hours_24 }}</option>
+    <option value="168">{{ t.hours_168 }}</option>
+    <option value="720" selected>{{ t.hours_720 }}</option>
+  </select>
+  <button data-action="loadFleetReport"
+          class="text-xs font-medium px-3 py-1.5 rounded border border-line hover:bg-page transition-colors">
+    <i data-lucide="refresh-cw" class="w-3.5 h-3.5 inline mr-1"></i>
+    {{ t.get('refresh', 'Refresh') }}
+  </button>{% endset %}
+  {% call card(heading=t.get('q_attention', 'Which servers need attention, and why?'),
+                icon='activity', heading_id='attention', controls=_attention_controls) %}
+    <p id="fleet-answer" class="text-xs text-muted mb-4"></p>
 
-    <div id="fleet-loading" class="text-center py-8">
-      <i data-lucide="loader-2" class="w-5 h-5 inline-block animate-spin text-muted"></i>
+    <div id="fleet-loading" class="space-y-2" aria-hidden="true">
+      <div class="skeleton skeleton-text w-2/3"></div>
+      <div class="skeleton skeleton-text w-full"></div>
     </div>
 
     <div id="fleet-content" class="hidden">
-      <div id="fleet-band" class="rounded-lg border border-line bg-page p-4 mb-4"></div>
+      {# §4.4/§4.5 tile idiom -- the fleet-band is a JS-filled inset inside
+         this card, so it takes TILE (bg-raised rounded border border-line
+         p-3), not a hand-rolled bg-page shape. #}
+      <div id="fleet-band" class="bg-raised rounded border border-line p-3 mb-4"></div>
       <div id="fleet-empty" class="hidden text-center py-8"></div>
       <div id="fleet-table-wrap" class="overflow-x-auto">
         <table class="w-full text-sm border-collapse">
@@ -196,547 +121,1417 @@
                 class="text-xs font-medium px-4 py-1.5 rounded border border-line text-muted hover:bg-page transition-colors"></button>
       </div>
     </div>
-  </div>
+
+    <div class="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-line">
+      <span class="text-[10px] uppercase tracking-wide text-muted mr-1">{{ t.get('export_csv', 'Export CSV') }}</span>
+      <button data-action="downloadFleetCSV"
+              class="text-xs font-medium px-3 py-1.5 rounded border border-line hover:bg-page transition-colors">
+        <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>
+        {{ t.get('fleet_report', 'Fleet report') }}
+      </button>
+      {{ tip('fleet_report_desc', 'Servers ranked by how much of their reachable time was spent outside thresholds.',
+             title_key='fleet_report', title_fallback='Fleet report') }}
+    </div>
+  {% endcall %}
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     §3 — How much uptime did we have, and when were we down?
+     The availability spread MOVED here from the fleet band. That move is
+     the reorganisation: availability belongs to the uptime question, not
+     to the attention question, and the spread is what tells the reader the
+     column cannot rank a fleet.
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="mb-8">
+  {% call card(heading=t.get('q_uptime', 'How much uptime did we have, and when were we down?'),
+                icon='timer', heading_id='uptime') %}
+    <div id="uptime-content"></div>
+
+    <div class="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-line">
+      <button data-action="downloadPDF"
+              class="text-xs font-medium px-3 py-1.5 rounded border border-line hover:bg-page transition-colors">
+        <i data-lucide="file-text" class="w-3.5 h-3.5 inline mr-1"></i>
+        {{ t.management_report }} ({{ t.export_pdf }})
+      </button>
+      <button data-action="downloadFleetCSV"
+              class="text-xs font-medium px-3 py-1.5 rounded border border-line hover:bg-page transition-colors">
+        <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>
+        {{ t.export_csv }}
+      </button>
+      <span id="uptime-format-note" class="text-[10px] text-faint"></span>
+    </div>
+  {% endcall %}
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     §4 — What is going to run out of space, and when?
+     One flat table across the whole fleet. The fleet table's Capacity
+     column deliberately refuses to headline a low-risk forecast, because a
+     low-risk forecast is a linear fit extrapolated past a year and two runs
+     seconds apart have moved a server between medium and low. The same rule
+     applies here, and the filter that relaxes it is opt-in and labelled.
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="mb-8">
+  {% set _capacity_controls %}<label class="flex items-center gap-1.5 text-xs text-muted">
+    <input type="checkbox" id="capacity-low" data-change="toggleCapacityLow"
+           class="rounded border-line">
+    {{ t.get('include_low_risk', 'Include low-risk forecasts') }}
+  </label>{% endset %}
+  {% call card(heading=t.get('q_capacity', 'What is going to run out of space, and when?'),
+                icon='hard-drive', heading_id='capacity', controls=_capacity_controls) %}
+    <div id="capacity-content"></div>
+    <div class="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-line">
+      <button data-action="downloadFleetCSV"
+              class="text-xs font-medium px-3 py-1.5 rounded border border-line hover:bg-page transition-colors">
+        <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>
+        {{ t.export_csv }}
+      </button>
+      <span id="capacity-format-note" class="text-[10px] text-faint"></span>
+    </div>
+  {% endcall %}
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     §5 — Who changed what, and is anything actually protected?
+     Surfaces evidence.py for the first time. The tri-state in (c) is the
+     load-bearing part: the collector stores a FAILED READ and a genuine
+     negative as the same value, so a null must render "not read" and never
+     "no" — otherwise the page reports a fleet-wide security emergency that
+     is actually a collection fault.
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="mb-8">
+  {% set _evidence_controls %}<select id="evidence-hours" data-change="setEvidenceWindow"
+          aria-label="{{ t.get('time_range', 'Time range') }}"
+          class="text-xs rounded border border-line bg-field px-2 py-1.5">
+    <option value="24">{{ t.hours_24 }}</option>
+    <option value="168" selected>{{ t.hours_168 }}</option>
+    <option value="336">{{ t.get('days_14', '14 days') }}</option>
+    <option value="720">{{ t.hours_720 }}</option>
+    <option value="2160">{{ t.get('days_90', '90 days') }}</option>
+  </select>{% endset %}
+  {% call card(heading=t.get('q_evidence', 'Who changed what, and is anything actually protected?'),
+                icon='shield-check', heading_id='evidence', controls=_evidence_controls) %}
+    <p id="evidence-answer" class="text-sm mb-4"></p>
+    <div id="evidence-skeleton" class="space-y-2" aria-hidden="true">
+      <div class="skeleton skeleton-text w-full"></div>
+      <div class="skeleton skeleton-text w-5/6"></div>
+    </div>
+    <div id="evidence-content" class="hidden space-y-6"></div>
+
+    <div class="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-line">
+      <button data-action="downloadEvidence" data-fmt="pdf"
+              class="text-xs font-medium px-3 py-1.5 rounded border border-line hover:bg-page transition-colors">
+        <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>{{ t.export_pdf }}
+      </button>
+      <button data-action="downloadEvidence" data-fmt="csv"
+              class="text-xs font-medium px-3 py-1.5 rounded border border-line hover:bg-page transition-colors">
+        <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>{{ t.export_csv }}
+      </button>
+      <button data-action="downloadEvidence" data-fmt="json"
+              class="text-xs font-medium px-3 py-1.5 rounded border border-line hover:bg-page transition-colors">
+        <i data-lucide="download" class="w-3.5 h-3.5 inline mr-1"></i>{{ t.export_json }}
+      </button>
+    </div>
+    <p class="text-[10px] text-faint mt-2">
+      {{ t.get('evidence_contains', 'This pack contains the full audit log, failed sign-ins and security posture for the selected period.') }}
+      {{ t.get('firewall_in_export', 'Firewall policy events are not shown here, but they are included in the CSV and PDF.') }}
+    </p>
+  {% endcall %}
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     §6 — Was that an attack, or one fault hitting everything?
+     Renders from payload B's `verdict`, not a second fetch. Fleet faults
+     keep the order the API returned them in: that ORDER BY encodes severity
+     then breadth then spike, and re-sorting by raw count would undo it.
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="mb-8">
+  {% call card(heading=t.get('q_correlation', 'Was that an attack, or one fault hitting everything?'),
+                icon='git-branch', heading_id='correlation') %}
+    <div id="correlation-content"></div>
+    <div class="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-line">
+      <button data-action="openCorrelationJson"
+              class="text-xs font-medium px-3 py-1.5 rounded border border-line hover:bg-page transition-colors">
+        <i data-lucide="braces" class="w-3.5 h-3.5 inline mr-1"></i>
+        {{ t.get('open_raw_json', 'Open the raw JSON') }}
+      </button>
+      <span class="text-[10px] text-faint" id="correlation-format-note"></span>
+    </div>
+  {% endcall %}
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     §7 — I need the raw numbers myself
+     The one section where a file format is legitimately the label, because
+     here the file IS the question. Collapsed, and last.
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="mb-8">
+  {# JUDGEMENT CALL (step 16): this heading used to BE the disclosure
+     button (a <button> wrapping the whole head row). card()'s heading=/
+     controls= contract has no way to make the WHOLE head row a single
+     <button> -- controls renders INSIDE the row, beside the heading, not
+     around it. Rather than hand-roll a second head-row shape outside the
+     macro, the disclosure toggle becomes a small icon-only button in
+     controls= (same aria-expanded/aria-controls/data-action wiring, same
+     #raw-chevron id the JS already updates), and the heading itself is a
+     plain, non-interactive <h2>. This shrinks the click target from "the
+     whole row" to "the chevron button" but is arguably more correct
+     accessibility-wise (a heading that is also a button is an unusual
+     pattern for a screen reader); functionality (toggleRawData, the
+     chevron flip, lazy-loading server options) is unchanged. Flagged in
+     this step's own report. #}
+  {% set _raw_controls %}<button data-action="toggleRawData" aria-expanded="false" aria-controls="raw-panel"
+          aria-label="{{ t.get('q_raw_data', 'I need the raw numbers myself') }}"
+          class="p-1.5 -m-1.5 rounded text-muted hover:text-accent focus-visible:text-accent transition-colors duration-fast ease-standard">
+    <i data-lucide="chevron-right" id="raw-chevron" class="w-4 h-4"></i>
+  </button>{% endset %}
+  {% call card(heading=t.get('q_raw_data', 'I need the raw numbers myself'),
+                icon='table', heading_id='raw', controls=_raw_controls) %}
+    <div id="raw-panel" class="hidden mt-4 space-y-4">
+
+      <div class="border border-line rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <i data-lucide="line-chart" class="w-4 h-4 text-muted"></i>
+          <span class="font-medium text-sm flex items-center gap-1.5">
+            {{ t.download_metrics }}
+            {{ tip('csv_metrics_desc', 'CSV — CPU, RAM, Disk') }}
+          </span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          <select id="metrics-server" data-change="updateExportPreviews"
+                  aria-label="{{ t.get('server', 'Server') }}"
+                  class="flex-1 min-w-[8rem] text-xs rounded border border-line bg-field px-2 py-1.5">
+            <option value="">{{ t.all }} {{ t.servers | lower }}</option>
+          </select>
+          <select id="metrics-hours" data-change="updateExportPreviews"
+                  aria-label="{{ t.get('time_range', 'Time range') }}"
+                  class="text-xs rounded border border-line bg-field px-2 py-1.5">
+            <option value="24">{{ t.hours_24 }}</option>
+            <option value="48">{{ t.hours_48 }}</option>
+            <option value="168">{{ t.hours_168 }}</option>
+            <option value="720">{{ t.hours_720 }}</option>
+          </select>
+          <button data-action="downloadCSVMetrics"
+                  class="text-xs font-medium px-3 py-1.5 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors">
+            {{ t.export_csv }}
+          </button>
+          <button data-action="downloadJSONMetrics"
+                  class="text-xs font-medium px-3 py-1.5 rounded border border-line hover:bg-page transition-colors">
+            {{ t.export_json }}
+          </button>
+        </div>
+        <p id="metrics-preview" class="text-[10px] text-faint leading-tight"></p>
+      </div>
+
+      <div class="border border-line rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <i data-lucide="alert-triangle" class="w-4 h-4 text-muted"></i>
+          <span class="font-medium text-sm flex items-center gap-1.5">
+            {{ t.download_events }}
+            {{ tip('csv_events_desc', 'CSV — Recent Events') }}
+          </span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          <select id="events-server" data-change="updateExportPreviews"
+                  aria-label="{{ t.get('server', 'Server') }}"
+                  class="flex-1 min-w-[8rem] text-xs rounded border border-line bg-field px-2 py-1.5">
+            <option value="">{{ t.all }} {{ t.servers | lower }}</option>
+          </select>
+          <select id="events-limit" data-change="updateExportPreviews"
+                  aria-label="{{ t.get('row_limit', 'Row limit') }}"
+                  class="text-xs rounded border border-line bg-field px-2 py-1.5">
+            <option value="500">500</option>
+            <option value="2000">2000</option>
+            <option value="10000">10000</option>
+          </select>
+          <button data-action="downloadCSVEvents"
+                  class="text-xs font-medium px-3 py-1.5 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors">
+            {{ t.export_csv }}
+          </button>
+          <button data-action="downloadJSONEvents"
+                  class="text-xs font-medium px-3 py-1.5 rounded border border-line hover:bg-page transition-colors">
+            {{ t.export_json }}
+          </button>
+        </div>
+        <p class="text-[10px] text-faint leading-tight">
+          {{ t.get('csv_latest_500', 'This export accepts no window and no row limit — it always returns the most recent 500 events.') }}
+        </p>
+      </div>
+
+    </div>
+  {% endcall %}
 </section>
 
 
 <script nonce="{{ csp_nonce }}">
-const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
+(function () {
+  'use strict';
 
-document.addEventListener('DOMContentLoaded', async () => {
-  try {
-    const res = await fetch('/api/servers');
-    const servers = await res.json();
-    const names = servers.map(s => s.name).sort();
+  // ── Strings ────────────────────────────────────────────────────────────
+  //
+  // Collected here through `| tojson` rather than interpolated into each JS
+  // string below. Interpolating means choosing a quote style per site, and
+  // the mixed single/double quoting that produces is what makes the house
+  // i18n scraper (single-quote only) silently blind to half a page.
+  const T = {
+    notRead:        {{ t.get('not_read', 'not read') | tojson }},
+    notRecorded:    {{ t.get('not_recorded', 'not recorded') | tojson }},
+    yes:            {{ t.get('yes', 'yes') | tojson }},
+    no:             {{ t.get('no', 'no') | tojson }},
+    attackShape:    {{ t.get('attack_shape', 'Attack shape') | tojson }},
+    staleCredential:{{ t.get('stale_credential', 'Stale credential') | tojson }},
+    fleetWideFault: {{ t.get('fleet_wide_fault', 'Fleet-wide fault') | tojson }},
+    clusterFault:   {{ t.get('cluster_fault', 'Cluster fault') | tojson }},
+    explainedBy:    {{ t.get('explained_by_prism', 'Prism was doing this at the time') | tojson }},
+    auditChainForked: {{ t.get('audit_chain_forked', 'Audit chain forked') | tojson }},
+    acrossReadings: {{ t.get('across_readings', 'across {n} observed readings') | tojson }},
+    worstAvail:     {{ t.get('worst_availability', 'Worst availability') | tojson }},
+    soonestDeadline:{{ t.get('soonest_deadline', 'Soonest deadline') | tojson }},
+    noCapDeadline:  {{ t.get('no_capacity_deadline', 'No metric is forecast to cross a threshold within 90 days.') | tojson }},
+    whoDidWhat:     {{ t.get('who_did_what', 'Who did what') | tojson }},
+    whoFailed:      {{ t.get('who_failed_to_log_in', 'Who failed to log in') | tojson }},
+    whatIsOn:       {{ t.get('what_is_switched_on', 'What is actually switched on') | tojson }},
+    builtOn:        {{ t.get('what_this_is_built_on', 'What this report is built on') | tojson }},
+    showingNOfTotal:{{ t.get('showing_n_of_total', 'Showing {shown} of {total}') | tojson }},
+    postureNoHistory:{{ t.get('posture_no_history', 'Current state only — this table is overwritten on each check, so no date range applies.') | tojson }},
+    sopExecutions:  {{ t.get('sop_executions', 'Procedures executed') | tojson }},
+    logonReason:    {{ t.get('logon_reason', 'Reason') | tojson }},
+    hourBeginning:  {{ t.get('hour_beginning', 'hour beginning') | tojson }},
+    attackTargets:  {{ t.get('attack_targets', 'Targets') | tojson }},
+    howDecided:     {{ t.get('how_this_is_decided', 'How this is decided') | tojson }},
+    server:         {{ t.get('server', 'Server') | tojson }},
+    servers:        {{ t.get('servers', 'Servers') | tojson }},
+    health:         {{ t.get('health', 'Health') | tojson }},
+    availability:   {{ t.get('availability', 'Availability') | tojson }},
+    capacity:       {{ t.get('reason_capacity', 'Capacity') | tojson }},
+    threshold:      {{ t.get('threshold', 'threshold') | tojson }},
+    minutes:        {{ t.minutes | tojson }},
+    observed:       {{ t.get('observed', 'Observed') | tojson }},
+    degraded:       {{ t.get('degraded', 'Degraded') | tojson }},
+    ongoing:        {{ t.get('ongoing', 'ongoing') | tojson }},
+    now:            {{ t.get('now', 'now') | tojson }},
+    total:          {{ t.get('total', 'Total') | tojson }},
+    showAll:        {{ t.get('show_all', 'Show all') | tojson }},
+    showLess:       {{ t.get('show_less', 'Show less') | tojson }},
+    showAttentionOnly: {{ t.get('show_attention_only', 'Show only servers needing attention') | tojson }},
+    noAttention:    {{ t.get('no_attention_needed', 'No server needs attention') | tojson }},
+    loadFailed:     {{ t.get('load_failed', 'Failed to load fleet report') | tojson }},
+    fleetHealth:    {{ t.get('fleet_health', 'Fleet health') | tojson }},
+    fleetAvail:     {{ t.get('fleet_availability', 'Fleet availability') | tojson }},
+    needsAttention: {{ t.get('needs_attention', 'Needs attention') | tojson }},
+    noDataLc:       {{ t.get('no_data_lc', 'no data') | tojson }},
+    allReporting:   {{ t.get('all_servers_reporting', 'all servers reporting') | tojson }},
+    worstHealth:    {{ t.get('worst_health', 'Worst health') | tojson }},
+    meanPerServer:  {{ t.get('mean_per_server', 'Mean per server') | tojson }},
+    range:          {{ t.get('range', 'range') | tojson }},
+    points:         {{ t.get('points', 'pts') | tojson }},
+    middle80:       {{ t.get('middle_80_within', 'Middle 80% of servers within') | tojson }},
+    ofEachOther:    {{ t.get('of_each_other', 'of each other') | tojson }},
+    noOutages:      {{ t.get('no_outages', 'No outages in window') | tojson }},
+    outageCount:    {{ t.outage_count | tojson }},
+    totalDowntime:  {{ t.total_downtime | tojson }},
+    mttr:           {{ t.mttr | tojson }},
+    unknown:        {{ t.get('unknown', 'unknown') | tojson }},
+    level:          {{ t.get('level', 'Level') | tojson }},
+    eventId:        {{ t.get('event_id', 'Event ID') | tojson }},
+    sourceIp:       {{ t.get('source_ip', 'Source IP') | tojson }},
+    username:       {{ t.get('username', 'User') | tojson }},
+    category:       {{ t.get('category', 'Category') | tojson }},
+    affectedServers:{{ t.get('affected_servers', 'Affected servers') | tojson }},
+    observedNote:   {{ t.get('observed_note', 'the window is wall-clock, this is time actually sampled.') | tojson }}
+  };
 
-    ['csv-metrics-server', 'csv-events-server', 'json-metrics-server', 'json-events-server'].forEach(id => {
-      const sel = document.getElementById(id);
-      names.forEach(n => {
-        const opt = document.createElement('option');
-        opt.value = n; opt.textContent = n;
-        sel.appendChild(opt);
+  // ── FIELD CONTRACT — /api/reports/fleet ────────────────────────────────
+  //
+  // tests/test_fleet_report.py parses this object out of the template and
+  // asserts every value exists in a real /api/reports/fleet response. Two
+  // production defects were a renderer reading a field the API never emitted
+  // (`days_until_full` for `days_to_threshold`, `trend_slope` for
+  // `trend_per_day`) — both produced a silent em-dash or an Infinity sort key
+  // rather than an error. Reading fields through named constants is what lets
+  // a test catch that.
+  //
+  // EVERY value here must be a key the fleet endpoint emits. The evidence and
+  // correlation field names live in EV and CR below, declared AFTER the
+  // closing brace, because that test's regex stops there.
+  const F = {
+    fleet: 'fleet', servers: 'servers', hours: 'hours',
+    fleetHealth: 'fleet_health_percent',
+    fleetAvailability: 'fleet_availability_percent',
+    meanAvailability: 'mean_server_availability_percent',
+    serversTotal: 'servers_total',
+    serversAttention: 'servers_needing_attention',
+    serversNoData: 'servers_no_data',
+    observedMinutes: 'total_observed_minutes',
+    degradedMinutes: 'total_degraded_minutes',
+    worstServer: 'worst_server',
+    worstHealth: 'worst_health_percent',
+    name: 'name', attention: 'attention', attentionReasons: 'attention_reasons',
+    health: 'health_percent', availability: 'availability_percent',
+    hasData: 'has_data',
+    observed: 'observed_minutes', upMinutes: 'up_minutes',
+    degraded: 'degraded_minutes', degradedPct: 'degraded_percent_of_up',
+    outageCount: 'outage_count', downtime: 'total_downtime_minutes',
+    longestOutage: 'longest_outage_minutes', mttr: 'mttr_minutes',
+    outagesTop: 'outages_top',
+    outageStart: 'start_time', outageDuration: 'duration_minutes',
+    outageOngoing: 'ongoing', outageSeverity: 'worst_severity',
+    drivers: 'drivers', driverMetric: 'metric', driverReadings: 'readings',
+    driverPct: 'percent_of_degraded', driverAvg: 'avg_value',
+    driverThreshold: 'threshold', driverExcess: 'avg_excess',
+    noBreach: 'no_threshold_breach', noBreachPct: 'percent_of_degraded',
+    noBreachEvents: 'event_counts',
+    capacity: 'capacity', capMetric: 'metric', capKey: 'metric_key',
+    capCurrent: 'current', capGrowth: 'growth_rate',
+    capDays: 'days_to_threshold', capRisk: 'risk',
+    sparkline: 'health_sparkline',
+  };
+
+  // ── FIELD CONTRACT — /api/reports/evidence.json ────────────────────────
+  const EV = {
+    provenance: 'provenance', tables: 'tables', disclosure: 'disclosure',
+    windowStart: 'window_start', windowEnd: 'window_end',
+    generatedAt: 'generated_at', windowHours: 'window_hours',
+    rows: 'rows', first: 'first', last: 'last',
+    auditChain: 'audit_chain', chainState: 'state', chainRows: 'rows_checked',
+    chainNote: 'note', chainBreakId: 'first_break_id', chainReason: 'reason',
+    ingest: 'ingest', payloadsRejected: 'payloads_rejected',
+    rowsDropped: 'rows_dropped', fieldsTruncated: 'fields_truncated',
+    logsDropped: 'logs_dropped_information',
+    logsKept: 'logs_kept_by_allowlist',
+    posture: 'security_posture', postureServers: 'servers',
+    postureTotal: 'total', withConcerns: 'with_concerns',
+    withUnmeasured: 'with_unmeasured', unmeasuredFields: 'unmeasured_fields',
+    asOf: 'as_of', limitation: 'limitation',
+    collectionWarning: 'collection_warning',
+    pServer: 'server', pLastChecked: 'last_checked',
+    defenderEnabled: 'defender_enabled', defenderRt: 'defender_rt_protection',
+    defenderSigAge: 'defender_sig_age_days',
+    defenderEngine: 'defender_engine_version',
+    fwService: 'firewall_service_running', fwDomain: 'firewall_domain_enabled',
+    fwPrivate: 'firewall_private_enabled', fwPublic: 'firewall_public_enabled',
+    bitlockerPct: 'bitlocker_encrypted_pct', bitlockerStatus: 'bitlocker_status',
+    concerns: 'concerns', unmeasured: 'unmeasured',
+    auth: 'authentication', authTotal: 'total',
+    bySource: 'by_source', byAccount: 'by_account', byReason: 'by_reason',
+    account: 'account', sources: 'sources', accounts: 'accounts',
+    attempts: 'attempts', firstSeen: 'first_seen', lastSeen: 'last_seen',
+    subStatus: 'sub_status', meaning: 'meaning',
+    audit: 'audit', entries: 'entries', byCategory: 'by_category',
+    byUser: 'by_user', actions: 'actions',
+    timestamp: 'timestamp', username: 'username', action: 'action',
+    category: 'category', details: 'details', sourceIp: 'source_ip',
+    sopExecutions: 'sop_executions', sopId: 'sop_id',
+    executedAt: 'executed_at', executedBy: 'executed_by', result: 'result',
+    verdict: 'verdict',
+  };
+
+  // ── FIELD CONTRACT — correlation, carried inside evidence's `verdict` ───
+  const CR = {
+    summary: 'summary', attacks: 'attacks', auth: 'auth',
+    fleetFaults: 'fleet_faults',
+    kind: 'kind', why: 'why', shapes: 'shapes', sourceIp: 'source_ip',
+    servers: 'servers', accounts: 'accounts', attempts: 'attempts',
+    noSuchUser: 'no_such_user', firstSeen: 'first_seen', lastSeen: 'last_seen',
+    targets: 'targets',
+    hourUtc: 'hour_utc', logSource: 'log_source', eventId: 'event_id',
+    level: 'level', events: 'events', fleetSize: 'fleet_size',
+    normalEvents: 'normal_events', spikeMultiple: 'spike_multiple',
+    baselineHours: 'baseline_hours', sample: 'sample',
+    affectedServers: 'affected_servers', explainedBy: 'explained_by',
+  };
+
+  // ── State ──────────────────────────────────────────────────────────────
+  let fleetData = null;
+  let evidenceData = null;
+  let fleetScope = 'attention';
+  let capacityIncludeLow = false;
+  let rawLoaded = false;
+  const fleetExpanded = new Set();
+  const expandedBlocks = new Set();
+
+  // ── Formatting ─────────────────────────────────────────────────────────
+  //
+  // Colour comes from tokens, never from a hex literal. The four text tokens
+  // used here are contrast-tested against the card in BOTH themes by
+  // tests/test_design_tokens.py; the hand-rolled pairs they replace were not,
+  // and the saturated status palette they started from measures ~2.5:1 on
+  // white — fine for a bar fill, far under the 4.5:1 that text needs.
+  const OK = 'text-healthy', WARN = 'text-warning',
+        BAD = 'text-critical', NONE = 'text-muted';
+
+  function availClass(v) {
+    if (v === null || v === undefined) return NONE;
+    return v >= 99.9 ? OK : (v >= 99 ? WARN : BAD);
+  }
+  function healthClass(v) {
+    if (v === null || v === undefined) return NONE;
+    return v >= 90 ? OK : (v >= 50 ? WARN : BAD);
+  }
+  function riskClass(r) { return r === 'high' ? BAD : (r === 'medium' ? WARN : NONE); }
+
+  // Bar fills and SVG strokes only — a MARK needs 3:1, not 4.5:1, and these
+  // are invisible to the class-literal ratchet because they are not classes.
+  function healthColor(v) {
+    if (v === null || v === undefined) return '#9CA3AF';
+    return v >= 90 ? '#10B981' : (v >= 50 ? '#F59E0B' : '#DC2626');
+  }
+
+  function pct(v, dp) {
+    return (v === null || v === undefined) ? '—' : v.toFixed(dp === undefined ? 1 : dp) + '%';
+  }
+  function hrs(m) {
+    if (m === null || m === undefined) return '—';
+    return m >= 60 ? (m / 60).toFixed(1) + ' h' : Math.round(m) + ' ' + T.minutes;
+  }
+  function days(d) {
+    if (d === null || d === undefined) return '—';
+    return d === 0 ? T.now : Math.round(d) + ' d';
+  }
+  function num(v) { return (v === null || v === undefined) ? '—' : v; }
+  function e(s) { return _escHtml(String(s === null || s === undefined ? '' : s)); }
+
+  // Every timestamp on this page goes through base.html's formatTs, which
+  // converts to the CONFIGURED timezone. The database stores UTC; displaying
+  // UTC would break the project's timezone rule, and no test on this page
+  // would have caught a raw ISO string.
+  function ts(v) { return v ? formatTs(v) : '—'; }
+
+  function fill(id, html) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  }
+  function cssId(name) { return String(name).replace(/[^A-Za-z0-9_-]/g, '_'); }
+
+  // A count interpolated into a translated sentence, so the sentence keeps
+  // its own word order in every locale rather than being concatenated in
+  // English order.
+  function interp(tpl, vals) {
+    return String(tpl).replace(/\{(\w+)\}/g, function (m, k) {
+      return Object.prototype.hasOwnProperty.call(vals, k) ? vals[k] : m;
+    });
+  }
+
+  function sparklineSVG(pts, w, h) {
+    if (!pts || pts.length < 2) return '';
+    const n = pts.length, coords = [];
+    pts.forEach(function (v, i) {
+      if (v === null || v === undefined) return;
+      coords.push(((i / (n - 1)) * w).toFixed(1) + ','
+        + (h - (Math.max(0, Math.min(100, v)) / 100) * h).toFixed(1));
+    });
+    if (coords.length < 2) return '';
+    const last = pts[pts.length - 1];
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" '
+      + 'style="width:100%;height:' + h + 'px;display:block;overflow:visible" role="img" '
+      + 'aria-label="' + e(interp(T.acrossReadings, { n: n })) + '">'
+      + '<polyline fill="none" stroke="' + healthColor(last) + '" stroke-width="1.5" '
+      + 'vector-effect="non-scaling-stroke" points="' + coords.join(' ') + '"/></svg>';
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // §1 — the findings strip
+  // ═══════════════════════════════════════════════════════════════════════
+
+  function badge(sev) {
+    const map = {
+      critical: 'bg-critical-tint text-critical-strong',
+      warning: 'bg-warning-tint text-warning-strong',
+      info: 'bg-info-tint text-info-strong',
+    };
+    return map[sev] || map.info;
+  }
+
+  function findingRow(f) {
+    return '<button type="button" data-action="jumpToSection" data-section="' + e(f.section) + '" '
+      + 'class="w-full text-left flex items-start gap-2 px-2 py-1.5 rounded '
+      + 'hover:bg-page transition-colors">'
+      + '<span class="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded shrink-0 '
+      + badge(f.sev) + '">' + e(f.tag) + '</span>'
+      + '<span class="text-xs"><span class="font-medium">' + e(f.claim) + '</span>'
+      + (f.detail ? ' <span class="text-muted">' + e(f.detail) + '</span>' : '')
+      + '</span></button>';
+  }
+
+  // Severity, then breadth. Deliberately NOT sorted by raw count: the loudest
+  // number on this page is usually a service-control message that appears on
+  // every server and means nothing.
+  function collectFindings() {
+    const out = [];
+
+    if (evidenceData) {
+      const v = evidenceData[EV.verdict] || {};
+      (v[CR.attacks] || []).forEach(function (a) {
+        out.push({ sev: 'critical', tag: T.attackShape, section: 'correlation',
+          claim: a[CR.sourceIp],
+          detail: (a[CR.shapes] || []).join(', ') + ' · ' + a[CR.attempts]
+            + ' → ' + a[CR.servers] + ' ' + T.servers.toLowerCase() });
+      });
+    }
+
+    if (fleetData) {
+      const srv = fleetData[F.servers] || [];
+      srv.forEach(function (s) {
+        (s[F.capacity] || []).forEach(function (c) {
+          if (c[F.capRisk] === 'high' && c[F.capDays] !== null && c[F.capDays] !== undefined) {
+            out.push({ sev: 'critical', tag: T.capacity, section: 'capacity',
+              claim: s[F.name] + ' · ' + c[F.capMetric],
+              detail: pct(c[F.capCurrent]) + ' → ' + days(c[F.capDays]) });
+          }
+        });
+      });
+    }
+
+    if (evidenceData) {
+      const p = evidenceData[EV.posture] || {};
+      if (p[EV.withConcerns]) {
+        const tally = {};
+        (p[EV.postureServers] || []).forEach(function (s) {
+          (s[EV.concerns] || []).forEach(function (c) { tally[c] = (tally[c] || 0) + 1; });
+        });
+        Object.keys(tally).forEach(function (c) {
+          out.push({ sev: 'warning', tag: T.whatIsOn, section: 'evidence',
+            claim: c, detail: tally[c] + ' ' + T.servers.toLowerCase() });
+        });
+      }
+
+      const v = evidenceData[EV.verdict] || {};
+      (v[CR.fleetFaults] || []).forEach(function (f) {
+        if ((f[CR.explainedBy] || []).length) return;
+        out.push({ sev: 'warning', tag: T.fleetWideFault, section: 'correlation',
+          claim: f[CR.logSource] + '/' + f[CR.eventId] + ' · ' + f[CR.level],
+          detail: f[CR.servers] + '/' + f[CR.fleetSize] + ' ' + T.servers.toLowerCase()
+            + ' · ' + f[CR.spikeMultiple] + '×' });
+      });
+    }
+
+    if (fleetData) {
+      (fleetData[F.servers] || [])
+        .filter(function (s) {
+          const r = s[F.attentionReasons] || [];
+          return r.indexOf('health') >= 0 || r.indexOf('availability') >= 0;
+        })
+        .sort(function (a, b) { return (a[F.health] || 0) - (b[F.health] || 0); })
+        .forEach(function (s) {
+          out.push({ sev: 'warning', tag: T.health, section: 'attention',
+            claim: s[F.name], detail: T.health + ' ' + pct(s[F.health]) });
+        });
+    }
+
+    if (evidenceData) {
+      const v = evidenceData[EV.verdict] || {};
+      (v[CR.fleetFaults] || []).forEach(function (f) {
+        if (!(f[CR.explainedBy] || []).length) return;
+        out.push({ sev: 'info', tag: T.explainedBy, section: 'correlation',
+          claim: f[CR.logSource] + '/' + f[CR.eventId],
+          detail: f[CR.servers] + '/' + f[CR.fleetSize] + ' ' + T.servers.toLowerCase() });
+      });
+      (v[CR.auth] || []).forEach(function (a) {
+        if (a[CR.kind] !== 'stale-credential') return;
+        out.push({ sev: 'info', tag: T.staleCredential, section: 'correlation',
+          claim: a[CR.sourceIp], detail: a[CR.attempts] + ' · ' + (a[CR.accounts] || 1) });
+      });
+
+      const chain = ((evidenceData[EV.provenance] || {})[EV.disclosure] || {})[EV.auditChain] || {};
+      if (chain[EV.chainState] === 'broken') {
+        out.push({ sev: 'warning', tag: T.auditChainForked, section: 'evidence',
+          claim: chain[EV.chainReason] || T.auditChainForked,
+          detail: '#' + num(chain[EV.chainBreakId]) });
+      }
+
+      const p2 = evidenceData[EV.posture] || {};
+      if (p2[EV.withUnmeasured]) {
+        out.push({ sev: 'info', tag: T.notRead, section: 'evidence',
+          claim: (p2[EV.unmeasuredFields] || []).join(', '),
+          detail: p2[EV.withUnmeasured] + ' ' + T.servers.toLowerCase() });
+      }
+    }
+    return out;
+  }
+
+  function renderNowcast() {
+    const sk = document.getElementById('nowcast-skeleton');
+    if (fleetData && evidenceData && sk) sk.classList.add('hidden');
+    if (!fleetData && !evidenceData) return;
+
+    // The verdict sentence is composed in Python and printed verbatim,
+    // including its "nothing happened" branch. That branch is a RESULT, not
+    // an empty state, and must never be replaced by one.
+    if (evidenceData) {
+      const v = evidenceData[EV.verdict] || {};
+      fill('nowcast-summary', '<span class="text-ink">' + e(v[CR.summary] || '') + '</span>');
+    }
+    const found = collectFindings();
+    fill('nowcast-findings', found.length
+      ? found.map(findingRow).join('')
+      : '<p class="text-xs ' + OK + '">' + e(T.noAttention) + '</p>');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function jumpToSection(el) {
+    const id = el.getAttribute('data-section');
+    const target = document.getElementById(id);
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // §2 — the fleet table
+  // ═══════════════════════════════════════════════════════════════════════
+
+  function setFleetWindow() { loadFleetReport(); }
+
+  function loadFleetReport() {
+    const hours = document.getElementById('fleet-hours').value;
+    document.getElementById('fleet-loading').classList.remove('hidden');
+    document.getElementById('fleet-content').classList.add('hidden');
+    // scope=all always. The old page refetched on every scope toggle and, at
+    // scope=attention, returned 4-key stub rows for everyone else — so §3 and
+    // §4 reading `capacity` or `outages_top` off those rows would silently
+    // read undefined. One fetch, filtered client-side, also makes the screen
+    // agree with the CSV, which always computes at scope=all.
+    prismFetch('/api/reports/fleet?hours=' + encodeURIComponent(hours) + '&scope=all')
+      .then(function (data) {
+        if (data.error) throw new Error(data.error);
+        fleetData = data;
+        renderFleet();
+        renderUptime();
+        renderCapacity();
+        renderNowcast();
+        document.getElementById('fleet-content').classList.remove('hidden');
+      })
+      .catch(function (err) {
+        console.error('Fleet report load failed:', err);
+        fill('fleet-band', '<p class="text-sm text-center py-2 ' + BAD + '">'
+          + e(T.loadFailed) + '</p>');
+        fill('fleet-rows', '');
+        document.getElementById('fleet-content').classList.remove('hidden');
+      })
+      .then(function () {
+        document.getElementById('fleet-loading').classList.add('hidden');
+      });
+  }
+
+  function toggleFleetScope() {
+    fleetScope = (fleetScope === 'attention') ? 'all' : 'attention';
+    renderFleet();
+  }
+
+  function toggleFleetRow(el) {
+    // The registry calls handlers as fn(el, e) and passes no data-args — that
+    // form only reaches the global fallback. The name comes off the element.
+    const name = el.getAttribute('data-server');
+    const row = document.getElementById('fleet-detail-' + cssId(name));
+    if (!row) return;
+    const nowHidden = row.classList.toggle('hidden');
+    if (nowHidden) fleetExpanded.delete(name); else fleetExpanded.add(name);
+    el.setAttribute('aria-expanded', String(!nowHidden));
+    el.innerHTML = '<i data-lucide="chevron-' + (nowHidden ? 'right' : 'down') + '" class="w-4 h-4"></i>';
+    if (window.lucide) lucide.createIcons({ nodes: [el] });
+  }
+
+  function renderFleetBand(data) {
+    const f = data[F.fleet];
+    fill('fleet-band',
+      '<div class="flex flex-wrap items-end gap-x-8 gap-y-3">'
+      + '<div><div class="text-[10px] uppercase tracking-wide text-muted">' + e(T.fleetHealth) + '</div>'
+      + '<div class="font-mono text-3xl font-bold ' + healthClass(f[F.fleetHealth]) + '">'
+      + pct(f[F.fleetHealth], 2) + '</div>'
+      + '<div class="text-[10px] text-faint">' + e(T.observed) + ' ' + hrs(f[F.observedMinutes])
+      + ' · ' + e(T.degraded) + ' ' + hrs(f[F.degradedMinutes]) + '</div></div>'
+      + '<div><div class="text-[10px] uppercase tracking-wide text-muted">' + e(T.needsAttention) + '</div>'
+      + '<div class="font-mono text-3xl font-bold ' + (f[F.serversAttention] > 0 ? WARN : OK) + '">'
+      + f[F.serversAttention] + '<span class="text-lg text-faint">/' + f[F.serversTotal] + '</span></div>'
+      + '<div class="text-[10px] text-faint">'
+      + (f[F.serversNoData] ? f[F.serversNoData] + ' ' + e(T.noDataLc) : e(T.allReporting))
+      + '</div></div>'
+      + (f[F.worstServer]
+        ? '<div class="text-[11px] text-muted"><div>' + e(T.worstHealth) + ': <span class="font-mono">'
+          + e(f[F.worstServer]) + ' ' + pct(f[F.worstHealth], 2) + '</span></div></div>'
+        : '')
+      + '</div>');
+  }
+
+  function driverChip(s) {
+    const drivers = s[F.drivers] || [];
+    const nb = s[F.noBreach] || {};
+    const nbPct = nb[F.noBreachPct] || 0;
+    if (!drivers.length && !nbPct) return '<span class="text-faint">—</span>';
+    // When most degraded time crossed no static threshold, say exactly that
+    // rather than promoting a 2%-of-the-time metric to "the driver".
+    if (nbPct >= 50) {
+      return '<span class="' + NONE + '">' + e({{ t.get('no_threshold_breach', 'no threshold breach') | tojson }}) + '</span>'
+        + '<span class="text-[10px] text-faint"> ' + nbPct.toFixed(0) + '%</span>';
+    }
+    const d = drivers[0];
+    return '<span class="font-medium">' + e(d[F.driverMetric]) + '</span>'
+      + '<span class="text-[10px] text-muted"> ' + d[F.driverPct].toFixed(0) + '% · '
+      + d[F.driverAvg].toFixed(0) + '% &gt; ' + d[F.driverThreshold] + '</span>';
+  }
+
+  function capacityChip(s) {
+    const items = (s[F.capacity] || []).filter(function (c) {
+      return c[F.capDays] !== null && c[F.capDays] !== undefined
+        && (c[F.capRisk] === 'high' || c[F.capRisk] === 'medium');
+    });
+    if (!items.length) return '<span class="text-faint">—</span>';
+    const soonest = items.reduce(function (a, b) { return a[F.capDays] <= b[F.capDays] ? a : b; });
+    return '<span class="' + riskClass(soonest[F.capRisk]) + '">'
+      + e(soonest[F.capMetric]) + ' ' + days(soonest[F.capDays]) + '</span>';
+  }
+
+  function reasonBadges(reasons) {
+    const label = { health: T.health, availability: T.availability, capacity: T.capacity };
+    return (reasons || []).map(function (r) {
+      return '<span class="badge badge-warning text-[9px]">' + e(label[r] || r) + '</span>';
+    }).join(' ');
+  }
+
+  function renderFleetDetail(s) {
+    const drivers = s[F.drivers] || [];
+    const nb = s[F.noBreach] || {};
+    const events = nb[F.noBreachEvents] || {};
+    const eventList = Object.keys(events).map(function (k) { return [k, events[k]]; })
+      .sort(function (a, b) { return b[1] - a[1]; });
+
+    const driverRows = drivers.map(function (d) {
+      return '<div class="flex items-center gap-2 py-0.5">'
+        + '<span class="w-16 text-xs font-medium">' + e(d[F.driverMetric]) + '</span>'
+        + '<div class="metric-bar flex-1 max-w-[10rem]"><div class="metric-bar-fill" style="width:'
+        + Math.min(100, d[F.driverPct]) + '%;background:#F59E0B"></div></div>'
+        + '<span class="font-mono text-xs w-12 text-right">' + d[F.driverPct].toFixed(0) + '%</span>'
+        + '<span class="text-[10px] text-muted">' + d[F.driverAvg].toFixed(1) + '% · '
+        + e(T.threshold) + ' ' + d[F.driverThreshold] + ' · +' + d[F.driverExcess].toFixed(1)
+        + '</span></div>';
+    }).join('');
+
+    const nbRow = nb[F.noBreachPct]
+      ? '<div class="flex items-center gap-2 py-0.5"><span class="w-16 text-xs font-medium ' + NONE + '">'
+        + e({{ t.get('other', 'other') | tojson }}) + '</span>'
+        + '<div class="metric-bar flex-1 max-w-[10rem]"><div class="metric-bar-fill" style="width:'
+        + Math.min(100, nb[F.noBreachPct]) + '%;background:#9CA3AF"></div></div>'
+        + '<span class="font-mono text-xs w-12 text-right">' + nb[F.noBreachPct].toFixed(0) + '%</span>'
+        + '<span class="text-[10px] text-muted">'
+        + e({{ t.get('no_static_threshold_crossed', 'no static threshold crossed') | tojson }})
+        + '</span></div>'
+      : '';
+
+    const capRows = (s[F.capacity] || []).map(function (c) {
+      return '<div class="flex items-center justify-between py-1 border-b border-line/50 last:border-0">'
+        + '<span class="text-xs font-medium w-16">' + e(c[F.capMetric]) + '</span>'
+        + '<span class="text-xs font-mono w-14 text-right">' + pct(c[F.capCurrent]) + '</span>'
+        + '<span class="text-[10px] text-muted w-24 text-right">'
+        + (c[F.capGrowth] !== null && c[F.capGrowth] !== undefined
+          ? (c[F.capGrowth] >= 0 ? '+' : '') + c[F.capGrowth].toFixed(3) + '%/d' : '—')
+        + '</span><span class="text-[10px] font-medium w-16 text-right ' + riskClass(c[F.capRisk]) + '">'
+        + days(c[F.capDays]) + '</span></div>';
+    }).join('');
+
+    const outages = (s[F.outagesTop] || []).map(function (o) {
+      return '<div class="flex items-center justify-between text-[10px] py-0.5">'
+        + '<span class="font-mono">' + e(ts(o[F.outageStart])) + '</span>'
+        + '<span>' + Math.round(o[F.outageDuration]) + ' ' + e(T.minutes)
+        + (o[F.outageOngoing] ? ' · ' + e(T.ongoing) : '') + '</span>'
+        + '<span class="' + NONE + '">' + e(o[F.outageSeverity] || '') + '</span></div>';
+    }).join('') || '<div class="text-[10px] ' + NONE + '">' + e(T.noOutages) + '</div>';
+
+    return '<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 px-8 py-4 bg-page">'
+      + '<div><div class="text-[10px] uppercase tracking-wide text-muted mb-2">'
+      + e({{ t.get('degradation_breakdown', 'What the degraded time was') | tojson }}) + '</div>'
+      + (driverRows || nbRow ? driverRows + nbRow
+        : '<div class="text-[10px] ' + NONE + '">'
+          + e({{ t.get('no_degradation', 'No degraded time in window') | tojson }}) + '</div>')
+      + (eventList.length
+        ? '<div class="mt-2 text-[10px] text-muted">'
+          + eventList.map(function (kv) { return e(kv[0]) + ' ' + kv[1]; }).join(' · ')
+          + '<div class="' + NONE + ' italic mt-0.5">'
+          + e({{ t.get('events_window_note', 'Counted across the window, not matched to individual readings.') | tojson }})
+          + '</div></div>'
+        : '')
+      + '</div>'
+      + '<div><div class="text-[10px] uppercase tracking-wide text-muted mb-2">'
+      + e(T.capacity) + '</div>' + (capRows || '<div class="text-[10px] ' + NONE + '">—</div>') + '</div>'
+      + '<div><div class="text-[10px] uppercase tracking-wide text-muted mb-2">'
+      + e(T.availability) + '</div>'
+      + '<div class="grid grid-cols-3 gap-2 text-[10px] text-muted mb-2">'
+      + '<div><span class="block font-semibold">' + e(T.outageCount) + '</span>' + s[F.outageCount] + '</div>'
+      + '<div><span class="block font-semibold">' + e(T.totalDowntime) + '</span>'
+      + Math.round(s[F.downtime]) + ' ' + e(T.minutes) + '</div>'
+      + '<div><span class="block font-semibold">' + e(T.mttr) + '</span>'
+      + (s[F.mttr] !== null && s[F.mttr] !== undefined ? Math.round(s[F.mttr]) + ' ' + e(T.minutes) : '—')
+      + '</div></div>' + outages
+      + '<div class="mt-2 text-[10px] ' + NONE + '">' + e(T.observed) + ' ' + hrs(s[F.observed])
+      + ' — ' + e(T.observedNote) + '</div></div></div>';
+  }
+
+  function renderFleet() {
+    if (!fleetData) return;
+    const data = fleetData;
+    const tbody = document.getElementById('fleet-rows');
+    const empty = document.getElementById('fleet-empty');
+    const wrap = document.getElementById('fleet-table-wrap');
+    tbody.innerHTML = '';
+    renderFleetBand(data);
+
+    const f = data[F.fleet];
+    fill('fleet-answer', e(f[F.serversAttention] + ' / ' + f[F.serversTotal] + ' · ')
+      + e(T.fleetHealth) + ' ' + pct(f[F.fleetHealth], 2));
+
+    const rows = (data[F.servers] || [])
+      .filter(function (s) { return fleetScope === 'all' || s[F.attention]; });
+
+    if (!rows.length) {
+      wrap.classList.add('hidden');
+      empty.classList.remove('hidden');
+      empty.innerHTML = '<i data-lucide="shield-check" class="w-8 h-8 inline-block ' + OK + '"></i>'
+        + '<p class="text-sm font-medium mt-2 ' + OK + '">' + e(T.noAttention) + '</p>'
+        + '<p class="text-xs text-muted mt-1">' + f[F.serversTotal] + ' ' + e(T.servers.toLowerCase())
+        + ' · ' + e(T.fleetHealth) + ' ' + pct(f[F.fleetHealth], 2) + '</p>';
+    } else {
+      wrap.classList.remove('hidden');
+      empty.classList.add('hidden');
+      rows.forEach(function (s) {
+        const id = cssId(s[F.name]);
+        const open = fleetExpanded.has(s[F.name]);
+        const health = s[F.health];
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-line hover:bg-page transition-colors';
+        tr.innerHTML =
+          '<td class="py-2 align-middle"><button data-action="toggleFleetRow" data-server="'
+          + e(s[F.name]) + '" aria-expanded="' + open + '" aria-controls="fleet-detail-' + id + '" '
+          + 'class="p-0.5 rounded text-muted hover:text-brand">'
+          + '<i data-lucide="chevron-' + (open ? 'down' : 'right') + '" class="w-4 h-4"></i></button></td>'
+          + '<td class="py-2 pr-3"><div class="font-semibold text-sm">' + e(s[F.name]) + '</div>'
+          + '<div class="flex flex-wrap gap-1 mt-0.5">' + reasonBadges(s[F.attentionReasons]) + '</div></td>'
+          + '<td class="py-2 pr-3"><div class="flex items-center gap-2">'
+          + '<span class="font-mono text-lg font-bold ' + healthClass(health) + ' w-16">' + pct(health, 1) + '</span>'
+          + '<div class="metric-bar w-20"><div class="metric-bar-fill" style="width:'
+          + (health !== null && health !== undefined ? Math.min(health, 100) : 0)
+          + '%;background:' + healthColor(health) + '"></div></div></div>'
+          + (s[F.hasData] === false
+            ? '<div class="text-[10px] text-faint italic">'
+              + e({{ t.get('insufficient_data', 'Insufficient data') | tojson }}) + '</div>' : '')
+          + '</td>'
+          + '<td class="py-2 pr-3 text-right font-mono text-xs">' + pct(s[F.degradedPct], 1) + '</td>'
+          + '<td class="py-2 pr-3 text-xs">' + driverChip(s) + '</td>'
+          + '<td class="py-2 pr-3 text-xs">' + capacityChip(s) + '</td>'
+          + '<td class="py-2 pr-3 text-right font-mono text-xs ' + availClass(s[F.availability]) + '">'
+          + pct(s[F.availability], 2) + '</td>'
+          + '<td class="py-2">' + sparklineSVG(s[F.sparkline], 100, 20) + '</td>';
+        tbody.appendChild(tr);
+
+        const detail = document.createElement('tr');
+        detail.id = 'fleet-detail-' + id;
+        detail.className = 'border-b border-line' + (open ? '' : ' hidden');
+        detail.innerHTML = '<td colspan="8" class="p-0">' + renderFleetDetail(s) + '</td>';
+        tbody.appendChild(detail);
+      });
+    }
+
+    const moreWrap = document.getElementById('fleet-more-wrap');
+    const moreBtn = document.getElementById('fleet-more-btn');
+    const total = f[F.serversTotal];
+    if (total > rows.length || fleetScope === 'all') {
+      moreWrap.classList.remove('hidden');
+      moreBtn.textContent = fleetScope === 'all' ? T.showAttentionOnly : T.showAll + ' (' + total + ')';
+    } else {
+      moreWrap.classList.add('hidden');
+    }
+    if (window.lucide) lucide.createIcons();
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // §3 — uptime
+  // ═══════════════════════════════════════════════════════════════════════
+
+  function renderUptime() {
+    if (!fleetData) return;
+    const f = fleetData[F.fleet];
+    const servers = fleetData[F.servers] || [];
+
+    // The spread lives here, not in the fleet band, because it belongs to the
+    // uptime question. Both figures are shown deliberately: a plain range can
+    // be one outlying box, while the p10–p90 spread is robust to that and is
+    // what actually shows the column cannot rank a fleet.
+    const avails = servers.map(function (s) { return s[F.availability]; })
+      .filter(function (v) { return v !== null && v !== undefined; })
+      .sort(function (a, b) { return a - b; });
+    const quantile = function (q) {
+      const i = (avails.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i);
+      return avails[lo] + (avails[hi] - avails[lo]) * (i - lo);
+    };
+    const range = avails.length > 1 ? avails[avails.length - 1] - avails[0] : null;
+    // Below ~5 servers the deciles are the extremes again, so it adds nothing.
+    const midSpread = avails.length >= 5 ? quantile(0.9) - quantile(0.1) : null;
+
+    const withOutages = servers
+      .filter(function (s) { return (s[F.outageCount] || 0) > 0; })
+      .sort(function (a, b) { return (b[F.downtime] || 0) - (a[F.downtime] || 0); });
+
+    const worstAvail = avails.length
+      ? servers.filter(function (s) { return s[F.availability] === avails[0]; })[0]
+      : null;
+
+    let html = '<div class="mb-4"><div class="text-[10px] uppercase tracking-wide text-muted">'
+      + e(T.fleetAvail) + '</div>'
+      + '<div class="font-mono text-3xl font-bold ' + availClass(f[F.fleetAvailability]) + '">'
+      + pct(f[F.fleetAvailability], 2) + '</div></div>'
+      + '<div class="text-[11px] text-muted space-y-0.5 mb-4">'
+      + '<div>' + e(T.meanPerServer) + ': <span class="font-mono">'
+      + pct(f[F.meanAvailability], 2) + '</span>'
+      + (range !== null ? ' <span class="text-faint">· ' + e(T.range) + ' '
+        + range.toFixed(2) + ' ' + e(T.points) + '</span>' : '') + '</div>'
+      + (midSpread !== null
+        ? '<div class="text-faint">' + e(T.middle80) + ' <span class="font-mono">'
+          + midSpread.toFixed(2) + ' ' + e(T.points) + '</span> ' + e(T.ofEachOther) + '</div>'
+        : '')
+      + (worstAvail
+        ? '<div>' + e(T.worstAvail) + ': <span class="font-mono">' + e(worstAvail[F.name])
+          + ' ' + pct(worstAvail[F.availability], 2) + '</span></div>'
+        : '')
+      + '</div>';
+
+    if (!withOutages.length) {
+      html += '<p class="text-xs ' + OK + '">' + e(T.noOutages) + '</p>';
+    } else {
+      html += '<div class="space-y-2">' + withOutages.map(function (s) {
+        const outs = (s[F.outagesTop] || []).map(function (o) {
+          return '<div class="flex items-center justify-between text-[10px] py-0.5 text-muted">'
+            + '<span class="font-mono">' + e(ts(o[F.outageStart])) + '</span>'
+            + '<span>' + Math.round(o[F.outageDuration]) + ' ' + e(T.minutes)
+            + (o[F.outageOngoing] ? ' · ' + e(T.ongoing) : '') + '</span>'
+            + '<span>' + e(o[F.outageSeverity] || '') + '</span></div>';
+        }).join('');
+        return '<div class="border border-line rounded p-3">'
+          + '<div class="flex flex-wrap items-baseline justify-between gap-2">'
+          + '<span class="font-semibold text-sm">' + e(s[F.name]) + '</span>'
+          + '<span class="text-[11px] text-muted font-mono">'
+          + s[F.outageCount] + ' · ' + Math.round(s[F.downtime] || 0) + ' ' + e(T.minutes)
+          + ' · ' + e(T.mttr) + ' '
+          + (s[F.mttr] !== null && s[F.mttr] !== undefined ? Math.round(s[F.mttr]) + ' ' + e(T.minutes) : '—')
+          + '</span></div>' + outs
+          + '<div class="mt-1 text-[10px] text-faint">' + e(T.observed) + ' ' + hrs(s[F.observed])
+          + ' — ' + e(T.observedNote) + '</div></div>';
+      }).join('') + '</div>';
+    }
+    fill('uptime-content', html);
+    fill('uptime-format-note', e({{ t.get('pdf_desc', 'Management summary') | tojson }}));
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // §4 — capacity
+  // ═══════════════════════════════════════════════════════════════════════
+
+  function toggleCapacityLow(el) {
+    capacityIncludeLow = !!el.checked;
+    renderCapacity();
+  }
+
+  function renderCapacity() {
+    if (!fleetData) return;
+    const rows = [];
+    (fleetData[F.servers] || []).forEach(function (s) {
+      (s[F.capacity] || []).forEach(function (c) {
+        if (c[F.capDays] === null || c[F.capDays] === undefined) return;
+        if (!capacityIncludeLow && c[F.capRisk] !== 'high' && c[F.capRisk] !== 'medium') return;
+        rows.push({ server: s[F.name], c: c });
       });
     });
+    rows.sort(function (a, b) { return a.c[F.capDays] - b.c[F.capDays]; });
 
-    document.getElementById('csv-metrics-server').addEventListener('change', updateExportPreviews);
-    document.getElementById('csv-metrics-hours').addEventListener('change', updateExportPreviews);
-    document.getElementById('csv-events-server').addEventListener('change', updateExportPreviews);
-
-    updateExportPreviews();
-    lucide.createIcons();
-  } catch (e) {
-    console.error('Failed to load servers:', e);
-  }
-  loadFleetReport();
-});
-
-// ── Export Preview Info ──
-function updateExportPreviews() {
-  const metricsServer = document.getElementById('csv-metrics-server');
-  const metricsHours = document.getElementById('csv-metrics-hours');
-  const metricsPreview = document.getElementById('csv-metrics-preview');
-  const serverCount = metricsServer.value ? '1 server' : `${metricsServer.options.length - 1} servers`;
-  const hoursText = metricsHours.options[metricsHours.selectedIndex].textContent;
-  const hoursVal = parseInt(metricsHours.value);
-  const estimatedRows = (metricsServer.value ? 1 : (metricsServer.options.length - 1)) * Math.ceil(hoursVal * 4);
-  metricsPreview.textContent = `{{ t.get('export_preview_metrics', 'Exporting metrics for') }} ${serverCount}, ${hoursText} (~${estimatedRows} {{ t.get('rows_estimated', 'rows estimated') }})`;
-
-  const eventsServer = document.getElementById('csv-events-server');
-  const eventsPreview = document.getElementById('csv-events-preview');
-  const evtServerCount = eventsServer.value ? '1 server' : `${eventsServer.options.length - 1} servers`;
-  eventsPreview.textContent = `{{ t.get('export_preview_events', 'Exporting events for') }} ${evtServerCount}`;
-}
-
-function downloadCSVMetrics() {
-  const server = document.getElementById('csv-metrics-server').value;
-  const hours = document.getElementById('csv-metrics-hours').value;
-  let url = `/api/reports/csv/metrics?hours=${hours}`;
-  if (server) url += `&server=${encodeURIComponent(server)}`;
-  window.location.href = url;
-}
-
-function downloadCSVEvents() {
-  const server = document.getElementById('csv-events-server').value;
-  let url = '/api/reports/csv/events';
-  if (server) url += `?server=${encodeURIComponent(server)}`;
-  window.location.href = url;
-}
-
-function downloadPDF() { window.location.href = '/api/reports/pdf'; }
-
-function downloadJSONMetrics() {
-  const server = document.getElementById('json-metrics-server').value;
-  const hours = document.getElementById('json-metrics-hours').value;
-  let url = `/api/reports/json/metrics?hours=${hours}`;
-  if (server) url += `&server=${encodeURIComponent(server)}`;
-  window.location.href = url;
-}
-
-function downloadJSONEvents() {
-  const server = document.getElementById('json-events-server').value;
-  let url = '/api/reports/json/events';
-  if (server) url += `?server=${encodeURIComponent(server)}`;
-  window.location.href = url;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// Fleet report
-// ═══════════════════════════════════════════════════════════════════
-
-// FIELD CONTRACT — every API key this page reads, in one place.
-//
-// tests/test_fleet_report.py parses this object out of the template and
-// asserts each value exists in a real /api/reports/fleet response. Two of
-// the five defects in docs/plans/HANDOFF.md §3 were a renderer reading a
-// field name the API never emitted (`days_until_full` for
-// `days_to_threshold`, `trend_slope` for `trend_per_day`) — both produced a
-// silent em-dash or an Infinity sort key rather than an error. Reading
-// fields through named constants is what lets a test catch that.
-const F = {
-  fleet: 'fleet', servers: 'servers', hours: 'hours',
-  fleetHealth: 'fleet_health_percent',
-  fleetAvailability: 'fleet_availability_percent',
-  meanAvailability: 'mean_server_availability_percent',
-  serversTotal: 'servers_total',
-  serversAttention: 'servers_needing_attention',
-  serversNoData: 'servers_no_data',
-  observedMinutes: 'total_observed_minutes',
-  degradedMinutes: 'total_degraded_minutes',
-  worstServer: 'worst_server',
-  worstHealth: 'worst_health_percent',
-  name: 'name', attention: 'attention', attentionReasons: 'attention_reasons',
-  health: 'health_percent', availability: 'availability_percent',
-  hasData: 'has_data',
-  observed: 'observed_minutes', upMinutes: 'up_minutes',
-  degraded: 'degraded_minutes', degradedPct: 'degraded_percent_of_up',
-  outageCount: 'outage_count', downtime: 'total_downtime_minutes',
-  longestOutage: 'longest_outage_minutes', mttr: 'mttr_minutes',
-  outagesTop: 'outages_top',
-  outageStart: 'start_time', outageDuration: 'duration_minutes',
-  outageOngoing: 'ongoing', outageSeverity: 'worst_severity',
-  drivers: 'drivers', driverMetric: 'metric', driverReadings: 'readings',
-  driverPct: 'percent_of_degraded', driverAvg: 'avg_value',
-  driverThreshold: 'threshold', driverExcess: 'avg_excess',
-  noBreach: 'no_threshold_breach', noBreachPct: 'percent_of_degraded',
-  noBreachEvents: 'event_counts',
-  capacity: 'capacity', capMetric: 'metric', capKey: 'metric_key',
-  capCurrent: 'current', capGrowth: 'growth_rate',
-  capDays: 'days_to_threshold', capRisk: 'risk',
-  sparkline: 'health_sparkline',
-};
-
-let fleetScope = 'attention';
-let fleetData = null;
-const fleetExpanded = new Set();
-
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, c =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-
-// TEXT colours are a separate, darker grade from the MARK colours below.
-// Measured on white: the saturated status palette scores #10B981 = 2.54:1,
-// #F59E0B = 2.15:1 and #9CA3AF = 2.54:1 — all well under the 4.5:1 needed for
-// text, and these numbers are the headline of the section. The darker variants
-// below measure 5.48 / 5.02 / 6.47 / 7.56:1 on white and 9.60 / 10.15 / 7.71 /
-// 5.76:1 on the dark card. The saturated originals stay on bar fills, where a
-// mark only needs 3:1 — so the visual identity is unchanged and only the text
-// grade moves.
-const TXT_OK   = 'text-[#047857] dark:text-[#6EE7B7]';
-const TXT_WARN = 'text-[#B45309] dark:text-[#FCD34D]';
-const TXT_BAD  = 'text-[#B91C1C] dark:text-[#FCA5A5]';
-const TXT_NONE = 'text-[#4B5563] dark:text-[#9CA3AF]';
-
-// Availability uses the conventional 99.9 / 99.0 tiers ("three nines", "two
-// nines"). Health uses a looser scale — a degraded server is not an outage and
-// must not be painted like one.
-function availTextClass(v) {
-  if (v === null || v === undefined) return TXT_NONE;
-  return v >= 99.9 ? TXT_OK : (v >= 99 ? TXT_WARN : TXT_BAD);
-}
-function healthTextClass(v) {
-  if (v === null || v === undefined) return TXT_NONE;
-  return v >= 90 ? TXT_OK : (v >= 50 ? TXT_WARN : TXT_BAD);
-}
-function healthColor(v) {
-  if (v === null || v === undefined) return '#9CA3AF';
-  return v >= 90 ? '#10B981' : (v >= 50 ? '#F59E0B' : '#DC2626');
-}
-function riskTextClass(risk) {
-  return risk === 'high' ? TXT_BAD : (risk === 'medium' ? TXT_WARN : TXT_NONE);
-}
-
-function fmtPct(v, dp) {
-  return (v === null || v === undefined) ? '—' : v.toFixed(dp === undefined ? 1 : dp) + '%';
-}
-function fmtHours(minutes) {
-  if (minutes === null || minutes === undefined) return '—';
-  return minutes >= 60 ? (minutes / 60).toFixed(1) + ' h' : Math.round(minutes) + ' {{ t.minutes }}';
-}
-function fmtDays(d) {
-  if (d === null || d === undefined) return '—';
-  return d === 0 ? '{{ t.get("now", "now") }}' : Math.round(d) + ' d';
-}
-
-// Inline SVG, one <svg> per row. Deliberately NOT a Chart instance: measured
-// previously, 500 Charts cost 604 ms to build and 1,111 ms of jank on any
-// layout change. Modelled on base.html _drawSparklines, but the colour scale is
-// INVERTED relative to that one — there, high means a loaded resource and is
-// bad; here, high means healthy and is good.
-function sparklineSVG(pts, w, h) {
-  if (!pts || pts.length < 2) return '';
-  const n = pts.length, coords = [];
-  pts.forEach((v, i) => {
-    if (v === null || v === undefined) return;
-    const x = (i / (n - 1)) * w;
-    const y = h - (Math.max(0, Math.min(100, v)) / 100) * h;
-    coords.push(x.toFixed(1) + ',' + y.toFixed(1));
-  });
-  if (coords.length < 2) return '';
-  const last = pts[pts.length - 1];
-  return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" '
-       + 'style="width:100%;height:' + h + 'px;display:block;overflow:visible" role="img" '
-       + 'aria-label="Health across ' + n + ' observed buckets, latest ' + Math.round(last) + ' percent">'
-       + '<polyline fill="none" stroke="' + healthColor(last) + '" stroke-width="1.5" '
-       + 'vector-effect="non-scaling-stroke" points="' + coords.join(' ') + '"/></svg>';
-}
-
-async function loadFleetReport() {
-  const hours = document.getElementById('fleet-hours').value;
-  document.getElementById('fleet-loading').classList.remove('hidden');
-  document.getElementById('fleet-content').classList.add('hidden');
-  try {
-    const res = await fetch(`/api/reports/fleet?hours=${hours}&scope=${fleetScope}`);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    fleetData = data;
-    renderFleetReport(data);
-    document.getElementById('fleet-content').classList.remove('hidden');
-  } catch (e) {
-    console.error('Fleet report load failed:', e);
-    document.getElementById('fleet-band').innerHTML =
-      '<p class="text-sm text-center py-2 ' + TXT_BAD + '">'
-      + '{{ t.get("load_failed", "Failed to load fleet report") }}</p>';
-    document.getElementById('fleet-rows').innerHTML = '';
-    document.getElementById('fleet-content').classList.remove('hidden');
-  }
-  document.getElementById('fleet-loading').classList.add('hidden');
-}
-
-function toggleFleetScope() {
-  fleetScope = (fleetScope === 'attention') ? 'all' : 'attention';
-  loadFleetReport();
-}
-
-function downloadFleetCSV() {
-  const hours = document.getElementById('fleet-hours').value;
-  window.location.href = `/api/reports/csv/fleet?hours=${hours}`;
-}
-
-function toggleFleetRow(name) {
-  const row = document.getElementById('fleet-detail-' + cssId(name));
-  const btn = document.getElementById('fleet-toggle-' + cssId(name));
-  if (!row) return;
-  const nowHidden = row.classList.toggle('hidden');
-  if (nowHidden) fleetExpanded.delete(name); else fleetExpanded.add(name);
-  if (btn) {
-    btn.setAttribute('aria-expanded', String(!nowHidden));
-    btn.innerHTML = `<i data-lucide="chevron-${nowHidden ? 'right' : 'down'}" class="w-4 h-4"></i>`;
-    lucide.createIcons({ nodes: [btn] });
-  }
-}
-
-// Server names are admin-supplied and can contain characters that are not
-// valid in an id. Hash-free, reversible enough for lookup, and stable.
-function cssId(name) { return String(name).replace(/[^A-Za-z0-9_-]/g, '_'); }
-
-function renderFleetBand(data) {
-  const f = data[F.fleet];
-  const band = document.getElementById('fleet-band');
-
-  // The availability spread is computed here rather than asserted, so the band
-  // keeps telling the truth as the fleet changes. It exists to show the reader
-  // why availability is a column and health is the headline.
-  //
-  // BOTH figures are shown, because the plain range hides the point. Measured
-  // live: range = 7.67 pts, which reads as "availability varies" — but all of
-  // it comes from ONE server (DC02, a 4 GB VM at 91.98%) and the other 28
-  // sit inside 0.73 pts. The p10-p90 spread is robust to that single outlier
-  // and is what actually shows the column cannot rank a fleet.
-  const avails = (data[F.servers] || [])
-    .map(s => s[F.availability]).filter(v => v !== null && v !== undefined)
-    .sort((a, b) => a - b);
-  const quantile = q => {
-    const i = (avails.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i);
-    return avails[lo] + (avails[hi] - avails[lo]) * (i - lo);
-  };
-  const range = avails.length > 1 ? avails[avails.length - 1] - avails[0] : null;
-  // Below ~5 servers the deciles are the extremes again, so it adds nothing.
-  const midSpread = avails.length >= 5 ? quantile(0.9) - quantile(0.1) : null;
-
-  const health = f[F.fleetHealth];
-  const attention = f[F.serversAttention];
-  const total = f[F.serversTotal];
-
-  band.innerHTML = `
-    <div class="flex flex-wrap items-end gap-x-8 gap-y-3">
-      <div>
-        <div class="text-[10px] uppercase tracking-wide text-muted">{{ t.get('fleet_health', 'Fleet health') }}</div>
-        <div class="font-mono text-3xl font-bold ${healthTextClass(health)}">${fmtPct(health, 2)}</div>
-        <div class="text-[10px] text-faint">{{ t.get('within_thresholds', 'of reachable time within thresholds') }}</div>
-      </div>
-      <div>
-        <div class="text-[10px] uppercase tracking-wide text-muted">{{ t.get('needs_attention', 'Needs attention') }}</div>
-        <div class="font-mono text-3xl font-bold ${attention > 0 ? TXT_WARN : TXT_OK}">${attention}<span class="text-lg text-faint">/${total}</span></div>
-        <div class="text-[10px] text-faint">
-          ${f[F.serversNoData] ? f[F.serversNoData] + ' {{ t.get("no_data_lc", "no data") }}' : '{{ t.get("all_servers_reporting", "all servers reporting") }}'}
-        </div>
-      </div>
-      <div class="text-[11px] text-muted space-y-0.5">
-        <div>
-          {{ t.get('fleet_availability', 'Fleet availability') }}:
-          <span class="font-mono ${availTextClass(f[F.fleetAvailability])}">${fmtPct(f[F.fleetAvailability], 2)}</span>
-          ${range !== null ? `<span class="text-faint"> · {{ t.get('range', 'range') }} ${range.toFixed(2)} {{ t.get('points', 'pts') }}</span>` : ''}
-        </div>
-        ${midSpread !== null ? `<div class="text-faint">
-          {{ t.get('middle_80_within', 'Middle 80% of servers within') }}
-          <span class="font-mono">${midSpread.toFixed(2)} {{ t.get('points', 'pts') }}</span>
-          {{ t.get('of_each_other', 'of each other') }}
-        </div>` : ''}
-        <div>{{ t.get('mean_per_server', 'Mean per server') }}: <span class="font-mono">${fmtPct(f[F.meanAvailability], 2)}</span></div>
-        <div>
-          {{ t.get('observed', 'Observed') }}: <span class="font-mono">${fmtHours(f[F.observedMinutes])}</span>
-          · {{ t.get('degraded', 'Degraded') }}: <span class="font-mono">${fmtHours(f[F.degradedMinutes])}</span>
-        </div>
-        ${f[F.worstServer] ? `<div>{{ t.get('worst_health', 'Worst health') }}: <span class="font-mono">${esc(f[F.worstServer])} ${fmtPct(f[F.worstHealth], 2)}</span></div>` : ''}
-      </div>
-    </div>
-  `;
-}
-
-function driverChip(s) {
-  const drivers = s[F.drivers] || [];
-  const nb = s[F.noBreach] || {};
-  const nbPct = nb[F.noBreachPct] || 0;
-
-  if (!drivers.length && !nbPct) return '<span class="text-faint">—</span>';
-
-  // When most degraded time crossed no static threshold, say exactly that
-  // rather than promoting a 2%-of-the-time metric to "the driver".
-  if (nbPct >= 50) {
-    return `<span class="${TXT_NONE}">{{ t.get('no_threshold_breach', 'no threshold breach') }}</span>`
-         + `<span class="text-[10px] text-faint"> ${nbPct.toFixed(0)}%</span>`;
-  }
-  const d = drivers[0];
-  return `<span class="font-medium">${esc(d[F.driverMetric])}</span>`
-       + `<span class="text-[10px] text-muted"> ${d[F.driverPct].toFixed(0)}% ·`
-       + ` {{ t.get('avg', 'avg') }} ${d[F.driverAvg].toFixed(0)}% &gt; ${d[F.driverThreshold]}</span>`;
-}
-
-function capacityChip(s) {
-  // Only a deadline the risk classifier calls high or medium is promoted to
-  // the summary column. A low-risk forecast is a linear fit extrapolated past
-  // a year — live, this column offered "Disk D 728 d" and "Disk C 1280 d",
-  // which imply a precision the estimate does not have (two runs seconds apart
-  // moved one server's disk from 'medium' to 'low'). All four metrics and
-  // their days are still in the expanded row; this only declines to headline
-  // them.
-  const items = (s[F.capacity] || []).filter(c =>
-    c[F.capDays] !== null && c[F.capDays] !== undefined
-    && (c[F.capRisk] === 'high' || c[F.capRisk] === 'medium'));
-  if (!items.length) return '<span class="text-faint">—</span>';
-  const soonest = items.reduce((a, b) => (a[F.capDays] <= b[F.capDays] ? a : b));
-  return `<span class="${riskTextClass(soonest[F.capRisk])}">${esc(soonest[F.capMetric])} ${fmtDays(soonest[F.capDays])}</span>`;
-}
-
-function reasonBadges(reasons) {
-  // Deliberately NOT t.capacity_planning — that renders "Capacity Planning",
-  // which is a section heading, not a badge.
-  const label = { health: '{{ t.get("health", "Health") }}',
-                  availability: '{{ t.get("availability", "Availability") }}',
-                  capacity: '{{ t.get("reason_capacity", "Capacity") }}' };
-  return (reasons || []).map(r =>
-    `<span class="badge badge-warning text-[9px]">${label[r] || esc(r)}</span>`).join(' ');
-}
-
-function renderFleetDetail(s) {
-  const degraded = s[F.degraded];
-  const drivers = s[F.drivers] || [];
-  const nb = s[F.noBreach] || {};
-  const events = nb[F.noBreachEvents] || {};
-  const eventList = Object.entries(events).sort((a, b) => b[1] - a[1]);
-
-  const driverRows = drivers.map(d => `
-    <div class="flex items-center gap-2 py-0.5">
-      <span class="w-16 text-xs font-medium">${esc(d[F.driverMetric])}</span>
-      <div class="metric-bar flex-1 max-w-[10rem]">
-        <div class="metric-bar-fill" style="width:${Math.min(100, d[F.driverPct])}%;background:#F59E0B"></div>
-      </div>
-      <span class="font-mono text-xs w-12 text-right">${d[F.driverPct].toFixed(0)}%</span>
-      <span class="text-[10px] text-muted">
-        {{ t.get('avg', 'avg') }} ${d[F.driverAvg].toFixed(1)}% ·
-        {{ t.get('threshold', 'threshold') }} ${d[F.driverThreshold]} ·
-        +${d[F.driverExcess].toFixed(1)} {{ t.get('over', 'over') }}
-      </span>
-    </div>`).join('');
-
-  const nbRow = nb[F.noBreachPct] ? `
-    <div class="flex items-center gap-2 py-0.5">
-      <span class="w-16 text-xs font-medium ${TXT_NONE}">{{ t.get('other', 'other') }}</span>
-      <div class="metric-bar flex-1 max-w-[10rem]">
-        <div class="metric-bar-fill" style="width:${Math.min(100, nb[F.noBreachPct])}%;background:#9CA3AF"></div>
-      </div>
-      <span class="font-mono text-xs w-12 text-right">${nb[F.noBreachPct].toFixed(0)}%</span>
-      <span class="text-[10px] text-muted">
-        {{ t.get('no_static_threshold_crossed', 'no static threshold crossed') }}
-      </span>
-    </div>` : '';
-
-  const capacityRows = (s[F.capacity] || []).map(c => `
-    <div class="flex items-center justify-between py-1 border-b border-line/50 last:border-0">
-      <span class="text-xs font-medium w-16">${esc(c[F.capMetric])}</span>
-      <span class="text-xs font-mono w-14 text-right">${c[F.capCurrent] !== null ? c[F.capCurrent].toFixed(1) + '%' : '—'}</span>
-      <span class="text-[10px] text-muted w-24 text-right">
-        ${c[F.capGrowth] !== null && c[F.capGrowth] !== undefined
-          ? (c[F.capGrowth] >= 0 ? '+' : '') + c[F.capGrowth].toFixed(3) + '%/d' : '—'}
-      </span>
-      <span class="text-[10px] font-medium w-16 text-right ${riskTextClass(c[F.capRisk])}">${fmtDays(c[F.capDays])}</span>
-    </div>`).join('');
-
-  const outages = (s[F.outagesTop] || []).map(o => `
-    <div class="flex items-center justify-between text-[10px] py-0.5">
-      <span class="font-mono">${esc(formatTs(o[F.outageStart]))}</span>
-      <span>${Math.round(o[F.outageDuration])} {{ t.minutes }}${o[F.outageOngoing] ? ' · {{ t.get("ongoing", "ongoing") }}' : ''}</span>
-      <span class="${TXT_NONE}">${esc(o[F.outageSeverity] || '')}</span>
-    </div>`).join('') || `<div class="text-[10px] ${TXT_NONE}">{{ t.get('no_outages', 'No outages in window') }}</div>`;
-
-  return `
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 px-8 py-4 bg-page">
-      <div>
-        <div class="text-[10px] uppercase tracking-wide text-muted mb-2">
-          {{ t.get('degradation_breakdown', 'What the degraded time was') }}
-        </div>
-        ${driverRows || nbRow ? driverRows + nbRow : `<div class="text-[10px] ${TXT_NONE}">{{ t.get('no_degradation', 'No degraded time in window') }}</div>`}
-        ${eventList.length ? `
-          <div class="mt-2 text-[10px] text-muted">
-            {{ t.get('events_in_window', 'Events raised in window') }}:
-            ${eventList.map(([k, v]) => `${esc(k)} ${v}`).join(' · ')}
-            <div class="${TXT_NONE} italic mt-0.5">
-              {{ t.get('events_window_note', 'Counted across the window, not matched to individual readings.') }}
-            </div>
-          </div>` : ''}
-      </div>
-
-      <div>
-        <div class="text-[10px] uppercase tracking-wide text-muted mb-2">
-          {{ t.capacity_planning }}
-        </div>
-        ${capacityRows || `<div class="text-[10px] ${TXT_NONE}">—</div>`}
-      </div>
-
-      <div>
-        <div class="text-[10px] uppercase tracking-wide text-muted mb-2">
-          {{ t.get('availability_detail', 'Availability') }}
-        </div>
-        <div class="grid grid-cols-3 gap-2 text-[10px] text-muted mb-2">
-          <div><span class="block font-semibold">{{ t.outage_count }}</span>${s[F.outageCount]}</div>
-          <div><span class="block font-semibold">{{ t.total_downtime }}</span>${Math.round(s[F.downtime])} {{ t.minutes }}</div>
-          <div><span class="block font-semibold">{{ t.mttr }}</span>${s[F.mttr] !== null ? Math.round(s[F.mttr]) + ' {{ t.minutes }}' : '—'}</div>
-        </div>
-        ${outages}
-        <div class="mt-2 text-[10px] ${TXT_NONE}">
-          {{ t.get('observed', 'Observed') }} ${fmtHours(s[F.observed])} —
-          {{ t.get('observed_note', 'the window is wall-clock, this is time actually sampled.') }}
-        </div>
-      </div>
-    </div>`;
-}
-
-function renderFleetReport(data) {
-  const tbody = document.getElementById('fleet-rows');
-  const empty = document.getElementById('fleet-empty');
-  const wrap = document.getElementById('fleet-table-wrap');
-  tbody.innerHTML = '';
-
-  renderFleetBand(data);
-
-  // Stubs (attention:false with no detail) are returned so the band can compute
-  // the availability spread; they are not rows. Switching scope to 'all'
-  // refetches with full detail for everyone.
-  const rows = (data[F.servers] || []).filter(s => fleetScope === 'all' || s[F.attention]);
-
-  const f = data[F.fleet];
-  if (!rows.length) {
-    wrap.classList.add('hidden');
-    empty.classList.remove('hidden');
-    empty.innerHTML = `
-      <i data-lucide="shield-check" class="w-8 h-8 inline-block ${TXT_OK}"></i>
-      <p class="text-sm font-medium mt-2 ${TXT_OK}">{{ t.get('no_attention_needed', 'No server needs attention') }}</p>
-      <p class="text-xs text-muted mt-1">
-        ${f[F.serversTotal]} {{ t.get('servers_lc', 'servers') }} ·
-        {{ t.get('fleet_health', 'Fleet health') }} ${fmtPct(f[F.fleetHealth], 2)}
-      </p>`;
-  } else {
-    wrap.classList.remove('hidden');
-    empty.classList.add('hidden');
-    for (const s of rows) {
-      const id = cssId(s[F.name]);
-      const open = fleetExpanded.has(s[F.name]);
-      const health = s[F.health];
-
-      const tr = document.createElement('tr');
-      tr.className = 'border-b border-line hover:bg-page transition-colors';
-      tr.innerHTML = `
-        <td class="py-2 align-middle">
-          <button id="fleet-toggle-${id}" data-action="toggleFleetRow" data-args='${esc(JSON.stringify([s[F.name]]))}'
-                  aria-expanded="${open}" aria-controls="fleet-detail-${id}"
-                  aria-label="{{ t.get('toggle_details', 'Toggle details for') }} ${esc(s[F.name])}"
-                  class="p-0.5 rounded text-muted hover:text-brand">
-            <i data-lucide="chevron-${open ? 'down' : 'right'}" class="w-4 h-4"></i>
-          </button>
-        </td>
-        <td class="py-2 pr-3">
-          <div class="font-semibold text-sm">${esc(s[F.name])}</div>
-          <div class="flex flex-wrap gap-1 mt-0.5">${reasonBadges(s[F.attentionReasons])}</div>
-        </td>
-        <td class="py-2 pr-3">
-          <div class="flex items-center gap-2">
-            <span class="font-mono text-lg font-bold ${healthTextClass(health)} w-16">${fmtPct(health, 1)}</span>
-            <div class="metric-bar w-20">
-              <div class="metric-bar-fill" style="width:${health !== null && health !== undefined ? Math.min(health, 100) : 0}%;background:${healthColor(health)}"></div>
-            </div>
-          </div>
-          ${s[F.hasData] === false ? '<div class="text-[10px] text-faint italic">{{ t.get("insufficient_data", "Insufficient data") }}</div>' : ''}
-        </td>
-        <td class="py-2 pr-3 text-right font-mono text-xs">${fmtPct(s[F.degradedPct], 1)}</td>
-        <td class="py-2 pr-3 text-xs">${driverChip(s)}</td>
-        <td class="py-2 pr-3 text-xs">${capacityChip(s)}</td>
-        <td class="py-2 pr-3 text-right font-mono text-xs ${availTextClass(s[F.availability])}">${fmtPct(s[F.availability], 2)}</td>
-        <td class="py-2">${sparklineSVG(s[F.sparkline], 100, 20)}</td>
-      `;
-      tbody.appendChild(tr);
-
-      const detail = document.createElement('tr');
-      detail.id = 'fleet-detail-' + id;
-      detail.className = 'border-b border-line' + (open ? '' : ' hidden');
-      detail.innerHTML = `<td colspan="8" class="p-0">${renderFleetDetail(s)}</td>`;
-      tbody.appendChild(detail);
+    if (!rows.length) {
+      fill('capacity-content', '<p class="text-sm">' + e(T.noCapDeadline) + '</p>');
+      fill('capacity-format-note', '');
+      return;
     }
+    const soonest = rows[0];
+    fill('capacity-content',
+      '<p class="text-sm mb-3">' + e(T.soonestDeadline) + ': <span class="font-medium">'
+      + e(soonest.server) + ' ' + e(soonest.c[F.capMetric]) + '</span> · '
+      + '<span class="font-mono ' + riskClass(soonest.c[F.capRisk]) + '">'
+      + days(soonest.c[F.capDays]) + '</span></p>'
+      + '<div class="overflow-x-auto"><table class="w-full text-sm border-collapse"><thead>'
+      + '<tr class="text-[10px] uppercase tracking-wide text-muted border-b border-line">'
+      + '<th class="text-left font-semibold py-2 pr-3">' + e(T.server) + '</th>'
+      + '<th class="text-left font-semibold py-2 pr-3">' + e(T.capacity) + '</th>'
+      + '<th class="text-right font-semibold py-2 pr-3">%</th>'
+      + '<th class="text-right font-semibold py-2 pr-3">%/d</th>'
+      + '<th class="text-right font-semibold py-2">' + e(T.threshold) + '</th></tr></thead><tbody>'
+      + rows.map(function (r) {
+        return '<tr class="border-b border-line"><td class="py-1.5 pr-3 font-medium">'
+          + e(r.server) + '</td><td class="py-1.5 pr-3">' + e(r.c[F.capMetric]) + '</td>'
+          + '<td class="py-1.5 pr-3 text-right font-mono text-xs">' + pct(r.c[F.capCurrent]) + '</td>'
+          + '<td class="py-1.5 pr-3 text-right font-mono text-xs text-muted">'
+          + (r.c[F.capGrowth] !== null && r.c[F.capGrowth] !== undefined
+            ? (r.c[F.capGrowth] >= 0 ? '+' : '') + r.c[F.capGrowth].toFixed(3) : '—')
+          + '</td><td class="py-1.5 text-right font-mono text-xs ' + riskClass(r.c[F.capRisk]) + '">'
+          + days(r.c[F.capDays]) + '</td></tr>';
+      }).join('') + '</tbody></table></div>');
+    fill('capacity-format-note', '');
   }
 
-  const moreWrap = document.getElementById('fleet-more-wrap');
-  const moreBtn = document.getElementById('fleet-more-btn');
-  const total = f[F.serversTotal];
-  if (total > rows.length || fleetScope === 'all') {
-    moreWrap.classList.remove('hidden');
-    moreBtn.textContent = fleetScope === 'all'
-      ? '{{ t.get("show_attention_only", "Show only servers needing attention") }}'
-      : '{{ t.get("show_all", "Show all") }}' + ` (${total})`;
-  } else {
-    moreWrap.classList.add('hidden');
+  // ═══════════════════════════════════════════════════════════════════════
+  // §5 — evidence
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // The whole point of this section. The collector stores a FAILED READ and a
+  // genuine negative as the same value, so null must say "not read" and never
+  // "no" — reporting a failed read as "disabled" turns a collection fault into
+  // a fleet-wide security emergency that is not happening.
+  function tri(v) {
+    if (v === null || v === undefined) return '<span class="' + NONE + '">' + e(T.notRead) + '</span>';
+    return v ? '<span class="' + OK + '">' + e(T.yes) + '</span>'
+             : '<span class="' + BAD + '">' + e(T.no) + '</span>';
+  }
+  // The four firewall columns are raw passthrough, so a null there means the
+  // column was never written rather than that a read failed. Different fact,
+  // different glyph.
+  function raw3(v) {
+    if (v === null || v === undefined) return '<span class="text-faint">—</span>';
+    return v ? '<span class="' + OK + '">' + e(T.yes) + '</span>'
+             : '<span class="' + BAD + '">' + e(T.no) + '</span>';
   }
 
-  lucide.createIcons();
-}
+  function setEvidenceWindow() { loadEvidence(); }
+
+  function loadEvidence() {
+    const hours = document.getElementById('evidence-hours').value;
+    document.getElementById('evidence-skeleton').classList.remove('hidden');
+    prismFetch('/api/reports/evidence.json?hours=' + encodeURIComponent(hours))
+      .then(function (data) {
+        if (!data.ok) throw new Error(data.error || 'failed');
+        evidenceData = data;
+        renderEvidence();
+        renderCorrelation();
+        renderNowcast();
+        document.getElementById('evidence-content').classList.remove('hidden');
+      })
+      .catch(function (err) {
+        console.error('Evidence load failed:', err);
+        // An error, not an empty state: nothing is absent, the request failed.
+        fill('evidence-answer', '<span class="' + BAD + '">' + e(T.loadFailed) + '</span>');
+      })
+      .then(function () {
+        document.getElementById('evidence-skeleton').classList.add('hidden');
+      });
+  }
+
+  function block(id, title, body) {
+    const open = expandedBlocks.has(id);
+    return '<div><button data-action="toggleBlock" data-block="' + id + '" '
+      + 'aria-expanded="' + open + '" aria-controls="blk-' + id + '" '
+      + 'class="w-full flex items-center gap-2 text-left mb-2">'
+      + '<i data-lucide="chevron-' + (open ? 'down' : 'right') + '" class="w-3.5 h-3.5 text-muted"></i>'
+      // WP-6 step 16 (H-4/H-5): canonical H3_NO_ICON (_card.html section 4.2)
+      // -- was 'text-sm font-semibold' with no colour/margin at all. The
+      // <h3> stays inside this <button> (a hand-rolled JS disclosure
+      // toggle, not a card() macro head row -- no macro contract to
+      // satisfy here), so only the class string changes.
+      + '<h3 class="text-sm font-semibold text-muted mb-3">' + e(title) + '</h3></button>'
+      + '<div id="blk-' + id + '"' + (open ? '' : ' class="hidden"') + '>' + body + '</div></div>';
+  }
+
+  function toggleBlock(el) {
+    const id = el.getAttribute('data-block');
+    if (expandedBlocks.has(id)) expandedBlocks.delete(id); else expandedBlocks.add(id);
+    renderEvidence();
+  }
+
+  function tbl(headers, rows) {
+    if (!rows.length) return '<p class="text-xs text-faint">—</p>';
+    return '<div class="overflow-x-auto"><table class="w-full text-xs border-collapse"><thead>'
+      + '<tr class="text-[10px] uppercase tracking-wide text-muted border-b border-line">'
+      + headers.map(function (h) { return '<th class="text-left font-semibold py-1.5 pr-3">' + e(h) + '</th>'; }).join('')
+      + '</tr></thead><tbody>' + rows.map(function (r) {
+        return '<tr class="border-b border-line/60">'
+          + r.map(function (c) { return '<td class="py-1 pr-3 align-top">' + c + '</td>'; }).join('')
+          + '</tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+
+  function renderEvidence() {
+    if (!evidenceData) return;
+    const d = evidenceData;
+    const au = d[EV.audit] || {};
+    const auth = d[EV.auth] || {};
+    const p = d[EV.posture] || {};
+
+    fill('evidence-answer',
+      e(num(au[EV.authTotal]) + ' · ' + (au[EV.byUser] || []).length + ' ' + T.username)
+      + ' — ' + e(num(auth[EV.authTotal]) + ' · ' + (auth[EV.bySource] || []).length)
+      + ' — <span class="' + (p[EV.withConcerns] ? WARN : OK) + '">'
+      + e(num(p[EV.withConcerns]) + '/' + num(p[EV.postureTotal])) + '</span>'
+      + (p[EV.withUnmeasured]
+        ? ' · <span class="' + NONE + '">' + e(p[EV.withUnmeasured] + ' ' + T.notRead) + '</span>' : ''));
+
+    const entries = au[EV.entries] || [];
+    const auditBody =
+      '<p class="text-[10px] text-faint mb-2">'
+      + e(interp(T.showingNOfTotal, { shown: entries.length, total: num(au[EV.authTotal]) })) + '</p>'
+      + tbl([T.hourBeginning, T.username, 'action', T.category, T.sourceIp],
+        entries.slice(0, 60).map(function (r) {
+          return ['<span class="font-mono">' + e(ts(r[EV.timestamp])) + '</span>',
+            e(r[EV.username]), e(r[EV.action]), e(r[EV.category]),
+            r[EV.sourceIp] ? e(r[EV.sourceIp]) : '<span class="text-faint">' + e(T.notRecorded) + '</span>'];
+        }))
+      // WP-6 step 16 (H-4/H-5): H4 never carries its own top margin (C8) --
+      // the mt-3 that used to sit ON the heading now sits on this wrapping
+      // div instead (this h4 is never the first thing in auditBody, so no
+      // first:mt-0 variant is needed).
+      + '<div class="mt-4"><h4 class="text-xs font-semibold uppercase tracking-wide text-faint mb-2">'
+      + e(T.sopExecutions) + '</h4>'
+      + tbl([T.hourBeginning, 'SOP', T.username],
+        (au[EV.sopExecutions] || []).slice(0, 30).map(function (r) {
+          return ['<span class="font-mono">' + e(ts(r[EV.executedAt])) + '</span>',
+            e(r[EV.sopId]), e(r[EV.executedBy])];
+        })) + '</div>';
+
+    const authBody =
+      tbl([T.sourceIp, T.servers, 'accounts', 'attempts'],
+        (auth[EV.bySource] || []).map(function (r) {
+          return [r[EV.sourceIp] ? e(r[EV.sourceIp]) : '<span class="text-faint">' + e(T.notRecorded) + '</span>',
+            e(num(r[EV.servers])), e(num(r[EV.accounts])), e(num(r[EV.attempts]))];
+        }))
+      // WP-6 step 16 (H-4/H-5): same fix as auditBody's h4 above.
+      + '<div class="mt-4"><h4 class="text-xs font-semibold uppercase tracking-wide text-faint mb-2">'
+      + e(T.logonReason) + '</h4>'
+      + tbl([T.logonReason, 'attempts'],
+        (auth[EV.byReason] || []).map(function (r) {
+          return [e(r[EV.meaning] || T.unknown), e(num(r[EV.attempts]))];
+        })) + '</div>';
+
+    const postureRows = (p[EV.postureServers] || []).slice().sort(function (a, b) {
+      const ac = (a[EV.concerns] || []).length, bc = (b[EV.concerns] || []).length;
+      if (ac !== bc) return bc - ac;
+      return (b[EV.unmeasured] || []).length - (a[EV.unmeasured] || []).length;
+    });
+    const postureBody =
+      tbl([T.server, 'Defender', 'RT', 'Firewall', 'BitLocker', 'concerns'],
+        postureRows.map(function (s) {
+          // Guard BOTH null and the -1 sentinel, so a failed read can never
+          // render as "-1%".
+          const bl = s[EV.bitlockerPct];
+          const blTxt = (bl === null || bl === undefined || bl < 0)
+            ? '<span class="' + NONE + '">' + e(T.notRead) + '</span>'
+            : '<span class="font-mono">' + bl + '%</span>';
+          return [e(s[EV.pServer]), tri(s[EV.defenderEnabled]), tri(s[EV.defenderRt]),
+            raw3(s[EV.fwService]), blTxt,
+            (s[EV.concerns] || []).map(function (c) {
+              return '<span class="badge badge-critical text-[9px]">' + e(c) + '</span>';
+            }).join(' ')
+            + (s[EV.unmeasured] || []).map(function (u) {
+              return '<span class="badge text-[9px] ' + NONE + '">' + e(u) + '</span>';
+            }).join(' ')];
+        }))
+      + '<p class="text-[10px] text-faint mt-2">' + e(T.postureNoHistory) + '</p>'
+      + '<p class="text-[10px] text-muted mt-1">' + e(p[EV.limitation] || '') + '</p>'
+      + (p[EV.collectionWarning]
+        ? '<p class="text-[10px] ' + WARN + ' mt-1">' + e(p[EV.collectionWarning]) + '</p>' : '');
+
+    const prov = d[EV.provenance] || {};
+    const disc = prov[EV.disclosure] || {};
+    const chain = disc[EV.auditChain] || {};
+    const tables = prov[EV.tables] || {};
+    const builtBody =
+      tbl(['table', 'rows', 'first', 'last'],
+        Object.keys(tables).map(function (k) {
+          const t2 = tables[k] || {};
+          return [e(k),
+            t2[EV.rows] === null || t2[EV.rows] === undefined ? '?' : e(t2[EV.rows]),
+            e(ts(t2[EV.first])), e(ts(t2[EV.last]))];
+        }))
+      // Amber, never red. A permanently forked chain is the expected steady
+      // state here, and a red TAMPERED banner would misdescribe it.
+      + '<p class="text-[10px] mt-2 ' + (chain[EV.chainState] === 'broken' ? WARN : NONE) + '">'
+      + e((chain[EV.chainState] || T.unknown) + ' — ' + (chain[EV.chainNote] || '')) + '</p>';
+
+    fill('evidence-content',
+      block('audit', T.whoDidWhat, auditBody)
+      + block('auth', T.whoFailed, authBody)
+      + block('posture', T.whatIsOn, postureBody)
+      + block('built', T.builtOn, builtBody));
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function downloadEvidence(el) {
+    const fmt = el.getAttribute('data-fmt');
+    const hours = document.getElementById('evidence-hours').value;
+    window.location.href = '/api/reports/evidence.' + fmt + '?hours=' + encodeURIComponent(hours);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // §6 — correlation
+  // ═══════════════════════════════════════════════════════════════════════
+
+  function renderCorrelation() {
+    if (!evidenceData) return;
+    const v = evidenceData[EV.verdict] || {};
+    const attacks = v[CR.attacks] || [];
+    // attacks[] holds the SAME objects as auth[], not copies. Rendering both
+    // unfiltered would show every attacker twice.
+    const stale = (v[CR.auth] || []).filter(function (a) { return a[CR.kind] !== 'targeted-attack'; });
+    const faults = v[CR.fleetFaults] || [];
+
+    let html = '<p class="text-sm mb-3">' + e(v[CR.summary] || '') + '</p>';
+
+    // WP-6 step 16 (H-4/H-5): each of these three h3s used to carry its own
+    // mb-1 (and, for stale/faults, an mt-4 top margin -- forbidden on a
+    // heading, absolutely, C8). Canonical H3_NO_ICON has no top margin at
+    // all, so the mt-5 that used to separate one sub-section from the next
+    // now lives on a wrapping div instead (subblock()'s own mt-5 first:mt-0
+    // rhythm, hand-applied here because this is JS string concatenation,
+    // not a Jinja subblock() macro call.
+    if (attacks.length) {
+      html += '<div class="mt-5 first:mt-0"><h3 class="text-sm font-semibold text-muted mb-3">' + e(T.attackShape) + '</h3>'
+        + tbl([T.sourceIp, T.attackTargets, 'attempts', 'shapes'], attacks.map(function (a) {
+          return [e(a[CR.sourceIp]), e(num(a[CR.servers])), e(num(a[CR.attempts])),
+            e((a[CR.shapes] || []).join(', '))];
+        }))
+        + attacks.map(function (a) {
+          return '<p class="text-[10px] text-muted mt-1">' + e(a[CR.why] || '') + '</p>';
+        }).join('') + '</div>';
+    }
+
+    if (stale.length) {
+      html += '<div class="mt-5 first:mt-0"><h3 class="text-sm font-semibold text-muted mb-3">' + e(T.staleCredential) + '</h3>'
+        + tbl([T.sourceIp, 'attempts', T.servers], stale.map(function (a) {
+          return ['<span class="' + NONE + '">' + e(a[CR.sourceIp]) + '</span>',
+            e(num(a[CR.attempts])), e(num(a[CR.servers]))];
+        })) + '</div>';
+    }
+
+    if (faults.length) {
+      // The API's ORDER BY encodes severity, then breadth, then spike. No
+      // client-side re-sort: ranking by raw count would undo that priority.
+      html += '<div class="mt-5 first:mt-0"><h3 class="text-sm font-semibold text-muted mb-3">' + e(T.fleetWideFault) + '</h3>'
+        + tbl([T.hourBeginning, 'source/id', T.level, T.servers, 'spike'],
+          faults.map(function (f) {
+            const explained = (f[CR.explainedBy] || []).length;
+            return ['<span class="font-mono">' + e(ts(f[CR.hourUtc] + ':00:00Z')) + '</span>',
+              e(f[CR.logSource] + '/' + f[CR.eventId]),
+              e(f[CR.level]),
+              e(f[CR.servers] + '/' + f[CR.fleetSize]),
+              e(f[CR.spikeMultiple] + '×')
+              + (explained ? ' <span class="badge text-[9px] ' + NONE + '">'
+                + e(T.explainedBy) + '</span>' : '')];
+          })) + '</div>';
+    }
+    fill('correlation-content', html);
+    fill('correlation-format-note', e(T.howDecided));
+  }
+
+  function openCorrelationJson() {
+    const hours = document.getElementById('evidence-hours').value;
+    window.location.href = '/api/correlations?hours=' + encodeURIComponent(hours);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // §7 — raw data
+  // ═══════════════════════════════════════════════════════════════════════
+
+  function toggleRawData(el) {
+    const panel = document.getElementById('raw-panel');
+    const hidden = panel.classList.toggle('hidden');
+    const chev = document.getElementById('raw-chevron');
+    if (chev) {
+      chev.setAttribute('data-lucide', hidden ? 'chevron-right' : 'chevron-down');
+      if (window.lucide) lucide.createIcons({ nodes: [chev.parentNode] });
+    }
+    if (!hidden && !rawLoaded) { rawLoaded = true; loadServerOptions(); }
+  }
+
+  function loadServerOptions() {
+    prismFetch('/api/servers').then(function (servers) {
+      const names = (servers || []).map(function (s) { return s.name; }).sort();
+      ['metrics-server', 'events-server'].forEach(function (id) {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        names.forEach(function (n) {
+          const opt = document.createElement('option');
+          opt.value = n; opt.textContent = n;
+          sel.appendChild(opt);
+        });
+      });
+      updateExportPreviews();
+    }).catch(function (err) { console.error('Failed to load servers:', err); });
+  }
+
+  function updateExportPreviews() {
+    const sel = document.getElementById('metrics-server');
+    const hrsSel = document.getElementById('metrics-hours');
+    if (!sel || !hrsSel) return;
+    const one = !!sel.value;
+    const count = one ? 1 : Math.max(0, sel.options.length - 1);
+    const label = hrsSel.options[hrsSel.selectedIndex].textContent;
+    fill('metrics-preview',
+      e('prism_metrics_' + (sel.value || 'all') + '_' + hrsSel.value + 'h.csv')
+      + ' · ' + e(count + ' ' + T.servers.toLowerCase() + ' · ' + label));
+  }
+
+  function downloadCSVMetrics() {
+    const s = document.getElementById('metrics-server').value;
+    const h = document.getElementById('metrics-hours').value;
+    window.location.href = '/api/reports/csv/metrics?hours=' + encodeURIComponent(h)
+      + (s ? '&server=' + encodeURIComponent(s) : '');
+  }
+  function downloadJSONMetrics() {
+    const s = document.getElementById('metrics-server').value;
+    const h = document.getElementById('metrics-hours').value;
+    window.location.href = '/api/reports/json/metrics?hours=' + encodeURIComponent(h)
+      + (s ? '&server=' + encodeURIComponent(s) : '');
+  }
+  function downloadCSVEvents() {
+    const s = document.getElementById('events-server').value;
+    // No hours, no limit: this route accepts neither. The card says so rather
+    // than drawing a control that would be ignored.
+    window.location.href = '/api/reports/csv/events' + (s ? '?server=' + encodeURIComponent(s) : '');
+  }
+  function downloadJSONEvents() {
+    const s = document.getElementById('events-server').value;
+    const lim = document.getElementById('events-limit').value;
+    window.location.href = '/api/reports/json/events?limit=' + encodeURIComponent(lim)
+      + (s ? '&server=' + encodeURIComponent(s) : '');
+  }
+  function downloadPDF() { window.location.href = '/api/reports/pdf'; }
+  function downloadFleetCSV() {
+    const h = document.getElementById('fleet-hours').value;
+    window.location.href = '/api/reports/csv/fleet?hours=' + encodeURIComponent(h);
+  }
+
+  // ── Bootstrap ──────────────────────────────────────────────────────────
+  //
+  // NOT `async () => {}`: the bootstrap guard's regex matches
+  // `function ()` and `() =>` only, so an async arrow silently exempts every
+  // load-time call on the page from the check that they are defined.
+  document.addEventListener('DOMContentLoaded', function () {
+    loadFleetReport();
+    loadEvidence();
+    if (window.lucide) lucide.createIcons();
+  });
+
+  // Registration LAST, and a call expression rather than a declaration, so it
+  // does not hoist. "The function is callable" and "the script ran to the end"
+  // are both true of a block that threw on its second statement; this is the
+  // one probe that is only true of the second.
+  window.registerActions({
+    jumpToSection: jumpToSection,
+    setFleetWindow: setFleetWindow,
+    loadFleetReport: loadFleetReport,
+    toggleFleetScope: toggleFleetScope,
+    toggleFleetRow: toggleFleetRow,
+    downloadFleetCSV: downloadFleetCSV,
+    downloadPDF: downloadPDF,
+    toggleCapacityLow: toggleCapacityLow,
+    setEvidenceWindow: setEvidenceWindow,
+    downloadEvidence: downloadEvidence,
+    toggleBlock: toggleBlock,
+    openCorrelationJson: openCorrelationJson,
+    toggleRawData: toggleRawData,
+    updateExportPreviews: updateExportPreviews,
+    downloadCSVMetrics: downloadCSVMetrics,
+    downloadJSONMetrics: downloadJSONMetrics,
+    downloadCSVEvents: downloadCSVEvents,
+    downloadJSONEvents: downloadJSONEvents,
+  });
+})();
 </script>
 {% endblock %}

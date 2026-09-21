@@ -1,0 +1,142 @@
+{# ── Scheduled restarts ───────────────────────────────────────────────────
+
+   Moved from /operations in WP-4 D3. Two schedules — the Prism service
+   itself, and a list of servers — and nothing in the block shows state or
+   acts: it is configuration, saved through `/api/scheduled-restarts`.
+
+   No "restart now" came with it, because there is none here. That action
+   lives on the server detail page, which is where an operator already is
+   when they want a specific host restarted.
+
+   The controls carry no change-detection bucket on purpose: like maintenance
+   windows, this section saves itself through its own endpoint and its own
+   button rather than through the settings save bar.
+
+   WP-6 step 15: this h2 STAYS an h2 (C9 -- it already owned this card) and
+   simply takes the canonical string plus a stable id, now rendered by
+   card()'s own head row. #}
+{% from "partials/_card.html" import card with context %}
+{% from "partials/_tip.html" import tip, tip_button, tip_mirror, tip_overflow with context %}
+  {% call card(heading=t.scheduled_restarts, icon='timer-reset',
+               heading_id='scheduled-restarts-heading') %}
+  <div class="space-y-5">
+
+    <!-- Prism Service Restart -->
+    <div>
+      <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
+        <i data-lucide="refresh-cw" class="w-4 h-4 text-accent"></i>
+        {{ t.flask_restart_schedule }}
+        {{ tip('flask_restart_desc', 'Automatically restart the Prism service on a schedule',
+               title_key='flask_restart_schedule', title_fallback='Prism Service Restart') }}
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="flask-restart-enabled" class="sr-only peer">
+          <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+        </label>
+        <select id="flask-restart-schedule" class="px-2 py-1 text-sm rounded border border-line bg-field">
+          <option value="daily">{{ t.schedule_daily }}</option>
+          <option value="weekly">{{ t.schedule_weekly }}</option>
+          <option value="monthly">{{ t.schedule_monthly }}</option>
+        </select>
+        <div id="flask-restart-day-wrap" class="hidden">
+          <select id="flask-restart-day" class="px-2 py-1 text-sm rounded border border-line bg-field">
+            <option value="monday">{{ t.get('weekday_monday', 'Monday') }}</option>
+            <option value="tuesday">{{ t.get('weekday_tuesday', 'Tuesday') }}</option>
+            <option value="wednesday">{{ t.get('weekday_wednesday', 'Wednesday') }}</option>
+            <option value="thursday">{{ t.get('weekday_thursday', 'Thursday') }}</option>
+            <option value="friday">{{ t.get('weekday_friday', 'Friday') }}</option>
+            <option value="saturday">{{ t.get('weekday_saturday', 'Saturday') }}</option>
+            <option value="sunday" selected>{{ t.get('weekday_sunday', 'Sunday') }}</option>
+          </select>
+        </div>
+        <div id="flask-restart-monthday-wrap" class="hidden">
+          <input type="number" id="flask-restart-monthday" min="1" max="28" value="1" class="w-16 px-2 py-1 text-sm rounded border border-line bg-field text-right">
+          <span class="text-xs text-muted">{{ t.get('of_month', 'of month') }}</span>
+        </div>
+        <div class="flex items-center gap-1">
+          <span class="text-xs text-muted">{{ t.restart_time }}:</span>
+          <input type="time" id="flask-restart-time" value="03:00" class="px-2 py-1 text-sm rounded border border-line bg-field">
+        </div>
+      </div>
+    </div>
+
+    <hr class="border-line">
+
+    <!-- Server Restart Schedule -->
+    <div>
+      <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
+        <i data-lucide="server" class="w-4 h-4 text-accent"></i>
+        {{ t.server_restart_schedule }}
+        {{ tip('server_restart_desc', 'Schedule automatic restarts for monitored servers',
+               title_key='server_restart_schedule', title_fallback='Server Restart Schedule') }}
+      </div>
+
+      <!-- Global schedule for all server restarts -->
+      <div class="flex flex-wrap items-center gap-2 mb-3 p-2.5 rounded-lg border border-line bg-page dark:bg-page/50">
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="server-restart-enabled" class="sr-only peer">
+          <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+        </label>
+        <select id="server-restart-schedule" class="px-2 py-1 text-sm rounded border border-line bg-field">
+          <option value="daily">{{ t.schedule_daily }}</option>
+          <option value="weekly">{{ t.schedule_weekly }}</option>
+          <option value="monthly">{{ t.schedule_monthly }}</option>
+        </select>
+        <div id="server-restart-day-wrap" class="hidden">
+          <select id="server-restart-day" class="px-2 py-1 text-sm rounded border border-line bg-field">
+            <option value="0">{{ t.get('weekday_monday', 'Monday') }}</option>
+            <option value="1">{{ t.get('weekday_tuesday', 'Tuesday') }}</option>
+            <option value="2">{{ t.get('weekday_wednesday', 'Wednesday') }}</option>
+            <option value="3">{{ t.get('weekday_thursday', 'Thursday') }}</option>
+            <option value="4">{{ t.get('weekday_friday', 'Friday') }}</option>
+            <option value="5">{{ t.get('weekday_saturday', 'Saturday') }}</option>
+            <option value="6" selected>{{ t.get('weekday_sunday', 'Sunday') }}</option>
+          </select>
+        </div>
+        <div id="server-restart-monthday-wrap" class="hidden">
+          <input type="number" id="server-restart-monthday" min="1" max="28" value="1" class="w-16 px-2 py-1 text-sm rounded border border-line bg-field text-right">
+          <span class="text-xs text-muted">{{ t.get('of_month', 'of month') }}</span>
+        </div>
+        <div class="flex items-center gap-1">
+          <span class="text-xs text-muted">{{ t.restart_time }}:</span>
+          <input type="time" id="server-restart-time" value="03:00" class="px-2 py-1 text-sm rounded border border-line bg-field">
+        </div>
+      </div>
+
+      <!-- Delay between restarts -->
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-xs text-muted">{{ t.delay_between_desc }}:</span>
+        <input type="number" id="restart-delay" min="0" max="3600" value="60" class="w-20 px-2 py-1 text-sm rounded border border-line bg-field text-right">
+        <span class="text-xs text-muted">{{ t.delay_seconds }}</span>
+      </div>
+
+      <!-- Server list (order + conditions only) -->
+      <div id="server-restart-list" class="space-y-3 mb-3"></div>
+      {# Empty state: matches the centered icon + message + hint pattern from servers.html #}
+      <div id="no-server-restarts" class="hidden py-8 text-center mb-3">
+        <i data-lucide="timer-off" class="w-10 h-10 mx-auto mb-2 text-faint opacity-50"></i>
+        <p class="text-sm text-muted font-medium">{{ t.no_server_restarts }}</p>
+        <p class="text-[10px] mt-1 text-faint">{{ t.get('no_server_restarts_hint', 'Click the button below to schedule a server for automatic restart') }}</p>
+      </div>
+
+      {# Primary action button: blue filled (matches servers.html pattern) #}
+      <button data-action="addServerRestartRow" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        {{ t.add_server_restart }}
+      </button>
+    </div>
+
+    <hr class="border-line">
+
+    <!-- Save button for this section -->
+    <div class="flex items-center gap-3">
+      <button data-action="saveRestartSchedules" id="save-restart-btn"
+              class="px-4 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1.5">
+        <i data-lucide="save" class="w-4 h-4"></i>
+        {{ t.save_restart_schedule }}
+      </button>
+      <span id="restart-save-result" class="text-xs text-muted"></span>
+    </div>
+  </div>
+  {% endcall %}

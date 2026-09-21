@@ -82,9 +82,32 @@ GENERIC_LABELS = {
 # Documentation-reserved and conventional-placeholder addresses. RFC 5737
 # (192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24) exists precisely for this,
 # and the 10.0.0.x / 192.168.1.x fixtures predate this check.
+#
+# 172.16.0.x and 172.31.255.x are the FIRST AND LAST addresses of RFC 1918's
+# 172.16.0.0/12 block — specification constants, not anybody's host. They are
+# here so `tests/test_lan_only.py` can pin that boundary, which is the one a
+# private-range check is most often written wrongly: the block ends at 172.31,
+# not 172.16, and getting it wrong silently reclassifies half a /12.
+#
+# WHAT THIS COSTS, stated exactly rather than waved away. An earlier version of
+# this comment claimed the estate guard was untouched because config-derived
+# addresses are deny-listed separately. That is wrong in one narrow way, and the
+# whole point of this file is not making claims like that: `secret_terms` skips
+# any config address matching ALLOWED_ADDRESS_PREFIXES, so a host configured BY
+# IP inside 172.16.0.0/24 or 172.31.255.0/24 would no longer be deny-listed and
+# could reach a public file undetected. Verified empirically: an address in
+# either exempted /24 is not flagged, while addresses elsewhere in
+# 172.16.0.0/12 still are. (Spelled out without examples on purpose — writing
+# the flagged ones here would name the estate, and this check would then fail on
+# its own documentation. It did, once, which is how this sentence was written.)
+#
+# The rest of 172.16.0.0/12 is unaffected, and a host addressed by NAME is still
+# caught by name whatever its address. The exposure is therefore two /24s, and
+# only for an installation that addresses hosts by literal IP in them.
 ALLOWED_ADDRESS_PREFIXES = (
     "192.0.2.", "198.51.100.", "203.0.113.",
     "10.0.0.", "192.168.1.", "127.0.0.", "0.0.0.0", "255.255.255.",
+    "172.16.0.", "172.31.255.",
 )
 
 # Third-party bundles are not ours to rewrite, and a minified blob will match

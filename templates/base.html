@@ -3,7 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prism - Server Monitoring</title>
+  {# WP-6 §3.1 — the tab title now follows the page. `self.page_title()` is
+     legal here even though every child's {% block page_title %} is declared
+     further down the file: Jinja resolves blocks by name at compile time,
+     not in source order. Empty (the chrome pages define page_title too, but
+     — see the topbar — the STRING is still needed for the tab even where
+     the chip itself is suppressed) falls back to the name this file has
+     carried since it was written. #}
+  <title>{% if self.page_title() | trim %}{{ self.page_title() | trim }} — Prism{% else %}Prism — Server Monitoring{% endif %}</title>
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
   <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='img/favicon-16.png') }}">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
@@ -94,6 +101,37 @@
             'sm': 'var(--shadow-sm)',
             'md': 'var(--shadow-md)',
             'lg': 'var(--shadow-lg)'
+          },
+          // The named stacking order. Measured across templates/** and
+          // app.css on 2026-08-28: 54 z-index sites holding 19 distinct
+          // values on two unreconciled number systems — a hand-nudged
+          // 0..70 ladder and a 9998/9999 "on top" pair. 51 exists only to
+          // beat 50, 31 only to beat 30; nothing chose any of them.
+          //
+          // The consequence this was seeded to record: #ps-tooltip and
+          // #prism-modal (`z-[9999]`) TIED, so DOM order decided and the
+          // tooltip — emitted 520 lines earlier — lost. Every explanation
+          // inside a modal rendered behind it. Step 3 lifted #ps-tooltip to
+          // 10000 (see its rule below); the other seven 9999s are unmoved,
+          // which is why the tooltip layer is 10000 and not 90.
+          //
+          // Nothing ELSE is repointed here; `extend` merges, so z-0..z-50
+          // still resolve and the remaining sites keep working. The scale
+          // exists so a fix has a layer to name instead of a magic number.
+          // Generated; regenerate with d.render_tailwind_z()
+          zIndex: {
+            'base': '0',
+            'raised': '10',
+            'canvas': '30',
+            'sticky': '35',
+            'chrome': '40',
+            'sidebar': '50',
+            'topbar': '55',
+            'dropdown': '60',
+            'overlay': '70',
+            'modal': '71',
+            'toast': '80',
+            'tooltip': '10000'
           }
         }
       }
@@ -132,9 +170,13 @@
   </script>
 
   {# Global custom tooltip — shared across every page. Any element with
-     data-tip-title (+ optional data-tip-desc) gets a styled hover popup
-     instead of the native browser title= tooltip. Page-local scripts can
-     call window.__prismBindTooltips() after injecting new tip elements. #}
+     data-tip-title (+ optional data-tip-desc) gets a styled panel instead
+     of the native browser title= tooltip. It is no longer hover-only:
+     pointer, keyboard (focus, Enter/Space, Escape) and touch (tap on a
+     .ps-tip button, long-press on anything else) all reach it — see the
+     state machine beside window.prismSetDisabled below. Page-local scripts
+     can call window.__prismBindTooltips() after injecting new tip
+     elements. #}
   <style>
     /* An overlay panel with a turquoise edge. Turquoise, not violet: the
        tooltip is the interface OFFERING something, which is the same role
@@ -144,20 +186,45 @@
        hardcoded slate values, so on the light theme it was a dark panel
        that belonged to a different application. */
     #ps-tooltip {
-      position: fixed; z-index: 9999; pointer-events: none;
-      max-width: 360px; padding: 10px 12px;
+      /* 10000, written as a literal with the layer's name beside it.
+         `z-tooltip` exists in tailwind.config's zIndex map, but that map
+         only renders Tailwind CLASSES — step 2 rendered no `--z-*` custom
+         property, so `var(--z-tooltip)` would resolve to nothing here and
+         the panel would fall to `z-index: auto`. The literal is the honest
+         form until a CSS renderer exists (Part II-a R2).
+
+         Why 10000 and not the scale's 90: eight elements sit at 9999 today
+         and #ps-tooltip is one of them; #prism-modal is another, emitted
+         520 lines later, so on the tie DOM order decides and every
+         explanation opened inside a modal renders BEHIND the modal. The
+         value carries its own exit condition — tools/design_tokens.py
+         asserts tooltip > 9999, and when the 9999s are renumbered this
+         comes down to 90 in the same commit. */
+      position: fixed; z-index: 10000;              /* z-tooltip */
+      /* `auto` while .visible — a magnifier user has to be able to move the
+         pointer ONTO the panel to read it without it closing under them
+         (WCAG 1.4.13 Content on Hover or Focus, "hoverable"). While hidden
+         it must not swallow clicks meant for the page underneath. */
+      pointer-events: none;
+      max-width: min(22.5rem, calc(100vw - 1.5rem));
+      padding: 0.625rem 0.75rem;
       background: rgb(var(--c-card));
       border: 1px solid rgb(var(--c-accent) / 0.55);
-      border-radius: 0.75rem;
+      border-radius: 0.5rem;                        /* the sm/DEFAULT radius; was 0.75rem, which is off the two-value scale */
       box-shadow: var(--shadow-lg);
+      /* 11px -> 12px: the panel is about to carry the app's primary
+         explanatory prose, not a hover afterthought. Weight and colour, not
+         size, separate the title from the body — hence 600/ink over
+         400/muted at the same 0.75rem. */
+      font-size: 0.75rem; line-height: 1.5;
+      color: rgb(var(--c-muted));
       opacity: 0; transform: translateY(4px);
       transition: opacity var(--dur-fast) var(--ease-out),
                   transform var(--dur-fast) var(--ease-out);
-      font-size: 11px; color: rgb(var(--c-muted));
     }
-    #ps-tooltip.visible { opacity: 1; transform: translateY(0); }
-    #ps-tooltip .tip-title { font-weight: 700; font-size: 12px; color: rgb(var(--c-ink)); margin-bottom: 4px; }
-    #ps-tooltip .tip-desc { line-height: 1.5; color: rgb(var(--c-muted)); white-space: pre-wrap; }
+    #ps-tooltip.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    #ps-tooltip .tip-title { font-weight: 600; font-size: 0.75rem; color: rgb(var(--c-ink)); margin-bottom: 0.25rem; }
+    #ps-tooltip .tip-desc { color: rgb(var(--c-muted)); white-space: pre-wrap; }
 
     /* The trigger answers back. Anything carrying a tip gets a turquoise
        edge on hover, so "there is more to read here" is discoverable
@@ -167,9 +234,23 @@
       box-shadow: 0 0 0 0 rgb(var(--c-accent) / 0);
       transition: box-shadow var(--dur-fast) var(--ease-standard);
     }
+    /* Three states, not two. `[data-tip-open]` is the third: the script sets
+       it on the carrier whose panel is showing, so a keyboard or touch user
+       can tell WHICH control the panel belongs to. It is also why the panel
+       needs no arrow — the anchor cue is on the trigger, where it survives
+       both the vertical flip and the horizontal clamp that an arrow would
+       have to be repositioned for. */
     [data-tip-title]:hover,
-    [data-tip-title]:focus-visible {
+    [data-tip-title]:focus-visible,
+    [data-tip-title][data-tip-open] {
       box-shadow: 0 0 0 2px rgb(var(--c-accent) / 0.45);
+    }
+    /* On touch there is no hover, so "hover to find out there is more to
+       read" has no equivalent — the ring is the only thing that says a
+       control has an explanation behind it, and it has to be there before
+       the tap. Low alpha so 38 carriers do not read as 38 focus rings. */
+    @media (hover: none) {
+      [data-tip-title] { box-shadow: 0 0 0 1px rgb(var(--c-accent) / 0.25); }
     }
 
     /* Values that change during morph (numbers, bar widths, colors) get a
@@ -190,52 +271,88 @@
 
     <!-- Navigation -->
     <nav class="flex-1 py-3 px-2 space-y-1 overflow-y-auto overflow-x-hidden">
-      <a href="/" class="sidebar-link {% if request.path == '/' %}sidebar-link-active{% endif %}" aria-label="Dashboard">
+      {#── D7: ordered by the daily path, not by page age ──────────────
+
+         Dashboard, then the fleet and what is happening to it, then the
+         things you act with; then the reference surfaces you visit
+         deliberately; then Settings, which is a different kind of
+         destination and gets its own rule above it.
+
+         Every `aria-label` reads the same translated string as the visible
+         label. It cannot be the English name: an aria-label REPLACES the
+         visible text for assistive technology, so a hardcoded one makes the
+         app say a different word than it shows. With the sidebar collapsed
+         the visible label is hidden and the aria-label is the only name
+         there is. #}
+      {% set nav_dashboard = t.dashboard %}
+      <a href="/" class="sidebar-link {% if request.path == '/' %}sidebar-link-active{% endif %}" aria-label="{{ nav_dashboard }}">
         <i data-lucide="layout-dashboard" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.dashboard }}</span>
-      </a>
-      <a href="/reports" class="sidebar-link {% if request.path == '/reports' %}sidebar-link-active{% endif %}" aria-label="Reports">
-        <i data-lucide="file-bar-chart" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.reports }}</span>
-      </a>
-      <a href="/topology" class="sidebar-link {% if request.path == '/topology' %}sidebar-link-active{% endif %}" aria-label="Topology">
-        <i data-lucide="network" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.topology }}</span>
+        <span class="sidebar-label">{{ nav_dashboard }}</span>
       </a>
 
       <!-- Divider -->
       <div class="border-t border-line my-2 mx-1"></div>
 
-      <a href="/servers" class="sidebar-link {% if request.path == '/servers' or request.path.startswith('/server/') %}sidebar-link-active{% endif %}" aria-label="Servers">
+      {% set nav_servers = t.get('servers_page', 'Servers') %}
+      <a href="/servers" class="sidebar-link {% if request.path == '/servers' or request.path.startswith('/server/') %}sidebar-link-active{% endif %}" aria-label="{{ nav_servers }}">
         <i data-lucide="server" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.get('servers_page', 'Servers') }}</span>
+        <span class="sidebar-label">{{ nav_servers }}</span>
       </a>
-      <a href="/monitoring" class="sidebar-link {% if request.path == '/monitoring' %}sidebar-link-active{% endif %}" aria-label="Monitoring">
+      {% set nav_monitoring = t.get('monitoring_page', 'Monitoring') %}
+      <a href="/monitoring" class="sidebar-link {% if request.path == '/monitoring' %}sidebar-link-active{% endif %}" aria-label="{{ nav_monitoring }}">
         <i data-lucide="activity" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.get('monitoring_page', 'Monitoring') }}</span>
+        <span class="sidebar-label">{{ nav_monitoring }}</span>
       </a>
-      <a href="/operations" class="sidebar-link {% if request.path == '/operations' %}sidebar-link-active{% endif %}" aria-label="Operations">
+      {% set nav_operations = t.get('operations_page', 'Operations') %}
+      <a href="/operations" class="sidebar-link {% if request.path == '/operations' %}sidebar-link-active{% endif %}" aria-label="{{ nav_operations }}">
         <i data-lucide="wrench" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.get('operations_page', 'Operations') }}</span>
+        <span class="sidebar-label">{{ nav_operations }}</span>
       </a>
-      <a href="/workflows" class="sidebar-link {% if request.path == '/workflows' %}sidebar-link-active{% endif %}" aria-label="Workflows">
+      {% set nav_workflows = t.get('workflows_page', 'Workflows') %}
+      <a href="/workflows" class="sidebar-link {% if request.path == '/workflows' %}sidebar-link-active{% endif %}" aria-label="{{ nav_workflows }}">
         <i data-lucide="git-branch" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.get('workflows_page', 'Workflows') }}</span>
+        <span class="sidebar-label">{{ nav_workflows }}</span>
       </a>
-      <a href="/settings" class="sidebar-link {% if request.path == '/settings' %}sidebar-link-active{% endif %}" aria-label="Settings">
-        <i data-lucide="settings" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.settings }}</span>
+
+      <!-- Divider -->
+      <div class="border-t border-line my-2 mx-1"></div>
+
+      {% set nav_reports = t.reports %}
+      <a href="/reports" class="sidebar-link {% if request.path == '/reports' %}sidebar-link-active{% endif %}" aria-label="{{ nav_reports }}">
+        <i data-lucide="file-bar-chart" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="sidebar-label">{{ nav_reports }}</span>
       </a>
-      <a href="/admin/rbac" class="sidebar-link {% if request.path == '/admin/rbac' %}sidebar-link-active{% endif %}" aria-label="RBAC">
-        <i data-lucide="shield-check" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.get('rbac_admin', 'RBAC') }}</span>
+      {% set nav_topology = t.topology %}
+      <a href="/topology" class="sidebar-link {% if request.path == '/topology' %}sidebar-link-active{% endif %}" aria-label="{{ nav_topology }}">
+        <i data-lucide="network" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="sidebar-label">{{ nav_topology }}</span>
       </a>
+      {# The compliance DASHBOARD stays in the nav (WP-4 D6): it is SOP status,
+         audit-chain integrity and a findings register — things an operator
+         reads. Its enable switch is what moved, to Settings → Compliance.
+         Gated exactly as before, which URS-204 requires. #}
       {% if compliance_enabled %}
-      <a href="/compliance" class="sidebar-link {% if request.path.startswith('/compliance') %}sidebar-link-active{% endif %}" aria-label="Compliance">
+      {% set nav_compliance = t.get('compliance', 'Compliance') %}
+      <a href="/compliance" class="sidebar-link {% if request.path.startswith('/compliance') %}sidebar-link-active{% endif %}" aria-label="{{ nav_compliance }}">
         <i data-lucide="clipboard-check" class="w-5 h-5 flex-shrink-0"></i>
-        <span class="sidebar-label">{{ t.get('compliance', 'Compliance') }}</span>
+        <span class="sidebar-label">{{ nav_compliance }}</span>
       </a>
       {% endif %}
+
+      <!-- Divider -->
+      <div class="border-t border-line my-2 mx-1"></div>
+
+      {# `request.path == '/settings'` was written when Settings was one page.
+         D1 gave it sub-pages, and every /settings/<section> has rendered with
+         nothing highlighted since — the nav claiming the operator is not on
+         the page they are on. #}
+      {% set nav_settings = t.settings %}
+      <a href="/settings" class="sidebar-link {% if request.path.startswith('/settings') %}sidebar-link-active{% endif %}" aria-label="{{ nav_settings }}">
+        <i data-lucide="settings" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="sidebar-label">{{ nav_settings }}</span>
+      </a>
+      {# RBAC left the sidebar in WP-4 D4: it configures rather than
+         shows, and it lives at Settings -> Permissions now. #}
     </nav>
 
     <!-- Bottom: user + collapse toggle + logout -->
@@ -248,15 +365,19 @@
           </span>
         </div>
         <!-- Desktop collapse toggle (mobile uses the header menu button instead). -->
-        <button data-action="toggle-sidebar" class="sidebar-collapse-btn hidden md:flex items-center justify-center p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted flex-shrink-0" title="Toggle sidebar" aria-label="Collapse sidebar">
+        {% set _collapse_tip = next_tip_id() %}
+        <button data-action="toggle-sidebar" class="sidebar-collapse-btn hidden md:flex items-center justify-center p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted flex-shrink-0" aria-label="{{ t.get('toggle_sidebar', 'Toggle sidebar') }}" aria-describedby="{{ _collapse_tip }}" data-tip-title="{{ t.get('toggle_sidebar', 'Toggle sidebar') }}" data-tip-desc="{{ t.get('toggle_sidebar_desc', 'Show or hide the navigation menu') }}">
           <i data-lucide="panel-left" class="w-5 h-5"></i>
         </button>
+        <span class="sr-only" id="{{ _collapse_tip }}">{{ t.get('toggle_sidebar_desc', 'Show or hide the navigation menu') }}</span>
       </div>
       {% if session.get('username') %}
-      <a href="/logout" class="sidebar-link text-critical hover:bg-critical-tint dark:hover:bg-critical-tint/30" title="{{ t.sign_out }}">
+      {% set _signout_tip = next_tip_id() %}
+      <a href="/logout" class="sidebar-link text-critical hover:bg-critical-tint dark:hover:bg-critical-tint/30" aria-label="{{ t.sign_out }}" aria-describedby="{{ _signout_tip }}" data-tip-title="{{ t.sign_out }}" data-tip-desc="{{ t.get('sign_out_desc', 'End your session and return to the login screen') }}">
         <i data-lucide="log-out" class="w-5 h-5 flex-shrink-0"></i>
         <span class="sidebar-label text-sm">{{ t.sign_out }}</span>
       </a>
+      <span class="sr-only" id="{{ _signout_tip }}">{{ t.get('sign_out_desc', 'End your session and return to the login screen') }}</span>
       {% endif %}
     </div>
   </aside>
@@ -267,14 +388,108 @@
   <header id="topbar" class="fixed top-0 left-0 right-0 z-[51] h-14 bg-card border-b border-line flex items-center gap-3 px-3 transition-colors duration-base">
     <!-- Mobile-only menu toggle (opens the off-canvas nav). Desktop uses the
          collapse control in the sidebar footer, next to the username. -->
-    <button data-action="toggle-sidebar" class="md:hidden p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted flex-shrink-0" title="Toggle sidebar" aria-label="Toggle sidebar">
+    {% set _mobile_nav_tip = next_tip_id() %}
+    <button data-action="toggle-sidebar" class="md:hidden p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted flex-shrink-0" aria-label="{{ t.get('toggle_sidebar', 'Toggle sidebar') }}" aria-describedby="{{ _mobile_nav_tip }}" data-tip-title="{{ t.get('toggle_sidebar', 'Toggle sidebar') }}" data-tip-desc="{{ t.get('toggle_sidebar_desc', 'Show or hide the navigation menu') }}">
       <i data-lucide="panel-left" class="w-5 h-5"></i>
     </button>
+    <span class="sr-only" id="{{ _mobile_nav_tip }}">{{ t.get('toggle_sidebar_desc', 'Show or hide the navigation menu') }}</span>
     <!-- Brand -->
     <a href="/" class="flex items-center gap-2 text-info font-bold text-lg whitespace-nowrap">
       <img src="{{ url_for('static', filename='img/logo.png') }}" alt="" class="w-7 h-7 flex-shrink-0" width="28" height="28">
       <span class="prism-wordmark">Prism</span>
     </a>
+    {# WP-6 D2/§3.1 — the page-title chip: Prism -> which page -> search is
+       the sentence the bar should say, so this sits right after the brand
+       and before the jump box. "Cut out" of the bar: bg-page against the
+       bar's own bg-card, with the border doing the actual visual work (§3.2
+       measures why — the fill alone is ~1.1:1 against the bar in light
+       mode). Suppressed on '/' by the #page-title[data-home] rule in
+       app.css (H-11), which is CSS on an element that stays in the DOM —
+       the reason search_index.build()'s "/" -> path fallback is provably
+       dead (§6.1) rather than merely unused. Absent entirely (not just
+       clipped) on the four D8 "chrome" pages, which render this shell
+       before anyone is signed in and where a title chip would imply the
+       operator is inside the application proper. #}
+    {% if not page_chrome|default(false) %}
+    <h1 id="page-title"
+        data-home="{{ 'true' if request.path == '/' else 'false' }}"
+        class="inline-flex items-center gap-2 min-w-0 max-w-[14rem] lg:max-w-[22rem]
+               h-9 px-3 rounded-md bg-page border border-line
+               text-lg font-bold text-ink">
+      <i data-lucide="{% block page_icon %}circle-dot{% endblock %}"
+         class="w-5 h-5 flex-shrink-0 text-brand" aria-hidden="true"></i>
+      <span class="truncate">{% block page_title %}{% endblock %}</span>
+    </h1>
+    {# WP-6 D4/§3.4/§7 (step 22) — the Settings theme chip: a SECOND, PEER
+       chip immediately after the H1, never a wrapper around both (C13 —
+       "two chips, not one container"). Guarded on the URL rather than a
+       template-local flag, because this one file already serves every
+       page and already knows the request.
+
+       Nested inside the SAME `{% if not page_chrome %}` block as the H1
+       above (rather than repeating that guard on a sibling `{% if %}`) is
+       what keeps this out of the /settings/<bad-slug> 404 case for free:
+       that branch (routes/views.py's settings() view) renders "404.html"
+       directly rather than settings.html, and 404.html is itself one of
+       D8's four chrome pages — so this whole block, include and all, is
+       never reached there, and `section` never needs to be defined on
+       that path. See partials/_settings_nav.html's own header comment
+       for the fuller chain of reasoning (that view is the ONLY route
+       matching '/settings*', and its only two outcomes are "a real
+       section, section defined" or "unknown slug, chrome-exempt page").
+
+       The `›` separator lives HERE, not inside the partial: it is a layout
+       decision about the BAR — what sits between its two chips — not
+       something intrinsic to what a theme menu is. `&rsaquo;` rather than
+       a literal › character keeps this hunk plain ASCII (house rule); it
+       is `hidden sm:inline` for the same reason the H1 chip itself clips
+       away below 640px (app.css's `#page-title` media rule) — a dangling
+       separator with nothing on its left would be worse than none.
+
+       `with context` on the include is REQUIRED — the partial reads `t`,
+       `settings_themes` and `section` from THIS render's own context, not
+       as arguments (see partials/_card.html's header comment for what
+       silently breaks without it: Undefined, not a build error). #}
+    {% if request.path.startswith('/settings') %}
+    <span aria-hidden="true" class="hidden sm:inline text-faint select-none">&rsaquo;</span>
+    {% include "partials/_settings_nav.html" with context %}
+    {% endif %}
+    {% endif %}
+    {#── Jump-to (D8) ──────────────────────────────────────
+
+       A combobox, spelled out as one: `role="combobox"` on the input,
+       `aria-expanded` tracking the panel, `aria-activedescendant` naming the
+       highlighted row. Arrow keys moving a highlight that assistive
+       technology cannot follow is the standard way this control is built
+       wrong — the sighted user sees the selection move and nobody else
+       does. #}
+    <div class="relative flex-shrink-0 hidden sm:block" id="jump-wrap">
+      <div class="relative">
+        <i data-lucide="search" class="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-faint pointer-events-none"></i>
+        <input id="jump-search" type="text" autocomplete="off" spellcheck="false"
+               role="combobox" aria-expanded="false" aria-controls="jump-results"
+               aria-autocomplete="list"
+               aria-label="{{ t.get('jump_aria', 'Jump to a server, setting or page') }}"
+               placeholder="{{ t.get('jump_placeholder', 'Jump to…') }}"
+               class="w-44 lg:w-64 pl-8 pr-8 py-1.5 text-sm rounded-md border border-line bg-field
+                      text-ink placeholder:text-faint focus-visible:outline-none
+                      focus-visible:ring-2 focus-visible:ring-brand/30
+                      focus-visible:border-brand transition-colors duration-fast">
+        <kbd id="jump-hint"
+             class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-sans
+                    px-1 py-0.5 rounded border border-line text-faint pointer-events-none">/</kbd>
+      </div>
+      {# The radius and the scrolling are on different elements on purpose: a
+         rounded element that also scrolls has its scrollbar painted straight
+         across the corner. #}
+      <div id="jump-panel"
+           class="hidden absolute left-0 right-0 mt-1 rounded-md overflow-hidden
+                  border border-line bg-card shadow-lg z-[60]">
+        <div id="jump-results" role="listbox"
+             aria-label="{{ t.get('jump_aria_results', 'Jump-to results') }}"
+             class="max-h-80 overflow-y-auto py-1"></div>
+      </div>
+    </div>
     <!-- Spacer pushes the live controls to the right -->
     <div class="flex-1"></div>
     <!-- Collector pulse widget — ECG-style live heartbeat. Replaces the
@@ -287,24 +502,31 @@
     </div>
     <!-- Own error indicator — does NOT share #htmx-error-banner, which
          is silenced by every successful HTMX swap (audit H2). -->
-    <span id="pulse-error" class="pulse-error" role="status" style="display:none"
-          title="{{ t.get('pulse_error_unreachable', 'Cannot reach collector — retrying') }}">
+    {% set _pulse_err_tip = next_tip_id() %}
+    <span id="pulse-error" class="pulse-error" role="status" style="display:none" tabindex="0"
+          aria-label="{{ t.get('pulse_error_unreachable_title', 'Collector unreachable') }}"
+          aria-describedby="{{ _pulse_err_tip }}"
+          data-tip-title="{{ t.get('pulse_error_unreachable_title', 'Collector unreachable') }}"
+          data-tip-desc="{{ t.get('pulse_error_unreachable', 'Cannot reach collector — retrying') }}">
       <i data-lucide="cloud-off" class="w-3.5 h-3.5"></i>
     </span>
+    <span class="sr-only" id="{{ _pulse_err_tip }}">{{ t.get('pulse_error_unreachable', 'Cannot reach collector — retrying') }}</span>
     <!-- Hover dropdown panel — populated dynamically by PulseMonitor. -->
     <div id="pulse-panel" class="pulse-panel" role="region"
          aria-label="{{ t.get('pulse_aria_panel', 'Collector activity detail') }}"
          style="display:none"></div>
-    <button data-action="toggle-theme" class="p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted" title="Toggle theme" aria-label="Toggle dark mode">
+    {% set _theme_tip = next_tip_id() %}
+    <button data-action="toggle-theme" class="p-1.5 rounded-md hover:bg-raised dark:hover:bg-line text-muted" aria-label="{{ t.get('toggle_theme', 'Toggle dark mode') }}" aria-describedby="{{ _theme_tip }}" data-tip-title="{{ t.get('toggle_theme', 'Toggle dark mode') }}" data-tip-desc="{{ t.get('toggle_theme_desc', 'Switch between light and dark colour themes') }}">
       <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
       <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
     </button>
+    <span class="sr-only" id="{{ _theme_tip }}">{{ t.get('toggle_theme_desc', 'Switch between light and dark colour themes') }}</span>
   </header>
 
   <!-- HTMX error banner -->
   <div id="htmx-error-banner" class="htmx-error-banner" role="alert" aria-live="polite" style="display:none">
     <i data-lucide="alert-triangle" class="w-4 h-4 flex-shrink-0"></i>
-    <span>Connection lost. Data may be stale. Retrying...</span>
+    <span>{{ t.get('connection_lost', 'Connection lost. Data may be stale. Retrying…') }}</span>
   </div>
 
   <!-- Backdrop for the mobile off-canvas sidebar (click to close) -->
@@ -312,8 +534,24 @@
 
   <!-- Main content -->
   <main id="main-content" class="transition-all duration-base pt-14 min-h-screen" style="margin-left:14rem">
-    {% block breadcrumb %}{% endblock %}
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    {# `{% block breadcrumb %}` stood here and no template ever overrode it, so
+       the seven `.breadcrumb` rules in app.css styled markup that was never
+       produced — 0 elements on every page, measured. Both are gone. Reinstating
+       breadcrumbs means adding the markup and the styling together, which is
+       cheaper than the stub was: a hook that renders unstyled costs the next
+       person more than a blank space does. #}
+    {# The content column's width is a per-page decision, defaulting to the
+       80rem every page had before this block existed. The dashboard overrides
+       it because it is the only page designed to be read from across a room:
+       at 2560 the 80rem cap left over a thousand pixels of empty grey either
+       side of a quadrant whose whole point is to be legible at a distance.
+
+       Expressed as a BLOCK holding the class rather than as an extra class an
+       overriding page adds, because the two would fight and the utility would
+       win: Tailwind's sheet is injected after app.css, so at equal specificity
+       `max-w-7xl` beats any `.page-*` rule authored there. Replacing the class
+       outright has no specificity contest to lose. #}
+    <div class="{% block content_width %}max-w-7xl{% endblock %} mx-auto px-4 sm:px-6 lg:px-8 py-6">
     {% block content %}{% endblock %}
     </div>
   </main>
@@ -373,45 +611,517 @@
       const isDark = html.classList.toggle('dark');
       localStorage.setItem('prism-theme', isDark ? 'dark' : 'light');
       lucide.createIcons();
+      // createIcons REPLACES every <i data-lucide> with a fresh <svg>, so
+      // the four Settings carriers that are both an icon and a tip trigger
+      // come back unbound — switching theme silently deleted their
+      // tooltips. See the note beside _prismIcons() below.
+      if (window.__prismBindTooltips) window.__prismBindTooltips();
     }
 
     // ── Global custom tooltip (data-tip-title / data-tip-desc) ──
+    //
+    // A three-state machine: closed / open / pinned. What it replaces was
+    // `mouseenter` + `mousemove` + `mouseleave` and nothing else — no
+    // keyboard path, no touch path, no Escape, and a panel that chased the
+    // cursor. Measured before this rewrite: `aria-describedby` returned
+    // ZERO hits across templates/ and static/js/, and all 38 carriers were
+    // bare <i>/<span>/<div> elements that cannot take focus.
+    //
+    // PINNED is the load-bearing idea. Hover is the only input method that
+    // has a "leave", so a panel that always closes on pointerleave is a
+    // panel only a mouse can hold open. Focus, click and long-press all
+    // open PINNED; a pinned panel ignores pointerleave and closes on
+    // Escape, on a pointerdown outside it, on scroll/wheel/touchmove, on
+    // resize, or on the next click of its own trigger.
     (function initGlobalTooltip() {
       const tip = document.getElementById('ps-tooltip');
       if (!tip) return;
+
+      let current = null;        // the carrier whose panel is showing, or null
+      let pinned = false;        // immune to pointerleave
+      let overPanel = false;     // pointer is on the panel itself (WCAG 1.4.13)
+      let openTimer = 0, closeTimer = 0;
+      let pressTimer = 0, pressX = 0, pressY = 0, longPressed = false;
+
+      // 8px between the trigger's edge and the panel; 12px is the closest
+      // the panel may come to a viewport edge. Both are placement geometry,
+      // not spacing tokens — the spacing scale governs gaps between things
+      // in the layout, and this panel is outside the layout entirely.
+      const GAP = 8;
+      const EDGE = 12;
+      // The platform long-press convention and the slop that separates a
+      // press from the beginning of a scroll. Deliberately NOT on the
+      // --dur-* scale: that scale governs how long it takes to GET
+      // somewhere, which is a different question from how long a finger has
+      // to rest before it means something.
+      const PRESS_MS = 600;
+      const PRESS_SLOP = 10;
+
+      // The open/close delays are declared ONCE, on :root in app.css, and
+      // read from there. A millisecond literal in this file would be a
+      // second timing scale that no stylesheet can see and no test that
+      // reads app.css can govern — which is exactly how the app ended up
+      // with 123 transitions on Tailwind's numbers and a token scale beside
+      // them. They compute to `320ms` / `120ms` because custom properties
+      // are var()-substituted at computed-value time.
+      function delay(name) {
+        let raw = '';
+        try {
+          raw = getComputedStyle(document.documentElement)
+                  .getPropertyValue(name).trim();
+        } catch (err) { raw = ''; }
+        const n = parseFloat(raw);
+        if (!isFinite(n)) return 0;
+        return /ms$/.test(raw) ? n : n * 1000;
+      }
+
+      function cancelTimers() {
+        if (openTimer) { clearTimeout(openTimer); openTimer = 0; }
+        if (closeTimer) { clearTimeout(closeTimer); closeTimer = 0; }
+      }
+
+      // Anchored to the TRIGGER's box, never to the cursor. The cursor-
+      // derived version is deleted outright: a panel that follows the
+      // pointer cannot be produced by a keyboard or a finger, and carrying
+      // two positioning models is how the two input paths drift apart.
+      function anchor(el) {
+        // Reset before measuring. A fixed-position box with `left` set and
+        // `width: auto` shrink-to-fits into (viewport - left), so a stale
+        // left from the previous open silently narrows THIS measurement and
+        // the panel comes out taller than it will actually be.
+        tip.style.left = '0px';
+        tip.style.top = '0px';
+        tip.style.maxHeight = '';
+        tip.style.overflowY = '';
+
+        const a = el.getBoundingClientRect();
+        const vw = window.innerWidth, vh = window.innerHeight;
+        let r = tip.getBoundingClientRect();
+        const below = vh - a.bottom - GAP - EDGE;
+        const above = a.top - GAP - EDGE;
+        let top;
+        if (r.height <= below) {
+          // Preferred: below, centred. On touch this also keeps the panel
+          // out from under the finger that opened it.
+          top = a.bottom + GAP;
+        } else if (r.height <= above) {
+          top = a.top - GAP - r.height;
+        } else {
+          // Neither side fits: take the larger one and let the panel
+          // scroll rather than run off the screen.
+          tip.style.overflowY = 'auto';
+          if (below >= above) {
+            tip.style.maxHeight = Math.max(0, below) + 'px';
+            top = a.bottom + GAP;
+          } else {
+            tip.style.maxHeight = Math.max(0, above) + 'px';
+            r = tip.getBoundingClientRect();
+            top = a.top - GAP - r.height;
+          }
+        }
+        // CLAMP horizontally, never flip. A centred panel that jumps to the
+        // other side of its trigger on a 2px scroll is worse than one that
+        // slides along the edge. max-width already caps the panel at
+        // 100vw - 1.5rem, so maxLeft can never fall below EDGE.
+        const maxLeft = vw - EDGE - r.width;
+        let left = a.left + a.width / 2 - r.width / 2;
+        left = Math.min(Math.max(left, EDGE), Math.max(EDGE, maxLeft));
+        tip.style.left = Math.round(left) + 'px';
+        tip.style.top = Math.round(top) + 'px';
+      }
+
+      // `e` is the CARRIER ELEMENT, not an event — the parameter name is
+      // pinned by tests/test_design_disabled.py, which locates this body by
+      // the exact string `function show(e)` and asserts the panel is never
+      // assembled with innerHTML between here and `function hide()`.
       function show(e) {
-        const el = e.currentTarget;
-        const title = el.getAttribute('data-tip-title') || '';
-        const desc  = el.getAttribute('data-tip-desc') || '';
-        tip.innerHTML = '<div class="tip-title">' + title + '</div><div class="tip-desc">' + desc + '</div>';
-        tip.classList.add('visible');
-        position(e);
+        const title = e.getAttribute('data-tip-title') || '';
+        const desc  = e.getAttribute('data-tip-desc') || '';
+        // Bail on an empty title rather than showing an empty panel. A
+        // control that has been re-enabled has its reason removed, but the
+        // listener stays bound (`__tipBound` is one-way), so without this
+        // every re-enabled control grew a blank tooltip on hover.
+        if (!title && !desc) { hide(); return; }
+        // textContent, not innerHTML: a reason can carry interpolated data
+        // — `data-tip-desc="{{ _reason }}"` on the server card comes from
+        // the fusion layer — and Jinja's escaping is undone by
+        // getAttribute, so assembling markup here would re-open it.
+        tip.textContent = '';
+        if (title) {
+          const t = document.createElement('div');
+          t.className = 'tip-title';
+          t.textContent = title;
+          tip.appendChild(t);
+        }
+        if (desc) {
+          const d = document.createElement('div');
+          d.className = 'tip-desc';
+          d.textContent = desc;
+          tip.appendChild(d);
+        }
+        if (current && current !== e) current.removeAttribute('data-tip-open');
+        current = e;
+        e.setAttribute('data-tip-open', '');
+        // MEASURE AFTER WRITING THE CONTENT AND BEFORE SHOWING IT. The old
+        // code positioned from a rect taken before the text was in the
+        // panel, which is why the first open of every tooltip landed in the
+        // wrong quadrant — the panel it measured was empty. `visibility:
+        // hidden` keeps the measured box out of the frame the user sees;
+        // anchor() forces the layout it needs by reading a rect.
+        //
+        // An ALREADY-VISIBLE panel is measured in place and never hidden:
+        // hiding it and re-showing it in one task is a fade-out/fade-in, and
+        // sweeping a row of info icons would strobe. Only left/top change on
+        // that path, and neither is transitioned.
+        const wasVisible = tip.classList.contains('visible');
+        if (!wasVisible) tip.style.visibility = 'hidden';
+        anchor(e);
+        if (!wasVisible) {
+          tip.style.visibility = '';
+          tip.classList.add('visible');
+        }
       }
-      function hide() { tip.classList.remove('visible'); }
-      function position(e) {
-        const pad = 12;
-        const r = tip.getBoundingClientRect();
-        let x = e.clientX + 14;
-        let y = e.clientY + 14;
-        if (x + r.width + pad > window.innerWidth) x = e.clientX - r.width - 14;
-        if (y + r.height + pad > window.innerHeight) y = e.clientY - r.height - 14;
-        tip.style.left = Math.max(pad, x) + 'px';
-        tip.style.top  = Math.max(pad, y) + 'px';
+      function hide() {
+        cancelTimers();
+        tip.classList.remove('visible');
+        tip.style.visibility = '';
+        if (current) current.removeAttribute('data-tip-open');
+        current = null;
+        pinned = false;
+        overPanel = false;
       }
+
+      function openTip(el, pin) {
+        cancelTimers();
+        show(el);
+        // Only pin if something actually opened — show() bails on a carrier
+        // whose reason has been cleared, and a pinned nothing would swallow
+        // the next outside pointerdown.
+        pinned = !!(current && pin);
+      }
+      function closeTip() { hide(); }
+
+      function scheduleOpen(el) {
+        cancelTimers();
+        // Swapping between two adjacent carriers must not re-animate: with
+        // a panel already up, the content changes in place instead of
+        // fading out and back in. Scanning a row of info icons should not
+        // strobe.
+        if (current) { openTip(el, false); return; }
+        openTimer = setTimeout(function () {
+          openTimer = 0;
+          openTip(el, false);
+        }, delay('--tip-delay-open'));
+      }
+      function scheduleClose() {
+        cancelTimers();
+        closeTimer = setTimeout(function () {
+          closeTimer = 0;
+          // Cancelled if the pointer landed on the panel in the meantime —
+          // WCAG 1.4.13 "hoverable": a magnifier user has to be able to
+          // move onto the panel to read it.
+          if (!overPanel) closeTip();
+        }, delay('--tip-delay-close'));
+      }
+
+      // ── carrier events ────────────────────────────────────────────────
+      function onEnter(ev) {
+        // Mark the carrier as pointer-event-capable BEFORE the pointerType
+        // gate, so the compatibility-mouse fallback below stays off for
+        // every element that does deliver pointer events.
+        ev.currentTarget.__tipPointer = true;
+        if (ev.pointerType !== 'mouse') return;
+        const el = ev.currentTarget;
+        if (current === el) { cancelTimers(); return; }
+        scheduleOpen(el);
+      }
+      function onLeave(ev) {
+        ev.currentTarget.__tipPointer = true;
+        if (ev.pointerType !== 'mouse') return;
+        if (openTimer) { clearTimeout(openTimer); openTimer = 0; }
+        if (pinned || current !== ev.currentTarget) return;
+        scheduleClose();
+      }
+
+      // Compatibility-mouse FALLBACK, per carrier and only where pointer
+      // events never arrived. Whether a `disabled` <button> receives
+      // `pointerenter` differs by engine; `mouseenter` on one was measured
+      // in this app and does fire, and a disabled control's reason is the
+      // only thing explaining why it cannot be pressed. Pointer events
+      // always precede their compatibility mouse events, so on any carrier
+      // that delivers both, `__tipPointer` is already set and these no-op —
+      // which is what keeps a tap on touch out of the hover path.
+      // ITEMISED FOR STEP 10: confirm which of the two a disabled <button>
+      // actually delivers, in each engine, and delete the loser.
+      function onMouseEnter(ev) {
+        if (ev.currentTarget.__tipPointer) return;
+        const el = ev.currentTarget;
+        if (current === el) { cancelTimers(); return; }
+        scheduleOpen(el);
+      }
+      function onMouseLeave(ev) {
+        if (ev.currentTarget.__tipPointer) return;
+        if (openTimer) { clearTimeout(openTimer); openTimer = 0; }
+        if (pinned || current !== ev.currentTarget) return;
+        scheduleClose();
+      }
+
+      function onFocusIn(ev) {
+        const el = ev.currentTarget;
+        // :focus-visible only. A mouse click on a <button> carrier focuses
+        // it too, and opening on that path would fight the click toggle
+        // below — click would pin, focusin would immediately re-open.
+        let visible = true;
+        try { visible = el.matches(':focus-visible'); } catch (err) { visible = true; }
+        if (!visible) return;
+        // Zero delay: a keyboard user has already committed by arriving.
+        // The open delay exists to stop a pointer sweeping across a row of
+        // icons from opening any of them, and Tab does not sweep.
+        openTip(el, true);
+      }
+      function onFocusOut(ev) {
+        if (current === ev.currentTarget) closeTip();
+      }
+
+      function onClick(ev) {
+        const el = ev.currentTarget;
+        // The long press already opened this one; the synthesized click
+        // that some platforms send afterwards must not toggle it shut.
+        if (longPressed) { longPressed = false; return; }
+        if (current === el && pinned) { closeTip(); return; }
+        openTip(el, true);
+      }
+
+      function cancelPress() {
+        if (pressTimer) { clearTimeout(pressTimer); pressTimer = 0; }
+      }
+      function onPointerDown(ev) {
+        ev.currentTarget.__tipPointer = true;
+        longPressed = false;
+        if (ev.pointerType === 'mouse') return;
+        // A `.ps-tip` carrier is a real <button>: a tap fires `click`,
+        // which pins, on the same code path as Enter and Space. Long-press
+        // is for the carriers that are NOT dedicated tip buttons — a
+        // truncated reason, a status dot.
+        if (ev.currentTarget.classList.contains('ps-tip')) return;
+        const el = ev.currentTarget;
+        pressX = ev.clientX;
+        pressY = ev.clientY;
+        pressTimer = setTimeout(function () {
+          pressTimer = 0;
+          longPressed = true;
+          openTip(el, true);
+        }, PRESS_MS);
+      }
+      function onPointerMove(ev) {
+        if (!pressTimer) return;
+        if (Math.abs(ev.clientX - pressX) > PRESS_SLOP ||
+            Math.abs(ev.clientY - pressY) > PRESS_SLOP) cancelPress();
+      }
+      function onPointerUp() { cancelPress(); }
+      function onContextMenu(ev) {
+        // Suppressed for the whole press, not just after it fires: Android
+        // raises `contextmenu` at ~500ms, before our 600ms threshold, and
+        // the OS selection callout would land over the panel.
+        if (pressTimer || longPressed) ev.preventDefault();
+      }
+
+      // ── the panel itself ──────────────────────────────────────────────
+      tip.addEventListener('pointerenter', function () {
+        overPanel = true;
+        cancelTimers();
+      });
+      tip.addEventListener('pointerleave', function (ev) {
+        overPanel = false;
+        if (ev.pointerType !== 'mouse') return;
+        // `pinned` MEANS immune to pointerleave. Closing a click- or
+        // focus-opened panel because the mouse drifted off it would make
+        // click-to-pin useless on the input methods it exists for.
+        if (pinned) return;
+        scheduleClose();
+      });
+
+      // ── document-level dismissal ──────────────────────────────────────
+      //
+      // Capture phase, and deliberately NOT stopPropagation: a tooltip open
+      // on a control inside a modal must close without swallowing the
+      // modal's own Escape. Focus is not moved either — Escape dismisses a
+      // panel the user never focused, and yanking focus out of the field
+      // they were typing in would be a bigger surprise than the panel was.
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key !== 'Escape' && ev.key !== 'Esc') return;
+        if (!current) return;
+        closeTip();
+      }, true);
+
+      // Anchored to a rect, so any movement of that rect invalidates the
+      // position. Closing beats repositioning: a panel that follows a
+      // scrolling row is a panel the reader is chasing. Passive so none of
+      // these can delay a scroll.
+      function closeOnMovement(ev) {
+        if (!current) return;
+        // A panel whose height was capped scrolls ITSELF (overflow-y: auto
+        // in anchor()). A capture listener sees that scroll too, so without
+        // this the panel closed on the first wheel notch of the long
+        // explanations this mechanism exists to carry.
+        const t = ev && ev.target;
+        if (t && t.nodeType === 1 && tip.contains(t)) return;
+        closeTip();
+      }
+      document.addEventListener('scroll', closeOnMovement, { capture: true, passive: true });
+      document.addEventListener('wheel', closeOnMovement, { capture: true, passive: true });
+      document.addEventListener('touchmove', closeOnMovement, { capture: true, passive: true });
+      window.addEventListener('resize', closeOnMovement);
+
+      // Tap outside — the touch dismissal. Containment is tested against
+      // BOTH the trigger and the panel: testing only the trigger closes the
+      // panel the moment the user touches the text they are trying to read.
+      document.addEventListener('pointerdown', function (ev) {
+        if (!current || !pinned) return;
+        const t = ev.target;
+        if (!t) return;
+        if (current.contains(t) || tip.contains(t)) return;
+        closeTip();
+      }, true);
+
+      // ── binding, and htmx ─────────────────────────────────────────────
       function bindAll() {
         document.querySelectorAll('[data-tip-title]').forEach(el => {
           if (el.__tipBound) return;
           el.__tipBound = true;
-          el.addEventListener('mouseenter', show);
-          el.addEventListener('mousemove', position);
-          el.addEventListener('mouseleave', hide);
+          el.addEventListener('pointerenter', onEnter);
+          el.addEventListener('pointerleave', onLeave);
+          el.addEventListener('mouseenter', onMouseEnter);
+          el.addEventListener('mouseleave', onMouseLeave);
+          el.addEventListener('focusin', onFocusIn);
+          el.addEventListener('focusout', onFocusOut);
+          el.addEventListener('click', onClick);
+          el.addEventListener('pointerdown', onPointerDown);
+          el.addEventListener('pointermove', onPointerMove);
+          el.addEventListener('pointerup', onPointerUp);
+          el.addEventListener('pointercancel', onPointerUp);
+          el.addEventListener('contextmenu', onContextMenu);
         });
       }
       document.addEventListener('DOMContentLoaded', bindAll);
-      document.body.addEventListener('htmx:afterSwap', bindAll);
+      // A swap can take the open carrier out of the document — with
+      // innerHTML swaps it always does, and even under idiomorph a removed
+      // row is really removed. The panel would then be anchored to a rect
+      // that no longer exists, explaining an element the operator can no
+      // longer see. beforeSwap catches it while the carrier is still
+      // reachable; afterSwap is the backstop for anything that reached the
+      // DOM another way.
+      document.body.addEventListener('htmx:beforeSwap', function (ev) {
+        if (current && ev.target && ev.target.contains && ev.target.contains(current)) closeTip();
+      });
+      document.body.addEventListener('htmx:afterSwap', function () {
+        bindAll();
+        if (!current) return;
+        if (!current.isConnected) { closeTip(); return; }
+        // Idiomorph morphs attributes as well as nodes, so a surviving
+        // carrier can come back without the marker that says its panel is
+        // open — leaving the panel up with no ring pointing at its trigger.
+        current.setAttribute('data-tip-open', '');
+      });
       // Expose for page scripts that inject new tip elements dynamically
       window.__prismBindTooltips = bindAll;
       window.__rebindTooltips = bindAll; // legacy alias used by server_detail.html
+
+      // ── A disabled control must say WHY ─────────────────────────────────
+      //
+      // The interaction model in app.css gives disabled controls
+      // `cursor: not-allowed` to say THAT they are unavailable, and reserves
+      // `data-tip-title`/`data-tip-desc` for the reason. Nothing supplied
+      // the reasons: 8 markup-disabled controls and 23 places that set
+      // `.disabled` from JS, none of them with a reason attached.
+      //
+      // The reason has to be set at the same moment the control is disabled,
+      // or the two drift — a control gets re-enabled and keeps a stale
+      // explanation of a condition that no longer holds, which is worse than
+      // no explanation. One call does both, so they cannot come apart.
+      //
+      // Falsy `title` means ENABLE and clear the reason, so the common
+      //   el.disabled = someCondition
+      // becomes
+      //   prismSetDisabled(el, someCondition && 'Why not', 'What to do')
+      //
+      // A truthy `title` is DESIGN_SYSTEM_SPEC.md §5.2's "waiting on you" —
+      // confirm-word boxes, "pick at least two servers", the comparison cap
+      // — as distinct from "machine working" (disabled for the duration of
+      // a fetch, e.g. setTestLoading's bare `btn.disabled = true` beside
+      // "Testing connection…"), which has no reason and never reaches this
+      // function at all. Both used to disable the same way: native
+      // `disabled`, which is pulled out of the tab order and fires no
+      // click, so the reason just written was unreachable by keyboard or
+      // touch (T-15, tests/test_design_tooltip.py). Step 9 changed the
+      // mechanism for THIS branch only — `aria-disabled="true"` +
+      // `data-inert="1"` instead, leaving the control a genuine tab stop —
+      // and left "machine working" exactly as it was, since it never had a
+      // reason to make reachable in the first place. `data-inert` is what
+      // the [data-action] dispatcher's run() reads to refuse the click a
+      // real `disabled` used to swallow for free.
+      //
+      // Verified in the browser: a real pointer DOES reach a disabled
+      // <button> — mouseover and mouseenter both fire and the tip renders.
+      // That holds only while nothing sets `pointer-events: none` on
+      // [disabled] (or, since step 9, [aria-disabled="true"]); a test
+      // guards both selectors, because that one declaration would silently
+      // remove every reason in the app.
+      window.prismSetDisabled = function (el, title, desc) {
+        if (!el) return;
+        if (!title) {
+          el.disabled = false;
+          el.removeAttribute('aria-disabled');
+          el.removeAttribute('data-inert');
+          el.removeAttribute('data-tip-title');
+          el.removeAttribute('data-tip-desc');
+          el.removeAttribute('data-tip-open');
+          // New in the state machine: a PINNED panel outlives the condition
+          // it explains. Before pinning existed the panel could only be up
+          // while the pointer was on the control, so re-enabling it closed
+          // the tip as a side effect; now a click- or focus-opened panel
+          // would sit there saying why a control that is pressable again
+          // cannot be pressed.
+          if (current === el) closeTip();
+          return;
+        }
+        // Never native-disable a reasoned control — Tab must still reach
+        // it, which is the entire point of this branch. `el.disabled =
+        // false` matters even though nothing above this call would have set
+        // it true: every current call site's carrier starts `disabled` in
+        // its own markup for the pre-JS paint (e.g. server_detail.html's
+        // power-modal-confirm), and without this line that native attribute
+        // would outlive the first call into this branch, leaving the
+        // control exactly as unfocusable as before step 9.
+        el.disabled = false;
+        el.setAttribute('aria-disabled', 'true');
+        el.setAttribute('data-inert', '1');
+        el.setAttribute('data-tip-title', title);
+        if (desc) el.setAttribute('data-tip-desc', desc);
+        else el.removeAttribute('data-tip-desc');
+        bindAll();
+      };
+
+      // Companion to prismSetDisabled, deliberately NOT folded into it: T-15
+      // (step 9) extracts prismSetDisabled's body by string boundaries
+      // ("window.prismSetDisabled = function" to the next "\n      };"), and
+      // a second function sitting after that boundary is invisible to that
+      // extraction — so this can evolve without touching what T-15 parses.
+      // Most of prismSetDisabled's 23+ call sites predate step 7 and carry
+      // no mirror at all; this only matters for the handful of "waiting on
+      // you" buttons step 7 gave a static tip_mirror() to (the reason lives
+      // in the mirror's aria-describedby, not the disabled/aria-disabled
+      // mechanism itself, so prismSetDisabled has no reason to know about
+      // it generally). Call it right after prismSetDisabled with the SAME
+      // title used there, since only a truthy title means "there is a
+      // reason" — an empty mirror when enabled beats a stale one.
+      window.__prismSyncTipMirror = function (el, title, desc) {
+        if (!el) return;
+        const id = el.getAttribute('aria-describedby');
+        if (!id) return;
+        const mirror = document.getElementById(id);
+        if (mirror) mirror.textContent = title ? (desc || '') : '';
+      };
     })();
 
     // Translation strings for the collector-pulse ECG widget. The
@@ -439,9 +1149,30 @@
       silent_for:       {{ t.get("pulse_silent_for",     "silent for")                | tojson }},
     };
 
-    // Initialize Lucide icons
-    document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
-    document.body.addEventListener('htmx:afterSwap', () => lucide.createIcons());
+    // Initialize Lucide icons.
+    //
+    // The rebind is not belt-and-braces. `lucide.createIcons()` does not
+    // decorate an `<i data-lucide>` — it builds a NEW <svg>, copies the
+    // source element's ATTRIBUTES onto it (`getAttrs` + `replaceChild`, read
+    // in static/vendor/lucide-0.344.0.js:51) and swaps the original out. The
+    // attributes survive; every listener and every expando on the original
+    // does not.
+    //
+    // Both DOMContentLoaded handlers fire in registration order, and the
+    // tooltip binds ~100 lines above this one, so the four
+    // `<i data-lucide="info" data-tip-title=…>` carriers on the Settings
+    // pages (settings.html:176, 198, 219, 242 — the only elements in the
+    // tree that are BOTH an icon and a tip carrier) were bound and then
+    // replaced by an unbound copy on every load, every htmx swap, and every
+    // theme toggle. Tooltip attributes present, listeners gone, no error
+    // anywhere. `bindAll` is idempotent, so re-running it costs a
+    // querySelectorAll and skips everything already bound.
+    function _prismIcons() {
+      lucide.createIcons();
+      if (window.__prismBindTooltips) window.__prismBindTooltips();
+    }
+    document.addEventListener('DOMContentLoaded', _prismIcons);
+    document.body.addEventListener('htmx:afterSwap', _prismIcons);
 
     // ── Safe JSON fetch helper ─────────────────────────────────────────
     // Many fetch() calls do .then(r => r.json()) which crashes when the
@@ -556,17 +1287,46 @@
   </script>
 
   <!-- Global Modal System -->
+  {# WP-6 step 19: shadow-2xl -> shadow-lg (elevation ban, §4.6); role="dialog"
+     aria-modal="true" aria-labelledby="prism-modal-title" added to this outer
+     div, which IS the dialog panel itself (its backdrop is the separate
+     #prism-modal-overlay sibling above, not a descendant). The icon+title
+     row and the buttons row are restructured into literal HEAD_FLUSH /
+     FOOTER_FLUSH shapes (_card.html §4.2) -- every id, data-action and tag
+     type below is UNCHANGED (prism-modal-icon/-title/-message/-input/
+     -buttons), since every JS reference to this modal is getElementById-
+     based (verified by grep) and none of it depends on the wrapper divs'
+     nesting or classes. #prism-modal-title already carried
+     data-role="dialog-title" plus the DIALOG_TITLE string since step 11 --
+     untouched here. Flagged prominently in this step's own report: this is
+     the app's single most shared dialog (74 call sites per Part I §13.1),
+     so restructuring its wrapper divs -- even though verified safe -- is
+     called out for review rather than landed silently.
+
+     Correction, found post-commit: the step-19 edit that introduced the
+     comment above dropped the #prism-modal-overlay backdrop div itself
+     while restructuring this block, even though the comment claims it
+     survives as "the separate #prism-modal-overlay sibling above". It did
+     not -- six getElementById('prism-modal-overlay') call sites below
+     (and in the confirm/prompt flow's other functions) were left
+     dereferencing a null element, throwing on every dismissal of every
+     confirm/prompt modal in the app (74 call sites). Restored verbatim
+     from the pre-step-19 markup; no other part of this element needed to
+     change for step 19's own purpose (only #prism-modal's own shadow/ARIA
+     changed, never this one). #}
   <div id="prism-modal-overlay" class="fixed inset-0 z-[9998] hidden bg-black/50 backdrop-blur-sm" data-action="modal-backdrop"></div>
-  <div id="prism-modal" class="fixed z-[9999] hidden top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md shadow-2xl border border-line w-[380px] overflow-hidden">
-    <div class="px-5 pt-5 pb-3">
-      <div class="flex items-center gap-3 mb-3">
+  <div id="prism-modal" role="dialog" aria-modal="true" aria-labelledby="prism-modal-title" class="fixed z-[9999] hidden top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md shadow-lg border border-line w-[380px] overflow-hidden">
+    <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-line">
+      <div class="flex items-center gap-3">
         <div id="prism-modal-icon" class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"></div>
-        <h3 id="prism-modal-title" class="font-semibold text-sm text-ink dark:text-[#F9FAFB]"></h3>
+        <h3 id="prism-modal-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2"></h3>
       </div>
+    </div>
+    <div class="px-5 py-4">
       <p id="prism-modal-message" class="text-xs text-muted leading-relaxed"></p>
       <input type="text" id="prism-modal-input" class="hidden w-full mt-3 px-3 py-1.5 text-sm rounded-lg border border-line bg-field focus-visible:ring-2 focus-visible:ring-brand outline-none">
     </div>
-    <div id="prism-modal-buttons" class="flex justify-end gap-2 px-5 pb-4"></div>
+    <div id="prism-modal-buttons" class="px-5 py-4 border-t border-line flex items-center justify-end gap-2"></div>
   </div>
 
   <script nonce="{{ csp_nonce }}">
@@ -733,8 +1493,13 @@
         _prismModalResolve = resolve;
         const modal = document.getElementById('prism-modal');
         const overlay = document.getElementById('prism-modal-overlay');
-        document.getElementById('prism-modal-icon').innerHTML = '<i data-lucide="edit-3" class="w-5 h-5 text-brand"></i>';
-        document.getElementById('prism-modal-icon').className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-brand/10';
+        // The disc follows the glyph. Its two siblings above pair info with
+        // bg-info/10 and warning with bg-warning/10; this one read text-brand
+        // on bg-brand/10 until the icon moved to the decorative role, and a
+        // disc left on the old hue is the kind of mismatch that survives for
+        // months because each half looks deliberate on its own.
+        document.getElementById('prism-modal-icon').innerHTML = '<i data-lucide="edit-3" class="w-5 h-5 text-accent"></i>';
+        document.getElementById('prism-modal-icon').className = 'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-accent/10';
         document.getElementById('prism-modal-title').textContent = title || 'Input';
         document.getElementById('prism-modal-message').innerHTML = message;
         const input = document.getElementById('prism-modal-input');
@@ -805,6 +1570,16 @@
       const A = window._prismActions = window._prismActions || {};
       window.registerActions = function (map) { Object.assign(A, map); };
       function run(el, e, key) {
+        // Step 9: a "waiting on you" control (prismSetDisabled given a
+        // reason) stays a genuine tab stop, which means the browser no
+        // longer refuses its click the way a native `disabled` button did —
+        // `data-inert` stands in for that refusal instead. Checked once
+        // here rather than per action, because every data-action/
+        // data-change/data-submit/data-input/data-mousedown/data-mouseup
+        // carrier dispatches through this one function (see _evtAttr
+        // below), and so does the keyboard bridge's Enter/Space — one
+        // guard covers all seven paths in, not just the click a mouse sends.
+        if (el.hasAttribute('data-inert')) return;
         const fn = A[key];
         if (fn) { fn(el, e); return; }
         // Fallback: data-action names a GLOBAL function; data-args is a JSON
@@ -817,14 +1592,171 @@
           g.apply(el, args);
         }
       }
+      // A disclosure has to SAY whether it is open, and the one reliable
+      // source for that is the thing it controls. Tracking "open" on the
+      // trigger as well means two places to disagree — so this reads the
+      // controlled element's computed display after every activation rather
+      // than remembering anything. Opt-in: an element without both
+      // `aria-expanded` and `aria-controls` is left alone.
+      function syncExpanded(el) {
+        if (!el || !el.hasAttribute || !el.hasAttribute('aria-expanded')) return;
+        const target = document.getElementById(el.getAttribute('aria-controls') || '');
+        if (!target) return;
+        el.setAttribute('aria-expanded',
+          getComputedStyle(target).display !== 'none' ? 'true' : 'false');
+      }
+
       // Bubbling events → event delegation on document.
       const _evtAttr = { click: 'data-action', change: 'data-change', submit: 'data-submit', input: 'data-input', mousedown: 'data-mousedown', mouseup: 'data-mouseup' };
       Object.keys(_evtAttr).forEach(function (evt) {
         document.addEventListener(evt, function (e) {
           const el = e.target.closest('[' + _evtAttr[evt] + ']');
-          if (el) run(el, e, el.getAttribute(_evtAttr[evt]));
+          if (el) { run(el, e, el.getAttribute(_evtAttr[evt])); if (evt === 'click') syncExpanded(el); }
         });
       });
+
+      // ── Keyboard bridge for controls that are not natively interactive ──
+      //
+      // A `<div data-action="…">` is clickable and nothing else: no tab stop,
+      // no Enter, no Space. Across the templates there were 29 such elements
+      // and not one carried a tabindex or a role, so every disclosure, list
+      // picker and clickable row in the app was mouse-only — WCAG 2.1.1.
+      //
+      // The fix is one bridge rather than a handler per widget, because the
+      // failure this repository keeps producing is a rule that reaches some
+      // of its carriers. Anything given a tabindex becomes operable by the
+      // same dispatch its click already uses, so the two cannot drift: you
+      // cannot make an element focusable here and forget to make it work.
+      //
+      // Natively-interactive targets are skipped. A <button data-action>
+      // already fires a click on Enter and Space, and handling the keydown
+      // too would run the action twice — which on a delete confirm is not a
+      // cosmetic bug.
+      const NATIVE = 'button, a[href], input, select, textarea, summary, [contenteditable=""], [contenteditable="true"]';
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+        if (e.altKey || e.ctrlKey || e.metaKey) return;
+        const el = e.target.closest('[data-action][tabindex]');
+        if (!el || e.target.closest(NATIVE)) return;
+        // Space scrolls the page by default, and Enter inside a form submits.
+        e.preventDefault();
+        run(el, e, el.getAttribute('data-action'));
+        syncExpanded(el);
+      });
+
+      // ── Empty states — the three-part rule, in one place ────────────────
+      //
+      // DESIGN_PHASE_3_SCOPE.md §4: a faded icon of the thing that is
+      // missing, what is absent in the user's words, and WHAT TO DO ABOUT
+      // IT. The third part is the one that gets dropped, and it is the part
+      // that separates an empty state from a dead end.
+      //
+      // `hint` is therefore a required argument, not an optional fourth
+      // flourish. server_detail.html had a local version where it was
+      // optional; all 14 of its call sites happened to pass one, but nothing
+      // said they had to, and the next caller is where coverage rots. A
+      // missing hint throws in development rather than rendering two-thirds
+      // of a rule.
+      //
+      // NOT for zero states. "0 critical" is a RESULT and belongs in the
+      // normal layout in the normal colours; "there is nothing here yet" is
+      // a different sentence.
+      // ── One HTML-escaper for every page ────────────────────────────────
+      //
+      // There were three identical copies (monitoring, servers, settings), and
+      // that is precisely why a WP-4 move could carry "the" definition off a
+      // page without anything noticing: /operations' runbook list rendered
+      // "Failed to load runbooks: _escHtml is not defined" for exactly as long
+      // as it took to read the page.
+      //
+      // A shared partial cannot rely on a helper that each page happens to
+      // define, and shared partials are what the rest of this restructure is
+      // built on.
+      window._escHtml = function (s) {
+        const d = document.createElement('div');
+        d.textContent = s == null ? '' : s;
+        return d.innerHTML;
+      };
+
+  // ── Server connection test, shared ───────────────────────────────────
+  //
+  // Lifted out of servers.html in WP-4 D4d. The row button on /servers and
+  // the modal's test button in Settings → Servers are the same request with
+  // different payloads, and D4d puts them on different pages. Sharing them
+  // here BEFORE the move is what stops this repeating the `_escHtml` failure,
+  // where three copies existed until the only one a page had moved away.
+  window.loadConfig = function () {
+    return fetch('/api/config').then(r => r.json());
+  };
+
+  const TEST_T = {
+    connected: {{ t.get('test_connected', 'Connected') | tojson }},
+    failed: {{ t.get('test_failed', 'Failed') | tojson }},
+    testing: {{ t.get('test_in_progress', 'Testing connection\u2026') | tojson }},
+    requestFailed: {{ t.get('test_request_failed', 'Request failed') | tojson }},
+  };
+
+  window.showTestResult = function (container, result) {
+    const box = container.querySelector('.test-result-box');
+    if (result.ok) {
+      box.className = 'test-result-box rounded p-2 text-sm bg-healthy-tint text-healthy-strong';
+      box.innerHTML = '<strong>&#10003; <span class="test-msg"></span></strong>';
+      box.querySelector('.test-msg').textContent = result.message || TEST_T.connected;
+    } else {
+      box.className = 'test-result-box rounded p-2 text-sm bg-critical-tint text-critical-strong';
+      box.innerHTML = '<strong>&#10007; <span class="test-msg"></span></strong>'
+        + (result.detail ? '<br><span class="test-detail text-xs opacity-80"></span>' : '');
+      box.querySelector('.test-msg').textContent = result.error || TEST_T.failed;
+      if (result.detail) {
+        box.querySelector('.test-detail').textContent = result.detail;
+      }
+    }
+    container.classList.remove('hidden');
+  };
+
+  window.setTestLoading = function (container, btn) {
+    const box = container.querySelector('.test-result-box');
+    box.className = 'test-result-box rounded p-2 text-sm bg-raised dark:bg-line text-muted';
+    box.innerHTML = '<span class="inline-block animate-spin mr-2">&#9696;</span> ';
+    box.appendChild(document.createTextNode(TEST_T.testing));
+    container.classList.remove('hidden');
+    if (btn) btn.disabled = true;
+  };
+
+  window.doTestConnection = function (payload, container, btn) {
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    setTestLoading(container, btn);
+    fetch('/api/test-connection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+      body: JSON.stringify(payload),
+    })
+    .then(r => r.json())
+    .then(result => showTestResult(container, result))
+    .catch(err => showTestResult(container, { ok: false, error: TEST_T.requestFailed, detail: err.message }))
+    .finally(() => { if (btn) btn.disabled = false; });
+  };
+
+      window.prismEmptyState = function (icon, message, hint, opts) {
+        if (!hint) {
+          throw new Error('prismEmptyState: a hint is required — say what to ' +
+            'do about it, not just that there is nothing here (' + message + ')');
+        }
+        const esc = function (s) {
+          const d = document.createElement('div');
+          d.appendChild(document.createTextNode(s == null ? '' : String(s)));
+          return d.innerHTML;
+        };
+        const inner =
+          '<div class="text-sm text-faint text-center py-8">' +
+            '<i data-lucide="' + esc(icon || 'info') + '" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>' +
+            '<p>' + esc(message) + '</p>' +
+            '<p class="text-[10px] mt-1 opacity-60">' + esc(hint) + '</p>' +
+          '</div>';
+        return (opts && opts.cardWrap)
+          ? '<div class="bg-card rounded-lg p-6 border border-line">' + inner + '</div>'
+          : inner;
+      };
       // Non-bubbling hover events → attach directly (idempotent; re-run after
       // HTMX swaps so freshly-inserted rows get their handlers).
       window._prismBindHover = function (root) {
@@ -850,6 +1782,38 @@
           if (sec) sec.classList.toggle('hidden', el.innerHTML.trim() === '');
         }
       });
+
+      // ── Real data replacing a ghost fades in, ONCE ──────────────────────
+      //
+      // `.data-settled` (app.css) exists so the first arrival reads as the
+      // same object resolving rather than two different frames. The trap is
+      // that these regions re-swap on every prismRefresh — roughly every 5s
+      // under collector v2 — so putting the class on the swapped-in CONTENT
+      // would re-run the fade forever and turn a settle into a flicker. That
+      // is the same shape as the healthy-banner bug documented below: state
+      // that lives in swapped DOM is state that resets every few seconds.
+      //
+      // So: the class goes on the CONTAINER, which `morph:innerHTML` never
+      // replaces, and only when the outgoing content was actually a ghost.
+      // A CSS animation runs when it is applied, not when children change,
+      // so leaving the class in place is correct and cannot replay it.
+      const _swapTarget = (e) => (e.detail && e.detail.target) || e.target;
+      document.body.addEventListener('htmx:beforeSwap', function (e) {
+        const el = _swapTarget(e);
+        // querySelector, not a class check: the ghost is a descendant of the
+        // region, never the region itself.
+        if (el && el.querySelector && el.querySelector('.skeleton')) {
+          el.setAttribute('data-was-ghost', '1');
+        }
+      });
+      document.body.addEventListener('htmx:afterSwap', function (e) {
+        const el = _swapTarget(e);
+        if (!el || !el.getAttribute) return;
+        if (el.getAttribute('data-was-ghost') !== '1') return;
+        el.removeAttribute('data-was-ghost');
+        el.classList.add('data-settled');
+      });
+
       // Auto-dismiss the "all healthy" banner. Hosted here (not on the swapped-in
       // critical-issues partial) so that partial stays inline-script-free —
       // per-request nonces don't match across an HTMX fragment fetch.
@@ -922,11 +1886,59 @@
           if (data.ok) { document.body.dispatchEvent(new CustomEvent('prismRefresh')); }
         }).catch(function () { /* network error — leave the incident open */ });
       };
+      // Which incident details the operator has opened, by incident id.
+      // Client-side only and deliberately not persisted: it answers "what did
+      // this person just open", which does not outlive the page.
+      const _openIncidents = new Set();
+
+      // Re-apply that after the incidents panel is swapped back in. The
+      // server cannot know what is open, so it always renders everything
+      // closed; this is the only place the operator's choice survives.
+      // Resolved incidents simply stop arriving, and their keys go stale
+      // harmlessly — the loop only ever reads keys that came back.
+      document.body.addEventListener('htmx:afterSwap', function () {
+        if (!_openIncidents.size) return;
+        document.querySelectorAll('[data-incident-key]').forEach(function (el) {
+          if (!_openIncidents.has(el.getAttribute('data-incident-key'))) return;
+          const d = el.querySelector('.incident-detail');
+          if (!d) return;
+          d.classList.remove('hidden');
+          el.setAttribute('aria-expanded', 'true');
+        });
+      });
+
       window.registerActions({
         // Generic reusable actions.
         'stop-prop': function (el, e) { e.stopPropagation(); },
-        'goto': function (el) { const h = el.getAttribute('data-href'); if (h) window.location.href = h; },
-        'toggle-detail': function (el) { const d = el.querySelector('.incident-detail'); if (d) d.classList.toggle('hidden'); },
+        // A row-sized `goto` target is also a text-selection target. On
+        // /servers the Host column is a monospace address an operator drags
+        // across to copy, and the mouseup at the end of that drag IS a click:
+        // navigating away mid-copy is worse than the row not being clickable.
+        // Measured on the shape, not guessed — a plain click collapses the
+        // selection during mousedown, so the selection is empty by the time
+        // `click` fires and only a real drag leaves anything to read here.
+        // Modifier clicks are handed back to the browser for the same reason:
+        // ctrl/cmd/shift+click means "open it somewhere else", and forcing
+        // this tab there instead is the one outcome the reader did not ask
+        // for. (Middle-click never arrives — it fires `auxclick`.)
+        'goto': function (el, e) {
+          if (e && (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey)) return;
+          try { if (String(window.getSelection() || '').trim()) return; } catch (_) { /* no Selection API */ }
+          const h = el.getAttribute('data-href'); if (h) window.location.href = h;
+        },
+        'toggle-detail': function (el) {
+          const d = el.querySelector('.incident-detail');
+          if (!d) return;
+          const open = d.classList.toggle('hidden') === false;
+          // Remember it. The incidents panel is re-fetched and morph-swapped
+          // on every prismRefresh — which fires whenever a server updates —
+          // and the incoming markup hardcodes `hidden`, so without this the
+          // detail an operator deliberately opened closes under them a few
+          // seconds later. Keyed by incident id so the right one re-opens
+          // even when the list has reordered.
+          const key = el.getAttribute('data-incident-key');
+          if (key) { if (open) _openIncidents.add(key); else _openIncidents.delete(key); }
+        },
         'toggle-sidebar': function () { toggleSidebar(); },
         'toggle-theme': function () { toggleTheme(); },
         'close-mobile-sidebar': function () { closeMobileSidebar(); },
@@ -944,6 +1956,13 @@
   <!-- Collector pulse monitor (ECG-style topbar widget) -->
   <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/pulse-monitor.js') }}"></script>
 
+  <!-- Estate vitals trace (the dashboard quadrant's centre circle). A
+       different signal from the pulse above: that one is "is the collector
+       alive", this one is "is the estate healthy". No-ops on every page but
+       the dashboard — it returns immediately when #estate-vitals is absent,
+       same as the pulse monitor. -->
+  <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/vitals-monitor.js') }}"></script>
+
   <!-- Violet stepper buttons for number fields. The native spin button
        cannot be recoloured, so it is hidden in app.css and rebuilt here —
        see the module docstring for what that also fixes. -->
@@ -954,5 +1973,374 @@
        the sessionStorage persistence contract, and why a MutationObserver
        is needed alongside the htmx hooks. -->
   <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/table-sort.js') }}"></script>
+
+  {# Its own tag, and that is the whole point. The first version of this block
+     was appended before the last </script> in the file — which belonged to a
+     <script src="…">. Inline content inside a src tag is ignored by the
+     browser entirely: it parsed, it carried a valid nonce, it appeared in
+     document.scripts, and it never ran once. Every file-reading test passed
+     the whole time; only opening the page found it. #}
+  <script nonce="{{ csp_nonce }}">
+  // ── Jump-to (WP-4 D8) ────────────────────────────────────────────────
+  //
+  // The index lives on the server and is built by rendering the app's own
+  // pages, so this side stays small on purpose: type, ask, draw, navigate.
+  (function () {
+    const input = document.getElementById('jump-search');
+    const panel = document.getElementById('jump-panel');    // hides/shows
+    const list = document.getElementById('jump-results');   // holds the rows
+    if (!input || !panel || !list) return;
+
+    const T = {
+      empty: {{ t.get('jump_no_results', 'Nothing matches') | tojson }},
+      hint: {{ t.get('jump_no_results_hint', 'Jump-to finds servers, settings and page sections — not page content') | tojson }},
+    };
+
+    let items = [];
+    let active = -1;
+    let seq = 0;          // only the newest response may draw
+    let timer = null;
+
+    function close() {
+      panel.classList.add('hidden');
+      input.setAttribute('aria-expanded', 'false');
+      input.removeAttribute('aria-activedescendant');
+      active = -1;
+    }
+
+    function highlight(i) {
+      const rows = list.querySelectorAll('[role="option"]');
+      rows.forEach(r => {
+        r.classList.remove('bg-raised');
+        r.setAttribute('aria-selected', 'false');
+      });
+      if (i < 0 || i >= rows.length) { input.removeAttribute('aria-activedescendant'); return; }
+      rows[i].classList.add('bg-raised');
+      rows[i].setAttribute('aria-selected', 'true');
+      // Named, not just coloured: without this the highlight moves for
+      // sighted users only.
+      input.setAttribute('aria-activedescendant', rows[i].id);
+      rows[i].scrollIntoView({ block: 'nearest' });
+    }
+
+    const ICON = { server: 'server', settings: 'sliders', page: 'file-text', heading: 'hash' };
+
+    function draw(results) {
+      items = results;
+      active = -1;
+      if (!results.length) {
+        list.innerHTML =
+          '<div class="px-3 py-3 text-xs text-muted">' +
+          '<div class="font-medium text-ink">' + _escHtml(T.empty) + '</div>' +
+          '<div class="mt-0.5">' + _escHtml(T.hint) + '</div></div>';
+      } else {
+        list.innerHTML = results.map(function (r, i) {
+          return '<div role="option" id="jump-opt-' + i + '" aria-selected="false"' +
+                 ' data-jump-url="' + _escHtml(r.url) + '"' +
+                 ' class="px-3 py-1.5 flex items-center gap-2 cursor-pointer text-sm hover:bg-raised">' +
+                 '<i data-lucide="' + _escHtml(ICON[r.kind] || 'corner-down-right') +
+                 '" class="w-3.5 h-3.5 text-faint flex-shrink-0"></i>' +
+                 '<span class="truncate">' + _escHtml(r.label) + '</span>' +
+                 '<span class="ml-auto text-[10px] text-faint truncate pl-2">' +
+                 _escHtml(r.sublabel || '') + '</span></div>';
+        }).join('');
+        if (window.lucide) lucide.createIcons();
+      }
+      panel.classList.remove('hidden');
+      input.setAttribute('aria-expanded', 'true');
+    }
+
+    function go(i) {
+      if (i < 0 || i >= items.length) return;
+      window.location.href = items[i].url;
+    }
+
+    function ask() {
+      const q = input.value.trim();
+      if (!q) { close(); return; }
+      const mine = ++seq;
+      fetch('/api/search?q=' + encodeURIComponent(q))
+        .then(r => r.json())
+        .then(d => { if (mine === seq) draw(d.results || []); })
+        // A dead search box that also logs nothing is two problems. The panel
+        // says so rather than staying blank.
+        .catch(() => { if (mine === seq) draw([]); });
+    }
+
+    input.addEventListener('input', function () {
+      clearTimeout(timer);
+      timer = setTimeout(ask, 120);
+    });
+
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { close(); input.blur(); return; }
+      if (panel.classList.contains('hidden')) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); active = Math.min(active + 1, items.length - 1); highlight(active); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(active - 1, 0); highlight(active); }
+      else if (e.key === 'Enter') { e.preventDefault(); go(active >= 0 ? active : 0); }
+    });
+
+    list.addEventListener('click', function (e) {
+      const row = e.target.closest('[data-jump-url]');
+      if (row) window.location.href = row.getAttribute('data-jump-url');
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('#jump-wrap')) close();
+    });
+
+    // `/` to focus, the convention everywhere this control exists. Guarded so
+    // it cannot steal a slash the operator is typing into another field.
+    document.addEventListener('keydown', function (e) {
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) ||
+                     document.activeElement.isContentEditable;
+      if (e.key === '/' && !typing) { e.preventDefault(); input.focus(); input.select(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); input.focus(); input.select(); }
+    });
+  })();
+
+  // ── Settings theme menu (WP-6 D4) ──
+  //
+  // APG "menu button" (§7.2): one <button aria-haspopup="menu"> plus an
+  // 11-item role="menu" panel, all server-rendered by step 22's
+  // partials/_settings_nav.html — this IIFE only ever ATTACHES behaviour to
+  // markup that already exists; it never builds a row (same discipline as
+  // Jump-to just above, which this sits beside on purpose: the two are
+  // neighbouring top-bar controls, and appending here — inside THIS tag —
+  // is what the comment a few screens up this file (the one about a
+  // <script src> silently swallowing inline code) is warning against
+  // getting wrong a second time).
+  //
+  // aria-expanded is flipped ONLY inside setOpen() below. There is no
+  // second place in this whole IIFE that writes to `panel.hidden` or the
+  // trigger's aria-expanded — on purpose, so the two can never read
+  // differently (§7.2's own requirement).
+  (function initSettingsThemeMenu() {
+    const wrap = document.getElementById('settings-theme-wrap');
+    const trigger = document.getElementById('settings-theme-trigger');
+    const panel = document.getElementById('settings-theme-panel');
+    const backdrop = document.getElementById('settings-theme-backdrop');
+    // Absent on every page outside /settings — the include is guarded on
+    // request.path in this file's own header markup — so every other page
+    // returns here immediately and does nothing.
+    if (!wrap || !trigger || !panel) return;
+
+    let sheetMode = false;   // decided once, at open() — never re-read mid-interaction (§7.3)
+    let buffer = '';         // type-ahead accumulator
+    let bufferTimer = 0;
+
+    function items() {
+      return Array.prototype.slice.call(panel.querySelectorAll('[role="menuitem"]'));
+    }
+
+    function isOpen() { return !panel.hidden; }
+
+    // Roving tabindex: exactly one "0", the rest "-1" (§7.2) — this is what
+    // keeps S-6/S-7's server-rendered invariant true after the operator has
+    // actually used the arrow keys, not just on the first paint.
+    function setRoving(el) {
+      items().forEach(function (it) {
+        it.setAttribute('tabindex', it === el ? '0' : '-1');
+      });
+    }
+
+    function currentItem() {
+      return panel.querySelector('[role="menuitem"][tabindex="0"]') || items()[0];
+    }
+
+    function pageThemeItem() {
+      return panel.querySelector('[role="menuitem"][aria-current="page"]') || items()[0];
+    }
+
+    function setOpen(next) {
+      if (next === isOpen()) return;
+      panel.hidden = !next;
+      trigger.setAttribute('aria-expanded', next ? 'true' : 'false');
+      if (backdrop) backdrop.hidden = !(next && sheetMode);
+      if (next && sheetMode) {
+        // Two rendered frames, not one: the panel's CLOSED transform
+        // (translateY(100%), app.css) has to actually paint once before
+        // adding this class flips it to 0, or the browser has nothing to
+        // transition FROM — an element that goes from display:none to its
+        // final transform in the same tick does not animate, it just
+        // appears. The read (not the discard) is what forces the reflow.
+        void panel.offsetHeight;
+        panel.classList.add('settings-theme-sheet-open');
+      } else {
+        panel.classList.remove('settings-theme-sheet-open');
+      }
+      if (!next) {
+        // Whatever the operator arrowed to without choosing it stops
+        // mattering the moment the menu closes — the NEXT open (click /
+        // Enter / Space / ArrowDown) must focus the real current theme
+        // again, not wherever Home/End/arrows last parked the roving stop.
+        setRoving(pageThemeItem());
+        buffer = '';
+        if (bufferTimer) { clearTimeout(bufferTimer); bufferTimer = 0; }
+      }
+    }
+
+    function open(focusEl) {
+      if (!isOpen()) {
+        sheetMode = window.matchMedia('(max-width: 639px)').matches;
+        setOpen(true);
+      }
+      if (focusEl) { setRoving(focusEl); focusEl.focus(); }
+    }
+
+    function close() { setOpen(false); }
+
+    function closeAndFocusTrigger() {
+      close();
+      trigger.focus();
+    }
+
+    // ── the trigger ──────────────────────────────────────────────────────
+    // Enter/Space need no handler of their own: both already fire a native
+    // `click` on a real <button>, which is exactly why this control is a
+    // <button> and not a styled <div> (test_design_keyboard.py).
+    trigger.addEventListener('click', function () {
+      if (isOpen()) { close(); return; }
+      open(currentItem());
+    });
+    trigger.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); open(currentItem()); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); open(items()[items().length - 1]); }
+    });
+
+    // ── inside the open panel ───────────────────────────────────────────
+    function move(list, index) {
+      const el = list[index];
+      setRoving(el);
+      el.focus();
+    }
+
+    function normalize(s) {
+      // Locale-aware fold (document.documentElement.lang, not a bare
+      // .toLowerCase()), then NFD-decompose and drop the combining
+      // diacritical marks. This is what lets a plain "ber" keystroke match
+      // a German "Berichte"-shaped label even when the label itself carries
+      // no accent of its own, and what lets an accented label match an
+      // unaccented keystroke the other way round (§7.2).
+      return s.toLocaleLowerCase(document.documentElement.lang)
+              .normalize('NFD')
+              .replace(/\p{Diacritic}/gu, '');
+    }
+
+    function resetBuffer() {
+      buffer = '';
+      bufferTimer = 0;
+    }
+
+    function typeahead(e, list) {
+      // Printable, unmodified characters only — a Ctrl/Alt/Meta combination
+      // is a shortcut, not a letter being typed at the menu.
+      if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+      clearTimeout(bufferTimer);
+      // 500ms buffer, reset on every keypress that arrives before it
+      // expires (§7.2) — the timer is always restarted here, never merely
+      // extended, so a keypress at 499ms gets the full 500ms again.
+      buffer += normalize(e.key);
+      bufferTimer = setTimeout(resetBuffer, 500);
+
+      // A single character typed more than once ("sss") cycles every item
+      // starting with it, rather than searching for the literal "sss".
+      const repeated = buffer.length > 1 &&
+        buffer.split('').every(function (c) { return c === buffer.charAt(0); });
+      const needle = repeated ? buffer.charAt(0) : buffer;
+
+      const start = list.indexOf(document.activeElement);
+      for (let step = 1; step <= list.length; step++) {
+        // Search starts AFTER the current item, wrapping through the whole
+        // list and back to the current one last — a repeat keystroke
+        // advances to the NEXT match instead of re-finding the same one,
+        // and a current item that is the only match still gets found on
+        // the final iteration (cycle of size one).
+        const idx = (start + step) % list.length;
+        if (normalize(list[idx].textContent.trim()).indexOf(needle) === 0) {
+          move(list, idx);
+          return;
+        }
+      }
+      // No match: focus stays exactly where it is (§7.2).
+    }
+
+    panel.addEventListener('keydown', function (e) {
+      const list = items();
+      const at = list.indexOf(document.activeElement);
+      if (at === -1) return;
+
+      if (e.key === 'ArrowDown') { e.preventDefault(); move(list, (at + 1) % list.length); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); move(list, (at - 1 + list.length) % list.length); return; }
+      if (e.key === 'Home') { e.preventDefault(); move(list, 0); return; }
+      if (e.key === 'End') { e.preventDefault(); move(list, list.length - 1); return; }
+      if (e.key === 'Escape') { e.preventDefault(); closeAndFocusTrigger(); return; }
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        // Space's native behaviour on a link is to scroll the page —
+        // test_design_keyboard.py:167 names this exact failure for a
+        // different control; preventDefault() + a synthetic click is the
+        // same fix applied here.
+        e.preventDefault();
+        document.activeElement.click();
+        return;
+      }
+      if (e.key === 'Tab') {
+        if (sheetMode) {
+          // Modal in appearance (the backdrop) must be modal in behaviour:
+          // below `sm` Tab must not hand focus to whatever the backdrop is
+          // covering. Roving tabindex already limits this panel to exactly
+          // ONE reachable stop — arrow keys move the roving item, Tab does
+          // not — so "trapped" here means Tab wraps onto that same single
+          // stop rather than cycling several; there is nothing else in
+          // this panel's native tab order to cycle to. The desktop
+          // dropdown never reaches this branch (sheetMode is false there),
+          // so it is never trapped — it is not modal and must not act like
+          // it is.
+          e.preventDefault();
+          if (document.activeElement) document.activeElement.focus();
+        }
+        // Desktop: no preventDefault — Tab is left to move focus on
+        // normally, and the wrap's own focusout listener below is what
+        // notices focus left and closes the panel. Closing HERE, before
+        // the browser has actually computed where Tab is sending focus,
+        // risks racing that computation on an ancestor that is about to
+        // become display:none; reacting to the result instead of the
+        // keystroke sidesteps the race entirely.
+        return;
+      }
+      typeahead(e, list);
+    });
+
+    // Tab (or Shift+Tab) carrying focus OUT of the control closes it — the
+    // desktop half of "Tab closes" (§7.2). Never fires in sheet mode: the
+    // trap above already prevents Tab's default action there, so focus
+    // never actually leaves and this listener has nothing to react to.
+    wrap.addEventListener('focusout', function (e) {
+      if (!isOpen() || sheetMode) return;
+      if (e.relatedTarget && wrap.contains(e.relatedTarget)) return;
+      close();
+    });
+
+    // A pointerdown anywhere outside the control closes it WITHOUT moving
+    // focus (§7.2). closest() runs on the event TARGET, not on
+    // document.activeElement, so a touch that never focuses anything still
+    // counts.
+    document.addEventListener('pointerdown', function (e) {
+      if (!isOpen()) return;
+      if (e.target && e.target.closest('#settings-theme-wrap')) return;
+      close();
+    });
+
+    // The mobile-sheet backdrop lives INSIDE #settings-theme-wrap (see its
+    // own comment in _settings_nav.html for why), so the listener above
+    // treats a tap on it as "inside" and leaves it alone — this is its
+    // dismissal instead. No refocus, matching this app's one other
+    // backdrop (_prismModalCancel doesn't move focus either).
+    if (backdrop) {
+      backdrop.addEventListener('pointerdown', function () { close(); });
+    }
+  })();
+  </script>
+
 </body>
 </html>

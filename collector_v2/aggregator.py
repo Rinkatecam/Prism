@@ -45,6 +45,8 @@ import queue
 import threading
 import time
 import traceback
+
+import ingest_caps
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -799,6 +801,32 @@ class Aggregator:
         """
         prev = _previous_status.get(server.name)
 
+        # RELEASE ACCELERATED POLLING once the machine is demonstrably back.
+        #
+        # Acceleration exists to catch a comeback quickly. The moment the server
+        # reports healthy again, that job is done — what is left is letting the
+        # metrics settle, which is what the stabilising window is for. Before
+        # this, a manual restart's twenty-minute window ran to completion
+        # regardless: measured on a live domain controller, 184 samples in twenty
+        # minutes against 21 for a comparable host, almost all of them after it
+        # was healthy.
+        #
+        # `settle_acceleration` SHORTENS an active window and never arms one.
+        # That distinction is load-bearing: arming here would start hammering any
+        # server that merely blipped offline and recovered.
+        #
+        # Placed before the maintenance gate deliberately. Releasing polling
+        # pressure is not an alert, and a patch window is exactly when a machine
+        # is most likely to be restarting — so it is also exactly when the
+        # release must not be suppressed.
+        if prev is not None and prev != status and status == "healthy":
+            try:
+                from .supervisor import settle_acceleration as _settle
+                _settle(server.name, duration_s=self._STABILISING_WINDOW_S)
+            except Exception:
+                logger.debug("[%s] acceleration release failed", server.name,
+                             exc_info=True)
+
         # Maintenance gate — applies BEFORE event dispatch (collector.py:1966)
         maint_suppressed = _is_alert_suppressed_by_maintenance(
             server.name, settings,
@@ -1277,9 +1305,11 @@ class Aggregator:
                 # Pass the ingest controls so Information-level noise is dropped
                 # and identical lines are coalesced into log_signatures. See
                 # Database.insert_logs — logs were 96% of all rows.
+                _settings = self.get_settings() or {}
                 self.db.insert_logs(
                     server_name, result.data,
-                    ingest_cfg=(self.get_settings() or {}).get("log_ingest"),
+                    ingest_cfg=_settings.get("log_ingest"),
+                    caps=ingest_caps.resolve(_settings),
                 )
             except Exception:
                 logger.error(
@@ -1474,9 +1504,20 @@ class Aggregator:
         while _recent_events and _recent_events[0].get("event_at", 0) < cutoff:
             _recent_events.popleft()
 
-        if not _recent_events:
-            return
-
+        # NO early-out on an empty window. It used to return here, and that was
+        # right when correlation only ever grouped fresh events. It is wrong now
+        # that the pass also runs the closure-driven cascade election, incident
+        # PROMOTION and auto-resolution — none of which are event-driven:
+        #
+        #   * an ongoing outage emits nothing; it is a state, not an event;
+        #   * a recovery is the ABSENCE of a failure, so the pass that must
+        #     notice "the root is back but its dependent is not" is typically
+        #     the quietest one there is;
+        #   * auto-resolution was silently skipped on a quiet fleet too, which
+        #     is how an incident could outlive the trouble it described.
+        #
+        # The cost of running anyway is three small indexed reads per 30s, off
+        # the 5s hot path. `correlate_events` handles an empty window itself.
         correlate = _correlate_events_fn()
         if correlate is None:
             return  # analytics module missing — skip silently
@@ -1484,7 +1525,8 @@ class Aggregator:
         try:
             servers = _list_servers_for_correlation()
             window_events = list(_recent_events)
-            correlated = correlate(self.db, window_events, servers)
+            correlated = correlate(self.db, window_events, servers,
+                                   settings=self.get_settings() or {})
             if correlated:
                 logger.info(
                     "Time-windowed correlation produced %d incidents "

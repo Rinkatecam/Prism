@@ -1,0 +1,48 @@
+{# ── TLS certificate monitoring ───────────────────────────────────────────
+
+   Moved from /monitoring in WP-4 D2b. It configures which endpoints are
+   watched and how many days ahead an expiry warns — configuration, on a page
+   named for showing state.
+
+   The controls carry `general-input`, not the `general-input` they arrived
+   with. The bucket states whether a change needs a RESTART, and these do not:
+   periodics' `tls_certs` job calls `get_settings()` on every run. The one TLS
+   field that WOULD need a restart is `check_interval_cycles`, which the
+   periodics loop resolves once at startup — and it has no control here. #}
+{% from "partials/_card.html" import card with context %}
+  {# WP-6 step 15: this h2 STAYS an h2 (C9 -- it already owned this card,
+     it is not a page-level theme wrapper) and simply takes the canonical
+     string plus a stable id, now rendered by card()'s own head row. The
+     "Add Certificate" button moves into controls=. #}
+  {% set _tls_controls %}
+  <button data-action="addTlsCertRow" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
+    <i data-lucide="plus" class="w-4 h-4"></i>
+    {{ t.get('add_certificate', 'Add Certificate') }}
+  </button>
+  {% endset %}
+  {% call card(heading=t.get('tls_monitoring', 'TLS Monitoring'), icon='shield-check',
+               heading_id='tls-monitoring-heading', controls=_tls_controls) %}
+  <div class="space-y-4">
+    <div class="flex items-center gap-3 mb-3">
+      <label class="relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" id="tls-monitoring-enabled" class="sr-only peer general-input">
+        <div class="w-9 h-5 bg-line dark:bg-faint peer-checked:bg-brand dark:peer-checked:bg-[#3B82F6] rounded-full peer peer-focus:ring-2 peer-focus:ring-brand/20 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+      </label>
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-muted">{{ t.get('warning_label', 'Warning:') }}</span>
+        <input type="number" id="tls-warning-days" value="30" min="1" max="365" class="general-input w-16 px-2 py-1 text-sm rounded border border-line bg-field text-right">
+        <span class="text-xs text-muted">{{ t.get('days', 'days') }}</span>
+        <span class="text-xs text-muted ml-2">{{ t.get('critical_label', 'Critical:') }}</span>
+        <input type="number" id="tls-critical-days" value="7" min="1" max="90" class="general-input w-16 px-2 py-1 text-sm rounded border border-line bg-field text-right">
+        <span class="text-xs text-muted">{{ t.get('days', 'days') }}</span>
+      </div>
+    </div>
+    <!-- Certificate endpoints list -->
+    <div id="tls-cert-list" class="space-y-2"></div>
+    <div id="no-tls-certs" class="text-sm text-faint text-center py-8">
+      <i data-lucide="shield-check" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
+      <p>{{ t.get('no_certificates', 'No certificates configured') }}</p>
+      <p class="text-[10px] mt-1 opacity-60">{{ t.get('no_certificates_hint', 'Click "Add Certificate" to monitor TLS expiration') }}</p>
+    </div>
+  </div>
+  {% endcall %}

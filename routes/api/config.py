@@ -183,6 +183,22 @@ def save_config():
             return jsonify({"ok": False, "error": f"Tier for '{name}' must be 0, 1 or 2"}), 400
         s["tier"] = tier
 
+        # Impact role override (estate severity model). "" = inherit the
+        # type seed. Rejected at the API rather than silently ignored at
+        # resolve time: resolve_role tolerates garbage from a hand-edited
+        # config.json (degrading to the seed), but a VALIDATED writer has
+        # no business persisting a value the resolver will never honour —
+        # the operator typed it expecting an effect.
+        crit_raw = str(s.get("criticality", "") or "").strip()
+        if crit_raw:
+            from severity_roles import ROLES
+            if crit_raw not in ROLES:
+                return jsonify({
+                    "ok": False,
+                    "error": f"criticality for '{name}' must be one of "
+                             f"{', '.join(ROLES)} (or empty to inherit from type)"}), 400
+        s["criticality"] = crit_raw
+
         # HTTPS — closes audit findings R7 (S3-1) and W10 (S3-12).
         existing_entry = existing_servers.get(name) or {}
         existing_https = bool(existing_entry.get("use_https", False))
@@ -433,18 +449,28 @@ def save_config():
             settings["time_format"] = tf
 
         # ─────────────────────────────────────────────────────────────────────
-        # SUB-TREE CONTRACT for the five validators below (https / auth / email /
-        # webhooks / scheduled_reports).
+        # SUB-TREE CONTRACT for the FOUR validators below (https / auth / email /
+        # webhooks).
         #
-        # Each normalises its sub-tree by writing EVERY field back, so a caller
-        # that posts a fragment (e.g. {"email": {"recipients": [...]}}) blanks the
-        # omitted siblings before ConfigManager.save_config's merge ever sees the
-        # value. The merge protects omitted TOP-LEVEL keys; it cannot protect
-        # omitted keys inside these sub-trees.
+        # `scheduled_reports` used to be named here as a fifth. It is not one:
+        # there is no validator for it anywhere in this file, so it passes
+        # straight through `save_config`'s merge like any ordinary key. The
+        # list was wrong in the safe direction — it warned about a hazard that
+        # does not exist for that sub-tree — but a contract comment that names
+        # a mechanism the code does not have is the same defect as one that
+        # omits a mechanism the code does have, and this repository has been
+        # caught by both. Corrected when WP-4 traced the scheduled-reports save
+        # path end to end.
+        #
+        # Each of the four normalises its sub-tree by writing EVERY field back,
+        # so a caller that posts a fragment (e.g. {"email": {"recipients":
+        # [...]}}) blanks the omitted siblings before ConfigManager.
+        # save_config's merge ever sees the value. The merge protects omitted
+        # TOP-LEVEL keys; it cannot protect omitted keys inside these sub-trees.
         #
         #   Rule: omit a top-level settings key freely. NEVER post a partial
-        #   sub-tree for https / auth / email / webhooks / scheduled_reports —
-        #   build the whole object, as templates/settings.html does.
+        #   sub-tree for https / auth / email / webhooks — build the whole
+        #   object, as templates/settings.html does.
         #
         # Pinned by tests/test_config_partial_save.py
         # ::test_subtree_contract_partial_subtree_resets_its_siblings.

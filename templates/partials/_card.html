@@ -1,0 +1,342 @@
+{# ── The card — DESIGN_SYSTEM_SPEC.md Part II §4 ────────────────────────────
+
+   WP-6 step 14. Three macros: card() (a {% call %} block), subblock() (a
+   {% call %} block, rule= draws the divider) and subhead() (an H3/H4 --
+   NOT a {% call %} block: it takes the heading TEXT as an argument, the
+   same way _tip.html's tip() takes text rather than wrapping content).
+   Imports tip_button()/tip_mirror() from partials/_tip.html rather than
+   defining its own tip mechanism (§4.3) -- §6.1's "one mechanism" rule
+   applies one level up the include chain, not just to page templates.
+
+   CONVERTS ZERO CALL SITES. This file and its test suite
+   (tests/test_design_cards.py) are the whole of step 14. No existing
+   template's card markup is touched here -- that is steps 15-20, one
+   family of files at a time (C25: converting a card to {% call card(...) %}
+   IS the H2 migration for that card, there is no separate heading sweep).
+
+   ══════════════════════════════════════════════════════════════════════
+   HOW TO USE THIS FROM A PAGE TEMPLATE (future steps 15-20; nothing in
+   this tree does this yet):
+
+       {% from "partials/_card.html" import card, subblock, subhead with context %}
+
+       {% set _controls %}
+         <button data-action="...">...</button>
+       {% endset %}
+       {% call card(heading=t.section_name, icon='server',
+                     tip_desc_key='section_desc', tip_desc_fallback='...',
+                     controls=_controls) %}
+         <p>card body...</p>
+         {% call subblock(rule=true) %}
+           {{ subhead(t.sub_title, icon='clock') }}
+           <p>sub-block body...</p>
+         {% endcall %}
+       {% endcall %}
+
+   `with context` IS REQUIRED AT THE CALL SITE, not just inside this file.
+   card()/subhead() call tip_button()/tip_mirror() (_tip.html), which read
+   `t` and `next_tip_id` from the CONTEXT, not as explicit arguments
+   (_tip.html's own header comment). Jinja's "with context" import chains:
+   this file's own `{% from "partials/_tip.html" import ... with context %}`
+   below re-resolves against WHATEVER context is active when THIS file's
+   macros run -- which is the calling page's context, but only because the
+   calling page also wrote `with context` on ITS OWN import of this file.
+   Drop it at either end and the failure is silent, exactly as _tip.html's
+   header warns: `t`/`next_tip_id` resolve to Jinja's Undefined, autoescape
+   renders that as nothing, and the symptom is a tip button with a blank
+   aria-label -- not a build break. #}
+
+{% from "partials/_tip.html" import tip_button, tip_mirror with context %}
+
+{# ── §4.2 anatomy constants — copied LITERALLY from the spec. Order and
+   spacing inside each string are the spec; tests/test_design_cards.py
+   (C-1) compares strings, not token sets, for exactly the reason §4.1
+   gives for CARD's own order: a set comparison passes on "p-5 p-4" and a
+   string comparison does not. #}
+{% set CARD          = "bg-card rounded-lg border border-line p-5" %}
+{% set CARD_FLUSH     = "bg-card rounded-lg border border-line overflow-hidden" %}
+{% set HEAD           = "flex flex-wrap items-start justify-between gap-3 mb-4" %}
+{% set HEAD_FLUSH     = "flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-line" %}
+{% set H2             = "text-base font-bold text-brand flex items-center gap-2 min-w-0" %}
+{% set H2_ICON        = "w-5 h-5 flex-shrink-0 text-brand" %}
+{% set CONTROLS       = "flex items-center gap-2 flex-shrink-0" %}
+{% set SUBBLOCK       = "mt-5 first:mt-0" %}
+{% set SUBBLOCK_RULE  = "mt-5 pt-5 border-t border-line first:mt-0 first:pt-0 first:border-t-0" %}
+{% set H3             = "text-sm font-semibold text-muted flex items-center gap-2 mb-3" %}
+{% set H3_ICON        = "w-4 h-4 flex-shrink-0 text-muted" %}
+{% set H4             = "text-xs font-semibold uppercase tracking-wide text-faint mb-2" %}
+{% set FOOTER         = "mt-5 pt-4 border-t border-line flex items-center justify-end gap-2" %}
+{% set FOOTER_FLUSH   = "px-5 py-4 border-t border-line flex items-center justify-end gap-2" %}
+{% set TILE           = "bg-raised rounded border border-line p-3" %}
+{% set TILE_ON_PAGE   = "bg-card rounded border border-line p-3" %}
+{% set TILE_LABEL     = "text-xs font-medium text-muted" %}
+{# CARD_DOC -- DESIGN_SYSTEM_SPEC.md §0.0.3 D13 (third decision round,
+   2026-09-17): "The doc surface is its own permanent idiom, not forced to
+   p-5." compliance_doc.html/compliance_sop.html's centre content column
+   keeps this wider, deliberately non-p-5 padding -- "a rendered SOP reads
+   as a document, not a dashboard panel" -- and D13 is explicit that this
+   is now tracked as a PERMANENT tests/test_design_cards.py CARD_EXCEPTIONS
+   entry (one per file), not folded into the always-allowed §4.5 idiom list
+   the way it briefly was ("pending owner question 4"). Not referenced by
+   `{{ CARD_DOC }}` from either template -- D13 says KEEP compliance_doc/
+   sop.html's own hand-typed classes exactly as they are; this constant
+   exists so the string has ONE named home in the same file as CARD/
+   CARD_FLUSH/TILE, per this step's own instruction, for whatever future
+   template needs to cite it deliberately (not silently, per D13). #}
+{% set CARD_DOC       = "bg-card rounded-lg border border-line p-6 lg:p-8" %}
+{# TIP_BTN: copied verbatim from §4.2 per this step's own instructions, but
+   NOT wired into card()/subhead() below -- see the "JUDGEMENT CALL" note
+   near the bottom of this comment block for why, and this step's own
+   report for the same flag surfaced prominently. #}
+{% set TIP_BTN        = "ps-tip inline-flex items-center justify-center align-middle w-8 h-8 -m-2 rounded text-muted hover:text-accent focus-visible:text-accent flex-shrink-0 transition-colors duration-fast ease-standard" %}
+
+{# ── Two constants NOT in the §4.2 list, added here and clearly marked as
+   such (the instruction was to copy the NAMED constants literally, not
+   that no others may exist). Both are load-bearing for rules stated in
+   Part II elsewhere that this file has to actually implement:
+
+   H3_NO_ICON -- §2.1: "Without an icon, an H3 drops the <i> AND the
+   `flex items-center gap-2`." tests/test_design_headings.py already
+   carries this exact second string under this exact name for the same
+   reason (its own comment: "two legal H3 strings, not one"); reusing the
+   identical literal and name here rather than inventing a third spelling.
+
+   DIALOG_TITLE -- §2.6's carve-out table (not §4.2's card-constants list,
+   but the one other place in Part II a literal class string for this
+   shape is pinned): `data-role="dialog-title"` headings render
+   `text-base font-bold text-ink flex items-center gap-2`, matching
+   base.html:1248's own #prism-modal-title exactly. §4.3 says `level`
+   "exists only for a flush card inside [role="dialog"]... that heading
+   additionally carries data-role="dialog-title" and the dialog-title
+   class string" -- there is no way to implement that sentence without
+   this string living somewhere, and §2.6 is where the spec itself defines
+   it. #}
+{% set H3_NO_ICON     = "text-sm font-semibold text-muted mb-3" %}
+{% set DIALOG_TITLE   = "text-base font-bold text-ink flex items-center gap-2" %}
+
+{#
+   ══════════════════════════════════════════════════════════════════════
+   card(heading=None, icon=None, level=2, flush=False, extra='',
+        controls='', footer='',
+        tip_desc_key=None, tip_desc_fallback=None,
+        tip_title_key=None, tip_title_fallback=None,
+        tip_label_key=None, tip_label_fallback=None)
+
+   Rules baked into the shape (§4.3), and why the signature has no more
+   than this:
+
+   * NO `desc` parameter, and there will not be one. Explanatory prose is
+     a tooltip (D3); a `desc` argument is how the description line grows
+     back onto every card that asks for one. Status text and measured
+     values are body content -- write them inside the {% call %} block.
+
+   * `controls` and `footer` are PRE-RENDERED MARKUP, assembled at the
+     call site with `{% set x %}...{% endset %}` (see the usage example
+     above). Under autoescape that block form yields `Markup`, so
+     `{{ controls }}`/`{{ footer }}` below render WITHOUT `|safe` --
+     do not add one. A `|safe` here would strip the one thing that makes
+     this safe: `{% set %}...{% endset %}`'s own escaping of whatever the
+     caller interpolated into it. A plain string argument (not built via
+     {% set %}...{% endset %}) would NOT be Markup and WOULD get
+     double-escaped-looking output if the caller had pre-escaped it
+     themselves -- which is the point: this macro has no parameter shape
+     that invites passing a raw string through unescaped.
+
+   * `level` exists ONLY for a flush card whose head row IS the dialog's
+     own accessible name (a `[role="dialog"]` panel's title -- rare; step
+     19's job, "every dialog declares itself"; nothing calls this today).
+     Default (2, or omitted) renders the normal H2 ladder heading. Any
+     other value renders an `h{level}` tag carrying DIALOG_TITLE's class
+     string and `data-role="dialog-title"` INSTEAD of the ladder string --
+     a dialog's title is the dialog's own name, not "which section of the
+     page this is", so it does not take the violet H2 treatment (§2.6).
+     tests/test_design_cards.py's C-7 fails the build on any OTHER card
+     whose head row heading is not literally an `<h2`.
+
+   * `extra=` may carry grid/flex/`hidden`/`sticky`/`mb-*` utilities and
+     `border-<status>(/alpha)` ONLY -- never a colour, padding, radius,
+     shadow, or `dark:` variant (C-3). This macro does not itself enforce
+     that allowlist at render time (there is no "reject a bad Jinja
+     argument at template-compile time" mechanism worth building for one
+     macro); tests/test_design_cards.py's C-3 enforces it by scanning
+     every real `{% call card(` site's `extra=` value once call sites
+     exist. Get it wrong here and the TEST fails, not silently.
+
+   * The tip button renders INSIDE the `<h*>`; its `sr-only` mirror
+     renders IMMEDIATELY AFTER the closing tag (C17) -- both from this one
+     macro call, so a caller cannot pass a heading without its mirror or
+     vice versa. Mirrors _tip.html's own tip_button()/tip_mirror() split,
+     for the identical reason: search_index._headings drops any heading
+     over 80 characters, so the mirror must never be a CHILD of the
+     heading it explains.
+
+   * No heading -> no head row at all (skeletons, canvas shells: C-4's
+     named carve-out for a raw CARD/CARD_FLUSH literal with nothing
+     structural inside it). `controls` only has a place to render INSIDE
+     the head row, so `controls` without `heading` renders nothing --
+     there is no defined shape for "controls with no title", and nothing
+     in this tree needs one today.
+
+   * `id=` and `heading_id=` -- ADDED during step 15 (WP-6 Batch B, the
+     Settings family), NOT part of §4.2/§4.3's own signature. Both are
+     purely additive/opt-in (default None, rendered only when given), so
+     every existing call site and every test in test_design_cards.py that
+     never passes them is byte-for-byte unaffected -- C-1's own
+     `re.search(r'<div class="([^"]*)">', html)` still matches because no
+     id= is ever passed in that test.
+
+     `id=` sets an id on the OUTER SHELL div, BEFORE `class=` (so the
+     rendered tag reads `<div id="X" class="...">`). Needed for exactly
+     one real site this step converts: partials/settings/_detection.html's
+     `baseline-security-card`. That id is not read by any live template or
+     JS (checked by grep across templates/ and static/js/ before
+     converting), so it is preserved via this new parameter purely as a
+     stable hook for whatever wants it next, rather than dropped for lack
+     of a current reader.
+
+     At the time this step was written, tools/verify_guardrails.py's own
+     mutation harness anchored a mutation (for
+     test_every_control_lives_in_the_section_that_saves_it) to the literal
+     source string `<div id="baseline-security-card"`, and this paragraph
+     used to warn that dropping the id would make that anchor drift.
+     Deliberately not run or edited at the time (out of this step's scope,
+     and the house rule against running it) -- which meant nobody had
+     actually checked, this whole step, whether that anchor still matched
+     ANYTHING. It did not: the string only ever existed in
+     _detection.html's own prose comment, never in real markup (the actual
+     element is `id='baseline-security-card'`, a single-quoted Jinja macro
+     kwarg, not an HTML attribute) -- discovered and fixed at step 24,
+     retargeting the mutation at real markup instead. The id stays; only
+     the mutation harness's anchor changed. See _detection.html's own
+     comment for the full account.
+
+     `heading_id=` sets an id on the HEADING TAG ITSELF (h2, or h{level}),
+     which is the separate thing DESIGN_SYSTEM_SPEC.md's own Step 15 text
+     asks for ("simply take the canonical string and a stable id") for
+     the named list of headings that already owned their own card and
+     merely move into the macro's head row. Nothing in
+     tests/test_design_headings.py's `test_a_heading_inside_a_settings_
+     section_is_findable` REQUIRES this id (that test passes on heading
+     TEXT alone, via search_index._headings, independent of any id --
+     verified by reading its own assertion before relying on it); what an
+     id buys is search_index._anchor_for actually resolving to that
+     specific heading rather than the settings sub-page falling back to a
+     bare, un-anchored URL -- real precision on pages that end up with two
+     or more h2 cards after this step (alerts: TLS + Maintenance;
+     operations: Runbooks + Scheduled restarts; servers: Tag Management +
+     Servers + Health Checks + Dependencies).
+   ══════════════════════════════════════════════════════════════════════
+#}
+{% macro card(heading=None, icon=None, level=2, flush=False, extra='',
+              controls='', footer='',
+              tip_desc_key=None, tip_desc_fallback=None,
+              tip_title_key=None, tip_title_fallback=None,
+              tip_label_key=None, tip_label_fallback=None,
+              id=None, heading_id=None) %}
+{%- set _shell = (CARD_FLUSH if flush else CARD) ~ (' ' ~ extra if extra else '') -%}
+<div{% if id %} id="{{ id }}"{% endif %} class="{{ _shell }}">
+{%- if heading is not none %}
+  <div class="{{ HEAD_FLUSH if flush else HEAD }}">
+    {%- set _dialog = level != 2 %}
+    {%- set _tag = 'h' ~ level %}
+    {%- set _hcls = DIALOG_TITLE if _dialog else H2 %}
+    <{{ _tag }} class="{{ _hcls }}"{% if heading_id %} id="{{ heading_id }}"{% endif %}{% if _dialog %} data-role="dialog-title"{% endif %}>
+      {%- if icon %}<i data-lucide="{{ icon }}" class="{{ H2_ICON }}" aria-hidden="true"></i>{% endif %}
+      {{ heading }}
+      {%- if tip_desc_key %}
+      {%- set _tid = next_tip_id() %}
+      {{ tip_button(tip_desc_key, tip_desc_fallback, _tid,
+                     title_key=tip_title_key, title_fallback=tip_title_fallback,
+                     label_key=tip_label_key, label_fallback=tip_label_fallback) }}
+      {%- endif %}
+    </{{ _tag }}>
+    {%- if tip_desc_key %}{{ tip_mirror(tip_desc_key, tip_desc_fallback, _tid) }}{% endif %}
+    {%- if controls %}
+    <div class="{{ CONTROLS }}">{{ controls }}</div>
+    {%- endif %}
+  </div>
+{%- endif %}
+  {{ caller() }}
+{%- if footer %}
+  <div class="{{ FOOTER_FLUSH if flush else FOOTER }}">{{ footer }}</div>
+{%- endif %}
+</div>
+{%- endmacro %}
+
+{#
+   ══════════════════════════════════════════════════════════════════════
+   subblock(rule=False)
+
+   A {% call %} wrapper for one sub-section of a card's body. `rule=true`
+   draws the divider ABOVE this block (SUBBLOCK_RULE: mt-5 pt-5 border-t,
+   with `first:` variants so the FIRST sub-block in a card never opens
+   with a floating rule against the head row).
+
+   This is the whole reason "no mt-*/top-margin on a heading, ever" stays
+   an ABSOLUTE rule with zero carve-outs (C8, Part IV): the cards area's
+   own original proposal put the divider on subhead(rule=true) itself
+   (`pt-5 mt-5 border-t` directly on the `<h3>`), which was the ONE
+   exception to that rule. Moving the divider to this wrapper removes the
+   exception instead of the rule -- subhead() below has no `rule`
+   parameter AT ALL, deliberately (see its own comment).
+   ══════════════════════════════════════════════════════════════════════
+#}
+{% macro subblock(rule=False) %}
+<div class="{{ SUBBLOCK_RULE if rule else SUBBLOCK }}">
+  {{- caller() }}
+</div>
+{%- endmacro %}
+
+{#
+   ══════════════════════════════════════════════════════════════════════
+   subhead(text, level=3, icon=None,
+           tip_desc_key=None, tip_desc_fallback=None,
+           tip_title_key=None, tip_title_fallback=None,
+           tip_label_key=None, tip_label_fallback=None)
+
+   An H3 or H4 for use INSIDE a card's body (bare, or inside a subblock()).
+   NOT a {% call %} block -- it takes the heading TEXT as its first
+   argument, because unlike card()/subblock() a heading has no child
+   content of its own to wrap.
+
+   Deliberately has NO `rule` parameter. "subhead(rule=true) does NOT
+   exist" -- Part IV's own conflict register, verbatim -- is not a missing
+   feature, it is the point: the divider between sub-blocks is
+   subblock(rule=true) (a wrapper), never something drawn ON a heading
+   element. See subblock()'s own comment for why that distinction is load
+   bearing rather than stylistic.
+
+   level=3 (default) renders H3 -- WITH its icon-bearing string when
+   `icon` is given, or H3_NO_ICON (drops both the <i> and the
+   `flex items-center gap-2`, per §2.1) when it is not. level=4 renders H4,
+   which per the ladder (§2.1) never carries an icon at all regardless of
+   what is passed.
+   ══════════════════════════════════════════════════════════════════════
+#}
+{% macro subhead(text, level=3, icon=None,
+                 tip_desc_key=None, tip_desc_fallback=None,
+                 tip_title_key=None, tip_title_fallback=None,
+                 tip_label_key=None, tip_label_fallback=None) %}
+{%- set _tag = 'h' ~ level %}
+{%- if level == 4 %}
+{%- set _cls = H4 %}
+{%- set _icon = None %}
+{%- elif icon %}
+{%- set _cls = H3 %}
+{%- set _icon = icon %}
+{%- else %}
+{%- set _cls = H3_NO_ICON %}
+{%- set _icon = None %}
+{%- endif %}
+<{{ _tag }} class="{{ _cls }}">
+  {%- if _icon %}<i data-lucide="{{ _icon }}" class="{{ H3_ICON }}" aria-hidden="true"></i>{% endif %}
+  {{ text }}
+  {%- if tip_desc_key %}
+  {%- set _tid = next_tip_id() %}
+  {{ tip_button(tip_desc_key, tip_desc_fallback, _tid,
+                 title_key=tip_title_key, title_fallback=tip_title_fallback,
+                 label_key=tip_label_key, label_fallback=tip_label_fallback) }}
+  {%- endif %}
+</{{ _tag }}>
+{%- if tip_desc_key %}{{ tip_mirror(tip_desc_key, tip_desc_fallback, _tid) }}{% endif %}
+{%- endmacro %}

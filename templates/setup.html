@@ -1,9 +1,59 @@
 {% extends "base.html" %}
+{% from "partials/_card.html" import card with context %}
+{% from "partials/_tip.html" import tip_button, tip_mirror with context %}
+{# WP-6 D8 — one of the four "chrome" pages: it renders the full app shell
+   (topbar, pulse widget, jump box) before an admin account exists, and a
+   title chip would imply the operator is already inside the application.
+   page_title is still declared below — it drives the <title> tag, which
+   has no such implication — but base.html will not render the chip itself
+   while this flag is set. See tests/test_pages_render.py for the test that
+   keeps this exemption list exhaustive rather than a silent convention. #}
+{% set page_chrome = true %}
+{% block page_title %}{{ t.welcome_to_prism }}{% endblock %}
+{% block page_icon %}sparkles{% endblock %}
 {% block content %}
 
 <div class="flex items-center justify-center min-h-[70vh]">
   <div class="w-full max-w-sm">
-    <div class="bg-card rounded-lg border border-line p-6 shadow-sm">
+    {# WP-6 step 20 (Batch G+H) -- was a hand-typed `bg-card rounded-lg
+       border border-line p-6 shadow-sm` (STATIC_SHADOW_BASELINE's own
+       setup.html:1 site, C-6). JUDGEMENT CALL, flagged in that step's own
+       report: the <h2> below is left exactly as it is (text-base
+       font-semibold, not the H2 canonical string) rather than passed as
+       card()'s `heading=` -- it is a decorative "Welcome to Prism" caption
+       sitting inside the logo block (img + wordmark + this h2), not a
+       section heading naming this card's content, and forcing it into the
+       macro's head row would tear it out of that visual group and put it
+       ABOVE the logo image instead of below it. It still satisfies C-7 (a
+       card's first heading must be h2 -- this one already is) because C-7
+       only checks the LEVEL of the first heading inside the {% call %}
+       body, not its class string. Step 20 left
+       test_design_headings.py's HEADING_BASELINE["setup.html"] entry at 1
+       for this reason -- UNCHANGED by step 26 below, since the class
+       string is still deliberately non-canonical.
+
+       WP-6 step 26 -- HEADING_UNDERTEXT_BASELINE["setup.html"] (the
+       subtitle step 20 left "exactly as measured" at 1) reaches 0 here.
+       `first_run_setup_desc` ("Create an administrator account to get
+       started. This account serves as a backup login when LDAP/AD is
+       unavailable.") gate-classifies as gate 5 per DESIGN_SYSTEM_SPEC.md
+       §5.7: it explains what the account being created IS and why it
+       matters (a break-glass login for when LDAP/AD is down), not a
+       value/count/state (gate 1), a caveat on data about to be read or
+       exported (gate 2), a format rule for the fields below (gate 3 --
+       that is the separate break-glass-requirements callout further
+       down, which stays inline because it IS a format rule), or the only
+       thing in an empty/blocked region (gate 4 -- this page is a live
+       form, not an empty state). tip_button()/tip_mirror() are used
+       directly rather than card()'s own tip_desc_key= (which only wires a
+       heading that card(heading=...) itself renders) because this <h2> is
+       hand-rolled, per the judgement call above -- it is not produced by
+       the macro. The mirror renders as a sibling {{ }} expression right
+       after </h2>, not literal markup, so it is invisible to this file's
+       own source-level undertext scan the same way a macro-rendered
+       heading is invisible to HEADING_BASELINE's scan (see that ratchet's
+       own comment in tests/test_design_headings.py). #}
+    {% call card() %}
 
       <!-- Logo -->
       <div class="text-center mb-6">
@@ -11,8 +61,16 @@
           <img src="{{ url_for('static', filename='img/logo.png') }}" alt="" class="w-8 h-8" width="32" height="32">
           <span class="prism-wordmark">Prism</span>
         </div>
-        <h1 class="text-base font-semibold mb-1">{{ t.welcome_to_prism }}</h1>
-        <p class="text-sm text-muted">{{ t.first_run_setup_desc }}</p>
+        {% set _welcome_tip_id = next_tip_id() %}
+        <h2 class="text-base font-semibold inline-flex items-center gap-1.5">
+          {{ t.welcome_to_prism }}
+          {{ tip_button('first_run_setup_desc',
+                         'Create an administrator account to get started. This account serves as a backup login when LDAP/AD is unavailable.',
+                         _welcome_tip_id, title_fallback=t.welcome_to_prism) }}
+        </h2>
+        {{ tip_mirror('first_run_setup_desc',
+                       'Create an administrator account to get started. This account serves as a backup login when LDAP/AD is unavailable.',
+                       _welcome_tip_id) }}
       </div>
 
       <!-- Error message -->
@@ -81,7 +139,7 @@
           {{ t.create_admin_account }}
         </button>
       </form>
-    </div>
+    {% endcall %}
   </div>
 </div>
 

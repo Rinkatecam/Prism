@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% from "partials/_card.html" import card with context %}
+{% from "partials/_tip.html" import tip, tip_button, tip_mirror, tip_overflow with context %}
+
+{# ── /network — an honest surface over an absence ────────────────────────
+
+   The Network quadrant card is now a link, which means this page has to
+   exist. It is NOT the beginning of an implementation: no collector watches
+   switches, firewalls, routers or access points, and WP-3 does not add one.
+
+   What it must not do is manufacture a page. No zeroed stat tiles, no empty
+   table with headers, no skeleton — a zero is a MEASUREMENT and there is no
+   measurement here; a skeleton is a claim that content is coming and none
+   is. Two blocks and nothing else: what is absent, and what Prism watches
+   instead.
+
+   The scope sentence is the CARD'S OWN `data-tip-desc`, deliberately. One
+   string, so the card and the page it links to cannot drift apart. It used
+   to open "This card will cover…", which was correct in a hover tip and
+   referred to nothing here — found by reading the rendered page, which is
+   also why there is no third block headed "What this will cover": the
+   sentence below already says it, and saying it twice was the first draft.
+
+   "Coming soon" is deliberately not the framing. On the card it justified an
+   inert control; on a page it reads as a delivery date nobody has promised.
+   The wording describes the product's CURRENT SCOPE. #}
+
+{% block page_title %}{{ t.get('vitals_network', 'Network') }}{% endblock %}
+{% block page_icon %}router{% endblock %}
+
+{% block content %}
+
+<p class="text-sm text-muted mb-6 max-w-2xl">
+  {{ t.get('network_lede',
+           'Prism does not watch network equipment yet. This is what that would mean, and what it watches instead today.') }}
+</p>
+
+<div class="max-w-3xl">
+
+  {# The one plain statement. It leads, because an operator who navigated here
+     from a dashboard card is asking exactly this question. rounded-md ->
+     card()'s rounded-lg is the provably-inert radius step (WP-6 step 18);
+     the flex/icon-led layout has no head row (no heading= given) so it
+     travels via extra= (C-3 allows flex/items-*/gap-*/mb-*) rather than
+     becoming a §4.5 idiom -- it is one more "canonical string + layout
+     utility" exception, the same shape step 16 already accepted for the
+     JS-filled #fleet-band's own mb-4. #}
+  {% call card(extra='flex items-start gap-3 mb-4') %}
+    <i data-lucide="circle-slash" class="w-5 h-5 text-faint flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+    <div>
+      <p class="text-sm font-semibold text-ink">
+        {{ t.get('overview_not_collected', 'Nothing here is being collected yet.') }}
+      </p>
+      <p class="text-sm text-muted mt-1">
+        {{ t.get('vitals_network_tip_desc',
+                 'Network monitoring will cover switches, firewalls, routers and access points. There is nothing to configure yet - servers and services are what Prism watches today.') }}
+      </p>
+    </div>
+  {% endcall %}
+
+  {# ── H2 — DESIGN_SYSTEM_SPEC.md Part II §2.3: one of the four H2s named
+     explicitly ("network.html:56"). This heading names the grid of doorway
+     cards below it and therefore cannot sit inside any one of them -- it
+     keeps the canonical H2 string and sits bare on `page`. The card this
+     heading and its "named routes onward" used to sit inside is GONE: its
+     rounded-md shell dissolves entirely rather than converting, because
+     nothing is left to wrap once the heading moves out and the link list
+     below becomes its own grid of doorway cards (WP-6 step 18).
+
+     WP-6 step 26 (D3 gate sweep): the paragraph that used to sit directly
+     under this heading (network_today_desc) is gate 5 -- plain explanation
+     of why Services/Infrastructure Map are the relevant links, no live
+     value, no caveat on data, no format rule, and this section is NOT an
+     empty/blocked region (the doorway grid below is fully functional) --
+     so it moves to a tooltip. Still a BARE h2 (not wrapped in card()) per
+     the rule above; tip_button()/tip_mirror() is the only mechanism that
+     can attach a tip to a heading this file writes literally. #}
+  {% set hid = next_tip_id() %}
+  <h2 class="text-base font-bold text-brand flex items-center gap-2 min-w-0">
+    {{ t.get('overview_today', 'What Prism watches today') }}
+    {{ tip_button('network_today_desc',
+                  'Reachability is already measured from the server side: every health check proves a port, a URL or a host answered, and the map shows how the servers relate.',
+                  hid, title_key='overview_today', title_fallback='What Prism watches today') }}
+  </h2>
+  {{ tip_mirror('network_today_desc',
+                'Reachability is already measured from the server side: every health check proves a port, a URL or a host answered, and the map shows how the servers relate.',
+                hid) }}
+  {# Named routes onward, now doorway cards (§4.5) rather than inline pills --
+     "a page about an absence that offers nowhere to go is the dead end the
+     empty-state rule exists to prevent" reads more like the app's other
+     doorways this way. #}
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <a href="/services" class="card-clickable bg-card rounded-lg border border-line p-5 flex items-start gap-3">
+      <i data-lucide="activity" class="w-5 h-5 text-accent flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      <div class="min-w-0">
+        <p class="text-sm font-semibold text-ink">{{ t.get('vitals_services', 'Services') }}</p>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-muted flex-shrink-0 ml-auto mt-0.5" aria-hidden="true"></i>
+    </a>
+    <a href="/topology" class="card-clickable bg-card rounded-lg border border-line p-5 flex items-start gap-3">
+      <i data-lucide="network" class="w-5 h-5 text-accent flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      <div class="min-w-0">
+        <p class="text-sm font-semibold text-ink">{{ t.get('infrastructure_map', 'Infrastructure Map') }}</p>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-muted flex-shrink-0 ml-auto mt-0.5" aria-hidden="true"></i>
+    </a>
+  </div>
+
+</div>
+
+{% endblock %}

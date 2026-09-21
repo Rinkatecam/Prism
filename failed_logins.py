@@ -29,7 +29,11 @@ keeping them together makes the contract obvious.
 from __future__ import annotations
 
 import json as _json
+
+import ingest_caps
 import logging
+
+from collector_v2 import fleet_walk
 
 from alert_scoring import update_score_on_fire
 from collector_v2.scripts import PS_COLLECT_FAILED_LOGINS
@@ -65,12 +69,13 @@ def _collect_all_failed_logins(db, servers, settings: dict) -> None:
 
     sec_cfg = settings.get("security_alerts", {})
     threshold = sec_cfg.get("login_failure_threshold", 10)
+    _caps = ingest_caps.resolve(settings)
 
-    for server in servers:
+    def _walk_one(server):
         # MAINTENANCE GATE: skip failed-login alerting entirely when in a
         # suppress_alerts window. Collection is also skipped to save WinRM time.
         if _is_alert_suppressed_by_maintenance(server.name, settings):
-            continue
+            return
         try:
             from winrm_factory import make_wsman
             wsman = make_wsman(server, connection_timeout=15, read_timeout=15)
@@ -79,15 +84,24 @@ def _collect_all_failed_logins(db, servers, settings: dict) -> None:
                 ps.add_script(PS_COLLECT_FAILED_LOGINS)
                 output = ps.invoke()
                 if ps.had_errors:
-                    continue
+                    return
                 stdout = str(output[0]) if output else "[]"
                 if not stdout.strip():
-                    continue
+                    return
+                # UNTRUSTED: the Security log is the one log an attacker can
+                # flood deliberately, and `Get-WinEvent` returns what it finds.
+                # Refuse an oversize response before parsing it, then cap the
+                # rows — the PowerShell `-MaxEvents` is the host's own promise
+                # and a compromised host does not have to keep it.
+                if not ingest_caps.payload_ok(stdout, _caps, server=server.name):
+                    return
                 data = _json.loads(stdout)
                 if isinstance(data, dict):
                     data = [data]
+                data = ingest_caps.cap_failed_logins(data, _caps,
+                                                     server=server.name)
                 if data:
-                    db.insert_failed_logins(server.name, data)
+                    db.insert_failed_logins(server.name, data, caps=_caps)
 
                     # Account lockout detection (Event ID 4740) — fires
                     # critical immediately, never throttled, never gated.
@@ -186,3 +200,15 @@ def _collect_all_failed_logins(db, servers, settings: dict) -> None:
                             logger.debug("[%s] Failed login webhook failed", server.name, exc_info=True)
         except Exception:
             logger.debug("[%s] Failed login collection skipped", server.name)
+
+    # Bounded concurrency instead of a serial fleet walk (collector
+    # audit finding 2). One WinRM session per server on a 300s cadence — the job the audit
+    # measured as the first to miss its cadence.
+    # Serial, the cost of the pass was the SUM of every timeout, which
+    # is how a job starts exceeding its own cadence at around 100-150
+    # servers. `collector_v2_periodic_workers: 1` restores the old
+    # serial walk exactly, which is how to rule this out as a cause.
+    fleet_walk.walk(
+        servers, _walk_one,
+        workers=fleet_walk.worker_count(settings),
+        label="failed_logins")

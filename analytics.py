@@ -854,7 +854,217 @@ def enrich_anomaly(anomaly: dict, forecasts: dict, thresholds: dict,
     return anomaly
 
 
-def correlate_events(db, cycle_events: list[dict], servers: list) -> list[dict]:
+def cascade_incidents(db, states: dict, onsets: dict, weights: dict,
+                      groups: dict | None = None, *, fresh=None,
+                      now: str | None = None,
+                      closure: dict | None = None) -> list[dict]:
+    """One incident per elected root — the closure-driven replacement for
+    the retrospective 60-second-window cascade rule (WP-1 phase 3).
+
+    Three things the old rule got wrong, and this does not:
+
+      * It only saw DIRECT dependents, so a 3-deep chain produced separate
+        incidents at each hop. This elects over the full closure.
+      * It required the dependent to be failing in the SAME 60s window, so
+        a slow cascade was never correlated at all.
+      * It deduped on a title PREFIX, and the title contains the child
+        count — so the same outage produced a new incident every time a
+        dependent joined or left. Dedup is now on `root_cause_server`,
+        which is a key rather than a sentence. That title-prefix dedup is
+        the root of the 295-duplicate pile-up the comments still mention.
+
+    A root with NO children still gets an incident: a lone failure is an
+    outage, and the old rule silently dropped it by requiring an affected
+    dependent.
+
+    PROMOTION (WP-1's close) is folded into this one pass rather than run
+    beside it, and that is the whole resolution of the design point phase 3
+    recorded. A promoted child is not a second mechanism: once its root
+    recovers, the child has no failed upstream, so root election ALREADY
+    elects it. All promotion adds is provenance — this newly-elected root
+    was, until this tick, somebody else's child — so its row is born with
+    `subject_server` = itself, `root_cause_server` = the origin, and
+    `promoted_at` stamped. One pass means there is no ordering hazard
+    between "create the orphan's incident" and "notice it was an orphan".
+
+    Dedup is on the SUBJECT, not the root cause: five orphans of one dead
+    domain controller all name it as their origin, and keying on the origin
+    would let the first of them block the other four.
+
+    Returns [{"incident_id", "root", "children"}] for incidents CREATED,
+    plus "promoted_from" on the promoted ones — an ongoing cascade returns
+    nothing, because it already has its row.
+    """
+    from cascade import elect_roots, promotion_candidates
+    made: list[dict] = []
+    if closure is None:
+        try:
+            closure = db.get_dependency_closure()
+        except Exception:
+            logger.exception("cascade: could not read the dependency closure")
+            return made
+
+    # Snapshot who owns an open incident BEFORE anything is written. Promotion
+    # asks "did an upstream of mine own an incident", and auto-resolution
+    # closes the root's incident the moment the root reads healthy — so the
+    # question has to be asked from a snapshot taken first. That ordering is
+    # load-bearing and tests/test_cascade_promotion.py pins it.
+    open_subjects: set[str] = set()
+    try:
+        for row in db.get_incidents(status="open", limit=1000):
+            subject = row.get("subject_server") or row.get("root_cause_server")
+            if subject:
+                open_subjects.add(subject)
+    except Exception:
+        logger.exception("cascade: could not read the open incidents")
+
+    promoted = promotion_candidates(closure, states, open_subjects, fresh, groups)
+    roots = elect_roots(closure, states, onsets, weights, groups)
+    stamp = now or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    for root, children in sorted(roots.items()):
+        try:
+            if db.get_open_incident_by_subject(root):
+                continue                      # ongoing: reuse, never respawn
+            kids = sorted(children)
+            origin = promoted.get(root)
+            if origin:
+                title = f"{root} still down after {origin} recovered"
+                desc = (f"{origin} has recovered; {root} has not. It began as "
+                        f"an impacted dependent of {origin} and now owns its "
+                        f"own outage.")
+            elif kids:
+                title = (f"{root} down — {len(kids)} dependent"
+                         f"{'s' if len(kids) != 1 else ''} impacted")
+                desc = (f"{root} is the root cause. Impacted downstream: "
+                        f"{', '.join(kids)}.")
+            else:
+                title = f"{root} down"
+                desc = f"{root} is down. No dependent servers are affected."
+            incident_id = db.create_incident(
+                title=title, severity="critical", subject_server=root,
+                root_cause_server=origin or root, description=desc,
+                promoted_at=stamp if origin else None)
+            entry = {"incident_id": incident_id, "root": root,
+                     "children": kids}
+            if origin:
+                entry["promoted_from"] = origin
+                _append_promotion_marker(db, root, origin)
+                logger.info("cascade incident #%d: %s PROMOTED from %s",
+                            incident_id, root, origin)
+            else:
+                logger.info("cascade incident #%d: root=%s children=%s",
+                            incident_id, root, kids)
+            made.append(entry)
+        except Exception:
+            logger.exception("cascade: failed to create incident for %s", root)
+    return made
+
+
+def _append_promotion_marker(db, child: str, origin: str) -> None:
+    """The child's timeline gets one line saying where it came from.
+
+    The correlation id is INHERITED from the origin outage when one exists and
+    DERIVED from the origin's name otherwise. Derived rather than random on
+    purpose: cascade incidents are created without linked events, so the
+    derived path is the normal one, and a deterministic id means every orphan
+    of the same root groups together instead of scattering.
+    """
+    correlation_id = f"cascade_{origin}"
+    try:
+        inc = db.get_open_incident_by_subject(origin)
+        if inc:
+            detail = db.get_incident_detail(inc["id"]) or {}
+            for evt in detail.get("events") or []:
+                if evt.get("correlation_id"):
+                    correlation_id = evt["correlation_id"]
+                    break
+    except Exception:
+        logger.debug("cascade: no correlation id available for %s", origin,
+                     exc_info=True)
+    try:
+        db.insert_event_correlated(
+            child, "promoted", None, None, None,
+            f"{child} is still down after {origin} recovered — promoted to "
+            f"its own incident", correlation_id)
+    except Exception:
+        logger.exception("cascade: could not append the promotion marker "
+                         "for %s", child)
+
+
+def _fresh_servers(rows, now: float, poll_interval: int) -> set:
+    """The servers whose latest sample is recent enough to ACT on.
+
+    Three poll intervals, floor 180s. Generous on purpose: this gates a
+    first-and-only notification, so the cost of waiting one more pass is a
+    slightly late page while the cost of acting on a stale row is a wrong
+    one. A timestamp far in the FUTURE is also rejected — a broken clock on
+    a monitored host must not manufacture freshness.
+    """
+    horizon = max(3 * int(poll_interval or 60), 180)
+    fresh = set()
+    for row in rows or []:
+        name, ts = row.get("server_name"), row.get("timestamp")
+        if not name or not ts:
+            continue
+        try:
+            when = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").replace(
+                tzinfo=timezone.utc).timestamp()
+        except (TypeError, ValueError):
+            continue
+        if -horizon <= (now - when) <= horizon:
+            fresh.add(name)
+    return fresh
+
+
+def _cascade_election(db, servers, settings: dict | None) -> list[dict]:
+    """Gather the live inputs and run the closure-driven election.
+
+    This is the replacement for the retrospective 60-second-window rule, and
+    it runs on every correlation pass whether or not there were new events:
+    an ongoing outage produces no fresh events, and promotion must still fire
+    on the pass where its root's recovery is first observed.
+
+    The seeded Domain Services edges are merged into the closure here exactly
+    as the supervisor merges them for the estate fold. Without that, incidents
+    and the estate needle would disagree about what is explained by what —
+    the same defect in two voices.
+    """
+    from cascade import build_closure, seeded_domain_edges
+    from severity_roles import resolve_role, weight_for
+    settings = settings or {}
+    now = time.time()
+    poll_interval = int(settings.get("poll_interval_seconds", 60) or 60)
+
+    rows = db.get_latest_all()
+    states = {r["server_name"]: r.get("status") or "unknown" for r in rows
+              if r.get("server_name")}
+    fresh = _fresh_servers(rows, now, poll_interval)
+
+    weights, groups, closure = {}, None, None
+    try:
+        for s in servers or []:
+            name = s.get("name") if isinstance(s, dict) else getattr(s, "name", None)
+            if not name:
+                continue
+            role, _source = resolve_role(s, settings)
+            weights[name] = weight_for(role, settings, now=now)
+        assumed, groups = seeded_domain_edges(servers or [], settings)
+        if assumed:
+            closure = build_closure(list(db.get_all_dependencies()) + assumed)
+    except Exception:
+        logger.exception("cascade: could not build the seeded inputs")
+
+    # onsets stay empty: they only break TIES between two candidate roots, and
+    # the fallback (heavier weight first) is a defensible answer. Deriving them
+    # would mean a per-server status-history query on every pass, which is the
+    # cost this whole design exists to avoid.
+    return cascade_incidents(db, states, {}, weights, groups,
+                             fresh=fresh, closure=closure)
+
+
+def correlate_events(db, cycle_events: list[dict], servers: list,
+                     settings: dict | None = None) -> list[dict]:
     """Detect correlated patterns in events from the current collection cycle.
 
     Implements correlation rules:
@@ -876,7 +1086,14 @@ def correlate_events(db, cycle_events: list[dict], servers: list) -> list[dict]:
     from collections import Counter, defaultdict
 
     if not cycle_events:
-        # Still run auto-resolution even when no new events
+        # No new events is NOT no work. An ongoing outage emits nothing, and
+        # promotion has to fire on the pass where its root's recovery is first
+        # observed — which is usually a quiet pass, because a recovery is the
+        # absence of a failure event, not the presence of one.
+        try:
+            _cascade_election(db, servers, settings)
+        except Exception:
+            logger.exception("Closure-driven cascade election failed")
         _auto_resolve_incidents(db)
         return []
 
@@ -1039,79 +1256,28 @@ def correlate_events(db, cycle_events: list[dict], servers: list) -> list[dict]:
     except Exception:
         logger.exception("Tag-based correlation failed")
 
-    # ── Rule 4: Dependency-based cascading failure ──
-    # When a server goes critical/offline, check if servers that depend on it are also failing
+    # ── Rule 4 RETIRED: dependency cascades ──
+    #
+    # The retrospective 60-second-window rule that used to stand here is gone.
+    # Phase 3 wrote its replacement and WP-1's close wired it: the election now
+    # happens in `_cascade_election` below, over the full dependency closure.
+    #
+    # Three things the old rule got wrong, kept here because each one is a
+    # requirement on whatever replaces it: it saw only DIRECT dependents, so a
+    # three-deep chain opened an incident at every hop; it required the
+    # dependent to be failing inside the SAME window, so a slow cascade was
+    # never correlated at all; and it deduped on a title PREFIX containing the
+    # child count, so the same outage spawned a fresh incident every time a
+    # dependent joined or left — the root of the 295-duplicate pile-up.
+
+    # ── Closure-driven cascade election + promotion ──
+    # Before auto-resolution, always: auto-resolution closes the root's
+    # incident the moment the root reads healthy, and promotion needs to see
+    # that row still open to know the orphan had an origin.
     try:
-        all_deps = db.get_all_dependencies()
-        if all_deps:
-            # Build map: server -> list of servers that depend ON it
-            dependents_map = defaultdict(list)
-            for dep in all_deps:
-                dependents_map[dep["depends_on"]].append(dep["server_name"])
-
-            # Find critical/offline servers this cycle
-            critical_servers = set()
-            for e in cycle_events:
-                if e.get("event_type") in ("critical", "offline"):
-                    critical_servers.add(e["server_name"])
-
-            # For each critical server, check if its dependents are also in trouble
-            for upstream in critical_servers:
-                downstream_list = dependents_map.get(upstream, [])
-                if not downstream_list:
-                    continue
-
-                # Which dependents are also failing this cycle?
-                affected_downstream = [s for s in downstream_list if s in critical_servers]
-                if not affected_downstream:
-                    continue
-
-                # Found cascading failure: upstream is down and dependents are failing
-                all_affected = [upstream] + sorted(affected_downstream)
-                server_list = ", ".join(all_affected)
-
-                # Check if we already created an incident for these servers this cycle (avoid duplicates)
-                already_covered = any(
-                    c.get("rule") in ("multi_server_offline", "tag_correlation") and
-                    upstream in c.get("message", "")
-                    for c in correlated
-                )
-                if already_covered:
-                    continue
-
-                try:
-                    # Dedup: an ongoing cascade from this upstream reuses its open
-                    # incident instead of spawning a fresh one every collector
-                    # cycle (root cause of the 295-duplicate pile-up).
-                    existing_id = db.get_open_incident_id_by_title_prefix(
-                        f"Cascading failure from {upstream}")
-                    if existing_id:
-                        for evt in cycle_events:
-                            if evt.get("server_name") in all_affected and evt.get("event_id"):
-                                db.link_event_to_incident(existing_id, evt["event_id"])
-                        continue
-
-                    incident_id = db.create_incident(
-                        title=f"Cascading failure from {upstream} ({len(affected_downstream)} dependent{'s' if len(affected_downstream) > 1 else ''})",
-                        severity="critical",
-                        root_cause_server=upstream,
-                        description=f"Upstream server {upstream} is down. Dependent servers also failing: {', '.join(affected_downstream)}"
-                    )
-                    # Link all related events
-                    for evt in cycle_events:
-                        if evt.get("server_name") in all_affected and evt.get("event_id"):
-                            db.link_event_to_incident(incident_id, evt["event_id"])
-                    correlated.append({
-                        "correlation_id": f"cascade_{upstream}",
-                        "message": f"Cascading failure from {upstream}: {server_list}",
-                        "rule": "dependency_cascade"
-                    })
-                    logger.info("Created cascading failure incident #%d: %s -> %s",
-                               incident_id, upstream, affected_downstream)
-                except Exception:
-                    logger.exception("Failed to create cascading failure incident for %s", upstream)
+        _cascade_election(db, servers, settings)
     except Exception:
-        logger.exception("Dependency-based correlation failed")
+        logger.exception("Closure-driven cascade election failed")
 
     # ── Auto-resolution check ──
     _auto_resolve_incidents(db)
@@ -1147,11 +1313,21 @@ def _auto_resolve_incidents(db):
                 evt["server_name"] for evt in (detail.get("events") or [])
                 if evt.get("server_name")
             }
-            # Fallback: incidents whose events were purged (or were never linked —
-            # e.g. cascade incidents) can still auto-resolve on their recorded
-            # root-cause server. Without this they become permanent zombies.
-            if not incident_servers and detail.get("root_cause_server"):
-                incident_servers = {detail["root_cause_server"]}
+            # Fallback: incidents whose events were purged (or were never linked
+            # — e.g. cascade incidents) can still auto-resolve on the server they
+            # are ABOUT. Without this they become permanent zombies.
+            #
+            # SUBJECT first, root cause second, and the order is a bug fix. A
+            # promoted child names its ORIGIN as the root cause, so resolving on
+            # the root cause would close it the moment the origin came back —
+            # while the child itself is still down, which is the entire reason it
+            # was promoted. Pre-subject rows have no subject and meant subject ==
+            # root, so the fallback chain reads them correctly too.
+            if not incident_servers:
+                subject = (detail.get("subject_server")
+                           or detail.get("root_cause_server"))
+                if subject:
+                    incident_servers = {subject}
 
             if not incident_servers:
                 continue

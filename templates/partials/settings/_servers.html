@@ -1,0 +1,194 @@
+{# ── Servers ────────────────────────────────────────────────────────────
+
+   WP-4 D4 — the slice the plan specified and the board skipped, found by
+   D8's index crawl listing configuration on a page WP-4 exists to make
+   view-only.
+
+   This is D4a: TAG MANAGEMENT. The line runs THROUGH the tag feature rather
+   than around it, which is the same shape D3b hit with runbooks:
+
+     * creating, renaming, recolouring and deleting a tag is configuration,
+       and moves here;
+     * the pills on the server cards and the assign menu are how an operator
+       reads and works the fleet, and stay on /servers.
+
+   So `loadTags` / `createTag` / `editTag` / `saveEditTag` / `deleteTag` move,
+   and `loadServerTags` / `renderServerTagPills` / the `_tag*` contrast
+   helpers stay. They never shared state: the assign menu reads `_allTags`,
+   which `loadServerTags` fills. Checked rather than assumed, because a name
+   that resolves on the page it was written for and not on the page it ends
+   up serving is the defect this package has now produced four times. #}
+
+<section class="mb-8" data-settings-section="servers">
+  {# WP-6 step 15: this h2 STAYS an h2 (C9 -- it already owned this card;
+     the include in between it and its card is why the SECTION_HEADER_
+     BASELINE detector never flagged it -- see that ratchet's own header
+     comment) and simply takes the canonical string plus a stable id, now
+     rendered by card()'s own head row. #}
+  {% from "partials/_card.html" import card with context %}
+
+  {% include "partials/settings/_server_config.html" %}
+
+  {% call card(heading=t.get('tag_management', 'Tag Management'), icon='tags',
+               heading_id='tag-management-heading') %}
+  <div class="space-y-4">
+    <div class="flex items-center gap-3">
+      <label for="new-tag-name" class="sr-only">{{ t.get('tag_name', 'Tag name') }}</label>
+      <input type="text" id="new-tag-name"
+             placeholder="{{ t.get('tag_name_placeholder', 'Tag name…') }}"
+             class="px-3 py-1.5 text-sm rounded border border-line bg-field">
+      <label for="new-tag-color" class="sr-only">{{ t.get('tag_colour', 'Tag colour') }}</label>
+      <input type="color" id="new-tag-color" value="#6B7280"
+             class="w-8 h-8 rounded border border-line bg-field cursor-pointer p-0.5">
+      <button data-action="createTag"
+              class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
+        <i data-lucide="plus" class="w-4 h-4"></i>
+        {{ t.get('add_tag', 'Add Tag') }}
+      </button>
+    </div>
+
+    {# The empty state is the shared one now. The version that moved here was
+       hand-rolled, and its hint ("Use the form above to create your first
+       tag") was one of the strings that had never been offered for
+       translation. #}
+    <div id="tag-list" class="space-y-2"></div>
+    <div id="no-tags"></div>
+  </div>
+  {% endcall %}
+
+  {# Health checks are part of configuring a server, so they sit inside
+     this section rather than beside it — which is also what puts them
+     under its change-tracking exemption. #}
+  {% include "partials/settings/_health_checks.html" %}
+  {% include "partials/settings/_dependencies.html" %}
+
+</section>
+
+<script nonce="{{ csp_nonce }}">
+  // ── Tag management (moved from /servers, WP-4 D4a) ──────────────────
+  //
+  // Five functions and nothing else. The tag PILLS and the assign menu did
+  // not come with them: they are how the fleet is read and worked, not how
+  // tags are defined, and they live on /servers still.
+  (function () {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+    const TAG_T = {
+      empty: {{ t.get('no_tags', 'No tags created yet') | tojson }},
+      emptyHint: {{ t.get('no_tags_hint', 'Name one above and pick a colour — tags group servers so you can filter the fleet by what they do') | tojson }},
+      nameRequired: {{ t.get('tag_name_required', 'A tag needs a name') | tojson }},
+      createFailed: {{ t.get('tag_create_failed', 'Could not create the tag') | tojson }},
+      saveFailed: {{ t.get('tag_save_failed', 'Could not save the tag') | tojson }},
+      deleteFailed: {{ t.get('tag_delete_failed', 'Could not delete the tag') | tojson }},
+      deleteConfirm: {{ t.get('tag_delete_confirm', "Delete the tag '{name}'? It is removed from every server that carries it.") | tojson }},
+      edit: {{ t.get('edit', 'Edit') | tojson }},
+      save: {{ t.get('save', 'Save') | tojson }},
+      cancel: {{ t.get('cancel', 'Cancel') | tojson }},
+      delete: {{ t.get('delete', 'Delete') | tojson }},
+    };
+
+    function fill(template, values) {
+      return Object.keys(values).reduce(
+        (out, k) => out.split('{' + k + '}').join(values[k]), template);
+    }
+
+    window.loadTags = function () {
+      fetch('/api/tags', { headers: { 'X-CSRFToken': csrfToken } })
+        .then(r => r.json())
+        .then(data => {
+          const list = document.getElementById('tag-list');
+          const none = document.getElementById('no-tags');
+          if (!list || !none) return;
+          const tags = data.tags || [];
+          if (!tags.length) {
+            list.innerHTML = '';
+            none.innerHTML = window.prismEmptyState('tags', TAG_T.empty, TAG_T.emptyHint);
+            if (window.lucide) lucide.createIcons();
+            return;
+          }
+          none.innerHTML = '';
+          list.innerHTML = tags.map(tag => `
+            <div class="flex items-center justify-between p-2 rounded border border-line bg-page" data-tag-id="${_escHtml(String(tag.id))}">
+              <div class="flex items-center gap-2">
+                <span class="w-4 h-4 rounded-full flex-shrink-0" style="background-color: ${_escHtml(tag.color || '#6B7280')}"></span>
+                <span class="text-sm font-medium tag-name-display">${_escHtml(tag.name)}</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <button data-action="editTag" data-args='${JSON.stringify([tag.id, tag.name, tag.color]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}'
+                        class="p-1 rounded hover:bg-raised text-muted" aria-label="${_escHtml(TAG_T.edit)}">
+                  <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                </button>
+                <button data-action="deleteTag" data-args='${JSON.stringify([tag.id, tag.name]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}'
+                        class="p-1 rounded hover:bg-critical-tint text-critical" aria-label="${_escHtml(TAG_T.delete)}">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>`).join('');
+          if (window.lucide) lucide.createIcons();
+        })
+        .catch(() => showToast(TAG_T.createFailed, 'error'));
+    };
+
+    window.createTag = function () {
+      const name = (document.getElementById('new-tag-name').value || '').trim();
+      const color = document.getElementById('new-tag-color').value;
+      if (!name) { showToast(TAG_T.nameRequired, 'warn'); return; }
+      fetch('/api/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({ name: name, color: color }),
+      }).then(r => r.json()).then(d => {
+        if (!d.ok) { showToast(d.error || TAG_T.createFailed, 'error'); return; }
+        document.getElementById('new-tag-name').value = '';
+        loadTags();
+      }).catch(() => showToast(TAG_T.createFailed, 'error'));
+    };
+
+    window.editTag = function (id, currentName, currentColor) {
+      const row = document.querySelector(`[data-tag-id="${id}"]`);
+      if (!row) return;
+      row.innerHTML = `
+        <div class="flex items-center gap-2 flex-1">
+          <input type="color" id="edit-tag-color-${id}" value="${_escHtml(currentColor || '#6B7280')}"
+                 class="w-7 h-7 rounded border border-line bg-field cursor-pointer p-0.5">
+          <input type="text" id="edit-tag-name-${id}" value="${_escHtml(currentName)}"
+                 class="flex-1 px-2 py-1 text-sm rounded border border-line bg-field">
+        </div>
+        <div class="flex items-center gap-1 ml-2">
+          <button data-action="saveEditTag" data-args='${JSON.stringify([id])}'
+                  class="px-2 py-1 text-xs rounded bg-accent text-white dark:text-page">${_escHtml(TAG_T.save)}</button>
+          <button data-action="loadTags"
+                  class="px-2 py-1 text-xs rounded border border-line text-muted">${_escHtml(TAG_T.cancel)}</button>
+        </div>`;
+      if (window.lucide) lucide.createIcons();
+    };
+
+    window.saveEditTag = function (id) {
+      const name = (document.getElementById('edit-tag-name-' + id).value || '').trim();
+      const color = document.getElementById('edit-tag-color-' + id).value;
+      if (!name) { showToast(TAG_T.nameRequired, 'warn'); return; }
+      fetch('/api/tags/' + id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({ name: name, color: color }),
+      }).then(r => r.json()).then(d => {
+        if (!d.ok) { showToast(d.error || TAG_T.saveFailed, 'error'); return; }
+        loadTags();
+      }).catch(() => showToast(TAG_T.saveFailed, 'error'));
+    };
+
+    window.deleteTag = async function (id, name) {
+      const ok = await pConfirm(fill(TAG_T.deleteConfirm, { name: name || '' }));
+      if (!ok) return;
+      fetch('/api/tags/' + id, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': csrfToken },
+      }).then(r => r.json()).then(d => {
+        if (!d.ok) { showToast(d.error || TAG_T.deleteFailed, 'error'); return; }
+        loadTags();
+      }).catch(() => showToast(TAG_T.deleteFailed, 'error'));
+    };
+
+    if (document.getElementById('tag-list')) loadTags();
+  })();
+</script>

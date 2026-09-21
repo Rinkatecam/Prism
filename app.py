@@ -120,7 +120,7 @@ seed_builtin_runbooks(db)
 
 # Register routes
 from routes.api import register_api_routes  # noqa: E402
-from routes.views import register_view_routes  # noqa: E402
+from routes.views import register_view_routes, SETTINGS_THEMES  # noqa: E402
 register_api_routes(app, db, config, limiter)
 register_view_routes(app, db, config)
 
@@ -241,6 +241,15 @@ def inject_locale():
         "fmt_time": lambda iso: _format_time_only(iso, s),
         "csp_nonce": getattr(_g_mod, "csp_nonce", ""),
         "compliance_enabled": _compliance_enabled,
+        # partials/_tip.html's macros mint ids through this — see
+        # _next_tip_id's docstring for why the counter lives on flask.g
+        # rather than as a local closed over by this function.
+        "next_tip_id": _next_tip_id,
+        # WP-6 step 21 (DESIGN_SYSTEM_SPEC.md §7.1) — the Settings menu
+        # registry, exposed to every template so steps 22-23 can build the
+        # top-bar theme menu without their own import. No template reads
+        # this yet; this step is data-layer only.
+        "settings_themes": SETTINGS_THEMES,
     }
 
 # ── Startup summary ──
@@ -282,6 +291,30 @@ def _emit_request_id(response):
     return response
 
 
+def _next_tip_id():
+    """Unique id for one tooltip's sr-only mirror <span>, referenced by its
+    trigger's aria-describedby (DESIGN_SYSTEM_SPEC.md §5.6).
+
+    inject_locale is a context PROCESSOR, and Flask calls it on every
+    render_template() call, not once per request — so a counter closed over
+    by inject_locale itself would restart at 0 the moment one view rendered
+    a second template or partial in the same request, handing out an id
+    that already exists earlier in the page. flask.g is allocated fresh per
+    REQUEST and torn down at teardown, so a counter parked there survives
+    every render_template() call within one request and starts clean on the
+    next — the same lifetime csp_nonce and request_id already rely on
+    above, hence reusing _g_mod rather than importing g under its own name.
+
+    Prefixed `ps-` (not a bare number) because an HTML id consumed as a CSS
+    id selector — `#123` — needs escaping if it starts with a digit; every
+    other hand-authored id in this app already avoids that trap by not
+    being all-numeric.
+    """
+    n = getattr(_g_mod, "_tip_id_seq", 0) + 1
+    _g_mod._tip_id_seq = n
+    return f"ps-tip-{n}"
+
+
 # ── Security headers ──
 @app.after_request
 def set_security_headers(response):
@@ -316,19 +349,36 @@ def set_security_headers(response):
     #   * dashboard's hx-on::after-swap handlers became data-toggle-empty,
     #     dispatched from a single htmx:afterSwap listener in base.html.
     #
-    # CDN hosts (Tailwind/unpkg/jsdelivr) stay in script-src as host-sources —
-    # a nonce does NOT disable host allowlists (only 'strict-dynamic' would),
-    # so external <script src=...> keep loading.
+    # NO EXTERNAL ORIGIN APPEARS IN THIS POLICY, and that is load-bearing
+    # rather than tidy. script-src used to allow cdn.tailwindcss.com,
+    # unpkg.com and cdn.jsdelivr.net, with style-src and connect-src carrying
+    # one or two of the same — left behind when the front end stopped using
+    # them. Every asset the browser loads (Tailwind, htmx, idiomorph,
+    # Chart.js, Lucide, both web fonts) is vendored under static/vendor/ and
+    # served from this origin; a measured dashboard load makes zero off-origin
+    # requests.
     #
-    # style-src 'unsafe-inline' STAYS: Tailwind's CDN runtime, dynamic
-    # status-badge gradients, and inline style="..." attributes all depend on
-    # it. Removing it breaks the UI; keeping it is documented practice.
+    # Nothing was broken and nothing was being fetched, which is exactly why
+    # the entries survived: an allowlist entry that nothing uses still GRANTS
+    # THE CAPABILITY. Injected script could have reached three third-party
+    # origins, and "does this thing phone home" is the first question a
+    # customer's security reviewer asks. The claim in docs/DATA_FLOWS.md is
+    # what this policy has to be able to back.
+    #
+    # The comment that stood here explained the CDN entries in terms of
+    # "Tailwind's CDN runtime" — untrue since Tailwind was vendored, and the
+    # kind of stale justification that keeps a stale rule alive.
+    #
+    # style-src 'unsafe-inline' STAYS, and its reason is unchanged and real:
+    # the vendored Tailwind BROWSER build generates CSS into a <style> element
+    # at runtime, status-badge gradients are computed, and inline style="..."
+    # attributes are used throughout. Removing it breaks the UI.
     _nonce = getattr(_g_mod, "csp_nonce", "")
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        f"script-src 'self' https://cdn.tailwindcss.com https://unpkg.com https://cdn.jsdelivr.net 'nonce-{_nonce}'; "
-        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-        "connect-src 'self' https://cdn.jsdelivr.net https://unpkg.com; "
+        f"script-src 'self' 'nonce-{_nonce}'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "connect-src 'self'; "
         "img-src 'self' data:; "
         "frame-ancestors 'none'; "
         "base-uri 'self'; "
@@ -408,6 +458,15 @@ else:
     logger.info("Pytest detected — skipping collector_v2 background startup")
 
 # ── Start restart scheduler daemon thread ──
+#
+# Constructed unconditionally so the name exists under pytest too (the
+# watchdog below reads `restart_thread.is_alive()` regardless), but NOT
+# started: this loop polls the real restart schedule in config.json and
+# EXECUTES a real fleet restart when one is due. Before this guard, every
+# `pytest` invocation — including from any of the ~30 test files that import
+# `app` — started it for real, against the real config and the real 29-server
+# fleet, unconditionally. Unlike collector_v2's startup above, nothing here
+# checked `_under_pytest` at all.
 from restart_scheduler import restart_scheduler_loop  # noqa: E402
 restart_thread = threading.Thread(
     target=restart_scheduler_loop,
@@ -415,20 +474,35 @@ restart_thread = threading.Thread(
     daemon=True,
     name="prism-restart-scheduler",
 )
-restart_thread.start()
+if not _under_pytest:
+    restart_thread.start()
 
 # Seed workflow templates
+#
+# Left unconditional: idempotent (checks existing template names first,
+# INSERTs only what's missing) and writes only inert, trigger_type="manual"
+# template rows — it doesn't run anything, so it carries none of the risk the
+# scheduler threads do.
 from workflow_engine import seed_workflow_templates, workflow_scheduler_loop  # noqa: E402
 seed_workflow_templates(db)
 
 # Start workflow scheduler thread
+#
+# Same reasoning as restart_thread: this loop checks real workflows for
+# event-type triggers and EXECUTES them against the real fleet when one
+# fires. Constructed unconditionally (watchdog needs the name), started only
+# outside pytest.
 workflow_thread = threading.Thread(
     target=workflow_scheduler_loop,
     args=(config.get_settings, db, config.get_servers),
     daemon=True,
     name="prism-workflow-scheduler",
 )
-workflow_thread.start()
+if not _under_pytest:
+    workflow_thread.start()
+
+if _under_pytest:
+    logger.info("Pytest detected — skipping restart/workflow scheduler background startup")
 
 
 # ── Background-thread watchdog (S2-11 / P10 from AUDIT-2026-05) ──
@@ -597,9 +671,23 @@ watchdog_thread = threading.Thread(
     daemon=True,
     name="prism-watchdog",
 )
-watchdog_thread.start()
+if not _under_pytest:
+    watchdog_thread.start()
+else:
+    logger.info("Pytest detected — skipping watchdog background startup")
 
-logger.info("Prism started. Collector + restart scheduler + workflow scheduler + watchdog running. Dashboard at http://localhost:5000")
+# _watchdog_loop treats a never-started restart/workflow thread exactly like
+# a dead one: `is_alive()` is False either way, and it writes a real
+# `thread_dead_*` row to the real audit_log the first time it notices. Gating
+# only the two scheduler threads and leaving THIS one running under pytest
+# would have replaced "pytest silently restarts your fleet" with "pytest
+# silently writes fake tamper-looking rows into the real audit trail" —
+# a smaller hazard, but still a real one, and still not what a test run
+# should ever do to production data.
+
+if not _under_pytest:
+    logger.info("Prism started. Collector + restart scheduler + workflow scheduler + "
+                "watchdog running. Dashboard at http://localhost:5000")
 
 if __name__ == "__main__":
     import sys

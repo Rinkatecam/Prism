@@ -125,17 +125,22 @@ def test_csp_script_src_is_nonce_based(app_client):
     assert _SCRIPT_NONCE_IN_SRC_RE.search(script_src), (
         f"script-src must advertise 'nonce-...': {script_src!r}"
     )
-    # 'strict-dynamic' stays OUT — it would disable the CDN host allowlist.
+    # 'strict-dynamic' stays OUT. The original reason was that it would
+    # disable the CDN host allowlist — that reason expired with the allowlist.
+    # It stays out now because it propagates trust to scripts loaded BY a
+    # nonced script, which is a wider grant than this app needs when every
+    # <script> it loads is a same-origin file it ships.
     assert "'strict-dynamic'" not in script_src, (
-        f"'strict-dynamic' would disable the CDN host allowlist: {script_src!r}"
+        f"'strict-dynamic' grants more than a same-origin app needs: {script_src!r}"
     )
-    # CDN host-sources survive (a nonce does NOT disable host allowlists).
-    for host in (
-        "https://cdn.tailwindcss.com",
-        "https://unpkg.com",
-        "https://cdn.jsdelivr.net",
-    ):
-        assert host in script_src, f"CDN host {host} dropped from script-src: {script_src!r}"
+    # No external origin. Every asset the browser loads is vendored under
+    # static/vendor/ and served by Prism itself; a measured dashboard load
+    # makes zero off-origin requests. See docs/DATA_FLOWS.md.
+    assert "https://" not in script_src, (
+        f"script-src names an external origin: {script_src!r}. Prism serves "
+        "every script from its own origin — an allowlist entry nothing uses "
+        "still grants the capability, and the no-vendor-endpoint claim in "
+        "docs/DATA_FLOWS.md is exactly what it weakens")
 
 
 # ── 6. The advertised nonce matches the nonce on the rendered inline script ─
@@ -227,3 +232,32 @@ def test_csp_other_directives_intact(app_client):
     assert "form-action 'self'" in csp
     assert "img-src 'self' data:" in csp
     assert "default-src 'self'" in csp
+
+
+# ── 10. No directive names an external origin, anywhere ───────────────────
+def test_no_csp_directive_permits_an_external_origin(app_client):
+    """The whole policy, not one directive at a time.
+
+    This is the check that carries the front-end half of the claim in
+    docs/DATA_FLOWS.md: Prism has no vendor endpoint and the browser fetches
+    nothing from a third party. Every asset — Tailwind, htmx, idiomorph,
+    Chart.js, Lucide, both web fonts — is vendored under `static/vendor/` and
+    served from Prism's own origin.
+
+    The policy did not always say so. `script-src` allowed three CDNs,
+    `style-src` and `connect-src` one or two each, left behind when the
+    front-end stopped using them; the comment beside them still described
+    "Tailwind's CDN runtime" long after Tailwind was vendored. Nothing was
+    broken and nothing was being fetched, which is precisely why it survived
+    — **an allowlist entry that nothing uses still grants the capability**,
+    and it is the first thing a reviewer greps for.
+
+    Scoped to the WHOLE header rather than per-directive on purpose: the
+    per-directive version of this check existed and passed while two other
+    directives named CDNs, because it only ever read `script-src`.
+    """
+    csp = _csp(app_client.get(_PROBE_PATH))
+    offenders = [d.strip() for d in csp.split(";")
+                 if "://" in d and "data:" not in d]
+    assert not offenders, (
+        "CSP directives naming an external origin: " + "; ".join(offenders))

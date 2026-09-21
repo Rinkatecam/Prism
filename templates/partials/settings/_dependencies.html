@@ -1,0 +1,468 @@
+{% from "partials/_empty_state.html" import empty_state %}
+
+{# ── Server dependencies ───────────────────────────────
+
+   WP-4 D4c, moved from /servers. Declaring that one server needs another is
+   configuration. The topology page READS these relationships and draws them,
+   which is a view and stays where it is — the same split D4a made through
+   tags and D4b made through health checks.
+
+   A div rather than a section, for the reason _health_checks.html records:
+   it nests inside the Servers settings section, and every <section> on a
+   settings page has to declare which section it is.
+
+   WP-6 step 15: the h2 STAYS an h2 (C9 -- it already owned this card) and
+   simply takes the canonical string plus a stable id, now rendered by
+   card()'s own head row. "Add Dependency" moves into controls=. #}
+{% from "partials/_card.html" import card with context %}
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 8b — Dependencies
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="mb-8">
+  {% set _dep_controls %}
+  <button data-action="toggleDepForm" class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
+    <i data-lucide="plus" class="w-4 h-4"></i>
+    {{ t.add_dependency }}
+  </button>
+  {% endset %}
+  {% call card(heading=t.dependencies, icon='network',
+               heading_id='dependencies-heading', controls=_dep_controls) %}
+
+    <!-- Add dependency form (hidden by default) -->
+    <div id="dep-add-form" class="hidden mb-4 p-4 rounded-lg border border-dashed border-line bg-page dark:bg-page/50">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+        <div>
+          <label class="block text-[10px] font-medium text-muted mb-1">{{ t.get('server', 'Server') }}</label>
+          <select id="dep-server-name" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
+            <option value="">--</option>
+            {% for s in servers %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-medium text-muted mb-1">{{ t.depends_on }}</label>
+          <select id="dep-depends-on" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
+            <option value="">--</option>
+            {% for s in servers %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-medium text-muted mb-1">{{ t.dependency_type }}</label>
+          <select id="dep-type" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field" data-change="onDepTypeChange">
+            <option value="service">{{ t.dep_type_service }}</option>
+            <option value="database">{{ t.dep_type_database }}</option>
+            <option value="auth">{{ t.dep_type_auth }}</option>
+            <option value="dns">{{ t.dep_type_dns }}</option>
+            <option value="file_share">{{ t.dep_type_file_share }}</option>
+            <option value="custom">+ Custom...</option>
+          </select>
+          <input type="text" id="dep-custom-type" class="hidden w-full mt-1 px-2 py-1.5 text-sm rounded border border-line bg-field" placeholder="Custom type name...">
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+        <div>
+          <label class="block text-[10px] font-medium text-muted mb-1">Target</label>
+          <select id="dep-target-mode" class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field" data-change="onDepTargetModeChange">
+            <option value="port">Port</option>
+            <option value="service">Service</option>
+            <option value="process">Process</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-medium text-muted mb-1" id="dep-target-label">Port</label>
+          <input type="number" id="dep-port" placeholder="443" min="1" max="65535"
+                 class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
+          <div id="dep-service-wrap" class="hidden gap-1">
+            <input type="text" id="dep-service-name" class="flex-1 px-2 py-1.5 text-sm rounded border border-line bg-field" placeholder="Service name">
+            <button type="button" data-action="_srvBrowseDepService" class="px-2 py-1.5 text-xs rounded border border-line hover:bg-raised dark:hover:bg-line flex items-center gap-1" aria-label="{{ t.get('browse_from_server', 'Browse from server') }}" aria-describedby="dep-browse-service-desc" data-tip-title="{{ t.get('browse_from_server', 'Browse from server') }}" data-tip-desc="{{ t.get('browse_from_server_desc', 'List services or processes running on the selected server instead of typing a name.') }}">
+              <i data-lucide="list" class="w-3 h-3"></i> Browse
+            </button>
+            <span class="sr-only" id="dep-browse-service-desc">{{ t.get('browse_from_server_desc', 'List services or processes running on the selected server instead of typing a name.') }}</span>
+          </div>
+          <div id="dep-process-wrap" class="hidden gap-1">
+            <input type="text" id="dep-process-name" class="flex-1 px-2 py-1.5 text-sm rounded border border-line bg-field" placeholder="Process name">
+            <button type="button" data-action="_srvBrowseDepProcess" class="px-2 py-1.5 text-xs rounded border border-line hover:bg-raised dark:hover:bg-line flex items-center gap-1" aria-label="{{ t.get('browse_from_server', 'Browse from server') }}" aria-describedby="dep-browse-process-desc" data-tip-title="{{ t.get('browse_from_server', 'Browse from server') }}" data-tip-desc="{{ t.get('browse_from_server_desc', 'List services or processes running on the selected server instead of typing a name.') }}">
+              <i data-lucide="list" class="w-3 h-3"></i> Browse
+            </button>
+            <span class="sr-only" id="dep-browse-process-desc">{{ t.get('browse_from_server_desc', 'List services or processes running on the selected server instead of typing a name.') }}</span>
+          </div>
+        </div>
+        <div>
+          <label class="block text-[10px] font-medium text-muted mb-1">{{ t.description }}</label>
+          <input type="text" id="dep-description" placeholder="Optional description"
+                 class="w-full px-2 py-1.5 text-sm rounded border border-line bg-field">
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button data-action="addDependency"
+                class="px-4 py-1.5 text-sm font-medium rounded bg-healthy text-white hover:opacity-90 flex items-center gap-1">
+          <i data-lucide="save" class="w-4 h-4"></i>
+          {{ t.get('save', 'Save') }}
+        </button>
+        <button data-action="toggleDepForm" class="px-4 py-1.5 text-sm font-medium rounded border border-line hover:bg-page dark:hover:bg-line flex items-center gap-1">
+          <i data-lucide="x" class="w-4 h-4"></i>
+          {{ t.get('cancel', 'Cancel') }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Existing dependencies table -->
+    <div id="deps-table-container">
+      {{ empty_state('network',
+                     t.get('no_dependencies', 'No dependencies configured'),
+                     t.get('no_dependencies_hint',
+                           'Define dependencies in Servers settings to map service relationships')) }}
+    </div>
+  {% endcall %}
+</div>
+
+<script nonce="{{ csp_nonce }}">
+// ═══════════════════════════════════════════════════════════════
+// Dependencies (F8)
+// ═══════════════════════════════════════════════════════════════
+
+const DEP_TYPE_LABELS = {
+  service: {{ t.dep_type_service | tojson }},
+  database: {{ t.dep_type_database | tojson }},
+  auth: {{ t.dep_type_auth | tojson }},
+  dns: {{ t.dep_type_dns | tojson }},
+  file_share: {{ t.dep_type_file_share | tojson }},
+  custom: {{ t.dep_type_custom | tojson }},
+};
+
+function toggleDepForm() {
+  const form = document.getElementById('dep-add-form');
+  form.classList.toggle('hidden');
+  if (!form.classList.contains('hidden')) {
+    lucide.createIcons({ nodes: [form] });
+  }
+}
+
+function onDepTypeChange() {
+  const sel = document.getElementById('dep-type');
+  const customInput = document.getElementById('dep-custom-type');
+  if (sel.value === 'custom') {
+    customInput.classList.remove('hidden');
+    customInput.focus();
+  } else {
+    customInput.classList.add('hidden');
+    customInput.value = '';
+  }
+}
+
+function onDepTargetModeChange() {
+  const mode = document.getElementById('dep-target-mode').value;
+  // Port: simple show/hide
+  document.getElementById('dep-port').classList.toggle('hidden', mode !== 'port');
+  // Service/Process wraps: toggle both `hidden` AND `flex` so Tailwind classes
+  // don't fight — `hidden` + `flex` on the same element has undefined
+  // precedence depending on class source order.
+  const svc = document.getElementById('dep-service-wrap');
+  const prc = document.getElementById('dep-process-wrap');
+  svc.classList.toggle('hidden', mode !== 'service');
+  svc.classList.toggle('flex',   mode === 'service');
+  prc.classList.toggle('hidden', mode !== 'process');
+  prc.classList.toggle('flex',   mode === 'process');
+}
+
+function browseDepService(btnEl) {
+  const targetServer = document.getElementById('dep-depends-on').value;
+  if (!targetServer) { pAlert('Select a target server first'); return; }
+  fetch('/api/servers/' + encodeURIComponent(targetServer) + '/services', { headers: { 'X-CSRFToken': csrfToken } })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) { pAlert(data.error || 'Failed to load services'); return; }
+      showDepBrowsePopup(data.services || [], 'dep-service-name', 'service', btnEl);
+    })
+    .catch(err => pAlert('Failed to load services: ' + err.message));
+}
+
+function browseDepProcess(btnEl) {
+  const targetServer = document.getElementById('dep-depends-on').value;
+  if (!targetServer) { pAlert('Select a target server first'); return; }
+  fetch('/api/servers/' + encodeURIComponent(targetServer) + '/processes', { headers: { 'X-CSRFToken': csrfToken } })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) { pAlert(data.error || 'Failed to load processes'); return; }
+      showDepBrowsePopup(data.processes || [], 'dep-process-name', 'process', btnEl);
+    })
+    .catch(err => pAlert('Failed to load processes: ' + err.message));
+}
+
+function showDepBrowsePopup(items, inputId, type, btnEl) {
+  const existing = document.getElementById('dep-browse-popup');
+  if (existing) existing.remove();
+
+  // btnEl passed in from browseDepService/browseDepProcess — the previous
+  // implementation relied on the implicit global `event` which is undefined
+  // after an async fetch, so the popup never anchored and the whole call
+  // silently failed in Firefox.
+  const btn = btnEl || document.activeElement;
+  const rect = btn.getBoundingClientRect();
+
+  const popup = document.createElement('div');
+  popup.id = 'dep-browse-popup';
+  popup.style.cssText = 'position:fixed;z-index:9999;left:' + rect.left + 'px;top:' + (rect.bottom+4) + 'px;' +
+    'background:rgb(var(--c-card));border:1px solid rgb(var(--c-line));border-radius:8px;box-shadow:var(--shadow-lg);' +
+    'min-width:240px;max-height:300px;overflow:hidden;display:flex;flex-direction:column;';
+
+  const searchHtml = '<input type="text" placeholder="Search..." data-input="_srvFilterDepBrowse"' +
+    ' class="w-full px-3 py-1.5 text-xs border-b border-line bg-transparent text-muted outline-none focus-visible:ring-2 focus-visible:ring-brand">';
+
+  const listHtml = items.sort(function(a, b) {
+    const aRun = (a.status||'').toLowerCase() === 'running' ? 0 : 1;
+    const bRun = (b.status||'').toLowerCase() === 'running' ? 0 : 1;
+    return aRun - bRun || (a.name||'').localeCompare(b.name||'');
+  }).map(function(item) {
+    const name = item.name || item.Name || '';
+    const display = item.display_name || item.DisplayName || '';
+    const status = (item.status || '').toLowerCase();
+    const dot = status === 'running' ? '<span class="w-1.5 h-1.5 rounded-full bg-healthy flex-shrink-0"></span>' : '';
+    return '<div class="dep-browse-item flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-raised text-xs text-ink"' +
+      ' data-name="' + name + '" data-action="selectDepBrowseItem" tabindex="0" role="button" data-args=\'' + JSON.stringify([name, inputId]).replace(/&/g, "&amp;").replace(/'/g, "&#39;") + '\'>' +
+      dot + '<span class="font-medium">' + name + '</span>' +
+      '<span class="text-[10px] text-muted truncate ml-auto">' + display + '</span></div>';
+  }).join('');
+
+  popup.innerHTML = searchHtml + '<div class="overflow-y-auto" style="max-height:260px;">' + listHtml + '</div>';
+  document.body.appendChild(popup);
+  popup.querySelector('input').focus();
+
+  setTimeout(function() {
+    document.addEventListener('click', function _close(e) {
+      if (!popup.contains(e.target)) { popup.remove(); document.removeEventListener('click', _close); }
+    });
+  }, 10);
+}
+
+window.filterDepBrowse = function(q) {
+  const items = document.querySelectorAll('.dep-browse-item');
+  const query = q.toLowerCase();
+  items.forEach(function(el) {
+    el.style.display = el.dataset.name.toLowerCase().includes(query) ? '' : 'none';
+  });
+};
+
+window.selectDepBrowseItem = function(name, inputId) {
+  document.getElementById(inputId).value = name;
+  const popup = document.getElementById('dep-browse-popup');
+  if (popup) popup.remove();
+};
+
+function loadDepsTable() {
+  fetch('/api/dependencies')
+    .then(r => r.json())
+    .then(data => {
+      const container = document.getElementById('deps-table-container');
+      if (!data.ok || !data.dependencies || data.dependencies.length === 0) {
+        container.innerHTML = window.prismEmptyState(
+          'network',
+          {{ t.get('no_dependencies', 'No dependencies configured') | tojson }},
+          {{ t.get('no_dependencies_hint', 'Define dependencies in Servers settings to map service relationships') | tojson }});
+        lucide.createIcons({ nodes: [container] });
+        return;
+      }
+      const deps = data.dependencies;
+
+      // Tip text for the per-row Edit/Remove buttons below -- computed once
+      // here, outside the forEach, since it is the same for every row (same
+      // rationale as _server_config.html's discoveryTipTitle/discoveryTipDesc).
+      // The Desc consts are always named <name>TipDesc (never shorter than
+      // <name>Tip) so the two never accidentally read as equal-or-swapped
+      // length to a naive scanner.
+      const depEditTip = {{ t.edit | tojson }};
+      const depEditTipDesc = {{ t.get('edit_dependency_desc', "Edit this dependency's server, type and target.") | tojson }};
+      const depRemoveTip = {{ t.remove_dependency | tojson }};
+      const depRemoveTipDesc = {{ t.get('remove_dependency_desc', 'Remove this dependency. This cannot be undone.') | tojson }};
+
+      // Collect unique custom types from loaded data and add to dropdown
+      const customTypes = new Set();
+      deps.forEach(d => {
+        if (d.custom_type_name) customTypes.add(d.custom_type_name);
+      });
+      const depTypeSelect = document.getElementById('dep-type');
+      if (depTypeSelect) {
+        depTypeSelect.querySelectorAll('option[data-custom]').forEach(o => o.remove());
+        customTypes.forEach(ct => {
+          const opt = document.createElement('option');
+          opt.value = ct; opt.textContent = ct; opt.dataset.custom = '1';
+          depTypeSelect.insertBefore(opt, depTypeSelect.querySelector('option[value="custom"]'));
+        });
+      }
+
+      let html = '<div class="overflow-x-auto"><table class="w-full text-sm">';
+      html += '<thead data-sort-table="servers-dependencies"><tr class="border-b border-line text-left">';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="text">' + {{ t.get('server', 'Server') | tojson }} + '</th>';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="text">' + {{ t.depends_on | tojson }} + '</th>';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="status">' + {{ t.dependency_type | tojson }} + '</th>';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="text">Target</th>';
+      html += '<th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted" data-sort="text">' + {{ t.description | tojson }} + '</th>';
+      html += '<th class="px-3 py-2"></th>';
+      html += '</tr></thead><tbody>';
+      deps.forEach(d => {
+        const typeLabel = d.custom_type_name || DEP_TYPE_LABELS[d.dependency_type] || d.dependency_type;
+        // Build target info based on target_mode
+        let targetInfo = '-';
+        const mode = d.target_mode || 'port';
+        if (mode === 'port' && d.port) targetInfo = 'Port: ' + d.port;
+        else if (mode === 'service' && d.service_name) targetInfo = 'Service: ' + d.service_name;
+        else if (mode === 'process' && d.process_name) targetInfo = 'Process: ' + d.process_name;
+        else if (d.port) targetInfo = 'Port: ' + d.port;
+
+        html += '<tr class="border-b border-line">';
+        html += '<td class="px-3 py-2">' + d.server_name + '</td>';
+        html += '<td class="px-3 py-2">' + d.depends_on + '</td>';
+        html += '<td class="px-3 py-2"><span class="text-[10px] px-1.5 py-0.5 rounded bg-line">' + typeLabel + '</span></td>';
+        html += '<td class="px-3 py-2 text-muted">' + targetInfo + '</td>';
+        html += '<td class="px-3 py-2 text-muted">' + (d.description || '-') + '</td>';
+        html += '<td class="px-3 py-2 text-right whitespace-nowrap">';
+        html += '<button data-action="editDependency" data-args="[' + d.id + ']" class="text-accent hover:text-accent-strong p-1" aria-label="' + depEditTip + '" aria-describedby="dep-edit-desc-' + d.id + '" data-tip-title="' + depEditTip + '" data-tip-desc="' + depEditTipDesc + '"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button><span class="sr-only" id="dep-edit-desc-' + d.id + '">' + depEditTipDesc + '</span>';
+        html += '<button data-action="removeDependency" data-args="[' + d.id + ']" class="text-critical hover:bg-critical/15 rounded p-1 ml-1" aria-label="' + depRemoveTip + '" aria-describedby="dep-remove-desc-' + d.id + '" data-tip-title="' + depRemoveTip + '" data-tip-desc="' + depRemoveTipDesc + '"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button><span class="sr-only" id="dep-remove-desc-' + d.id + '">' + depRemoveTipDesc + '</span>';
+        html += '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+      lucide.createIcons();
+    })
+    .catch(() => {
+      document.getElementById('deps-table-container').innerHTML =
+        '<div class="text-xs text-critical text-center py-4">Failed to load dependencies</div>';
+    });
+}
+
+function addDependency() {
+  const serverName = document.getElementById('dep-server-name').value;
+  const dependsOn = document.getElementById('dep-depends-on').value;
+  const type = document.getElementById('dep-type').value;
+  const customTypeName = type === 'custom' ? document.getElementById('dep-custom-type').value.trim() : '';
+  const targetMode = document.getElementById('dep-target-mode').value;
+  const description = document.getElementById('dep-description').value;
+
+  if (!serverName || !dependsOn) {
+    pAlert('Please select both server and dependency target');
+    return;
+  }
+  if (serverName === dependsOn) {
+    pAlert('A server cannot depend on itself');
+    return;
+  }
+  if (type === 'custom' && !customTypeName) {
+    pAlert('Please enter a custom type name');
+    return;
+  }
+
+  const payload = {
+    server_name: serverName,
+    depends_on: dependsOn,
+    dependency_type: type === 'custom' ? customTypeName : type,
+    custom_type_name: customTypeName || null,
+    target_mode: targetMode,
+    port: targetMode === 'port' ? (parseInt(document.getElementById('dep-port').value) || null) : null,
+    service_name: targetMode === 'service' ? document.getElementById('dep-service-name').value.trim() : null,
+    process_name: targetMode === 'process' ? document.getElementById('dep-process-name').value.trim() : null,
+    description: description || null,
+  };
+
+  fetch('/api/dependencies', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify(payload),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      document.getElementById('dep-port').value = '';
+      document.getElementById('dep-description').value = '';
+      document.getElementById('dep-service-name').value = '';
+      document.getElementById('dep-process-name').value = '';
+      document.getElementById('dep-custom-type').value = '';
+      document.getElementById('dep-add-form').classList.add('hidden');
+      loadDepsTable();
+    } else {
+      pAlert(data.error || 'Failed to add dependency');
+    }
+  })
+  .catch(e => pAlert('Error: ' + e.message));
+}
+
+function editDependency(depId) {
+  // Load the dependency data and populate the form
+  fetch('/api/dependencies')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) return;
+      const dep = (data.dependencies || []).find(d => d.id === depId);
+      if (!dep) return;
+
+      // Show form
+      const form = document.getElementById('dep-add-form');
+      form.classList.remove('hidden');
+      lucide.createIcons({ nodes: [form] });
+
+      // Populate fields
+      document.getElementById('dep-server-name').value = dep.server_name || '';
+      document.getElementById('dep-depends-on').value = dep.depends_on || '';
+
+      // Type
+      const typeSelect = document.getElementById('dep-type');
+      const depType = dep.custom_type_name || dep.dependency_type || 'service';
+      // Check if it's a standard type
+      const standardTypes = ['service', 'database', 'auth', 'dns', 'file_share'];
+      if (standardTypes.includes(depType)) {
+        typeSelect.value = depType;
+        document.getElementById('dep-custom-type').classList.add('hidden');
+      } else {
+        // Custom type — check if option exists, if not add it
+        let found = false;
+        for (const opt of typeSelect.options) {
+          if (opt.value === depType) { found = true; break; }
+        }
+        if (!found) {
+          const opt = document.createElement('option');
+          opt.value = depType; opt.textContent = depType; opt.dataset.custom = '1';
+          typeSelect.insertBefore(opt, typeSelect.querySelector('option[value="custom"]'));
+        }
+        typeSelect.value = depType;
+        document.getElementById('dep-custom-type').classList.add('hidden');
+      }
+
+      // Target mode
+      const mode = dep.target_mode || 'port';
+      document.getElementById('dep-target-mode').value = mode;
+      onDepTargetModeChange();
+
+      if (mode === 'port') document.getElementById('dep-port').value = dep.port || '';
+      else if (mode === 'service') document.getElementById('dep-service-name').value = dep.service_name || '';
+      else if (mode === 'process') document.getElementById('dep-process-name').value = dep.process_name || '';
+
+      document.getElementById('dep-description').value = dep.description || '';
+
+      // Delete the old dependency so saving creates a new one (simple edit = delete + re-add)
+      fetch('/api/dependencies/' + depId, { method: 'DELETE', headers: { 'X-CSRFToken': csrfToken } });
+
+      // Scroll to form
+      form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+}
+
+async function removeDependency(depId) {
+  if (!await pConfirm({{ t.remove_dependency | tojson }} + '?')) return;
+  fetch('/api/dependencies/' + depId, {
+    method: 'DELETE',
+    headers: { 'X-CSRFToken': csrfToken },
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) loadDepsTable();
+    else pAlert(data.error || 'Failed to remove');
+  })
+  .catch(e => pAlert('Error: ' + e.message));
+}
+
+function _srvFilterDepBrowse() { filterDepBrowse(this.value); }
+function _srvBrowseDepService() { browseDepService(this); }
+function _srvBrowseDepProcess() { browseDepProcess(this); }
+
+if (document.getElementById('deps-table-container')) loadDepsTable();
+</script>

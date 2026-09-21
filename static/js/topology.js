@@ -138,6 +138,12 @@
     const svg = document.getElementById('topology-canvas');
     if (!svg) return;
     svg.innerHTML = ''; // clear
+    // Mirrors are rebuilt alongside the nodes they belong to (applyNodeTip,
+    // called from buildNode below) — cleared here in the same place the SVG
+    // itself is, so a refresh never leaves a stale sr-only span (and its id)
+    // behind for a node that no longer exists.
+    const tipMirrors = document.getElementById('topo-tip-mirrors');
+    if (tipMirrors) tipMirrors.innerHTML = '';
 
     const { bounds, nodes, edges, empty } = state.data;
 
@@ -244,6 +250,12 @@
       const g = buildNode(n);
       nodesG.appendChild(g);
     });
+    // Every node just gained data-tip-title via applyNodeTip() inside
+    // buildNode() — base.html's bindAll() attaches the actual pointer/
+    // keyboard listeners and is idempotent per element, so calling it once
+    // after the whole batch is appended is enough (no need to call it once
+    // per node).
+    if (window.__prismBindTooltips) window.__prismBindTooltips();
 
     applyTransform();
     applyFilters();
@@ -331,10 +343,13 @@
       fill: statusColor,
     }));
 
-    // Hover + click
-    g.addEventListener('mouseenter', () => showTooltip(n, g));
-    g.addEventListener('mousemove', moveTooltip);
-    g.addEventListener('mouseleave', hideTooltip);
+    // Hover + click. Edge-highlighting is a supplementary visual affordance
+    // independent of the tooltip explanation below, and stays mouse-only —
+    // extending it to focus/blur would be a separate change this step does
+    // not make.
+    g.addEventListener('mouseenter', () => { state.hoverNode = n.id; highlightConnectedEdges(n.id); });
+    g.addEventListener('mouseleave', () => { state.hoverNode = null; highlightConnectedEdges(null); });
+    applyNodeTip(g, n);
     g.addEventListener('click', e => {
       // Don't navigate if the user was panning
       if (state.drag && state.drag.moved) return;
@@ -460,92 +475,74 @@
     } catch (e) { /* ignore */ }
   }
 
-  // ── Tooltip ─────────────────────────────────────────────────────────────
-  function showTooltip(n, nodeG) {
-    state.hoverNode = n.id;
-    highlightConnectedEdges(n.id);
-    const tip = document.getElementById('topo-tooltip');
-    if (!tip) return;
+  // ── Tooltip (DESIGN_SYSTEM_SPEC.md step 8) ────────────────────────────────
+  //
+  // Used to be a bespoke #topo-tooltip panel: its own dark HTML card,
+  // positioned from the cursor on every mousemove and rebuilt with
+  // innerHTML on every hover (status badge, CPU/RAM/disk bars, a
+  // dependency list capped at 8 rows) — a second, rival implementation of
+  // exactly what #ps-tooltip (base.html) already provides app-wide. Deleted
+  // outright. #ps-tooltip reads data-tip-title/data-tip-desc off the
+  // trigger and renders both via textContent (never innerHTML — see
+  // base.html's show()), so none of the old panel's markup (coloured bars,
+  // a status badge, per-row HTML) can survive the move: nodeTipDesc() below
+  // re-expresses the same information as plain text lines, joined by a
+  // literal \n that #ps-tooltip's .tip-desc (white-space: pre-wrap)
+  // renders as real line breaks.
+  //
+  // The node already shows its own name and type as SVG text (buildNode
+  // above), so per Sec5.3 this needs only aria-describedby, never
+  // aria-label — the trigger already has a visible name.
+  function nodeTipDesc(n) {
+    const lines = [];
+    const typeLine = (n.type_label || n.type || '') + (n.host ? ' · ' + n.host : '');
+    if (typeLine.trim()) lines.push(typeLine);
 
-    const statusColor = STATUS_COLORS[n.status] || STATUS_COLORS.unknown;
-    const statusLabel = STATUS_LABELS[n.status] || 'Unknown';
+    const metrics = [];
+    if (n.cpu != null && n.cpu >= 0) metrics.push('CPU ' + n.cpu.toFixed(1) + '%');
+    if (n.ram != null && n.ram >= 0) metrics.push('RAM ' + n.ram.toFixed(1) + '%');
+    if (n.disk_c != null && n.disk_c >= 0) metrics.push('C: ' + n.disk_c.toFixed(1) + '%');
+    if (n.disk_d != null && n.disk_d >= 0) metrics.push('D: ' + n.disk_d.toFixed(1) + '%');
+    if (metrics.length) lines.push(metrics.join(' · '));
 
-    function bar(label, value) {
-      if (value == null || value < 0) return '';
-      const pct = Math.min(100, Math.max(0, value));
-      let color = '#10B981';
-      if (pct >= 85) color = '#DC2626';
-      else if (pct >= 70) color = '#F59E0B';
-      return `
-        <div class="flex items-center gap-2 mt-1">
-          <span class="text-[10px] text-[#94A3B8] w-8">${label}</span>
-          <div class="flex-1 h-1.5 rounded bg-[#334155] overflow-hidden">
-            <div style="width:${pct}%; background:${color}" class="h-full"></div>
-          </div>
-          <span class="text-[10px] font-mono text-[#CBD5E1] w-10 text-right">${pct.toFixed(1)}%</span>
-        </div>`;
+    function depLine(list, verb) {
+      if (!list || !list.length) return;
+      const names = list.slice(0, 8).map(d => d.from || d.to);
+      const more = list.length > 8 ? ', +' + (list.length - 8) + ' more' : '';
+      lines.push(verb + ' (' + list.length + '): ' + names.join(', ') + more);
     }
+    depLine(n.deps_out, 'Depends on');
+    depLine(n.deps_in, 'Depended on by');
 
-    function depList(list, arrow) {
-      if (!list || !list.length) return '';
-      const items = list.slice(0, 8).map(d => {
-        const parts = [];
-        parts.push(esc(d.from || d.to));
-        if (d.port) parts.push('port ' + d.port);
-        if (d.service_name) parts.push('svc ' + esc(d.service_name));
-        if (d.process_name) parts.push('proc ' + esc(d.process_name));
-        const label = d.type ? `<span class="text-[#F59E0B]">${esc(d.type)}</span>` : '';
-        return `<div class="text-[10px] text-[#CBD5E1]">${arrow} <b>${parts[0]}</b>${parts.length > 1 ? ' · ' + parts.slice(1).join(' · ') : ''}${label ? ' · ' + label : ''}</div>`;
-      }).join('');
-      const more = list.length > 8 ? `<div class="text-[10px] text-[#64748B] italic">+ ${list.length - 8} more</div>` : '';
-      return items + more;
+    lines.push('Click to open server detail');
+    return lines.join('\n');
+  }
+
+  // mirrorId is derived from n.id (the server name — see the click handler
+  // in buildNode, which URI-encodes the same value) rather than a counter,
+  // so it stays stable across a re-render instead of drifting; sanitised
+  // because a server name is not guaranteed to be a valid HTML id verbatim.
+  function applyNodeTip(g, n) {
+    const title = n.name + ' — ' + (STATUS_LABELS[n.status] || 'Unknown');
+    const desc = nodeTipDesc(n);
+    const mirrorId = 'topo-tip-' + String(n.id).replace(/[^A-Za-z0-9_-]/g, '_');
+    g.setAttribute('tabindex', '0');
+    g.setAttribute('aria-describedby', mirrorId);
+    g.setAttribute('data-tip-title', title);
+    g.setAttribute('data-tip-desc', desc);
+    // The mirror is a plain HTML <span>, so it cannot be a child of this SVG
+    // <g> without a <foreignObject> wrapper — it lives in the
+    // #topo-tip-mirrors container in topology.html instead. aria-describedby
+    // resolves by id anywhere in the document, regardless of namespace, so
+    // this cross-tree reference works exactly like an in-tree one would.
+    const mirrors = document.getElementById('topo-tip-mirrors');
+    if (mirrors) {
+      const mirror = document.createElement('span');
+      mirror.className = 'sr-only';
+      mirror.id = mirrorId;
+      mirror.textContent = desc;
+      mirrors.appendChild(mirror);
     }
-
-    tip.innerHTML = `
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <div class="text-sm font-bold text-[#F9FAFB]">${esc(n.name)}</div>
-          <div class="text-[10px] text-[#94A3B8] mt-0.5">${esc(n.type_label || n.type || '')}${n.host ? ' · ' + esc(n.host) : ''}</div>
-        </div>
-        <span style="background:${statusColor}20;color:${statusColor};border:1px solid ${statusColor}40" class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">${statusLabel}</span>
-      </div>
-      <div class="mt-2 pt-2 border-t border-[#334155]">
-        ${bar('CPU', n.cpu)}
-        ${bar('RAM', n.ram)}
-        ${bar('C:',  n.disk_c)}
-        ${bar('D:',  n.disk_d)}
-      </div>
-      ${(n.deps_out && n.deps_out.length) ? `
-        <div class="mt-2 pt-2 border-t border-[#334155]">
-          <div class="text-[10px] font-bold text-[#94A3B8] uppercase mb-1">Depends on (${n.deps_out.length})</div>
-          ${depList(n.deps_out, '↓')}
-        </div>` : ''}
-      ${(n.deps_in && n.deps_in.length) ? `
-        <div class="mt-2 pt-2 border-t border-[#334155]">
-          <div class="text-[10px] font-bold text-[#94A3B8] uppercase mb-1">Depended on by (${n.deps_in.length})</div>
-          ${depList(n.deps_in, '↑')}
-        </div>` : ''}
-      <div class="mt-2 pt-2 border-t border-[#334155] text-[10px] text-[#64748B] italic">Click to open server detail</div>
-    `;
-    tip.classList.add('visible');
-  }
-  function moveTooltip(e) {
-    const tip = document.getElementById('topo-tooltip');
-    if (!tip) return;
-    const pad = 14;
-    const r = tip.getBoundingClientRect();
-    let x = e.clientX + pad;
-    let y = e.clientY + pad;
-    if (x + r.width + pad > window.innerWidth) x = e.clientX - r.width - pad;
-    if (y + r.height + pad > window.innerHeight) y = e.clientY - r.height - pad;
-    tip.style.left = Math.max(pad, x) + 'px';
-    tip.style.top  = Math.max(pad, y) + 'px';
-  }
-  function hideTooltip() {
-    state.hoverNode = null;
-    highlightConnectedEdges(null);
-    const tip = document.getElementById('topo-tooltip');
-    if (tip) tip.classList.remove('visible');
   }
 
   function highlightConnectedEdges(id) {

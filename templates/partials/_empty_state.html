@@ -1,0 +1,46 @@
+{# ── Empty states — the three-part rule ─────────────────────────────────
+
+   DESIGN_PHASE_3_SCOPE.md §4, taken from tag management in servers.html,
+   which is the best one in the app and is the pattern this reproduces:
+
+     1. A faded ICON of the thing that is missing — recognisable at a glance
+        as "this is a place where X goes", not as an error.
+     2. WHAT IS ABSENT, in the user's words, not the schema's.
+     3. WHAT TO DO ABOUT IT. This is the part that gets dropped, and it is
+        the part that makes the difference between an empty state and a
+        dead end.
+
+   `hint` is a required argument for that reason. Jinja will not enforce it,
+   so tests/test_design_empty_states.py does: a call with no hint, or a hint
+   that merely restates the message, fails the build.
+
+   NOT for zero states. "0 critical" is a RESULT — it belongs in the normal
+   layout, in the normal colours. "There is nothing here yet" is a different
+   sentence and this is only for that one.
+
+   The JS twin is `window.prismEmptyState(icon, message, hint, opts)` in
+   base.html, for regions built from strings after page load. Two renderers,
+   one rule — keep the markup below in step with it. #}
+
+{# WP-6 step 20 (Batch G+H) -- the `card=true` shell below is the literal
+   CARD constant (DESIGN_SYSTEM_SPEC.md Part II §4.2), typed out by hand
+   rather than imported: an empty state has no title/controls/tip, so
+   routing it through {% call card(...) %} would be ceremony around one
+   div (this step's own text, verbatim). Using the exact literal string is
+   what makes C-2 (test_every_card_shaped_class_string_is_one_of_the_
+   pinned_ones) recognise this as one of the always-allowed constants
+   rather than count it as a per-file exception, and what keeps C-4 (a raw
+   CARD literal is legal only where no heading follows) provably correct
+   here -- this macro renders no heading of any kind. Was `bg-card
+   rounded-lg p-6 border border-line` (wrong order, p-6 not p-5) --
+   CARD_EXCEPTIONS' own "partials/_empty_state.html": 1 entry, now 0 and
+   deleted. #}
+{% macro empty_state(icon, message, hint, card=false) %}
+{% if card %}<div class="bg-card rounded-lg border border-line p-5">{% endif %}
+<div class="text-sm text-faint text-center py-8">
+  <i data-lucide="{{ icon }}" class="w-8 h-8 mx-auto mb-2 opacity-30" aria-hidden="true"></i>
+  <p>{{ message }}</p>
+  <p class="text-[10px] mt-1 opacity-60">{{ hint }}</p>
+</div>
+{% if card %}</div>{% endif %}
+{% endmacro %}

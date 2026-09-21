@@ -38,6 +38,63 @@ from ._shared import (
 )
 
 
+# ── CSV output that Excel can actually read ──────────────────────────────
+#
+# Measured against the real exports before writing this: no BOM (so Excel
+# opens UTF-8 as CP1252 and mangles four of the five locales), and timestamps
+# as `2026-08-25T12:06:54Z`, which Excel treats as TEXT rather than a date —
+# no sorting, no filtering, which is most of what a spreadsheet is for.
+
+def _csv_timestamp(iso_str: str) -> str:
+    """A UTC ISO timestamp as Excel-parseable local time.
+
+    `YYYY-MM-DD HH:MM:SS` in the configured timezone. Deliberately NOT the
+    configured `date_format`: once Excel has parsed a real datetime it renders
+    it in the reader's own regional format, which is more correct than baking
+    one locale's order into the file. The zone goes in the column header so
+    the moment is unambiguous, which matters when the file is evidence."""
+    if not iso_str:
+        return ""
+    try:
+        from datetime import datetime, timezone as _tz
+        import zoneinfo
+        ts = str(iso_str)
+        if ts.endswith("Z"):
+            ts = ts[:-1] + "+00:00"
+        dt = datetime.fromisoformat(ts)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=_tz.utc)
+        name = _shared._config.get_settings().get("timezone", "Europe/Berlin")
+        return dt.astimezone(zoneinfo.ZoneInfo(name)).strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        # Never lose the row over a formatting problem.
+        return str(iso_str)
+
+
+def _csv_zone_label() -> str:
+    """The configured zone, for the column header."""
+    try:
+        return _shared._config.get_settings().get("timezone", "Europe/Berlin")
+    except Exception:
+        return "UTC"
+
+
+def _csv_response(csv_text: str, filename: str):
+    """A CSV response Excel opens correctly.
+
+    The BOM is what makes Excel read it as UTF-8; without it the file is
+    CP1252 and every non-ASCII character is wrong."""
+    from flask import Response
+    body = "\ufeff" + csv_text
+    return Response(
+        body.encode("utf-8"),
+        # `mimetype` (not `content_type`): Flask appends "; charset=utf-8"
+        # itself, and spelling it here too produced it twice in the header.
+        mimetype="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @api_bp.route("/reports/csv/metrics")
 def download_csv_metrics():
     """Download metric history as CSV."""
@@ -46,13 +103,11 @@ def download_csv_metrics():
         hours = request.args.get("hours", 24, type=int)
         hours = min(hours, 720)
 
-        csv_data = generate_csv_metrics(_shared._db, server_name=server, hours=hours)
+        csv_data = generate_csv_metrics(
+            _shared._db, server_name=server, hours=hours,
+            ts_fmt=_csv_timestamp, ts_label=_csv_zone_label())
         filename = f"prism_metrics_{server or 'all'}_{hours}h.csv"
-        return Response(
-            csv_data,
-            mimetype="text/csv",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
-        )
+        return _csv_response(csv_data, filename)
     except Exception:
         logger.exception("Error generating CSV metrics report")
         return jsonify({"error": "Failed to generate report"}), 500
@@ -63,13 +118,11 @@ def download_csv_events():
     """Download events as CSV."""
     try:
         server = request.args.get("server", "").strip() or None
-        csv_data = generate_csv_events(_shared._db, server_name=server)
+        csv_data = generate_csv_events(
+            _shared._db, server_name=server,
+            ts_fmt=_csv_timestamp, ts_label=_csv_zone_label())
         filename = f"prism_events_{server or 'all'}.csv"
-        return Response(
-            csv_data,
-            mimetype="text/csv",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
-        )
+        return _csv_response(csv_data, filename)
     except Exception:
         logger.exception("Error generating CSV events report")
         return jsonify({"error": "Failed to generate report"}), 500
@@ -563,10 +616,9 @@ def api_csv_fleet():
             soonest["risk"] if soonest else "",
         ])
 
-    resp = make_response(output.getvalue())
-    resp.headers["Content-Type"] = "text/csv"
-    resp.headers["Content-Disposition"] = f'attachment; filename="prism_fleet_report_{hours}h.csv"'
-    return resp
+    # Through the shared helper so this file gets the BOM too: without it
+    # Excel reads UTF-8 as CP1252 and every non-ASCII character is wrong.
+    return _csv_response(output.getvalue(), f"prism_fleet_report_{hours}h.csv")
 
 
 @api_bp.route("/reports/pdf/comparison")

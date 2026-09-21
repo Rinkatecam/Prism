@@ -26,9 +26,31 @@ imported by both the runtime executor and a /api/workflows/validate endpoint.
 
 ## Known limitations and the proper fix
 
-This sandbox is a regex tokeniser, not a PowerShell parser. A determined user
-who knows PowerShell's surface area can defeat it. The classes of bypass we
-know about (audit 2026-05, finding B1):
+This sandbox is a regex tokeniser, not a PowerShell parser, and it is defence
+in depth rather than the security boundary. A determined user who knows
+PowerShell's surface area may still defeat it.
+
+**WHERE THE BOUNDARY ACTUALLY IS (collector audit 2026-08, finding 3).** The
+audit's complaint was not that a regex is imperfect — it was that a
+limited-RBAC operator who could author a workflow got RCE as the service
+account. That is now closed at authoring time: creating, updating or cloning a
+workflow containing a block that reaches WinRM requires the same per-server
+admin permission that executing it already required. It has to be enforced at
+authoring, because a SCHEDULED workflow runs with no user present and therefore
+no permission to check — which was the actual escalation path. Someone who
+already holds admin on a server gains nothing by defeating a regex about that
+server.
+
+**WHAT THE HARDENING CLOSED.** Bypasses 1, 2, 3 and 5 below are closed, and
+they are kept on the record because each one is a requirement on any future
+rewrite. The pattern worth carrying forward: bypasses 1 and 2 were not fixed by
+naming more spellings of `Invoke-Expression` — they were fixed by denying
+DYNAMIC INVOCATION itself, the one shape every such bypass needs. Bypass 3 was
+fixed by normalising the script before matching rather than by adding a rule per
+split point. Bypass 4 is open and stays open, argued below.
+
+The classes of bypass we know about (audit 2026-05 finding B1, re-verified
+2026-08):
 
 1. **String concatenation through the call operator**. Example::
 
@@ -50,10 +72,14 @@ know about (audit 2026-05, finding B1):
    PowerShell's parser strips the backtick before execution, but the regex
    sees `In` and `voke-Expression` as two separate tokens.
 
-4. **Allowlisted aliases give arbitrary file read**. ``gc``, ``cat``,
-   ``Get-Content``, ``gci``, ``ls``, ``dir`` are on the default allowlist
-   (they are needed for legitimate diagnostic workflows) but accept
-   arbitrary paths -- there is no path allowlist.
+4. **Allowlisted aliases give arbitrary file read** — STILL OPEN, and
+   deliberately. ``gc``, ``cat``, ``Get-Content``, ``gci``, ``ls``, ``dir``
+   are on the default allowlist (they are needed for legitimate diagnostic
+   workflows) and accept arbitrary paths; there is no path allowlist. A path
+   allowlist would break the workflows those cmdlets exist for, and after the
+   authoring gate the only people who can write such a script are people with
+   admin on that server — who can read those files by a dozen other routes
+   anyway. This is an accepted risk with a stated reason, not an oversight.
 
 5. **Method/property chains are not inspected**. ``(Get-Date).GetType()
    .Assembly.GetType('System.Diagnostics.Process').GetMethod('Start',...)
@@ -197,7 +223,62 @@ HARD_DENY: tuple[re.Pattern, ...] = tuple(re.compile(p, re.IGNORECASE) for p in 
     r"\bImpersonate", r"\bSeTcbPrivilege\b",
     # Powershell self-invocation
     r"\bpowershell(\.exe)?\b\s+-(c|enc|ec|noprofile)",
+
+    # ── DYNAMIC INVOCATION (collector audit finding 3, bypasses 1 and 2) ──
+    #
+    # This is the rule that matters. Every "compute the name of the thing you
+    # want to run" bypass — string concatenation, char-code reconstruction,
+    # a variable holding an alias — needs the call operator or dot-sourcing to
+    # apply to something that is NOT a bare identifier. Denying that one shape
+    # kills the whole family at once, instead of chasing each new spelling of
+    # `Invoke-Expression` forever, which is the game the previous rules were
+    # losing.
+    #
+    # `& Get-Service` (a bare name) is untouched and still goes through the
+    # allowlist, so the legitimate use of the call operator survives.
+    r"&\s*[\(\$\[\"\']",
+    # Dot-sourcing a computed value. Anchored to a statement start — line
+    # beginning, or after a separator — because a bare `.` in the middle of an
+    # expression is property access, which is legitimate and common.
+    r"(?:^|[;{}|\n])\s*\.\s*[\(\$\[]",
+
+    # ── THE REFLECTION SURFACE (bypass 5) ──
+    #
+    # `(Get-Date).GetType().Assembly.GetType('System.Diagnostics.Process')
+    #  .GetMethod('Start').Invoke(...)` reaches arbitrary process spawn from an
+    # allowlisted cmdlet without ever naming a denied one. Method INVOCATION on
+    # the type system is denied; plain property access is not, because a sandbox
+    # that rejects `(Get-Service).Status` is one nobody can use.
+    r"\.\s*GetType\s*\(",
+    r"\.\s*Assembly\b",
+    r"\.\s*(GetMethod|GetMethods|GetField|GetFields|GetProperty|GetProperties"
+    r"|GetMembers|InvokeMember|DeclaredMethods)\s*\(?",
+    r"\.\s*Invoke\s*\(",
+    r"\[\s*scriptblock\s*\]\s*::",
+    r"\[\s*type\s*\]\s*::",
+    # The raw material for spelling-based bypasses. No diagnostic workflow
+    # needs to build a string out of character codes.
+    r"\[\s*(System\.)?char\s*\]",
+    r"\[\s*(System\.)?Convert\s*\]\s*::",
 ])
+
+
+def normalize_for_matching(script: str) -> str:
+    """What the rules below are matched against, and NOT what gets executed.
+
+    PowerShell's backtick is an escape character: its parser reads
+    ``In`voke-Expression`` as ``Invoke-Expression``, while a regex sees two
+    harmless halves. That was bypass 3 in the audit, and it is closed by
+    matching against a normalised copy rather than by adding a pattern for
+    every possible split point — there are as many split points as there are
+    characters.
+
+    Removing every backtick means a literal escape sequence inside a string
+    (a backtick followed by n) reads as ``n`` for matching purposes. That can only ever make the
+    sandbox stricter, never more permissive, which is the correct direction for
+    a default-deny gate.
+    """
+    return script.replace("`", "")
 
 
 _TOKEN_RE = re.compile(r"\b([A-Za-z][A-Za-z0-9-]+)\b")
@@ -229,9 +310,15 @@ def validate_script(script: str, *, allowed_cmdlets: Iterable[str] | None = None
     if not script.strip():
         return False, "Empty script"
 
+    # Normalise BEFORE anything is matched. See normalize_for_matching: the
+    # backtick is an escape character, so the parser and the regex disagree
+    # about where an identifier begins unless this runs first. Everything below
+    # inspects `probe`; nothing executes it.
+    probe = normalize_for_matching(script)
+
     # Hard-deny patterns — checked first so they always trump the allowlist
     for pat in HARD_DENY:
-        m = pat.search(script)
+        m = pat.search(probe)
         if m:
             return False, f"Disallowed token: {m.group(0)!r}"
 
@@ -250,7 +337,7 @@ def validate_script(script: str, *, allowed_cmdlets: Iterable[str] | None = None
         "update", "install", "uninstall", "lock", "unlock", "checkpoint",
         "wait",
     }
-    for tok in _TOKEN_RE.findall(script):
+    for tok in _TOKEN_RE.findall(probe):
         if "-" not in tok:
             continue
         verb = tok.split("-", 1)[0].lower()

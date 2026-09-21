@@ -168,6 +168,75 @@ BEGIN
     SELECT RAISE(ABORT, 'audit_log is append-only — DELETE not allowed');
 END;
 
+-- The third leg of append-only, and the one that was missing.
+--
+-- UPDATE and DELETE were blocked; INSERT OR REPLACE was not. REPLACE deletes
+-- the conflicting row and inserts a new one, and with PRAGMA
+-- recursive_triggers at its default 0 that implicit delete never reaches
+-- audit_log_no_delete. Measured on a copy of production: UPDATE, DELETE and
+-- UPDATE OR REPLACE all refused, INSERT OR REPLACE rewrote row 128 in place.
+-- So the table advertised a guarantee it did not have.
+--
+-- This is a STRICTER trigger, not an exception to append-only. It also
+-- refuses AUTOINCREMENT id reservation (an explicit id in a free range), and
+-- turns a concurrent chain fork into a refused write instead of a permanent
+-- break.
+--
+-- It fires only on NEW rows, so the historic fork at 1671/1672 is
+-- grandfathered automatically: no cutoff constant to hardcode, and none to
+-- widen on the next restart.
+--
+-- Both id-guards are gated `NEW.id <> -1`, not `NEW.id > 0` (the first
+-- version of this trigger, caught in code review before it shipped further).
+-- Verified empirically against SQLite 3.49.1 on a scratch DB: inside a
+-- BEFORE INSERT trigger, NEW.id for a TRUE auto-assigned row (id omitted, or
+-- explicit NULL) is always exactly -1 — SQLite's own "not yet resolved"
+-- placeholder, not the real final id. Every OTHER supplied value — 0, and
+-- any negative id other than -1 — reads back as its own literal value and is
+-- fully distinguishable from that placeholder. `NEW.id > 0` wrongly treated
+-- the entire non-positive range (0, -1, -2, ...) as "auto-assign, skip the
+-- checks": a row planted at id=0 could be rewritten via INSERT OR REPLACE
+-- with this trigger completely silent — reopening the exact hole it exists
+-- to close, one digit away from a legal id.
+--
+-- id=-1 itself is a genuine, irreducible exception, not an oversight: an
+-- explicit -1 is indistinguishable from a true auto-assign at BEFORE-trigger
+-- time on this SQLite version, confirmed empirically — no WHERE clause here
+-- can tell them apart.
+--
+-- CORRECTED (3rd review round): `_get_conn`'s `recursive_triggers = ON` does
+-- NOT catch the attack that matters. It only refuses a FOLLOW-UP INSERT OR
+-- REPLACE against a row already sitting at id=-1 (routed through
+-- audit_log_no_delete's unconditional refusal). A one-shot INSERT with
+-- pre-forged, self-consistent content at id=-1 lands on the FIRST attempt,
+-- verified directly on a connection with the pragma already ON — exactly how
+-- every connection in this process is configured. So this trigger's id=-1
+-- gap is open on every connection, pragma or not; the pragma is not a
+-- mitigation for it. Closing id=-1 at the schema level needs a
+-- `CHECK (id >= 1)` column constraint, which is evaluated against the
+-- committed value rather than this trigger-time placeholder — but SQLite has
+-- no ALTER TABLE ADD CONSTRAINT, so retrofitting one onto the existing
+-- 1840+-row audit_log means the full new-table/copy/drop/rename dance. That
+-- is a separate, larger migration; not this trigger's job. Separately,
+-- verify_audit_chain() currently cannot see a row planted at id<=0 with
+-- row_hash left NULL either — filed as a required Phase 3 item, see
+-- docs/plans/AUDIT_CHAIN_REBASELINE.md.
+CREATE INDEX IF NOT EXISTS idx_audit_prev_hash ON audit_log(prev_hash);
+
+CREATE TRIGGER IF NOT EXISTS audit_log_no_overwrite
+BEFORE INSERT ON audit_log
+BEGIN
+    SELECT RAISE(ABORT, 'audit_log is append-only — overwriting an existing row is not allowed')
+    WHERE NEW.id <> -1 AND EXISTS (SELECT 1 FROM audit_log WHERE id = NEW.id);
+
+    SELECT RAISE(ABORT, 'audit_log is append-only — an explicit id must be the next id')
+    WHERE NEW.id <> -1 AND NEW.id <> (SELECT COALESCE(MAX(id),0)+1 FROM audit_log);
+
+    SELECT RAISE(ABORT, 'audit_log chain fork refused — prev_hash is already used by another row')
+    WHERE NEW.prev_hash IS NOT NULL
+      AND EXISTS (SELECT 1 FROM audit_log WHERE prev_hash = NEW.prev_hash);
+END;
+
 -- ---------------------------------------------------------------------------
 -- S2-1 (BL3) — session containment primitives
 --
@@ -356,6 +425,12 @@ CREATE TABLE IF NOT EXISTS health_check_config (
     http_path TEXT DEFAULT '/',
     expected_status INTEGER DEFAULT 200,
     enabled INTEGER NOT NULL DEFAULT 1,
+    -- Validate the TLS chain and hostname on an `https` check. Default ON:
+    -- without it a check proves that something answered on the port, not that
+    -- it was the service you meant. Set to 0 per check for internal endpoints
+    -- with self-signed certificates — an ordinary case, and the reason this is
+    -- a row and not a constant.
+    verify_tls INTEGER NOT NULL DEFAULT 1,
     UNIQUE(server_name, check_type, target_host, target_port)
 );
 CREATE INDEX IF NOT EXISTS idx_hc_config_server ON health_check_config(server_name);
@@ -372,6 +447,15 @@ CREATE TABLE IF NOT EXISTS health_check_results (
     last_checked TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 CREATE INDEX IF NOT EXISTS idx_hc_results_server ON health_check_results(server_name);
+-- The probe's full identity, plus `id` so the index covers "newest row for
+-- this probe" without touching the table. `get_health_check_summary` runs on
+-- the dashboard's 5-second refresh path and this is what keeps it off a full
+-- scan of an append-only history table: measured at one month of retention
+-- with 12 probes (103,680 rows), 65.55 ms without it against 0.033 ms with it
+-- and the config-driven query it enables. The existing server_name index
+-- cannot serve that lookup — two probes on one host share a server_name.
+CREATE INDEX IF NOT EXISTS idx_hc_results_probe
+    ON health_check_results(server_name, check_type, target_host, target_port, id);
 
 -- F4: Baseline Deviation Alerts
 CREATE TABLE IF NOT EXISTS metric_baselines (
@@ -496,6 +580,19 @@ CREATE TABLE IF NOT EXISTS server_dependencies (
 );
 CREATE INDEX IF NOT EXISTS idx_deps_server ON server_dependencies(server_name);
 CREATE INDEX IF NOT EXISTS idx_deps_target ON server_dependencies(depends_on);
+
+-- WP-1 phase 3: reachability, precomputed at dependency-CRUD time.
+-- Rebuilt whole on every edge write (rare, human-driven) so the runtime
+-- cascade reducer is a point lookup and never a graph walk on the 5s path.
+-- `depth` is the SHORTEST path from root to dependent.
+CREATE TABLE IF NOT EXISTS dependency_closure (
+    root TEXT NOT NULL,
+    dependent TEXT NOT NULL,
+    depth INTEGER NOT NULL,
+    UNIQUE(root, dependent)
+);
+CREATE INDEX IF NOT EXISTS idx_closure_root ON dependency_closure(root);
+CREATE INDEX IF NOT EXISTS idx_closure_dependent ON dependency_closure(dependent);
 
 -- F10: Runbook Library with Quick-Actions
 CREATE TABLE IF NOT EXISTS runbooks (
@@ -702,6 +799,41 @@ class Database:
         # before the caller sees a "database is locked" error and silently
         # drops an audit/metric row.
         conn.execute("PRAGMA busy_timeout = 5000")
+        # Phase 1 of the audit-chain remediation (docs/plans/AUDIT_CHAIN_REBASELINE.md):
+        # without this, SQLite's implicit delete-then-insert inside INSERT OR
+        # REPLACE never fires a BEFORE DELETE trigger, because recursive_triggers
+        # is 0 by default. That is exactly how INSERT OR REPLACE bypassed
+        # audit_log_no_delete and rewrote an audit row in place (measured against
+        # a copy of production, see tests/test_audit_chain.py).
+        #
+        # NOT purely redundant with audit_log_no_overwrite. That trigger's own
+        # id-guards use `NEW.id <> -1` because a true auto-assigned row's NEW.id
+        # is always exactly -1 inside a BEFORE INSERT trigger (SQLite's "not yet
+        # resolved" placeholder, confirmed empirically on 3.49.1) — which means
+        # an explicit, hostile id=-1 is genuinely indistinguishable from a real
+        # auto-assign at that point and the overwrite guard is blind to it.
+        #
+        # CORRECTED (3rd review round): this pragma does NOT catch the actual
+        # attack. It only routes a FOLLOW-UP `INSERT OR REPLACE` against a row
+        # ALREADY sitting at id=-1 through audit_log_no_delete's unconditional
+        # refusal (implicit delete-then-insert; verified empirically — see
+        # tests/test_audit_chain.py). A rational attacker never needs that
+        # second write: a single one-shot `INSERT ... VALUES (-1, ...)` with
+        # pre-forged, self-consistent content lands on the FIRST attempt,
+        # identically whether this pragma is ON or OFF, on a connection that
+        # already has it set — i.e. exactly how every connection in this
+        # process is configured. Verified directly: planting id=-1 in one
+        # INSERT on a connection with `PRAGMA recursive_triggers` already at 1
+        # succeeds every time. So on Prism's own connections this pragma gives
+        # ZERO protection against the real, one-shot version of the id=-1 gap;
+        # its only effect is on an unnecessary second write. It is kept for the
+        # narrower REPLACE-based case it does close, and because every other
+        # trigger in SCHEMA_SQL was checked before turning this on
+        # (audit_log_no_update/no_delete/no_overwrite, sop_log_no_update/
+        # no_delete): each body is only `SELECT RAISE(ABORT, ...)` — none
+        # contains an INSERT/UPDATE/DELETE that writes to another table — so
+        # this cannot trigger unexpected cascades elsewhere.
+        conn.execute("PRAGMA recursive_triggers = ON")
         self._thread_local.conn = conn
         return conn
 
@@ -743,6 +875,63 @@ class Database:
             # Migration: add name to health_check_config
             try:
                 conn.execute("ALTER TABLE health_check_config ADD COLUMN name TEXT DEFAULT ''")
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass
+
+            # Migration: add promoted_at to incidents (WP-1 phase 3).
+            # Nullable and additive. Once the root recovers and the child is
+            # still down at its next fresh poll, the child's incident is born
+            # with this stamped. root_cause_server is NEVER nulled — it is the
+            # historical fact of how the outage began, and an audit needs it.
+            try:
+                conn.execute("ALTER TABLE incidents ADD COLUMN promoted_at TEXT")
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass
+
+            # Migration: add subject_server to incidents (WP-1 close).
+            #
+            # This resolves the design point phase 3 recorded rather than
+            # papered over. `root_cause_server` answers "what CAUSED this",
+            # and phase 3 wrote the root's own name into it on the root's own
+            # incident — natural for the column's meaning, and it made a root
+            # row satisfy the child predicate, so the promotion guard was
+            # weaker than intended.
+            #
+            # SUBJECT answers a different question: "which server is this
+            # incident ABOUT". With both columns the identity rule is
+            # structural instead of conventional —
+            #
+            #     root incident      subject_server == root_cause_server
+            #     promoted ex-child  subject_server != root_cause_server
+            #
+            # — and nothing has to be inferred from a title or a description.
+            # Rows written before this column existed meant subject == root,
+            # which is exactly how `get_open_incident_by_subject` reads a
+            # NULL, so no backfill is needed and none is done.
+            try:
+                conn.execute("ALTER TABLE incidents ADD COLUMN subject_server TEXT")
+                conn.commit()
+            except sqlite3.OperationalError:
+                pass
+
+            # Migration: add verify_tls to health_check_config.
+            #
+            # DEFAULT 1 applies to existing rows too, so an upgrade turns
+            # certificate validation ON for HTTPS checks that were created
+            # while it was unconditionally off. That is the intended direction
+            # — the previous behaviour was the defect — and it is a visible
+            # change: a check against a self-signed endpoint will start
+            # reporting down with a certificate error naming the problem, and
+            # the operator turns verification off for that one check.
+            #
+            # Migrating existing rows to 0 was considered and rejected. It
+            # would preserve every current reading, and bake the finding in
+            # permanently for exactly the installations that already have it.
+            try:
+                conn.execute("ALTER TABLE health_check_config "
+                             "ADD COLUMN verify_tls INTEGER NOT NULL DEFAULT 1")
                 conn.commit()
             except sqlite3.OperationalError:
                 pass
@@ -942,7 +1131,8 @@ class Database:
     logs_kept_by_allowlist: int = 0
 
     def insert_logs(self, server_name: str, logs_list: list[dict],
-                    ingest_cfg: dict | None = None):
+                    ingest_cfg: dict | None = None,
+                    caps: dict | None = None):
         """Bulk insert log dicts (keys: source, time, level, event_id, message).
 
         Two volume controls, both configurable via ``settings.log_ingest`` and
@@ -960,6 +1150,15 @@ class Database:
         Timestamps are normalised first — see ``_canonical_ts`` for why a
         non-canonical row is invisible to every window query.
         """
+        if not logs_list:
+            return
+        # Capped here as well as at the check layer, because this is a public
+        # method and the collector is not its only possible caller — a CSV
+        # import or a later integration must not be able to write an unbounded
+        # row either. `caps=None` uses the ceilings, so a caller that knows
+        # nothing about the setting still gets bounded.
+        import ingest_caps
+        logs_list = ingest_caps.cap_log_rows(logs_list, caps, server=server_name)
         if not logs_list:
             return
         cfg = ingest_cfg or {}
@@ -1729,20 +1928,34 @@ class Database:
         batches. ``logs`` alone was 1.77M rows at 29 servers and projects to
         tens of millions, so this is the table that needs it.
 
+        THE LOCK IS TAKEN AND RELEASED PER CHUNK, HERE. Until the 2026-08
+        collector audit it was not: the caller wrapped this whole loop in one
+        ``with self._write_lock``, so the chunking bounded each STATEMENT while
+        the lock was held for the entire multi-minute operation — which is
+        precisely the stall the chunking was written to prevent. The docstring
+        above described the intended behaviour and had described it, wrongly,
+        for as long as it existed.
+
+        Owning the lock in here rather than in the caller is deliberate: it puts
+        the acquire in the same three lines as the loop it has to interleave
+        with, where the next person cannot re-wrap it from a distance without
+        noticing. Callers must NOT hold the write lock when calling this.
+
         Returns the number of rows deleted.
         """
         total = 0
         cutoff = (f"-{days} days",)
         while True:
-            cur = conn.execute(
-                f"DELETE FROM {table} WHERE rowid IN "
-                f"(SELECT rowid FROM {table} "
-                f" WHERE {ts_col} < strftime('%Y-%m-%dT%H:%M:%SZ','now', ?) "
-                f" LIMIT {int(chunk)})",
-                cutoff,
-            )
-            n = cur.rowcount
-            conn.commit()
+            with self._write_lock:
+                cur = conn.execute(
+                    f"DELETE FROM {table} WHERE rowid IN "
+                    f"(SELECT rowid FROM {table} "
+                    f" WHERE {ts_col} < strftime('%Y-%m-%dT%H:%M:%SZ','now', ?) "
+                    f" LIMIT {int(chunk)})",
+                    cutoff,
+                )
+                n = cur.rowcount
+                conn.commit()
             total += n
             if n < chunk:
                 return total
@@ -1768,8 +1981,12 @@ class Database:
         # every writer in the process.
         conn = self._get_conn()
         try:
+            # NOT wrapped in the write lock. `_chunked_delete` takes and
+            # releases it per chunk, which is the whole point of chunking —
+            # holding it out here made the batches cosmetic and stalled every
+            # collector write for the duration (collector audit, 2026-08).
+            logs_deleted = self._chunked_delete(conn, "logs", "timestamp", d_logs)
             with self._write_lock:
-                logs_deleted = self._chunked_delete(conn, "logs", "timestamp", d_logs)
                 # log_signatures is WITHOUT ROWID (its primary key IS the row),
                 # so it cannot be chunked by rowid — and does not need to be:
                 # coalescing makes it ~40x smaller than `logs`, so a single
@@ -2439,7 +2656,21 @@ class Database:
                        description: str | None = None, custom_type_name: str | None = None,
                        target_mode: str = "port", service_name: str | None = None,
                        process_name: str | None = None) -> int:
-        """Add a dependency relationship. Returns the new row id."""
+        """Add a dependency relationship. Returns the new row id.
+
+        REJECTS an edge that would close a cycle (WP-1 phase 3), raising
+        ValueError with a message naming the loop. Rejecting at the write is
+        what lets the runtime cascade reducer be a lookup rather than a
+        traversal — it can assume the graph is acyclic because this is the
+        only door in. A self-edge is a cycle of length one.
+        """
+        from cascade import would_create_cycle
+        existing = self.get_all_dependencies()
+        if would_create_cycle(existing, server_name, depends_on):
+            raise ValueError(
+                f"'{server_name}' depends on '{depends_on}' would create a "
+                f"dependency cycle — '{depends_on}' already depends on "
+                f"'{server_name}' directly or through other servers.")
         with self._write_lock:
             conn = self._get_conn()
             try:
@@ -2450,12 +2681,18 @@ class Database:
                     (server_name, depends_on, dependency_type, custom_type_name, target_mode, port, service_name, process_name, description)
                 )
                 conn.commit()
-                return cur.lastrowid
+                new_id = cur.lastrowid
             finally:
                 conn.close()
+        self.rebuild_dependency_closure()
+        return new_id
 
     def remove_dependency(self, dep_id: int):
-        """Remove a dependency by id."""
+        """Remove a dependency by id, then rebuild the closure.
+
+        A STALE closure is worse than no closure: it would keep muting a
+        server whose dependency the operator just deleted.
+        """
         with self._write_lock:
             conn = self._get_conn()
             try:
@@ -2463,6 +2700,51 @@ class Database:
                 conn.commit()
             finally:
                 conn.close()
+        self.rebuild_dependency_closure()
+
+    def rebuild_dependency_closure(self) -> int:
+        """Recompute the whole closure from the edges. Returns row count.
+
+        Whole-rebuild rather than incremental: edge writes are rare and
+        human-driven, and an incremental update is where a subtle staleness
+        bug would live forever. Cheap at any realistic fleet size.
+        """
+        from cascade import build_closure
+        closure = build_closure(self.get_all_dependencies())
+        rows = [(root, dep, depth)
+                for root, reach in closure["downstream"].items()
+                for dep, depth in reach.items()]
+        with self._write_lock:
+            conn = self._get_conn()
+            try:
+                conn.execute("DELETE FROM dependency_closure")
+                if rows:
+                    conn.executemany(
+                        "INSERT OR REPLACE INTO dependency_closure "
+                        "(root, dependent, depth) VALUES (?, ?, ?)", rows)
+                conn.commit()
+            finally:
+                conn.close()
+        return len(rows)
+
+    def get_dependency_closure(self) -> dict:
+        """The cached closure, in the shape `cascade` uses.
+
+        Returns {"downstream": {root: {dependent: depth}},
+                 "upstream":   {dependent: {root: depth}}}
+        """
+        conn = self._get_conn()
+        try:
+            rows = conn.execute(
+                "SELECT root, dependent, depth FROM dependency_closure").fetchall()
+        finally:
+            conn.close()
+        down: dict[str, dict] = {}
+        up: dict[str, dict] = {}
+        for r in rows:
+            down.setdefault(r["root"], {})[r["dependent"]] = r["depth"]
+            up.setdefault(r["dependent"], {})[r["root"]] = r["depth"]
+        return {"downstream": down, "upstream": up}
 
     def get_all_dependencies(self) -> list[dict]:
         """Return all dependency records."""
@@ -2914,20 +3196,47 @@ class Database:
     def save_health_check_config(self, server_name: str, check_type: str,
                                   target_host: str, target_port: int,
                                   http_path: str = '/', expected_status: int = 200,
-                                  name: str = '') -> int:
-        """Save a health check configuration. Returns the config ID."""
+                                  name: str = '', verify_tls: bool = True) -> int:
+        """Save a health check configuration. Returns the config ID.
+
+        `verify_tls` is carried on BOTH the insert and the ON CONFLICT update.
+        The update is the path an operator actually exercises — create a
+        check, watch it fail against a self-signed certificate, edit it — so a
+        setting honoured only on first insert would strand them with no way to
+        turn verification off, and no way to turn it back on afterwards.
+
+        THE UPDATE COALESCES rather than assigning. A caller that supplies only
+        the key fields plus the one thing it wants to change used to blank the
+        rest: `http_path` and `expected_status` arrive as None from the route
+        when absent, and a bare `= excluded.http_path` wrote that None over a
+        configured `/healthz` and a configured 204. Editing one field is the
+        normal shape of an edit, so the destructive version was waiting for the
+        first person to do the obvious thing.
+
+        `verify_tls` is deliberately NOT coalesced, and the reason is that it
+        cannot arrive as NULL: the route resolves absent-to-True before the
+        value gets here, so `excluded.verify_tls` is always 0 or 1 and a
+        COALESCE around it would never fire. The consequence is worth stating
+        because it differs from the fields above — a partial update that omits
+        `verify_tls` RESETS it to verifying rather than preserving it. That is
+        the safe direction and it matches the documented contract ("absent
+        means verify"); the UI always sends the field for an HTTPS check, so
+        it only affects a hand-written API client.
+        """
         with self._write_lock:
             conn = self._get_conn()
             try:
                 cursor = conn.execute(
                     """INSERT INTO health_check_config
-                       (server_name, check_type, target_host, target_port, http_path, expected_status, name)
-                       VALUES (?, ?, ?, ?, ?, ?, ?)
+                       (server_name, check_type, target_host, target_port, http_path, expected_status, name, verify_tls)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                        ON CONFLICT(server_name, check_type, target_host, target_port) DO UPDATE SET
-                        http_path = excluded.http_path,
-                        expected_status = excluded.expected_status,
-                        name = excluded.name""",
-                    (server_name, check_type, target_host, target_port, http_path, expected_status, name),
+                        http_path = COALESCE(excluded.http_path, health_check_config.http_path),
+                        expected_status = COALESCE(excluded.expected_status, health_check_config.expected_status),
+                        name = COALESCE(excluded.name, health_check_config.name),
+                        verify_tls = excluded.verify_tls""",
+                    (server_name, check_type, target_host, target_port, http_path,
+                     expected_status, name, 1 if verify_tls else 0),
                 )
                 conn.commit()
                 return cursor.lastrowid
@@ -2978,6 +3287,168 @@ class Database:
                 conn.commit()
             finally:
                 conn.close()
+
+    def get_health_check_summary(self) -> dict:
+        """Counts of ENABLED health-check probes, by their most recent result.
+
+        Shape deliberately mirrors :meth:`get_status_summary` so the
+        dashboard's services card reads the same way as its servers card:
+        ``{"total", "up", "down", "unknown"}``, ``total`` being the sum.
+
+        Three things this does that the obvious one-liner gets wrong, each
+        worth stating because each produces a plausible number:
+
+          * It counts CONFIGURED PROBES, not result rows.
+            ``health_check_results`` is append-only history — one probe on
+            the 5-minute periodics cadence contributes ~288 rows a day — so
+            grouping statuses there answers "how often has a probe run",
+            which looks like a fleet size and is not one.
+          * It excludes ``enabled = 0``. A probe the operator switched off
+            is not down, and counting it as down makes the card demand
+            attention for something nobody is watching.
+          * A probe with no result yet is ``unknown``, not ``up``. Hence the
+            LEFT JOIN: after a restart, or between adding a probe and the
+            next periodics tick, there is genuinely no answer, and the
+            honest report of that is its own bucket rather than a default
+            that flatters.
+
+        The probe's identity is the ``health_check_config`` UNIQUE tuple
+        (server_name, check_type, target_host, target_port) — the same
+        identity ``healthchecks.py`` uses to find a probe's previous status
+        for transition detection. Anything narrower (server_name alone)
+        would collapse two probes on one host into one row.
+
+        WHY IT IS SHAPED LIKE THIS, because the obvious form is 2,000x
+        slower and this one runs every five seconds.
+
+        The readable version groups ``health_check_results`` by the probe key
+        to find each ``MAX(id)`` and joins that back. It is correct, and it
+        touches every row in an APPEND-ONLY HISTORY TABLE to answer a
+        question about a dozen probes. Measured, 12 probes, one row per probe
+        per five minutes:
+
+            1 day      3,456 rows      1.42 ms
+            1 week    27,648 rows     12.75 ms
+            1 month  131,328 rows     82.64 ms     <- the retention default
+            3 months 442,368 rows    382.96 ms
+
+        Retention prunes the table at ``retention_days`` (default 30), so the
+        third row is the realistic ceiling and the fourth is what an operator
+        who raises retention gets. 82 ms on the dashboard's refresh path is
+        worse than the 31.77 ms analytics call that Wave 3 moved off
+        ``/server/<name>`` for being that page's entire server-side cost.
+
+        Driving from the CONFIG side instead — a dozen rows, each doing one
+        indexed seek to the newest result for that probe — is 0.033 ms at the
+        same 30-day size, a 2,000x reduction with byte-identical output. The
+        plan is ``SCAN c`` plus a ``SEARCH r USING INDEX
+        idx_hc_results_probe``, against a ``SCAN health_check_results``
+        before. That index exists for this query; see SCHEMA_SQL.
+
+        The bucketing stays in Python rather than becoming a ``GROUP BY``:
+        the result set is one row per configured probe, so there is nothing
+        to aggregate in SQL that is cheaper to aggregate here, and the
+        NULL-folding rule is easier to read as code than as a CASE.
+        """
+        conn = self._get_conn()
+        try:
+            rows = conn.execute("""
+                SELECT (
+                    SELECT r.status
+                    FROM health_check_results r
+                    WHERE r.server_name = c.server_name
+                      AND r.check_type  = c.check_type
+                      AND r.target_host = c.target_host
+                      AND r.target_port = c.target_port
+                    ORDER BY r.id DESC
+                    LIMIT 1
+                ) AS status
+                FROM health_check_config c
+                WHERE c.enabled = 1
+            """).fetchall()
+            summary = {"total": 0, "up": 0, "down": 0, "unknown": 0}
+            for row in rows:
+                status = row["status"]
+                # NULL (never probed) and any status the probes do not emit
+                # both land in `unknown` rather than being dropped, so
+                # `total` always equals up + down + unknown.
+                summary["up" if status == "up" else
+                        "down" if status == "down" else "unknown"] += 1
+                summary["total"] += 1
+            return summary
+        finally:
+            conn.close()
+
+    def get_health_check_overview(self) -> list[dict]:
+        """One row per CONFIGURED probe, carrying its most recent result.
+
+        The aggregate twin of :meth:`get_health_check_summary`, and it is
+        shaped the same way for the same measured reason: drive from
+        ``health_check_config`` (a dozen rows) and take one indexed seek per
+        probe into ``idx_hc_results_probe``, rather than grouping the
+        append-only ``health_check_results`` history. That docstring has the
+        numbers — 0.033 ms against 82.64 ms at the 30-day retention default.
+
+        TWO DELIBERATE DIFFERENCES from the summary, both load-bearing:
+
+          * **No ``enabled`` filter.** The summary excludes switched-off
+            probes because a probe nobody is watching is not down; this
+            returns them, flagged, because the page is the only place an
+            operator can see that they exist. The caller filters on
+            ``enabled`` before counting anything — otherwise the page's
+            arithmetic and the dashboard card that links to it disagree by
+            exactly the number of disabled probes, and neither says which
+            one is wrong.
+          * **``status`` is folded here, not left raw.** ``up`` and ``down``
+            pass through; NULL (never probed) and anything the probes do not
+            emit both become ``unknown``, which is precisely the summary's
+            bucketing. Two folds that agree by construction rather than by
+            being written the same way twice.
+
+        Never-probed stays distinguishable from probed-without-a-verdict
+        despite both folding to ``unknown``: only the second has a
+        ``last_checked``.
+
+        The ``LEFT JOIN`` resolves the newest row PER PROBE — the correlated
+        subquery carries the config table's full UNIQUE tuple (server_name,
+        check_type, target_host, target_port), which is the probe's identity
+        everywhere else in the application. Matching on anything narrower
+        gives every probe on a host the same status, which reads as a
+        perfectly ordinary page.
+        """
+        conn = self._get_conn()
+        try:
+            rows = conn.execute("""
+                SELECT c.id, c.name, c.server_name, c.check_type,
+                       c.target_host, c.target_port, c.http_path,
+                       c.expected_status, c.enabled, c.verify_tls,
+                       r.status          AS status,
+                       r.response_time_ms AS response_time_ms,
+                       r.error           AS error,
+                       r.last_checked    AS last_checked
+                FROM health_check_config c
+                LEFT JOIN health_check_results r ON r.id = (
+                    SELECT r2.id
+                    FROM health_check_results r2
+                    WHERE r2.server_name = c.server_name
+                      AND r2.check_type  = c.check_type
+                      AND r2.target_host = c.target_host
+                      AND r2.target_port = c.target_port
+                    ORDER BY r2.id DESC
+                    LIMIT 1
+                )
+                ORDER BY c.server_name, c.id
+            """).fetchall()
+            out = []
+            for row in rows:
+                probe = dict(row)
+                status = probe.get("status")
+                probe["status"] = ("up" if status == "up" else
+                                   "down" if status == "down" else "unknown")
+                out.append(probe)
+            return out
+        finally:
+            conn.close()
 
     def get_health_check_results(self, server_name: str | None = None) -> list[dict]:
         """Get health check results, optionally filtered by server."""
@@ -3174,8 +3645,18 @@ class Database:
 
     # ── F5: Failed Login methods ────────────────────────────────
 
-    def insert_failed_logins(self, server_name: str, logins: list[dict]):
-        """Bulk insert failed login events (ignore duplicates)."""
+    def insert_failed_logins(self, server_name: str, logins: list[dict],
+                             caps: dict | None = None):
+        """Bulk insert failed login events (ignore duplicates).
+
+        Capped on the way in: every text field on one of these rows comes from
+        the target's own event XML, and the query that produces them runs
+        against a log an attacker can flood on purpose.
+        """
+        if not logins:
+            return
+        import ingest_caps
+        logins = ingest_caps.cap_failed_logins(logins, caps, server=server_name)
         if not logins:
             return
         with self._write_lock:
@@ -3340,19 +3821,88 @@ class Database:
     # ── F7: Incident operations ──
 
     def create_incident(self, title: str, severity: str, description: str | None = None,
-                        root_cause_server: str | None = None) -> int:
-        """Create a new incident and return its ID."""
+                        root_cause_server: str | None = None,
+                        subject_server: str | None = None,
+                        promoted_at: str | None = None) -> int:
+        """Create a new incident and return its ID.
+
+        `subject_server` is which server the incident is ABOUT;
+        `root_cause_server` is what caused it. They are equal on a root's own
+        incident and differ on a promoted ex-child, which is the whole of the
+        identity rule (see the subject_server migration). `promoted_at` is
+        stamped at creation because a promoted child has no earlier row to
+        update — children are created only at promotion.
+        """
         with self._write_lock:
             conn = self._get_conn()
             try:
                 cur = conn.execute(
-                    "INSERT INTO incidents (title, severity, description, root_cause_server) VALUES (?, ?, ?, ?)",
-                    (title, severity, description, root_cause_server)
+                    "INSERT INTO incidents (title, severity, description, "
+                    "root_cause_server, subject_server, promoted_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (title, severity, description, root_cause_server,
+                     subject_server, promoted_at)
                 )
                 conn.commit()
                 return cur.lastrowid
             finally:
                 conn.close()
+
+    # NOTE: `get_open_incident_by_root` is gone. Phase 3 added it to replace
+    # title-prefix dedup — a title is a rendered sentence containing the child
+    # count, which is how one outage became 295 incidents — and keying on the
+    # root cause was the right correction at the time. It is the wrong KEY now:
+    # a root cause is shared, so five orphans of one dead domain controller all
+    # name it, and the first of them would block the other four. Removed rather
+    # than left unused, because an unused dedup helper beside the correct one is
+    # an invitation to reintroduce exactly the bug it caused.
+
+    def get_open_incident_by_subject(self, server: str) -> dict | None:
+        """The open incident ABOUT this server, or None. The cascade's dedup
+        key, and the guard that makes promotion fire exactly once.
+
+        Subject rather than root cause, because the root cause is shared: five
+        orphans of one dead domain controller all name it, and keying on it
+        would let the first promotion block the other four. A server, on the
+        other hand, has at most one open incident about it — which is the
+        invariant this method both reads and enforces.
+
+        NULLIF before COALESCE on purpose. A pre-upgrade row has subject NULL
+        and meant subject == root; a row that reached here through a form or a
+        route may carry '' instead, and '' is not NULL — that exact confusion
+        cost a live-verified fix a whole extra round in this repo.
+        """
+        conn = self._get_conn()
+        try:
+            row = conn.execute(
+                "SELECT * FROM incidents "
+                "WHERE COALESCE(NULLIF(subject_server, ''), root_cause_server) = ? "
+                "AND status = 'open' ORDER BY id DESC LIMIT 1",
+                (server,)).fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
+
+    def get_incident(self, incident_id: int) -> dict | None:
+        """One incident row, or None. (`get_incident_detail` adds its events;
+        this is the bare row, which promotion and its tests need.)"""
+        conn = self._get_conn()
+        try:
+            row = conn.execute("SELECT * FROM incidents WHERE id = ?",
+                               (incident_id,)).fetchone()
+            return dict(row) if row else None
+        finally:
+            conn.close()
+
+    # NOTE: there is deliberately no `promote_incident` UPDATE. Phase 3 had
+    # one, guarded on `root_cause_server IS NOT NULL AND promoted_at IS NULL`,
+    # and the owner's ruling at WP-1's close removed the thing it guarded:
+    # children are created only AT promotion, so there is never an earlier row
+    # to stamp. `create_incident(..., promoted_at=...)` is the whole mechanism
+    # and the child's own row is the idempotence guard — see
+    # `get_open_incident_by_subject`. Keeping an UPDATE whose predicate a root
+    # row also satisfied would have left a way to corrupt the identity rule
+    # that nothing needed.
 
     def update_incident(self, incident_id: int, **kwargs):
         """Flexible update for an incident. Supported keys: status, severity, resolved_at,

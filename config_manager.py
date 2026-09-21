@@ -8,6 +8,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from models import ServerConfig
+from ingest_caps import DEFAULTS as _INGEST_CAP_DEFAULTS
 from crypto_utils import (
     encrypt_password,
     decrypt_password,
@@ -66,13 +67,39 @@ class ConfigManager:
                 "System/1074",   # shutdown/restart initiated by a user or process
                 "System/6006",   # event log service stopped — clean shutdown
                 "System/6008",   # the previous shutdown was UNEXPECTED
-                "System/7045",   # a new service was installed
+                "System/7045",
+                # Windows Firewall policy events. Every one of these is Level 4
+                # ("Information"), so without an entry here they are dropped at
+                # ingest — which is why `log_source='Firewall'` had zero rows
+                # while the UI promised "Policy changes, blocked apps, and
+                # service state changes will appear here".
+                #
+                # Only POLICY events are allowed through. The per-packet
+                # events (5152/5153) are deliberately absent: they are the
+                # high-volume ones, and they arrive on the Security channel.
+                "Firewall/2004",   # a rule was added
+                "Firewall/2005",   # a rule was modified
+                "Firewall/2006",   # a rule was deleted
+                "Firewall/2008",   # firewall settings changed
+                "Firewall/2009",   # profile settings changed
+                "Firewall/2010",   # active network profile changed
+                "Firewall/2033",   # all rules deleted   # a new service was installed
             ],
             # Roll identical rows up into per-signature-per-hour counts in
             # log_signatures. The raw row is still written to `logs` for
             # drill-down; signatures are what survives raw retention.
             "coalesce_signatures": True,
         },
+        # ── Caps on untrusted ingest ──────────────────────────────────────
+        # A monitored server is SEMI-TRUSTED: Prism asks it to run a script and
+        # believes the answer. The script's own 30-row / 200-char limits are a
+        # promise a compromised host need not keep, so these are the same bounds
+        # enforced where the host cannot skip them. Every value is generously
+        # above what the shipped scripts emit, so a well-behaved machine is
+        # never truncated. Seeded here for discoverability; `ingest_caps.resolve`
+        # is what reads them, and a test pins these values against that module's
+        # defaults so the two cannot drift apart.
+        "ingest_caps": dict(_INGEST_CAP_DEFAULTS),
         # ── Per-table retention ───────────────────────────────────────────
         # retention_days below is the fallback for anything not named here.
         # These exist because one uniform value is why `logs` dominates: the
@@ -106,6 +133,15 @@ class ConfigManager:
         # see ``docs/COLLECTOR_V1_RETIREMENT.md``. ``app.py`` logs a
         # warning if an old settings.json still carries the key.
         "collector_v2_num_workers": 15,
+        # Concurrency for the PERIODIC fleet walks — failed logins, health
+        # checks, security status, TLS, drift. A different pool from the one
+        # above and a different problem: those five ran serially in the single
+        # periodics thread, so the cost of a pass was the SUM of every host's
+        # timeout and a 300s job started missing its own cadence at roughly
+        # 100-150 servers (collector audit finding 2). Set it to 1 to restore
+        # the old serial walk exactly, which is how to rule the pool out as the
+        # cause of a problem. See collector_v2/fleet_walk.py.
+        "collector_v2_periodic_workers": 8,
         "retention_days": 30,
         "language": "en",
         "timezone": "Europe/Berlin",
@@ -167,6 +203,18 @@ class ConfigManager:
             "send_on_warning": False,
         },
         "maintenance_windows": [],
+        # ── The estate severity model (WP-1, docs/plans/SEVERITY_MODEL_SPEC.md) ──
+        # Empty dicts mean "the code constants in severity_roles.py apply" —
+        # weights 10/4/1 and the type seeds ship as constants so CI without a
+        # config.json stays green and a fresh install needs zero configuration.
+        # A site that genuinely differs overrides here (the MSP copies this
+        # block between customers): weights = {role_word: int},
+        # type_roles = {server_type: role_word}. Per-server overrides live on
+        # the server entry itself (`criticality`), not here.
+        "severity_model": {
+            "weights": {},
+            "type_roles": {},
+        },
         # ─────────────────────────────────────────────────────────────────
         # Scheduled restarts (Operations page). These MUST be declared here
         # even though POST /api/scheduled-restarts writes them straight into

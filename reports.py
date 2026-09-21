@@ -150,21 +150,86 @@ def _gather_events_rows(db: Database, server_name: str | None = None,
     return result
 
 
+# ── CSV cell safety ──────────────────────────────────────────────────────
+
+#: The four leading characters Excel and LibreOffice treat as the start of a
+#: formula, plus the two whitespace characters that let one hide behind them.
+#: `-` is deliberately absent: `-1.0` is a negative number, and flagging it
+#: produced 4,130 false positives when this was first measured.
+_FORMULA_LEADS = ("=", "+", "@", "\t", "\r")
+
+
+def csv_safe(value):
+    """Neutralise a cell a spreadsheet would evaluate as a formula.
+
+    Measured as zero occurrences in the metrics and events exports, and
+    written anyway for the evidence report, which carries operator-supplied
+    text — account names, log messages, audit details — where a leading `=`
+    is reachable by anyone who can name a server.
+
+    It then spent its whole life uncalled: defined in `routes/api/reports.py`,
+    imported by nothing, while `generate_evidence_csv` wrote raw values. That
+    is the failure shape in HANDOFF §3 — installed, reporting success, doing
+    no work — so it now lives here, beside the writers that need it, and
+    `evidence_csv_writer` makes using it the default rather than a step
+    someone has to remember at forty call sites.
+    """
+    s = "" if value is None else str(value)
+    return "'" + s if s[:1] in _FORMULA_LEADS else s
+
+
+class _SafeCsvWriter:
+    """A `csv.writer` that cannot forget to escape a cell.
+
+    Deliberately a wrapper rather than a `map(csv_safe, row)` at each call
+    site: `generate_evidence_csv` writes rows from about forty places, and a
+    guard that has to be repeated forty times is a guard that will be missed
+    on the forty-first. This is the same reasoning as `_csv_response` owning
+    the BOM instead of each route remembering it.
+    """
+
+    __slots__ = ("_w",)
+
+    def __init__(self, fileobj):
+        self._w = csv.writer(fileobj)
+
+    def writerow(self, row):
+        self._w.writerow([csv_safe(c) for c in row])
+
+    def writerows(self, rows):
+        for r in rows:
+            self.writerow(r)
+
+
+def evidence_csv_writer(fileobj) -> _SafeCsvWriter:
+    """The writer every evidence CSV section goes through."""
+    return _SafeCsvWriter(fileobj)
+
+
 def generate_csv_metrics(db: Database, server_name: str | None = None,
-                         hours: int = 24) -> str:
+                         hours: int = 24, ts_fmt=None, ts_label: str = "UTC") -> str:
     """Generate CSV of metric history with anomaly indicators.
 
     If server_name is None, exports all servers.
+
+    `ts_fmt` converts a stored UTC timestamp into what the file should show,
+    and `ts_label` names the zone in the header. They are parameters rather
+    than a settings lookup because this module has no Flask context and is
+    tested without one — the layer that knows the configured timezone passes
+    it in. Defaulting to UTC unconverted keeps every existing caller honest:
+    a caller that does not care gets a file that says so in the header.
     """
+    fmt = ts_fmt or (lambda v: v)
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Server", "Timestamp", "CPU %", "RAM %", "Disk C %", "Disk D %",
+    writer.writerow(["Server", f"Timestamp ({ts_label})", "CPU %", "RAM %",
+                      "Disk C %", "Disk D %",
                       "Status", "Anomaly Flag", "Anomaly Metric", "Anomaly Direction",
                       "Rate of Change"])
 
     for row in _gather_metrics_rows(db, server_name=server_name, hours=hours):
         writer.writerow([
-            row["server"], row["timestamp"],
+            row["server"], fmt(row["timestamp"]),
             row["cpu"], row["ram"], row["disk_c"], row["disk_d"],
             row["status"], row["anomaly_flag"], row["anomaly_metric"],
             row["anomaly_direction"], row["rate_of_change"],
@@ -174,21 +239,54 @@ def generate_csv_metrics(db: Database, server_name: str | None = None,
 
 
 def generate_csv_events(db: Database, server_name: str | None = None,
-                        limit: int = 500) -> str:
-    """Generate CSV of events with correlation and acknowledgment info."""
+                        limit: int = 500, ts_fmt=None, ts_label: str = "UTC") -> str:
+    """Generate CSV of events with correlation and acknowledgment info.
+
+    See `generate_csv_metrics` for why the timestamp formatter is a parameter.
+    All three timestamp columns go through it: a file with one column in local
+    time and two in UTC is worse than one that is consistently either."""
+    fmt = ts_fmt or (lambda v: v)
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Server", "Timestamp", "Type", "Metric", "Value", "Threshold",
-                      "Message", "Correlation ID", "Acknowledged At", "Snoozed Until"])
+    writer.writerow(["Server", f"Timestamp ({ts_label})", "Type", "Metric",
+                      "Value", "Threshold", "Message", "Correlation ID",
+                      f"Acknowledged At ({ts_label})", f"Snoozed Until ({ts_label})"])
 
     for row in _gather_events_rows(db, server_name=server_name, limit=limit):
         writer.writerow([
-            row["server"], row["timestamp"], row["type"], row["metric"],
+            row["server"], fmt(row["timestamp"]), row["type"], row["metric"],
             row["value"], row["threshold"], row["message"],
-            row["correlation_id"], row["acknowledged_at"], row["snoozed_until"],
+            row["correlation_id"], fmt(row["acknowledged_at"]),
+            fmt(row["snoozed_until"]),
         ])
 
     return output.getvalue()
+
+
+def _msg_style(size):
+    """A wrapping cell style at a given size, built once per size."""
+    from reportlab.lib.styles import ParagraphStyle
+    return ParagraphStyle(
+        f"_prism_cell_{size}", fontName="Helvetica", fontSize=size,
+        leading=size + 1.5,
+    )
+
+
+def _cell(text, style):
+    """Stored text as a wrapping Paragraph, escaped.
+
+    A plain `str` in a ReportLab table is drawn on ONE line and allowed to run
+    off the page — no wrap, no warning, no error. Anything holding host- or
+    operator-controlled text has to be a Paragraph so it wraps inside its
+    column.
+
+    `escape` is not optional: a Paragraph parses its input as markup, so a
+    Windows event message containing `<` or `&` would produce malformed XML
+    and take the whole document down. The DB already caps messages at 400
+    chars; the cut here is a second belt against a very long single token."""
+    from xml.sax.saxutils import escape
+    from reportlab.platypus import Paragraph
+    return Paragraph(escape(str(text or ""))[:300], style)
 
 
 def _draw_sparkline(values, width=120, height=30, line_color=None):
@@ -477,13 +575,15 @@ def generate_pdf_report(db: Database, config_manager, translations: dict) -> byt
         for i, mk in enumerate(spark_metric_keys):
             vals = [h[mk] for h in history if h.get(mk) is not None]
             if vals and len(vals) >= 2:
-                spark_row.append(_draw_sparkline(vals, width=100, height=25,
+                spark_row.append(_draw_sparkline(vals, width=88, height=25,
                                                  line_color=spark_colors[i]))
             else:
                 spark_row.append("—")
 
+        # 90+105*4 = 510 in a 481.90 pt frame: 28 pt past the margin, drawn
+        # anyway because ReportLab neither shrinks nor warns. 81+100*4 = 481.
         spark_table = Table([spark_header, spark_row],
-                            colWidths=[90, 105, 105, 105, 105])
+                            colWidths=[81, 100, 100, 100, 100])
         spark_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F3F4F6")),
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
@@ -512,7 +612,8 @@ def generate_pdf_report(db: Database, config_manager, translations: dict) -> byt
                 e.get("event_type", ""),
                 e.get("metric", "—"),
                 f'{e["value"]:.1f}' if e.get("value") is not None else "—",
-                (e.get("message", "") or "")[:60],
+                # Same defect at 7 pt: 60 chars = 210 pt into 123 pt.
+                _cell(e.get("message", "") or "", _msg_style(7)),
             ])
 
         anom_table = Table(anom_data, colWidths=[90, 80, 55, 55, 45, 135])
@@ -698,9 +799,13 @@ def generate_pdf_report(db: Database, config_manager, translations: dict) -> byt
                        translations.get("message", "Message")]]
         for e in events:
             ts = e.get("timestamp", "")[:16]
+            # Message was truncated by CHARACTERS and sized in POINTS: 80
+            # chars of Helvetica-8 is 320 pt into 198 pt of usable column,
+            # so the tail ran past the edge of the paper and the viewer
+            # dropped it. A Paragraph wraps instead.
             event_data.append([
                 ts, e.get("server_name", ""),
-                e.get("event_type", ""), e.get("message", "")[:80],
+                e.get("event_type", ""), _cell(e.get("message", ""), _msg_style(8)),
             ])
 
         event_table = Table(event_data, colWidths=[100, 90, 60, 210])
@@ -963,13 +1068,15 @@ def generate_comparison_pdf(db: Database, config_manager, translations: dict,
                                  "disk_c_percent", "disk_d_percent"]):
             vals = [h[mk] for h in history if h.get(mk) is not None]
             if vals and len(vals) >= 2:
-                spark_row.append(_draw_sparkline(vals, width=100, height=25,
+                spark_row.append(_draw_sparkline(vals, width=88, height=25,
                                                  line_color=spark_colors[i]))
             else:
                 spark_row.append("—")
 
+        # 90+105*4 = 510 in a 481.90 pt frame: 28 pt past the margin, drawn
+        # anyway because ReportLab neither shrinks nor warns. 81+100*4 = 481.
         spark_table = Table([spark_header, spark_row],
-                            colWidths=[90, 105, 105, 105, 105])
+                            colWidths=[81, 100, 100, 100, 100])
         spark_table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F3F4F6")),
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),

@@ -1,0 +1,603 @@
+"""Guardrails for the dashboard's vitals quadrant and its centre circle.
+
+The circle is the first perpetually-animating STATUS display in the app, and
+it is drawn on a <canvas>. Both facts create guard-shaped holes that this
+repository has fallen into before:
+
+  * A canvas animation is INVISIBLE to every reduced-motion rule a stylesheet
+    can express. `animation-duration: 0.01ms !important` has no bearing on a
+    requestAnimationFrame loop, so the blanket rule in app.css — the one that
+    exists precisely because per-rule compliance decays — cannot reach this.
+    The compliance is a branch in JavaScript, which means nothing enforces it
+    but a test.
+  * The quadrant's numbers are swapped by htmx every ~5s while the canvas
+    must NOT be, or the beat restarts several times a minute. That is a
+    structural property of where two elements sit relative to each other,
+    and it looks fine in a screenshot either way.
+
+WHAT THESE ARE BLIND TO, stated up front because a check that cannot see the
+bug still reports green:
+
+  * They read source. That the trace actually beats, and beats faster when
+    the estate degrades, was measured in the running app: 24 canvas rows
+    inked at `elevated`, 28 at `urgent`, 2 at `flat`, and the flat trace
+    still painted after the loop stopped. Those numbers are recorded in
+    static/js/vitals-monitor.js.
+  * They cannot emulate `prefers-reduced-motion`. The browser pane offers no
+    way to set it, so the reduced path is asserted structurally here and has
+    NOT been observed running. It is the largest untested surface in this
+    feature and is named as such rather than implied to be covered.
+  * Geometry. That the circle centres on the cards' junction and covers no
+    text was measured at 1280 / 1920 / 2560 (offset 0,0 and zero overlaps at
+    all three); nothing here measures a pixel. The one structural half of it
+    — equal grid rows, which is what puts the junction and the centre in the
+    same place — is asserted below.
+"""
+
+from __future__ import annotations
+
+import re
+from html.parser import HTMLParser
+from pathlib import Path
+
+from routes.views import _VITALS_BPM
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+TEMPLATES = PROJECT_ROOT / "templates"
+APP_CSS = PROJECT_ROOT / "static" / "css" / "app.css"
+VITALS_JS = PROJECT_ROOT / "static" / "js" / "vitals-monitor.js"
+QUADRANT = TEMPLATES / "partials" / "vitals_quadrant.html"
+DASHBOARD = TEMPLATES / "dashboard.html"
+
+_COMMENTS = re.compile(r"{#.*?#}|<!--.*?-->|/\*.*?\*/", re.S)
+# Whole-line `//` only. A mid-line rule would eat the `//` in every URL and
+# hide the code after it — see docs/OPS-LEARNINGS.md §2.5 #31.
+_LINE_COMMENT = re.compile(r"^[ \t]*//[^\n]*", re.M)
+
+
+def _code_only(text: str) -> str:
+    """Blank comments, keeping line numbers true.
+
+    Load-bearing here: this file's subjects are documented at length in their
+    own source, and several of the strings below (`getImageData`,
+    `animation-duration`, `tabindex`) appear in those explanations. A check
+    that cannot tell code from commentary fires on its own rationale, and the
+    cheapest way to make it green is to delete the rationale."""
+    blanked = _COMMENTS.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), text)
+    return _LINE_COMMENT.sub(lambda m: " " * len(m.group(0)), blanked)
+
+
+def _js() -> str:
+    return _code_only(VITALS_JS.read_text(encoding="utf-8"))
+
+
+def _css() -> str:
+    return _code_only(APP_CSS.read_text(encoding="utf-8"))
+
+
+# ── reduced motion ───────────────────────────────────────────────────────
+
+def _animating(js: str) -> str:
+    """The body of the ONE predicate that decides whether anything moves.
+
+    WP-2 moved the reasons not to animate out of `start()` and into a named
+    predicate, because the answer is also published to the DOM and two copies of
+    the condition would be two answers. It is `sweeping()` — does the TRACE
+    advance — since the owner's live report split the one decision in two: the
+    squeeze is gated on unacknowledged news, the trace never is. The invariants
+    below are unchanged; only the place they are asserted moved with the code.
+    """
+    m = re.search(r"function sweeping\(\)\s*\{(.*?)\n  \}", js, re.S)
+    assert m, "sweeping() is gone; re-derive what gates the loop"
+    return m.group(1)
+
+
+def _start(js: str) -> str:
+    m = re.search(r"function start\(\)\s*\{(.*?)\n  \}", js, re.S)
+    assert m, "start() has been reshaped; re-derive what gates the loop"
+    return m.group(1)
+
+
+def test_the_trace_asks_about_reduced_motion_at_all():
+    """The stylesheet cannot reach a rAF loop, so this query is the ONLY
+    place the preference is honoured. Without it the page passes every
+    reduced-motion test in the suite and animates forever anyway."""
+    js = _js()
+    assert re.search(r"matchMedia\(\s*'\(prefers-reduced-motion:\s*reduce\)'\s*\)", js), (
+        "vitals-monitor.js no longer reads the reduced-motion preference; no "
+        "CSS rule can substitute for this one")
+
+
+def test_a_reduced_motion_reader_never_starts_the_loop():
+    """The check must gate the LOOP, not merely exist. `reduceMotion` read
+    into a variable and then ignored is the exact shape of a compliance
+    measure that reports itself as installed."""
+    js = _js()
+    assert "reduceMotion" in _animating(js), (
+        "the movement decision no longer consults reduceMotion, so the "
+        "preference is read and discarded")
+    body = _start(js)
+    assert "sweeping()" in body, (
+        "start() decides for itself instead of asking sweeping(), so the gate "
+        "and the published data-sweeping can disagree")
+    assert re.search(r"if\s*\(!run\)[\s\S]{0,400}stopRaf\(\)", body), (
+        "the not-animating branch does not stop the animation loop")
+    # And nothing may start it again further down the same function.
+    after = body[body.index("if (!run)"):]
+    assert after.index("return") < after.index("startRaf"), (
+        "start() falls through to startRaf() after the bail-out branch, so "
+        "the branch changes nothing")
+
+
+def test_stopping_the_sweep_never_leaves_an_empty_canvas():
+    """Every path that declines to animate still paints once. A blank canvas
+    in the middle of the quadrant does not read as "a monitor at rest", it
+    reads as a region that failed to load — which is the outcome the
+    reduced-motion decision was specifically weighed against."""
+    body = _start(_js())
+    guard = re.search(r"if\s*\(!run\)[\s\S]{0,500}?\breturn\b", body)
+    assert guard, "the bail-out branch is gone"
+    assert "paint(" in guard.group(0), (
+        "the no-animation branch returns without painting; the canvas stays "
+        "blank for reduced-motion readers, an acknowledged state, a flat "
+        "estate and a hidden tab")
+
+
+def test_no_reduced_motion_exemption_was_quietly_granted():
+    """The exemption was CONSIDERED AND DECLINED, and the argument is written
+    into the reduced-motion block in app.css. This fails if someone adds a
+    rule there that re-animates the trace — not because it could never be
+    right, but because it has to be argued rather than slipped in beside two
+    carve-outs that were."""
+    css = _css()
+    block = re.search(r"@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{",
+                      css)
+    assert block, "the global reduced-motion block is gone"
+    # Walk to the matching brace so the scan covers the block and nothing else.
+    i, depth = block.end(), 1
+    while i < len(css) and depth:
+        depth += (css[i] == "{") - (css[i] == "}")
+        i += 1
+    body = css[block.end():i]
+    # A vitals rule in this block is now allowed IF it removes motion. WP-2
+    # added one — the heart's squeeze depth zeroed — and the distinction is the
+    # whole point of this test: the thing that must be argued rather than
+    # slipped in is a rule that RESTORES animation, not one that takes more of
+    # it away. The original blanket ban would have failed on a rule that makes
+    # the page quieter, which is the opposite of what it is protecting.
+    offenders = [line.strip() for line in body.splitlines()
+                 if "vitals" in line
+                 and re.search(r"animation|transition", line)
+                 and not re.search(r"0\.01ms|iteration-count:\s*1\b", line)]
+    assert not offenders, (
+        "a vitals rule inside the reduced-motion block re-enables animation. "
+        "The trace is a status display, not a progress indicator, and colour "
+        "carries the whole state — see the argument in that block:\n  "
+        + "\n  ".join(offenders))
+
+
+# ── energy and the canvas ────────────────────────────────────────────────
+
+def test_the_loop_stops_when_the_tab_is_hidden():
+    js = _js()
+    assert re.search(r"addEventListener\(\s*'visibilitychange'", js), (
+        "nothing suspends the loop when the tab goes away")
+    handler = js[js.index("'visibilitychange'"):]
+    assert re.search(r"document\.hidden[\s\S]{0,120}stopRaf\(\)", handler), (
+        "the visibility handler does not stop the loop")
+    assert "document.hidden" in _animating(js), (
+        "start() can re-arm the loop while the tab is hidden, so anything "
+        "that calls it — a partial swap, a severity change — undoes the "
+        "visibility pause")
+
+
+def test_the_trace_is_never_scrolled_by_reading_pixels_back():
+    """`pulse-monitor.js` scrolls its strip with getImageData/putImageData
+    because it stamps unrepeatable real events. This waveform is a pure
+    function of (time, bpm), so recomputing it is both cheaper and free of
+    the GPU sync stall that made `willReadFrequently` necessary over there.
+    A readback appearing here means someone has copied the wrong file."""
+    js = _js()
+    for banned in ("getImageData", "putImageData", "willReadFrequently"):
+        assert banned not in js, (
+            f"{banned} in the vitals trace — the waveform is recomputed per "
+            "frame precisely so it never needs a pixel readback")
+
+
+def test_the_waveform_is_supersampled():
+    """One sample per column misses the R spike entirely at this canvas size
+    — measured, 8 of 31 rows inked, i.e. a lumpy sine rather than an ECG.
+    The peak has to be sampled between pixel boundaries for the polyline to
+    have a vertex on it."""
+    js = _js()
+    assert re.search(r"SAMPLES_PER_PX\s*=\s*([2-9]|\d\d)", js), (
+        "SAMPLES_PER_PX is gone or is 1; the QRS complex is narrower than a "
+        "pixel at this size and will not be drawn")
+    # The step must be DERIVED from it, not merely named alongside it. The
+    # first version of this test asserted `SAMPLES_PER_PX = <n>` and
+    # `x += step` separately, and both stayed true when `step` was pinned to
+    # 1 — the constant was still there, still described in a comment, and
+    # doing nothing. Caught by mutation, not by re-reading it.
+    assert re.search(r"step\s*=\s*1\s*/\s*SAMPLES_PER_PX", js), (
+        "the sample step is no longer derived from SAMPLES_PER_PX, so the "
+        "constant documents a resolution the trace does not use")
+    assert re.search(r"x\s*\+=\s*step", js), (
+        "the trace loop no longer steps by fractions of a pixel, so "
+        "SAMPLES_PER_PX is defined and unused")
+
+
+# ── one mapping, not two ─────────────────────────────────────────────────
+
+def test_the_severity_colour_mapping_is_not_duplicated_in_javascript():
+    """The trace's ink is `currentColor`, resolved from the
+    `.vitals-core--*` modifiers. A token name appearing in the JS means a
+    second copy of that mapping, and the two drift silently — the CSS one is
+    what a reviewer looks at and the JS one is what gets drawn."""
+    js = _js()
+    assert "--c-" not in js, (
+        "vitals-monitor.js names a design token; the severity -> colour "
+        "mapping belongs only in app.css's .vitals-core--* rules")
+    assert re.search(r"getComputedStyle\(\s*canvas\s*\)\.color", js), (
+        "the trace no longer reads its ink from the resolved `color` "
+        "property, which is the mechanism that keeps the mapping single")
+
+
+def test_every_severity_has_a_ring_colour_and_a_label():
+    """Three layers have to agree on the set of severities: the Python model
+    that emits one, the CSS that colours the ring, and the label map that
+    names it. A severity missing from the CSS renders the default accent
+    halo — a green-ish ring on a failing estate — and one missing from the
+    label map renders nothing at all."""
+    css = _css()
+    dash = _code_only(DASHBOARD.read_text(encoding="utf-8"))
+    for severity in _VITALS_BPM:
+        assert re.search(rf"\.vitals-core--{severity}\b", css), (
+            f"no .vitals-core--{severity} rule; that severity falls back to "
+            "the default halo colour")
+        assert re.search(rf"'{severity}':", dash), (
+            f"'{severity}' has no entry in dashboard.html's vitals_labels, so "
+            "the state word is blank whenever the estate is in it")
+
+
+def test_the_state_words_are_defined_once_and_used_twice():
+    """Jinja renders the word for first paint and the JS re-renders it after
+    every refresh. Two literal copies of five translated strings is two
+    places to update and one to forget, and the failure is a state word that
+    lags the tempo it labels."""
+    dash = _code_only(DASHBOARD.read_text(encoding="utf-8"))
+    # One DEFINITION, asserted structurally rather than by counting mentions.
+    # The count was 3 and became 4 when WP-2 rendered the word in two places —
+    # the live region on the face of the circle and the visible line in the
+    # detail — and a magic number would have failed on a change that adds a
+    # correct second USE while keeping the single definition intact. The
+    # invariant is "defined once", so that is what is checked.
+    assert dash.count("{% set vitals_labels =") == 1, (
+        "vitals_labels is defined more than once; two copies of five "
+        "translated strings is two places to update and one to forget")
+    assert "data-vitals-labels='{{ vitals_labels | tojson }}'" in dash, (
+        "the JS is no longer handed the same map Jinja renders from")
+    assert dash.count("{{ vitals_labels[vitals.severity] }}") >= 1, (
+        "no server-rendered state word, so the readout is blank until the "
+        "first swap lands")
+    # THE ACTUAL INVARIANT: every state word is looked up in the map, and the
+    # map is the only place that reaches for a `vitals_state_*` translation.
+    # Checked by splitting the template at the definition, because "the count of
+    # a substring" could not see a use that duplicates the LOOKUP rather than
+    # the definition — a mutation that replaced one lookup with a direct
+    # `t.get('vitals_state_calm', …)` left the definition intact and the count
+    # unchanged, and the test passed while the word it rendered had stopped
+    # tracking the severity.
+    start = dash.index("{% set vitals_labels =")
+    end = dash.index("%}", dash.index("}", start)) + 2
+    definition, rest = dash[start:end], dash[:start] + dash[end:]
+    assert definition.count("vitals_state_") == 6, (
+        "the definition no longer names all six severities' translations")
+    assert "vitals_state_" not in rest, (
+        "a state-word translation is fetched outside the vitals_labels "
+        "definition, so that word no longer tracks the severity it labels")
+
+
+def test_every_state_word_exists_in_every_locale():
+    """One key per severity, in every language. The en dict already runs 39
+    keys ahead of the others and a new feature is not the place to widen
+    that. Driven off `_VITALS_BPM` rather than a literal count, so a sixth
+    severity fails this the moment it is added — which is how
+    `unmeasured` got its five translations rather than an English word in
+    five locales."""
+    from i18n import TRANSLATIONS
+    keys = [f"vitals_state_{s}" for s in _VITALS_BPM]
+    missing = [f"{lang}:{k}" for lang in TRANSLATIONS for k in keys
+               if k not in TRANSLATIONS[lang]]
+    assert not missing, "untranslated state words: " + ", ".join(missing)
+
+
+# ── the canvas must not be swapped ───────────────────────────────────────
+
+class _Nesting(HTMLParser):
+    """Records, for each element carrying an id or hx-get, the stack of
+    hx-get regions it sits inside."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.stack: list[str | None] = []
+        self.found: dict[str, list[str]] = {}
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        region = a.get("hx-get")
+        if a.get("id"):
+            self.found[a["id"]] = [r for r in self.stack if r]
+        if tag not in ("br", "hr", "img", "input", "meta", "link", "source"):
+            self.stack.append(region)
+
+    def handle_endtag(self, tag):
+        if self.stack:
+            self.stack.pop()
+
+
+def test_the_circle_is_not_inside_the_region_that_gets_swapped():
+    """The one structural fact the whole feature rests on. `morph:innerHTML`
+    REPLACES the elements it swaps, so a <canvas> inside /partials/vitals
+    would be discarded and rebuilt on every prismRefresh — about every 5s —
+    and the beat would never get past its first cycle. It would still look
+    like a working trace in a screenshot."""
+    p = _Nesting()
+    p.feed(_code_only(DASHBOARD.read_text(encoding="utf-8")))
+    assert "estate-vitals" in p.found, (
+        "#estate-vitals is gone from dashboard.html; the JS no-ops silently "
+        "when it cannot find it")
+    inside = p.found["estate-vitals"]
+    assert not inside, (
+        "the circle is inside a swapped region "
+        f"({', '.join(inside)}) — its canvas will be replaced on every "
+        "refresh and the animation will restart from a blank buffer")
+
+
+def test_the_quadrant_cards_ARE_swapped():
+    """The negative control for the test above. Pinning the circle outside a
+    swapped region is only half the design; if the cards stopped refreshing
+    too, the numbers would freeze at page-load values and both tests would
+    still pass."""
+    dash = _code_only(DASHBOARD.read_text(encoding="utf-8"))
+    m = re.search(r'hx-get="/partials/vitals"[^>]*hx-trigger="([^"]*)"', dash, re.S)
+    assert m, "the quadrant no longer fetches /partials/vitals"
+    assert "load" in m.group(1) and "prismRefresh" in m.group(1), (
+        f"the quadrant's trigger is {m.group(1)!r}; it must paint on load and "
+        "track prismRefresh")
+
+
+def test_the_javascript_reads_the_state_after_the_swap_has_settled():
+    """`afterSwap` fires while idiomorph is still reconciling the incoming
+    tree, so reading attributes then races the swap. table-sort.js waits for
+    settle for the same reason."""
+    js = _js()
+    assert "htmx:afterSettle" in js, "the JS no longer follows the swap at all"
+    assert "htmx:afterSwap" not in js, (
+        "reading the swapped state at afterSwap races idiomorph's "
+        "reconciliation; wait for afterSettle")
+
+
+# ── the two unbuilt cards ────────────────────────────────────────────────
+
+_SOON = re.compile(r"<a[^>]*vitals-card--soon[^>]*>", re.S)
+_CARD = re.compile(r"<a[^>]*class=\"vitals-card[^\"]*\"[^>]*>", re.S)
+
+# Which corner goes where. The owner's instruction was that all four cards
+# navigate; this is the mapping, written out so a card silently pointing at
+# the wrong topic is a failure rather than a plausible page.
+_DESTINATIONS = {
+    "vitals-card--tl": "/servers",
+    "vitals-card--tr": "/network",
+    "vitals-card--bl": "/services",
+    "vitals-card--br": "/scan",
+}
+
+
+def test_every_quadrant_card_navigates_to_its_own_topic():
+    """WP-3's instruction, and the reason the three overview pages had to
+    exist before this landed."""
+    html = _code_only(QUADRANT.read_text(encoding="utf-8"))
+    cards = _CARD.findall(html)
+    assert len(cards) == 4, (
+        f"expected four card links, found {len(cards)}; if the count changed "
+        "this test is measuring the wrong thing")
+    seen = {}
+    for card in cards:
+        one = re.sub(r"\s+", " ", card)
+        corner = next((c for c in _DESTINATIONS if c in one), None)
+        assert corner, f"a card with no corner class: {one[:110]}"
+        href = re.search(r'href="([^"]+)"', one)
+        assert href, f"{corner} is not a link: {one[:110]}"
+        seen[corner] = href.group(1)
+    assert seen == _DESTINATIONS
+
+
+def test_every_destination_is_a_route_the_app_serves():
+    """A card that navigates to a 404 is worse than a card that does
+    nothing — the state these two were in before WP-3, and honestly so.
+
+    Checked against the app's own URL map, because a template that exists
+    with no route registered for it is exactly as broken as no template.
+
+    THE HREFS ARE READ OUT OF THE TEMPLATE, not out of `_DESTINATIONS`. The
+    first version of this test compared the constant above against the URL
+    map and was blind: a mutation pointing a card at `/service` left both
+    sides of the comparison untouched and the test passed. That is
+    docs/OPS-LEARNINGS.md #12 — a test whose expectation is a constant
+    declared beside it — caught by the mutation harness rather than by
+    re-reading the test."""
+    import app as prism_app
+    html = _code_only(QUADRANT.read_text(encoding="utf-8"))
+    hrefs = set()
+    for card in _CARD.findall(html):
+        m = re.search(r'href="([^"]+)"', re.sub(r"\s+", " ", card))
+        if m:
+            hrefs.add(m.group(1))
+    assert len(hrefs) == 4, f"expected four distinct destinations, got {hrefs}"
+    rules = {r.rule for r in prism_app.app.url_map.iter_rules()}
+    missing = sorted(h for h in hrefs if h not in rules)
+    assert not missing, f"quadrant cards point at unregistered routes: {missing}"
+
+
+def test_a_card_whose_subject_is_unbuilt_still_says_why():
+    """These two carry their reason as their entire content, plus the hover
+    tip. Unchanged by the card becoming a link — the subject is still not
+    monitored even though the control now works."""
+    html = _code_only(QUADRANT.read_text(encoding="utf-8"))
+    cards = _SOON.findall(html)
+    assert len(cards) == 2, (
+        f"expected the Network and Scan cards, found {len(cards)}")
+    for card in cards:
+        one = re.sub(r"\s+", " ", card)
+        for attr in ("data-tip-title", "data-tip-desc"):
+            assert attr in one, f"no {attr}: {one[:110]}"
+
+
+def test_no_quadrant_card_claims_to_be_unavailable():
+    """The reversal, and the thing that must not creep back.
+
+    `aria-disabled` on these two was right while they did nothing, and it
+    dimmed them to 0.72 and painted `cursor: not-allowed` through app.css's
+    global rule. Both are now false: the cards navigate. The dim was ALSO
+    already failing AA before that — measured on the rendered dashboard, the
+    head and state line at 3.76 light / 4.92 dark and the scope line at 2.82
+    / 3.39, because 0.72 is calibrated for an INK label and every line on
+    these cards is muted or faint.
+
+    Asserted on the whole fragment rather than on the two cards, because the
+    attribute would be just as wrong on the other two."""
+    html = _code_only(QUADRANT.read_text(encoding="utf-8"))
+    assert "aria-disabled" not in html, (
+        "a quadrant card claims to be unavailable while linking somewhere")
+    assert "is-disabled" not in html
+
+
+def test_the_unbuilt_cards_are_marked_without_dimming_their_text():
+    """What replaced the opacity: a dashed border, which is the idiom this
+    app already uses for 'nothing here yet'. A border has no contrast
+    requirement to fail, and the lines keep their full-strength colour.
+
+    The negative half is the point — an `opacity` on `.vitals-card--soon`
+    would reproduce exactly the defect that was removed, and would look like
+    a tidy re-implementation of it."""
+    css = _css()
+    m = re.search(r"\.vitals-card--soon\s*\{([^}]*)\}", css, re.S)
+    assert m, ".vitals-card--soon has no rule, so nothing marks the two cards"
+    body = m.group(1)
+    assert "dashed" in body, f".vitals-card--soon no longer marks itself: {body!r}"
+    assert "opacity" not in body, (
+        "the dim is back on the two cards whose every line is muted or faint")
+
+
+def test_the_scope_line_is_not_the_faintest_token_available():
+    """`faint` measures 4.76 against the card surface — AA by 0.26. This line
+    IS the card's message, and it should not sit on the edge of legibility to
+    signal that its subject is unbuilt; the dashed border does that."""
+    css = _css()
+    m = re.search(r"\.vitals-soon-desc\s*\{([^}]*)\}", css, re.S)
+    assert m, ".vitals-soon-desc is gone"
+    assert "--c-faint" not in m.group(1), (
+        "the scope line went back to the faintest token in the palette")
+
+
+def test_the_cards_opt_into_the_shared_clickable_treatment():
+    """`.card-clickable` rather than a bespoke rule. Its focus ring is
+    already reconciled with the global one — and the heart's lesson is that
+    writing MORE code about focus is how a control becomes keyboard-
+    invisible, because a class-plus-pseudo selector outranks
+    `a:focus-visible`."""
+    html = _code_only(QUADRANT.read_text(encoding="utf-8"))
+    assert len(_CARD.findall(html)) == 4
+    for card in _CARD.findall(html):
+        one = re.sub(r"\s+", " ", card)
+        assert "card-clickable" in one, f"card with no click affordance: {one[:110]}"
+    css = _css()
+    for sel in (r"\.vitals-card[^,{]*:focus", r"\.vitals-card--soon[^,{]*:focus"):
+        assert not re.search(sel, css), (
+            "a bespoke focus rule on the quadrant cards — the global ring is "
+            "the whole treatment")
+
+
+def test_the_reason_is_readable_without_a_pointer():
+    """The tip mechanism is hover-only — a real gap, inherited from the
+    tooltip component and recorded in test_design_disabled.py. For these two
+    cards the reason is the card's entire content, so relying on hover would
+    leave a keyboard or screen-reader user with a card that says nothing but
+    its own title."""
+    html = _code_only(QUADRANT.read_text(encoding="utf-8"))
+    body = html[html.index("vitals-card--tr"):]
+    assert body.count("vitals-soon-desc") == 2, (
+        "a coming-soon card lost its visible description, so its only "
+        "explanation is a hover tooltip")
+
+
+def test_both_unbuilt_cards_describe_their_scope_in_every_locale():
+    from i18n import TRANSLATIONS
+    keys = ["vitals_network_tip_title", "vitals_network_tip_desc",
+            "vitals_network_desc", "vitals_scan_tip_title",
+            "vitals_scan_tip_desc", "vitals_scan_desc", "vitals_not_monitored_yet"]
+    missing = [f"{lang}:{k}" for lang in TRANSLATIONS for k in keys
+               if k not in TRANSLATIONS[lang]]
+    assert not missing, "untranslated: " + ", ".join(missing)
+
+
+def test_the_scan_card_says_it_is_not_an_attacking_tool():
+    """The owner was explicit about this. "Scan" invites the other reading,
+    and the card is the only place the distinction is ever made."""
+    from i18n import TRANSLATIONS
+    desc = TRANSLATIONS["en"]["vitals_scan_tip_desc"].lower()
+    assert "not an attack" in desc, (
+        "the Scan card no longer states that it is a posture check rather "
+        "than an attack tool")
+
+
+# ── geometry that can be read from the source ────────────────────────────
+
+def test_the_quadrant_scales_continuously_rather_than_in_steps():
+    """1280 -> 2560 with no breakpoint ladder. A `clamp()` on `vw` grows the
+    circle with the viewport; a media-query ladder would leave the design
+    correct at three widths and arbitrary everywhere between them."""
+    css = _css()
+    m = re.search(r"--vitals-dia:\s*([^;]+);", css)
+    assert m, "--vitals-dia is gone"
+    assert "clamp(" in m.group(1) and "vw" in m.group(1), (
+        f"--vitals-dia is {m.group(1).strip()!r}; it must track the viewport")
+
+
+def test_the_two_rows_of_the_quadrant_are_equal_height():
+    """This is what puts the cards' junction and the circle's centre in the
+    same place. Measured with `auto` as the row max: 150px and 212px at 1280,
+    a 62px difference that moved the junction 26px off the centre the circle
+    is positioned on — and it shifted again whenever a card's content
+    changed height."""
+    css = _css()
+    m = re.search(r"\.vitals-grid\s*\{([^}]*)\}", css, re.S)
+    assert m, ".vitals-grid is gone"
+    rows = re.search(r"grid-auto-rows:\s*([^;]+);", m.group(1))
+    assert rows, ".vitals-grid no longer sizes its rows"
+    assert "1fr" in rows.group(1), (
+        f"grid-auto-rows is {rows.group(1).strip()!r}; with `auto` as the max "
+        "each row sizes itself and the junction drifts off the circle's centre")
+
+
+def test_the_circle_does_not_steal_hover_from_the_cards_it_covers():
+    """It overlaps all four cards and carries no control. Left
+    hit-testable, it would eat the hover on whichever corner it covers —
+    including the two cards whose reason is shown on hover."""
+    css = _css()
+    m = re.search(r"\.vitals-core\s*\{([^}]*)\}", css, re.S)
+    assert m and re.search(r"pointer-events:\s*none", m.group(1)), (
+        "the circle is hit-testable; it will swallow hover and clicks meant "
+        "for the cards underneath it")
+
+
+def test_the_dashboard_is_not_a_fixed_width_island_on_a_wall_screen():
+    """The design's top end is 2560 and that is the requirement that does not
+    survive being ignored. Measured with the default column: 1056px of empty
+    grey either side of the quadrant at 2560, against 208px after."""
+    dash = _code_only(DASHBOARD.read_text(encoding="utf-8"))
+    assert re.search(r"{%\s*block content_width\s*%}\s*page-dashboard", dash), (
+        "the dashboard no longer widens its content column")
+    assert re.search(r"\.page-dashboard\s*\{[^}]*max-width", _css()), (
+        ".page-dashboard has no width; the block override resolves to a class "
+        "that does nothing, which looks exactly like it working")

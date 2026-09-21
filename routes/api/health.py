@@ -9,6 +9,7 @@ from flask import jsonify, request, Response, make_response, current_app
 from flask import session as flask_session
 from crypto_utils import is_password_masked, decrypt_password, PASSWORD_MASK
 import collector_v2 as _collector_v2
+import ingest_caps as _ingest_caps
 from collector_v2 import (
     accelerate_server,
     sync_now as _v2_sync_now,
@@ -213,6 +214,13 @@ def system_health():
             # settings.log_ingest allow-list to see what the filter is doing.
             "logs_dropped_information": type(_shared._db).logs_dropped_information,
             "logs_kept_by_allowlist": type(_shared._db).logs_kept_by_allowlist,
+            # What the untrusted-ingest caps refused or trimmed. Same rule as
+            # the filter above and the same reason: a cap that discards silently
+            # is indistinguishable from a collector that is quietly broken. A
+            # non-zero `payloads_rejected` means a monitored host answered with
+            # more than half a megabyte for one check, which is worth looking at
+            # whether it is hostile or merely misconfigured.
+            "ingest_caps": _ingest_caps.snapshot(),
             "oldest_record": db_stats.get("oldest_record"),
             "newest_record": db_stats.get("newest_record"),
         },
@@ -439,6 +447,25 @@ def get_health_check_config():
     return jsonify({"ok": True, "config": _shared._db.get_health_check_config(server)})
 
 
+def _verify_tls_from_payload(data: dict) -> bool:
+    """Whether an HTTPS health check should validate its certificate.
+
+    ABSENT MEANS VERIFY. Only an explicit false turns validation off, so a
+    client that predates this field — or one that simply does not send it —
+    cannot weaken a check by omission. `bool(data.get("verify_tls"))` reads
+    identically and does the opposite: a missing key becomes `None` becomes
+    `False`, and every check created by an older client silently stops
+    checking certificates. That is the exact defect this setting was added to
+    remove, reintroduced one layer up.
+
+    A free function rather than inline in the route so it can be tested
+    without importing `app`, which starts the collector against the real
+    configuration.
+    """
+    value = data.get("verify_tls")
+    return True if value is None else bool(value)
+
+
 @api_bp.route("/health-checks/config", methods=["POST"])
 def save_health_check_config():
     """Create or update a health check configuration."""
@@ -455,7 +482,16 @@ def save_health_check_config():
         return jsonify({"ok": False, "error": "server_name, check_type, target_host, and target_port are required"}), 400
     http_path = data.get("http_path")
     expected_status = data.get("expected_status")
-    name = (data.get("name") or "").strip()
+    # ABSENT is not the same as EMPTY, and collapsing them defeated the
+    # COALESCE in save_health_check_config: `(data.get("name") or "").strip()`
+    # turns a missing key into "", which is not NULL, so the upsert wrote it
+    # over the stored name. Caught by a live round trip, not by the unit test —
+    # the test called the DB method directly and never saw this coercion.
+    # None  -> key absent, keep what is stored.
+    # ""    -> caller explicitly cleared it.
+    _raw_name = data.get("name")
+    name = _raw_name.strip() if isinstance(_raw_name, str) else None
+    verify_tls = _verify_tls_from_payload(data)
     try:
         new_id = _shared._db.save_health_check_config(
             server_name=server_name,
@@ -465,6 +501,7 @@ def save_health_check_config():
             http_path=http_path,
             expected_status=expected_status,
             name=name,
+            verify_tls=verify_tls,
         )
         username = flask_session.get("username", "system")
         _shared._db.log_audit(username, "save_health_check_config", "health_checks", f"Saved health check config for '{server_name}' ({check_type} -> {target_host}:{target_port})")
@@ -510,7 +547,14 @@ def probe_health_check():
         elif check_type == "http":
             result = health_checker.http_check(host, port, path=http_path, use_ssl=False)
         elif check_type == "https":
-            result = health_checker.http_check(host, port, path=http_path, use_ssl=True)
+            # Same default and the same guard as the saved check. If the Test
+            # button verified when the stored check would not (or the reverse),
+            # an operator would tune the endpoint against one behaviour and
+            # deploy the other — and "it worked when I tested it" is the least
+            # debuggable complaint a monitoring tool can produce.
+            result = health_checker.http_check(
+                host, port, path=http_path, use_ssl=True,
+                verify_tls=_verify_tls_from_payload(data))
         elif check_type == "udp":
             result = health_checker.udp_probe(host, port)
         elif check_type == "icmp":

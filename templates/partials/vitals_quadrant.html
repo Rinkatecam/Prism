@@ -1,0 +1,194 @@
+{# ── The vitals quadrant — four cards framing the estate circle ──────────
+
+   Rendered on first paint by dashboard.html and re-rendered on every
+   prismRefresh. What is NOT in here is the circle itself: it owns a canvas,
+   and `morph:innerHTML` replaces the elements it swaps, so a canvas in this
+   fragment would be thrown away and rebuilt several times a minute — the
+   beat would never get past its first second. The circle is static markup
+   in dashboard.html; the root below carries the machine-readable state it
+   reads (see static/js/vitals-monitor.js).
+
+   The geometry — which card sits in which corner, and how the circle
+   intrudes into all four — is `.vitals-*` in app.css. The corner classes
+   are load-bearing rather than decorative: each one aligns its card's
+   content AWAY from the centre, which is what stops the circle covering it
+   as the viewport grows. See the block comment there.
+
+   Colour: no `-[#hex]` anywhere in this file, and it is a new template, so
+   `test_no_colour_literal_outside_the_templates_that_already_have_one`
+   fails the build if one appears rather than a ratchet merely tolerating
+   it. #}
+{% from "partials/_empty_state.html" import empty_state %}
+{% from "partials/_tip.html" import tip_mirror with context %}
+
+<div data-vitals-state
+     data-vitals-severity="{{ vitals.severity }}"
+     data-vitals-bpm="{{ vitals.bpm }}"
+     data-vitals-ok="{{ vitals.ok }}"
+     data-vitals-monitored="{{ vitals.monitored }}"
+     data-vitals-percent="{{ vitals.percent if vitals.percent is not none else '' }}"
+     {# WP-2's dossier. The circle is static markup outside this fragment (it
+        owns a canvas), so these attributes are how its one-gesture detail stays
+        current after a refresh — the same route the counts have always taken.
+        One source of truth per refresh, read by vitals-monitor.js. #}
+     data-vitals-rail="{{ vitals.rail or '' }}"
+     data-vitals-why="{{ vitals.why_not_higher or '' }}"
+     data-vitals-settling="{{ '1' if vitals.settling else '' }}"
+     data-vitals-contributors='{{ (vitals.contributors or []) | tojson }}'>
+{% if vitals.monitored == 0 %}
+{# Nothing configured at all — no servers AND no probes. The four cards
+   would frame a circle with nothing to say, so the region says what is
+   absent and what to do about it instead. Both routes out are named
+   because the two domains are configured in different places. #}
+{{ empty_state(
+     'activity',
+     t.get('vitals_nothing_monitored', 'Nothing is being monitored yet'),
+     t.get('vitals_nothing_monitored_hint',
+           'Add a server on the Servers page, or a health check under Servers → Health Checks'),
+     card=true) }}
+{% else %}
+<div class="vitals-grid">
+
+  {# ── B1 Servers (top left) ── total + healthy always; the other buckets
+     only when they are non-zero, so a healthy fleet reads as a calm card
+     and a broken one shows exactly what broke.
+
+     The CARD IS THE LINK, rather than growing one inside it: one tab stop
+     and one hit target for one destination. `.card-clickable` is the app's
+     existing opt-in for "this card goes somewhere" — cursor, hover lift and
+     the focus ring already reconciled with the global one. No bespoke focus
+     rule here, deliberately: writing more code about focus is what produced
+     a keyboard-invisible heart (a class-plus-pseudo selector outranks
+     `a:focus-visible`), and that lesson applies to every clickable thing on
+     this page. #}
+  <a href="/servers" class="vitals-card vitals-card--tl card-clickable">
+    <div class="vitals-card-head">
+      <i data-lucide="server" class="w-4 h-4 text-accent" aria-hidden="true"></i>
+      <span>{{ t.servers }}</span>
+    </div>
+    {% if vitals.servers.total == 0 %}
+    {{ empty_state('server-off', t.no_servers_settings,
+                   t.get('no_servers_hint',
+                         'Add your first server on the Servers page to start collecting CPU, RAM and disk')) }}
+    {% else %}
+    <p class="vitals-figure">
+      <span class="vitals-figure-value text-healthy">{{ vitals.servers.healthy }}</span>
+      <span class="vitals-figure-total">/ {{ vitals.servers.total }}</span>
+    </p>
+    <p class="vitals-figure-label">{{ t.healthy }}</p>
+    <ul class="vitals-chips">
+      {# Severity order, matching partials/critical_issues.html's own
+         sort (critical > offline > warning) so the two never disagree
+         about which number the eye should reach first. #}
+      {% if vitals.servers.critical %}
+      <li class="vitals-chip vitals-chip--critical">{{ vitals.servers.critical }} {{ t.critical }}</li>
+      {% endif %}
+      {% if vitals.servers.offline %}
+      <li class="vitals-chip vitals-chip--dead">{{ vitals.servers.offline }} {{ t.offline }}</li>
+      {% endif %}
+      {% if vitals.servers.warning %}
+      <li class="vitals-chip vitals-chip--warning">{{ vitals.servers.warning }} {{ t.warning }}</li>
+      {% endif %}
+      {% if vitals.servers.unknown %}
+      <li class="vitals-chip vitals-chip--unknown">{{ vitals.servers.unknown }} {{ t.unknown }}</li>
+      {% endif %}
+    </ul>
+    {% endif %}
+  </a>
+
+  {# ── B3 Network (top right) — not monitored yet, and it goes somewhere.
+
+     THIS CARD USED TO BE `aria-disabled`, and the argument for it was sound
+     while it was true: an unavailable control that takes a tab stop and then
+     does nothing is worse than one that does not take it at all. WP-3 gave
+     it a destination, so the premise expired. `aria-disabled` on a working
+     link is a lie in two directions — it dims the card to 0.72 through
+     app.css's global rule and paints `cursor: not-allowed` on something that
+     navigates.
+
+     AND THE DIM WAS ALREADY FAILING AA, on the live dashboard, before this
+     card was ever clickable. Measured on the rendered page: the head and the
+     "not monitored yet" line at 3.76 light / 4.92 dark, the scope line at
+     2.82 / 3.39. `opacity: 0.72` is measured to keep an INK label above AA;
+     these three are `muted` and `faint` to begin with, so the same factor
+     takes them under. The card now carries its meaning in a DASHED border —
+     the idiom this app already uses for "nothing here yet" — and its text at
+     full strength.
+
+     The reason still lives in the visible text as well as the hover tip: the
+     tip mechanism is hover-only (a real gap, recorded in
+     tests/test_design_disabled.py) and a reason nobody can reach is not a
+     reason. #}
+  {# Already a real <a href> with rich visible content — T-1/T-2/T-3 need
+     nothing new here. The mirror is placed AFTER the closing </a>, not
+     inside it: an sr-only descendant of the link would be folded into the
+     LINK'S OWN accessible name (accname computation reads all descendant
+     text, hidden or not), on top of being the aria-describedby target —
+     the same "never nest the mirror in the thing it names" reasoning §5.3/
+     C17 applies to a heading, generalised to any named element. #}
+  {% set _network_tip_id = next_tip_id() %}
+  <a href="/network" class="vitals-card vitals-card--tr vitals-card--soon card-clickable"
+     aria-describedby="{{ _network_tip_id }}"
+     data-tip-title="{{ t.get('vitals_network_tip_title', 'Network monitoring is not built yet') }}"
+     data-tip-desc="{{ t.get('vitals_network_tip_desc', 'Network monitoring will cover switches, firewalls, routers and access points. There is nothing to configure yet — servers and services are what Prism watches today.') }}">
+    <div class="vitals-card-head">
+      <i data-lucide="router" class="w-4 h-4" aria-hidden="true"></i>
+      <span>{{ t.get('vitals_network', 'Network') }}</span>
+    </div>
+    <p class="vitals-soon">{{ t.get('vitals_not_monitored_yet', 'Not monitored yet') }}</p>
+    <p class="vitals-soon-desc">{{ t.get('vitals_network_desc', 'Switches, firewalls, routers and access points') }}</p>
+  </a>
+  {{ tip_mirror('vitals_network_tip_desc', 'Network monitoring will cover switches, firewalls, routers and access points. There is nothing to configure yet — servers and services are what Prism watches today.', _network_tip_id) }}
+
+  {# ── B2 Services (bottom left) — real data, not a placeholder.
+     healthchecks.py has been probing tcp / http / https / udp / icmp
+     against operator-configured targets all along, storing every result in
+     `health_check_results`, and nothing surfaced it outside the health-check
+     form on /servers. `unknown` is its own chip rather than being folded into
+     either good or bad: see Database.get_health_check_summary for why. #}
+  <a href="/services" class="vitals-card vitals-card--bl card-clickable">
+    <div class="vitals-card-head">
+      <i data-lucide="activity" class="w-4 h-4 text-accent" aria-hidden="true"></i>
+      <span>{{ t.get('vitals_services', 'Services') }}</span>
+    </div>
+    {% if vitals.services.total == 0 %}
+    {{ empty_state('activity', t.get('no_health_checks', 'No health checks configured'),
+                   t.get('vitals_no_services_hint',
+                         'Add a probe under Operations → Health Checks to watch a port, a URL or a host')) }}
+    {% else %}
+    <p class="vitals-figure">
+      <span class="vitals-figure-value text-healthy">{{ vitals.services.up }}</span>
+      <span class="vitals-figure-total">/ {{ vitals.services.total }}</span>
+    </p>
+    <p class="vitals-figure-label">{{ t.get('vitals_up', 'Reachable') }}</p>
+    <ul class="vitals-chips">
+      {% if vitals.services.down %}
+      <li class="vitals-chip vitals-chip--critical">{{ vitals.services.down }} {{ t.get('vitals_down', 'Failing') }}</li>
+      {% endif %}
+      {% if vitals.services.unknown %}
+      <li class="vitals-chip vitals-chip--unknown">{{ vitals.services.unknown }} {{ t.get('vitals_not_probed', 'Not probed') }}</li>
+      {% endif %}
+    </ul>
+    {% endif %}
+  </a>
+
+  {# ── B4 Scan (bottom right) — not monitored yet, same rules as Network.
+     The description is deliberately explicit that this is a posture sweep
+     and not an attacking tool, because "scan" invites the other reading. #}
+  {% set _scan_tip_id = next_tip_id() %}
+  <a href="/scan" class="vitals-card vitals-card--br vitals-card--soon card-clickable"
+     aria-describedby="{{ _scan_tip_id }}"
+     data-tip-title="{{ t.get('vitals_scan_tip_title', 'Posture scanning is not built yet') }}"
+     data-tip-desc="{{ t.get('vitals_scan_tip_desc', 'Posture scanning will sweep the network for what should not be there and what needs updating — rogue devices, stale drivers, configuration drift. A posture check, not an attack tool.') }}">
+    <div class="vitals-card-head">
+      <i data-lucide="shield" class="w-4 h-4" aria-hidden="true"></i>
+      <span>{{ t.get('vitals_scan', 'Scan') }}</span>
+    </div>
+    <p class="vitals-soon">{{ t.get('vitals_not_monitored_yet', 'Not monitored yet') }}</p>
+    <p class="vitals-soon-desc">{{ t.get('vitals_scan_desc', 'Rogue devices, stale drivers, configuration drift') }}</p>
+  </a>
+  {{ tip_mirror('vitals_scan_tip_desc', 'Posture scanning will sweep the network for what should not be there and what needs updating — rogue devices, stale drivers, configuration drift. A posture check, not an attack tool.', _scan_tip_id) }}
+
+</div>
+{% endif %}
+</div>

@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{% from "partials/_card.html" import card with context %}
+{% block page_title %}{{ t.get('workflows_page', 'Workflows') }}{% endblock %}
+{% block page_icon %}git-branch{% endblock %}
 {% block content %}
 
 <!-- Drawflow — self-hosted (LAN-resilient) -->
@@ -16,26 +19,6 @@
 .dark .drag-block { border-color: #334155; background: #0F172A; color: #CBD5E1; }
 .drag-block:hover { border-color: #8B5CF6; transform: translateX(2px); }
 .drag-block:active { cursor: grabbing; }
-
-/* Rich tooltip popup */
-#block-tooltip {
-  position: fixed; z-index: 9999; pointer-events: none;
-  max-width: 280px; padding: 12px 14px;
-  background: #1E293B; border: 1px solid #334155; border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-  opacity: 0; transform: translateY(4px);
-  transition: opacity var(--dur-fast), transform var(--dur-fast);
-  font-size: 11px; color: #CBD5E1;
-}
-#block-tooltip.visible { opacity: 1; transform: translateY(0); }
-#block-tooltip .tip-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-#block-tooltip .tip-icon { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; }
-#block-tooltip .tip-icon svg { width: 16px; height: 16px; color: white; }
-#block-tooltip .tip-title { font-weight: 700; font-size: 12px; color: #F9FAFB; }
-#block-tooltip .tip-category { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; }
-#block-tooltip .tip-desc { margin-bottom: 8px; line-height: 1.5; color: #94A3B8; }
-#block-tooltip .tip-example { padding: 6px 8px; border-radius: 6px; background: #0F172A; border: 1px solid #1E293B; font-family: monospace; font-size: 10px; color: #8B5CF6; line-height: 1.4; }
-#block-tooltip .tip-example-label { font-size: 9px; font-weight: 600; color: #64748B; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
 
 /* Drawflow overrides */
 /* canvas bg is set in n8n-style block below */
@@ -398,10 +381,6 @@
 
 <!-- Page header -->
 <div class="flex items-center justify-between mb-6">
-  <h1 class="text-2xl font-bold flex items-center gap-2">
-    <i data-lucide="git-branch" class="w-6 h-6 text-brand"></i>
-    {{ t.get('workflows_page', 'Workflows') }}
-  </h1>
   <div class="flex items-center gap-2">
     <button data-action="openTemplateGallery" class="px-3 py-1.5 text-sm font-medium rounded border border-line hover:bg-page flex items-center gap-1">
       <i data-lucide="copy" class="w-4 h-4"></i>
@@ -434,14 +413,20 @@
 </div>
 
 <!-- Execution History -->
+{# Found outside the WP-6 card-conversion batches (steps 14-20 never
+   listed workflows.html's own page body, only its modals in step 19) --
+   converted here to match every other page's own section pattern.
+   id="execution-history" moves onto the INNER div, not the card() shell:
+   static/js's own renderExecutionHistory() does
+   `document.getElementById('execution-history').innerHTML = ...`, and
+   that call must keep replacing only the body (the loading message, an
+   empty state, or the real table), never the heading row above it. #}
 <section>
-  <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">
-    <i data-lucide="history" class="w-5 h-5 text-muted"></i>
-    {{ t.get('execution_history', 'Execution History') }}
-  </h2>
-  <div id="execution-history" class="bg-card rounded-lg border border-line overflow-hidden">
+  {% call card(heading=t.get('execution_history', 'Execution History'), icon='history', flush=true) %}
+  <div id="execution-history">
     <div class="p-6 text-center text-sm text-muted">Loading...</div>
   </div>
+  {% endcall %}
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════
@@ -466,9 +451,11 @@
          workflow-level dropdown was removed 2026-05-22 to eliminate
          duplicate UI for the same concept. -->
     <div class="ml-auto flex items-center gap-2">
-      <button data-action="testRunWorkflow" title="Preview the plan without touching any server (no WinRM actions, no notifications)" aria-label="Dry run — preview only, no servers touched" class="px-3 py-1 text-xs font-medium rounded border border-warning text-warning hover:bg-warning/10 flex items-center gap-1">
+      {% set _dry_run_tip = next_tip_id() %}
+      <button data-action="testRunWorkflow" aria-label="Dry run — preview only, no servers touched" aria-describedby="{{ _dry_run_tip }}" data-tip-title="Dry Run" data-tip-desc="{{ t.get('wf_dry_run_desc', 'Preview the plan without touching any server (no WinRM actions, no notifications)') }}" class="px-3 py-1 text-xs font-medium rounded border border-warning text-warning hover:bg-warning/10 flex items-center gap-1">
         <i data-lucide="flask-conical" class="w-3.5 h-3.5"></i> Dry Run
       </button>
+      <span class="sr-only" id="{{ _dry_run_tip }}">{{ t.get('wf_dry_run_desc', 'Preview the plan without touching any server (no WinRM actions, no notifications)') }}</span>
       <button data-action="saveWorkflow" class="px-3 py-1 text-xs font-medium rounded bg-healthy text-white hover:opacity-90 flex items-center gap-1">
         <i data-lucide="save" class="w-3.5 h-3.5"></i> Save
       </button>
@@ -484,6 +471,16 @@
     </div>
 
     <!-- Left: Block Palette (floating overlay) -->
+    {#- WP-6 D9 close-out: every .drag-block below keeps its native
+        title="..." on purpose -- do not convert these to data-tip-title/
+        desc by hand. applyBlockTip() (below, bound on DOMContentLoaded)
+        already reads each block's richer BLOCK_DEFS[type].tip.desc/
+        .example, builds the real title/desc/aria-describedby/mirror, and
+        removes this title= itself once it runs -- see that function's own
+        comment for why the native attribute stays in the SOURCE as the
+        no-JS/loading-race fallback. A first pass at this close-out added a
+        second, static, always-overwritten carrier here; reverted once
+        testing showed applyBlockTip() replacing every value on load. #}
     <div class="absolute top-0 left-0 bottom-0 w-48 border-r border-[#404040] bg-[#1E293B] overflow-y-auto p-3" style="z-index: 30;">
       <div class="text-[10px] font-bold uppercase tracking-wider text-faint mb-2">Blocks</div>
 
@@ -604,42 +601,72 @@
     <!-- Canvas controls (floating bottom-right) -->
     <div class="absolute bottom-3 flex items-center gap-1 bg-[#2D2D2D] rounded-lg border border-[#404040] shadow-lg px-1 py-1" style="z-index: 30; right: 16px;">
       <!-- Pan arrows -->
-      <button data-mousedown="startContinuousPan" data-args='["left"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" title="Pan left (←)">
+      {% set _pan_l_tip = next_tip_id() %}
+      <button data-mousedown="startContinuousPan" data-args='["left"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" aria-label="Pan left (←)" aria-describedby="{{ _pan_l_tip }}" data-tip-title="Pan left (←)" data-tip-desc="{{ t.get('wf_pan_desc', 'Move the canvas view. Hold to pan continuously.') }}">
         <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
       </button>
-      <button data-mousedown="startContinuousPan" data-args='["up"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" title="Pan up (↑)">
+      <span class="sr-only" id="{{ _pan_l_tip }}">{{ t.get('wf_pan_desc', 'Move the canvas view. Hold to pan continuously.') }}</span>
+      {% set _pan_u_tip = next_tip_id() %}
+      <button data-mousedown="startContinuousPan" data-args='["up"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" aria-label="Pan up (↑)" aria-describedby="{{ _pan_u_tip }}" data-tip-title="Pan up (↑)" data-tip-desc="{{ t.get('wf_pan_desc', 'Move the canvas view. Hold to pan continuously.') }}">
         <i data-lucide="arrow-up" class="w-3.5 h-3.5"></i>
       </button>
-      <button data-mousedown="startContinuousPan" data-args='["down"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" title="Pan down (↓)">
+      <span class="sr-only" id="{{ _pan_u_tip }}">{{ t.get('wf_pan_desc', 'Move the canvas view. Hold to pan continuously.') }}</span>
+      {% set _pan_d_tip = next_tip_id() %}
+      <button data-mousedown="startContinuousPan" data-args='["down"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" aria-label="Pan down (↓)" aria-describedby="{{ _pan_d_tip }}" data-tip-title="Pan down (↓)" data-tip-desc="{{ t.get('wf_pan_desc', 'Move the canvas view. Hold to pan continuously.') }}">
         <i data-lucide="arrow-down" class="w-3.5 h-3.5"></i>
       </button>
-      <button data-mousedown="startContinuousPan" data-args='["right"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" title="Pan right (→)">
+      <span class="sr-only" id="{{ _pan_d_tip }}">{{ t.get('wf_pan_desc', 'Move the canvas view. Hold to pan continuously.') }}</span>
+      {% set _pan_r_tip = next_tip_id() %}
+      <button data-mousedown="startContinuousPan" data-args='["right"]' data-mouseup="stopContinuousPan" data-mouseleave="stopContinuousPan" class="p-1.5 text-faint hover:text-white rounded" aria-label="Pan right (→)" aria-describedby="{{ _pan_r_tip }}" data-tip-title="Pan right (→)" data-tip-desc="{{ t.get('wf_pan_desc', 'Move the canvas view. Hold to pan continuously.') }}">
         <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
       </button>
+      <span class="sr-only" id="{{ _pan_r_tip }}">{{ t.get('wf_pan_desc', 'Move the canvas view. Hold to pan continuously.') }}</span>
       <div class="w-px h-5 bg-[#404040] mx-0.5"></div>
       <!-- Zoom -->
-      <button data-action="_wfZoomOut" class="p-1.5 text-faint hover:text-white rounded" title="Zoom out (-)">
+      {% set _zoom_out_tip = next_tip_id() %}
+      <button data-action="_wfZoomOut" class="p-1.5 text-faint hover:text-white rounded" aria-label="Zoom out (-)" aria-describedby="{{ _zoom_out_tip }}" data-tip-title="Zoom out (-)" data-tip-desc="{{ t.get('wf_zoom_out_desc', 'Zoom the canvas out') }}">
         <i data-lucide="minus" class="w-3.5 h-3.5"></i>
       </button>
+      <span class="sr-only" id="{{ _zoom_out_tip }}">{{ t.get('wf_zoom_out_desc', 'Zoom the canvas out') }}</span>
       <span class="px-1.5 py-0.5 text-[10px] text-faint min-w-[36px] text-center" id="zoom-level">100%</span>
-      <button data-action="_wfZoomIn" class="p-1.5 text-faint hover:text-white rounded" title="Zoom in (+)">
+      {% set _zoom_in_tip = next_tip_id() %}
+      <button data-action="_wfZoomIn" class="p-1.5 text-faint hover:text-white rounded" aria-label="Zoom in (+)" aria-describedby="{{ _zoom_in_tip }}" data-tip-title="Zoom in (+)" data-tip-desc="{{ t.get('wf_zoom_in_desc', 'Zoom the canvas in') }}">
         <i data-lucide="plus" class="w-3.5 h-3.5"></i>
       </button>
+      <span class="sr-only" id="{{ _zoom_in_tip }}">{{ t.get('wf_zoom_in_desc', 'Zoom the canvas in') }}</span>
       <div class="w-px h-5 bg-[#404040] mx-0.5"></div>
       <!-- Home / reset view -->
-      <button data-action="resetCanvasView" class="p-1.5 text-faint hover:text-white rounded" title="Reset view (Home)">
+      {% set _reset_tip = next_tip_id() %}
+      <button data-action="resetCanvasView" class="p-1.5 text-faint hover:text-white rounded" aria-label="Reset view (Home)" aria-describedby="{{ _reset_tip }}" data-tip-title="Reset view (Home)" data-tip-desc="{{ t.get('wf_reset_view_desc', 'Re-centre and reset the canvas zoom to 100%') }}">
         <i data-lucide="home" class="w-3.5 h-3.5"></i>
       </button>
+      <span class="sr-only" id="{{ _reset_tip }}">{{ t.get('wf_reset_view_desc', 'Re-centre and reset the canvas zoom to 100%') }}</span>
     </div>
 
     <!-- Guide button (floating bottom-left, to the right of palette) -->
-    <button data-action="toggleWorkflowGuide" class="absolute bottom-3 flex items-center gap-1.5 bg-[#2D2D2D] rounded-lg border border-[#404040] shadow-lg px-3 py-2 text-faint hover:text-white transition-colors" style="z-index: 30; left: 208px;" title="How to use">
+    {% set _guide_tip = next_tip_id() %}
+    <button data-action="toggleWorkflowGuide" class="absolute bottom-3 flex items-center gap-1.5 bg-[#2D2D2D] rounded-lg border border-[#404040] shadow-lg px-3 py-2 text-faint hover:text-white transition-colors" style="z-index: 30; left: 208px;" aria-describedby="{{ _guide_tip }}" data-tip-title="How to use" data-tip-desc="{{ t.get('wf_guide_desc', 'Open a short walkthrough of the workflow builder') }}">
       <i data-lucide="book-open" class="w-4 h-4"></i>
       <span class="text-[10px] font-medium">Guide</span>
     </button>
+    <span class="sr-only" id="{{ _guide_tip }}">{{ t.get('wf_guide_desc', 'Open a short walkthrough of the workflow builder') }}</span>
 
-    <!-- Guide panel -->
-    <div id="workflow-guide" class="absolute bottom-14 w-80 max-h-[60vh] bg-[#2D2D2D] rounded-md border border-[#404040] shadow-2xl hidden overflow-hidden flex flex-col" style="z-index: 31; left: 208px;">
+    {# WP-6 step 19: shadow-2xl -> shadow-lg only (elevation ban, §4.6 --
+       applies unconditionally, everywhere). Everything else here is
+       deliberately UNCHANGED: this panel has no backdrop and does not
+       block interaction with the canvas behind it (toggled open/closed by
+       the Guide button, canvas stays live), so it is not a dialog -- no
+       role="dialog"/aria-modal added. Its heading is the §2.6 "chrome"
+       carve-out by name ("headings on the workflow guide panel's fixed
+       #404040 surface, deliberately identical in both themes") and its
+       heading-ladder/data-role status is pre-existing debt from BEFORE
+       this step (workflows.html has not been through any of the heading/
+       card conversion batches in steps 12-18) -- out of this step's scope,
+       governed by test_design_headings.py/HEADING_BASELINE, not by
+       test_design_cards.py's C-5/C-6/C-10 this step's Verify line names.
+       Not touched here; flagged rather than silently fixed or silently
+       left unexplained. #}
+    <div id="workflow-guide" class="absolute bottom-14 w-80 max-h-[60vh] bg-[#2D2D2D] rounded-md border border-[#404040] shadow-lg hidden overflow-hidden flex flex-col" style="z-index: 31; left: 208px;">
       <div class="flex items-center justify-between px-4 py-3 border-b border-[#404040]">
         <h3 class="text-sm font-bold text-white flex items-center gap-2">
           <i data-lucide="book-open" class="w-4 h-4 text-accent"></i>
@@ -753,9 +780,22 @@
 <!-- ═══════════════════════════════════════════════════════════════
      Execution Detail Slide-Over
      ═══════════════════════════════════════════════════════════════ -->
-<div id="exec-slideout" class="fixed right-0 top-0 bottom-0 w-96 z-[55] hidden bg-card border-l border-line shadow-xl" style="display:none;">
-  <div class="flex items-center justify-between p-4 border-b border-line">
-    <h3 class="text-sm font-semibold">{{ t.get('execution_detail', 'Execution Detail') }}</h3>
+{# WP-6 step 19: shadow-xl -> shadow-lg. border-l border-line kept as-is
+   (not widened to a 4-sided border) -- it is a right-edge-docked slide-
+   over, and a left border is the correct edge treatment for that shape,
+   same as a card never needing a border on the edge it is flush against.
+   role="dialog" aria-modal="true" aria-labelledby="exec-slideout-title"
+   added per this step's own unconditional "every modal container" text;
+   flagged: unlike every other one of the 12, this panel has NO backdrop
+   dimming the canvas behind it (a pre-existing characteristic, not
+   something this step changes) so aria-modal="true" is applied here for
+   consistency with the step's own instruction rather than because a
+   backdrop makes it obviously modal. New id + data-role + DIALOG_TITLE
+   class on the title (none existed before). No footer exists to convert
+   (content is a single scrollable region). #}
+<div id="exec-slideout" role="dialog" aria-modal="true" aria-labelledby="exec-slideout-title" class="fixed right-0 top-0 bottom-0 w-96 z-[55] hidden bg-card border-l border-line shadow-lg" style="display:none;">
+  <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-line">
+    <h3 id="exec-slideout-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">{{ t.get('execution_detail', 'Execution Detail') }}</h3>
     <button data-action="closeExecSlideout" class="p-1 rounded hover:bg-raised dark:hover:bg-line">
       <i data-lucide="x" class="w-4 h-4"></i>
     </button>
@@ -767,11 +807,30 @@
 <!-- ═══════════════════════════════════════════════════════════════
      Template Gallery Modal
      ═══════════════════════════════════════════════════════════════ -->
+{# WP-6 step 19: one of "the three absolute shadow-xl popovers" (§4.6 --
+   positioned via absolute+translate centring rather than fixed+flex, but
+   functionally a real backdrop-blocking dialog, not a menu/listbox). Takes
+   shadow-lg (the value both the modal AND the menu/popover idiom converge
+   on) plus a border it did not have before. JUDGEMENT CALL, flagged
+   prominently: NOT reshaped into the literal §4.5 menu/popover string
+   (`rounded border ... overflow-hidden py-1`) -- this is a 600px form/
+   gallery panel with its own header+scrolling-list structure, not a tight
+   list of menu items, so `py-1` would crush its layout and shrinking
+   `rounded-md` to the 8px control radius would look inconsistent against
+   every 16px-radius modal beside it. Kept rounded-md (== rounded-lg,
+   16px, per base.html:72-77) and its own existing p-4/overflow-hidden
+   structure; added ONLY border border-line and shadow-lg from the idiom.
+   role="dialog" aria-modal="true" aria-labelledby, and a new title id +
+   data-role + DIALOG_TITLE class, since it has a real backdrop
+   (closeTemplateGallery below) and blocks the canvas the same way the
+   12 modals do. Header/footer NOT converted to HEAD_FLUSH/FOOTER_FLUSH --
+   that conversion is this step's own text only for "the 12 modal panels",
+   not the popover group. #}
 <div id="template-modal" class="fixed inset-0 z-[65] hidden" style="display:none;">
   <div class="absolute inset-0 bg-black/50" data-action="closeTemplateGallery"></div>
-  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md shadow-xl w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
+  <div role="dialog" aria-modal="true" aria-labelledby="template-modal-title" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md border border-line shadow-lg w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
     <div class="p-4 border-b border-line flex items-center justify-between">
-      <h3 class="font-semibold">{{ t.get('workflow_templates', 'Workflow Templates') }}</h3>
+      <h3 id="template-modal-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">{{ t.get('workflow_templates', 'Workflow Templates') }}</h3>
       <button data-action="closeTemplateGallery" class="p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
     </div>
     <div id="template-list" class="p-4 overflow-y-auto space-y-3">
@@ -782,10 +841,19 @@
 <!-- ═══════════════════════════════════════════════════════════════
      Add Category Modal
      ═══════════════════════════════════════════════════════════════ -->
+{# WP-6 step 19: another of "the three absolute shadow-xl popovers" -- see
+   template-modal's comment above for the full reasoning (kept rounded-md,
+   added border+shadow-lg, added dialog ARIA + title id/data-role/
+   DIALOG_TITLE, did not force the literal menu/popover py-1 shape). This
+   one has no separate header row at all (title + fields + footer share
+   one p-5 box), so the title keeps its own `mb-4` alongside the
+   DIALOG_TITLE string -- removing it would collapse the gap to the first
+   field, and this popover is not getting a bordered HEAD_FLUSH row to
+   supply that spacing instead. #}
 <div id="add-category-modal" class="fixed inset-0 z-[65] hidden" style="display:none;">
   <div class="absolute inset-0 bg-black/50" data-action="closeAddCategory"></div>
-  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md shadow-xl w-80 p-5">
-    <h3 class="font-semibold mb-4">{{ t.get('add_category', 'Add Category') }}</h3>
+  <div role="dialog" aria-modal="true" aria-labelledby="add-category-modal-title" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md border border-line shadow-lg w-80 p-5">
+    <h3 id="add-category-modal-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2 mb-4">{{ t.get('add_category', 'Add Category') }}</h3>
     <div class="space-y-3">
       <div>
         <label class="text-xs font-medium block mb-1">{{ t.get('name', 'Name') }}</label>
@@ -1059,7 +1127,16 @@ function loadExecutionHistory() {
 // _categories, so this loop never tries to render a delete on it.
 function renderCategoryButtons() {
   const wrap = document.getElementById('category-buttons');
+  // JS-built carrier (WP-6 D9 close-out): the two t.get() calls run once
+  // here, outside the per-chip map(), since the text is identical for
+  // every category -- matching partials/settings/_server_config.html's
+  // established reference shape for a JS-built tip carrier.
+  const _catChipTip = {{ t.get('wf_category_chip_desc', 'Click to filter; × to delete') | tojson }};
+  const _catDeleteTip = {{ t.get('delete_category', 'Delete this category') | tojson }};
+  const _catDeleteDesc = {{ t.get('delete_category_desc', 'Remove this category. Workflows using it are not deleted.') | tojson }};
   wrap.innerHTML = _categories.map(c => {
+    const catTipId = 'wf-cat-tip-' + c.id;
+    const catDeleteTipId = 'wf-cat-del-tip-' + c.id;
     const active = _activeCategory === c.id;
     const style = active
       ? `border-color:${c.color};color:${c.color};background:${c.color}15`
@@ -1070,11 +1147,20 @@ function renderCategoryButtons() {
     // would break here because JSON.stringify'd names contain literal
     // double quotes that terminate the HTML attribute prematurely.
     // Each element carries the data it needs via data-* attributes.
-    return `<span data-cat="${c.id}" data-cat-id="${c.id}" data-cat-name="${escapeHtml(c.name)}" class="wf-cat-chip inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full border cursor-pointer" style="${style}" title="Click to filter; × to delete">
+    // Filtering runs through `data-action`, the same dispatch the "All"
+    // button beside it already uses — so the keyboard bridge in base.html
+    // reaches it for free. It previously had its own click listener on the
+    // wrapper and no tabindex, which made it the one chip in the row a
+    // keyboard could not press. The delete <button> inside keeps its own
+    // branch of that listener and stops propagation, so pressing × does not
+    // also filter.
+    return `<span data-cat="${c.id}" data-cat-id="${c.id}" data-cat-name="${escapeHtml(c.name)}" data-action="filterByCategory" data-args="[${c.id}]" tabindex="0" role="button" class="wf-cat-chip inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full border cursor-pointer" style="${style}" aria-describedby="${catTipId}" data-tip-title="${escapeHtml(c.name)}" data-tip-desc="${_catChipTip}">
       <span class="wf-cat-label">${escapeHtml(c.name)}</span>
-      <button type="button" class="wf-cat-delete -mr-1 flex items-center opacity-60 hover:opacity-100 hover:text-critical" title="Delete this category">
+      <button type="button" class="wf-cat-delete -mr-1 flex items-center opacity-60 hover:opacity-100 hover:text-critical" aria-label="${_catDeleteTip}" aria-describedby="${catDeleteTipId}" data-tip-title="${_catDeleteTip}" data-tip-desc="${_catDeleteDesc}">
         <i data-lucide="x" class="w-3 h-3 pointer-events-none"></i>
       </button>
+      <span class="sr-only" id="${catTipId}">${_catChipTip}</span>
+      <span class="sr-only" id="${catDeleteTipId}">${_catDeleteDesc}</span>
     </span>`;
   }).join('');
   // Update "All" tab style
@@ -1108,10 +1194,9 @@ function setupCategoryClicks() {
       if (!isNaN(catId)) deleteCategoryConfirm(catId, catName);
       return;
     }
-    const chip = e.target.closest('.wf-cat-chip');
-    if (!chip) return;
-    const catId = parseInt(chip.dataset.catId, 10);
-    if (!isNaN(catId)) filterByCategory(catId);
+    // No chip branch here any more: the chip carries `data-action` and the
+    // document-level dispatcher runs it. Leaving this in would call
+    // filterByCategory twice per click.
   });
 }
 
@@ -1184,7 +1269,8 @@ function renderWorkflowCard(wf) {
 function renderExecutionHistory(executions) {
   const wrap = document.getElementById('execution-history');
   if (!executions.length) {
-    wrap.innerHTML = '<div class="p-6 text-center text-sm text-muted">No executions yet.</div>';
+    wrap.innerHTML = window.prismEmptyState('history', 'No executions yet',
+      'Run a workflow and its history — who ran it, when, and the result — appears here');
     return;
   }
   const rows = executions.map(ex => {
@@ -1193,7 +1279,7 @@ function renderExecutionHistory(executions) {
     const sc = statusColors[ex.status] || 'text-muted';
     const si = statusIcons[ex.status] || 'circle';
     const extra = ex.status === 'running' ? ' animate-spin' : '';
-    return `<tr class="border-b border-line hover:bg-page cursor-pointer" data-action="showExecution" data-args="[${ex.id}]">
+    return `<tr class="border-b border-line hover:bg-page cursor-pointer" data-action="showExecution" data-args="[${ex.id}]" tabindex="0">
       <td class="px-4 py-2 text-xs font-medium">${ex.workflow_name || 'Workflow #' + ex.workflow_id}</td>
       <td class="px-4 py-2 text-xs"><span class="flex items-center gap-1 ${sc}"><i data-lucide="${si}" class="w-3.5 h-3.5${extra}"></i> ${ex.status}</span></td>
       <td class="px-4 py-2 text-xs text-muted">${ex.trigger_source === 'dry-run'
@@ -1533,7 +1619,9 @@ function openTemplateGallery() {
     if (!r.ok) return;
     const templates = r.templates || [];
     if (!templates.length) {
-      document.getElementById('template-list').innerHTML = '<div class="text-center text-sm text-muted py-4">No templates available.</div>';
+      document.getElementById('template-list').innerHTML = window.prismEmptyState(
+        'layout-template', 'No templates available',
+        'Save any workflow as a template to reuse it here');
       return;
     }
     document.getElementById('template-list').innerHTML = templates.map(t => `
@@ -1957,7 +2045,11 @@ function _showCtxMenu(e, headerText, items, sourceEl) {
   for (const item of items) {
     if (item.sep) { html += '<div class="wf-ctx-sep"></div>'; continue; }
     const cls = item.danger ? 'wf-ctx-item danger' : 'wf-ctx-item';
-    html += `<div class="${cls}" data-action="${item.action}">
+    // Every row of this menu was mouse-only. It was missed by the first
+    // sweep because the action is `${item.action}` rather than a literal,
+    // which is exactly the shape a name-matching scan slides past — the
+    // guardrail found it, a reading of the file did not.
+    html += `<div class="${cls}" data-action="${item.action}" tabindex="0" role="menuitem">
       <i data-lucide="${item.icon}" class="w-3.5 h-3.5"></i>${item.label}
     </div>`;
   }
@@ -2494,6 +2586,12 @@ function showNodeProperties(nodeId) {
       + (controlsOthers ? ' data-controls-others="1"' : '');
   }
 
+  // JS-built carrier (WP-6 D9 close-out): computed once per panel render,
+  // outside the per-field loop below, matching
+  // partials/settings/_server_config.html's reference shape.
+  const _pickerTipDesc = {{ t.get('wf_insert_variable_desc', 'Insert output of a previous block') | tojson }};
+  const _browseTipDesc = {{ t.get('wf_browse_desc', 'Look up a live value from the target server instead of typing one') | tojson }};
+
   let html = '';
   def.fields.forEach(f => {
     if (!_isVisible(f)) return;
@@ -2504,10 +2602,11 @@ function showNodeProperties(nodeId) {
     // Variable picker button — only on text/textarea fields that opted
     // in. Inserts ``{% raw %}{{step.<id>.output}}{% endraw %}`` at the
     // cursor position of the associated input/textarea.
+    const pickerTipId = 'wf-picker-tip-' + f.key + '-' + nodeId;
     const pickerBtn = f.supports_variables
-      ? `<button type="button" class="px-1.5 py-0.5 text-[10px] font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1" data-action="_wfOpenVarPicker" data-node-id="${nodeId}" data-target-input="prop-${f.key}-${nodeId}" title="Insert output of a previous block">
+      ? `<button type="button" class="px-1.5 py-0.5 text-[10px] font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1" data-action="_wfOpenVarPicker" data-node-id="${nodeId}" data-target-input="prop-${f.key}-${nodeId}" aria-describedby="${pickerTipId}" data-tip-title="Insert variable" data-tip-desc="${_pickerTipDesc}">
           <i data-lucide="braces" class="w-3 h-3"></i> Insert variable
-        </button>`
+        </button><span class="sr-only" id="${pickerTipId}">${_pickerTipDesc}</span>`
       : '';
 
     const labelRow = `<div class="flex items-center justify-between mb-0.5">
@@ -2532,12 +2631,14 @@ function showNodeProperties(nodeId) {
       const browseLabel = browseType === 'ports' ? 'Browse open ports'
         : (browseType === 'processes' ? 'Browse running processes' : 'Browse services');
       const inputType = browseType === 'ports' ? 'number' : 'text';
+      const browseTipId = 'wf-browse-tip-' + f.key + '-' + nodeId;
       html += `<div class="mb-2">${labelRow}
         <div class="flex gap-1">
           <input type="${inputType}" id="prop-${f.key}-${nodeId}" class="flex-1 text-xs px-2 py-1 rounded border border-line bg-field" value="${escapeHtml(val)}" data-input="_wfNodeInput" data-node-id="${nodeId}" data-field-key="${f.key}">
-          <button data-action="browseFromServer" data-args='[${nodeId}, "${f.key}", "${browseType}"]' class="px-2 py-1 text-[10px] font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1 whitespace-nowrap" title="${browseLabel}">
+          <button data-action="browseFromServer" data-args='[${nodeId}, "${f.key}", "${browseType}"]' class="px-2 py-1 text-[10px] font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1 whitespace-nowrap" aria-describedby="${browseTipId}" data-tip-title="${browseLabel}" data-tip-desc="${_browseTipDesc}">
             <i data-lucide="list" class="w-3 h-3"></i> Browse
           </button>
+          <span class="sr-only" id="${browseTipId}">${_browseTipDesc}</span>
         </div>
       </div>`;
     } else if (f.type === 'number') {
@@ -3262,7 +3363,10 @@ function renderBrowseList() {
 
   const list = document.getElementById('wf-browse-list');
   if (filtered.length === 0) {
-    list.innerHTML = '<div class="text-center py-6 text-xs text-faint">No items found</div>';
+    // A filtered-to-nothing result, not an empty collection — so the hint
+    // points at the filter rather than at creating something.
+    list.innerHTML = window.prismEmptyState('search-x', 'No items found',
+      'Nothing matches this search — clear it or try a shorter term');
     return;
   }
 
@@ -3280,8 +3384,15 @@ function renderBrowseList() {
       const proc = item.process || '';
       const pid = item.pid || '';
       detail = proc ? (proc + (pid ? ` (pid ${pid})` : '')) : (item.address || '');
-      // Ports always have a coloured dot to indicate they're listening
-      leftDot = '<span class="w-1.5 h-1.5 rounded-full bg-healthy flex-shrink-0" title="Listening"></span>';
+      // Ports always have a coloured dot to indicate they're listening -- the
+      // SAME colour on every row in this branch (only listening ports are
+      // ever in this list), so it discriminates nothing between rows and is
+      // decoration, not information -- aria-hidden, matching the sibling
+      // dots below (running/stopped/no-status) that also carry no name of
+      // their own; the row's own visible name+detail text is what a
+      // keyboard/screen-reader user actually needs, not a fourth carrier
+      // nested inside an already-focusable row (WP-6 D9 close-out).
+      leftDot = '<span class="w-1.5 h-1.5 rounded-full bg-healthy flex-shrink-0" aria-hidden="true"></span>';
     } else {
       detail = display ? display : (mem ? mem + ' MB' : '');
       leftDot = isRunning
@@ -3289,7 +3400,7 @@ function renderBrowseList() {
         : (status ? '<span class="w-1.5 h-1.5 rounded-full bg-muted flex-shrink-0"></span>' : '');
     }
 
-    return `<div data-action="selectBrowseItem" data-args='${JSON.stringify([name]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}' class="flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer hover:bg-page dark:hover:bg-page/60 ${isSelected ? 'bg-brand/10 ring-1 ring-brand' : ''}">
+    return `<div data-action="selectBrowseItem" tabindex="0" role="button" aria-pressed="${isSelected ? 'true' : 'false'}" data-args='${JSON.stringify([name]).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}' class="flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer hover:bg-page dark:hover:bg-page/60 ${isSelected ? 'bg-brand/10 ring-1 ring-brand' : ''}">
       ${leftDot}
       <span class="text-xs font-medium flex-1 truncate">${name}</span>
       <span class="text-[10px] text-faint truncate max-w-[180px]">${detail}</span>
@@ -3354,11 +3465,16 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 <!-- Service/Process Browse Modal -->
+{# WP-6 step 19: the third of "the three absolute shadow-xl popovers" --
+   same reasoning as template-modal/add-category-modal above. id
+   "wf-browse-title" already existed (no JS reference to it found by grep;
+   reused rather than renamed, gains data-role="dialog-title" and the
+   DIALOG_TITLE class in place of its own font-semibold text-sm). #}
 <div id="wf-browse-modal" class="fixed inset-0 z-[70] hidden">
   <div class="absolute inset-0 bg-black/50" data-action="closeBrowseModal"></div>
-  <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md shadow-xl w-[420px] max-h-[70vh] overflow-hidden flex flex-col">
+  <div role="dialog" aria-modal="true" aria-labelledby="wf-browse-title" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card rounded-md border border-line shadow-lg w-[420px] max-h-[70vh] overflow-hidden flex flex-col">
     <div class="p-4 border-b border-line flex items-center justify-between">
-      <h3 class="font-semibold text-sm" id="wf-browse-title">Choose Service</h3>
+      <h3 id="wf-browse-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">Choose Service</h3>
       <button data-action="closeBrowseModal" class="p-1 rounded hover:bg-raised dark:hover:bg-line">
         <i data-lucide="x" class="w-4 h-4"></i>
       </button>
@@ -3372,80 +3488,116 @@ document.addEventListener('DOMContentLoaded', () => {
   </div>
 </div>
 
-<!-- Rich tooltip popup (reused for palette + canvas blocks) -->
-<div id="block-tooltip"></div>
-
 <!-- Right-click context menu (nodes + connections). Single element,
      repositioned + repopulated each open. See setupContextMenu(). -->
-<div id="wf-context-menu"></div>
+{# role="menu" is what makes the `role="menuitem"` on each row below valid —
+   a menuitem outside a menu is announced as nothing in particular. #}
+<div id="wf-context-menu" role="menu"></div>
 
 <script nonce="{{ csp_nonce }}">
-// ── Rich Tooltip System ──
-const _tooltip = document.getElementById('block-tooltip');
-let _tipTimer = null;
+// ── Tip carriers for palette + canvas blocks (DESIGN_SYSTEM_SPEC.md step 8) ──
+//
+// This used to be a bespoke #block-tooltip panel: its own dark floating
+// <div>, positioned from the cursor (mousemove math) and refilled with
+// innerHTML on every hover — a second, rival implementation of exactly what
+// #ps-tooltip (base.html) already provides app-wide, with its own
+// hardcoded slate hexes instead of the token scale. Deleted outright; every
+// call site below now sets the same data-tip-title/data-tip-desc pair
+// base.html's bindAll() already knows how to read, so the SAME panel opens
+// here as everywhere else in the app.
+//
+// BLOCK_DEFS stays the single source of truth for a block's label/icon/
+// category/tip content — palette items and canvas nodes (on drop, on
+// saved-canvas import, on rebuild) all already read it for other purposes.
+// applyBlockTip() below is the one place that turns a BLOCK_DEFS entry into
+// a tip, so the palette and the canvas can never say something different
+// about the same block type. The icon and the per-category colour do not
+// carry into a plain-text tooltip — there is nowhere in title/desc to put a
+// colour — and the monospace "Example" block folds onto its own line:
+// #ps-tooltip's .tip-desc is white-space: pre-wrap (base.html), so a
+// literal \n survives as a real line break without the old panel's
+// separate .tip-example-label/.tip-example markup.
+const BLOCK_TIP_CATEGORY_LABELS = { trigger: 'Trigger', check: 'Check', action: 'Action', flow: 'Flow Control', notification: 'Notification' };
 
-function showBlockTooltip(e, blockType) {
+// `el` is the element a pointer, keyboard or long-press actually reaches —
+// a palette .drag-block or a canvas .drawflow-node. Both already show
+// their own visible label (the block's name), so per Sec5.3 this needs
+// only aria-describedby, never aria-label: the trigger already has a name.
+// `idSuffix` must be unique per ELEMENT, not per block type — the same
+// block type can appear on the canvas more than once — so callers pass
+// either the palette's own data-type (one of each, by construction) or
+// Drawflow's own "node-<n>" id (freshly minted per dropped/loaded node).
+function applyBlockTip(el, blockType, idSuffix) {
   const def = BLOCK_DEFS[blockType];
   if (!def || !def.tip) return;
-
-  clearTimeout(_tipTimer);
-  const color = CATEGORY_COLORS[def.category] || '#8B5CF6';
-  const catLabel = { trigger: 'Trigger', check: 'Check', action: 'Action', flow: 'Flow Control', notification: 'Notification' }[def.category] || def.category;
-
-  _tooltip.innerHTML = `
-    <div class="tip-header">
-      <div class="tip-icon" style="background:${color}"><i data-lucide="${def.icon}"></i></div>
-      <div>
-        <div class="tip-title">${def.label}</div>
-        <div class="tip-category" style="color:${color}">${catLabel}</div>
-      </div>
-    </div>
-    <div class="tip-desc">${def.tip.desc}</div>
-    <div class="tip-example-label">Example</div>
-    <div class="tip-example">${def.tip.example}</div>`;
-
-  if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [_tooltip] });
-
-  // Position near cursor
-  const x = e.clientX + 16;
-  const y = e.clientY + 8;
-  _tooltip.style.left = Math.min(x, window.innerWidth - 300) + 'px';
-  _tooltip.style.top = Math.min(y, window.innerHeight - 200) + 'px';
-
-  _tipTimer = setTimeout(() => _tooltip.classList.add('visible'), 100);
+  const catLabel = BLOCK_TIP_CATEGORY_LABELS[def.category] || def.category;
+  const title = catLabel + ': ' + def.label;
+  const desc = def.tip.example ? def.tip.desc + '\n' + def.tip.example : def.tip.desc;
+  const mirrorId = 'block-tip-' + idSuffix;
+  el.setAttribute('tabindex', el.getAttribute('tabindex') || '0');
+  el.setAttribute('aria-describedby', mirrorId);
+  el.setAttribute('data-tip-title', title);
+  el.setAttribute('data-tip-desc', desc);
+  let mirror = document.getElementById(mirrorId);
+  if (!mirror) {
+    mirror = document.createElement('span');
+    mirror.className = 'sr-only';
+    mirror.id = mirrorId;
+    el.appendChild(mirror);
+  }
+  mirror.textContent = desc;
 }
 
-function hideBlockTooltip() {
-  clearTimeout(_tipTimer);
-  _tooltip.classList.remove('visible');
-}
-
-// Attach to palette blocks
+// Attach to palette blocks — static markup, bound once.
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.drag-block').forEach(block => {
-    block.addEventListener('mouseenter', (e) => showBlockTooltip(e, block.dataset.type));
-    block.addEventListener('mouseleave', hideBlockTooltip);
-    block.addEventListener('dragstart', hideBlockTooltip);
-    // Remove native title tooltip
+    applyBlockTip(block, block.dataset.type, 'palette-' + block.dataset.type);
+    // The native title= attribute was only ever a no-JS/loading-race
+    // fallback; leaving it in place would show the browser's own tooltip
+    // stacked on top of #ps-tooltip.
     block.removeAttribute('title');
+    // dragstart used to call hideBlockTooltip() directly — native HTML5
+    // drag-and-drop is inconsistent about firing pointerleave/mouseleave
+    // once the OS drag takes over, so the old code closed the panel
+    // explicitly rather than trust that event. blur() is the equivalent
+    // here: a no-op unless this block is the one currently focused (pinned
+    // open), in which case focusout closes the panel immediately per the
+    // state machine in base.html.
+    block.addEventListener('dragstart', () => block.blur());
   });
+  if (window.__prismBindTooltips) window.__prismBindTooltips();
 });
 
-// Attach to canvas nodes (delegated via mutation observer since nodes are added dynamically)
+// Attach to canvas nodes (delegated via mutation observer since nodes are
+// added dynamically — dropped from the palette, or imported from a saved
+// canvas; see addNodeToCanvas/importCanvasWithStyledNodes above, both of
+// which create nodes through Drawflow's own addNode() and therefore both
+// fire this observer, regardless of which function built the HTML.
+// rebuildNodeHtml() above replaces a node's inner content directly instead
+// of calling addNode() again, so it would NOT re-fire this observer if
+// anything called it — moot today, since nothing in this tree calls it).
+function bindCanvasNodeTip(node) {
+  const n8nNode = node.querySelector('.n8n-node');
+  const blockType = n8nNode?.dataset?.type;
+  if (!blockType) return;
+  // node.id is Drawflow's own "node-<n>" id (set synchronously when it
+  // creates the element, before insertion — confirmed in
+  // drawflow-0.0.59.min.js), already unique and stable for this element's
+  // lifetime, so it is reused here instead of minting a second counter.
+  applyBlockTip(node, blockType, node.id || blockType);
+}
+
 const _canvasObserver = new MutationObserver((mutations) => {
+  let added = false;
   mutations.forEach(m => {
     m.addedNodes.forEach(node => {
       if (node.nodeType === 1 && node.classList?.contains('drawflow-node')) {
-        node.addEventListener('mouseenter', (e) => {
-          const n8nNode = node.querySelector('.n8n-node');
-          const blockType = n8nNode?.dataset?.type;
-          if (blockType) showBlockTooltip(e, blockType);
-        });
-        node.addEventListener('mouseleave', hideBlockTooltip);
-        node.addEventListener('mousedown', hideBlockTooltip);
+        bindCanvasNodeTip(node);
+        added = true;
       }
     });
   });
+  if (added && window.__prismBindTooltips) window.__prismBindTooltips();
 });
 
 // Start observing once Drawflow is initialized
@@ -3454,15 +3606,8 @@ const _startTooltipObserver = setInterval(() => {
   if (precanvas) {
     _canvasObserver.observe(precanvas, { childList: true, subtree: true });
     // Also attach to existing nodes
-    precanvas.querySelectorAll('.drawflow-node').forEach(node => {
-      node.addEventListener('mouseenter', (e) => {
-        const n8nNode = node.querySelector('.n8n-node');
-        const blockType = n8nNode?.dataset?.type;
-        if (blockType) showBlockTooltip(e, blockType);
-      });
-      node.addEventListener('mouseleave', hideBlockTooltip);
-      node.addEventListener('mousedown', hideBlockTooltip);
-    });
+    precanvas.querySelectorAll('.drawflow-node').forEach(bindCanvasNodeTip);
+    if (window.__prismBindTooltips) window.__prismBindTooltips();
     clearInterval(_startTooltipObserver);
   }
 }, 500);

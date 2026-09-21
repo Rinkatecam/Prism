@@ -431,6 +431,159 @@ nothing downstream catches the wrong one. Make "declined, and here is why" a
 first-class output; the residue list is what lets the next person finish the
 job or ratchet the count.*
 
+**33. A mutation harness running in the background rewrites the files you are
+editing.** The harness works by saving a file, writing a defect into it,
+running one test, and restoring the saved copy. Left running while other edits
+land in the same files, its restore writes the version it captured — so an edit
+made inside one of those windows disappears with no error anywhere. Worse, a
+harness killed mid-run leaves the last defect APPLIED, and a deliberately
+introduced defect is indistinguishable from a bug when you find it later. Both
+happened in one session here: one mutation was found still applied in the
+working tree, and it was only noticed because a suite's own baseline went red.
+*Rule: a tool that mutates the working tree runs in the FOREGROUND, alone, and
+is never backgrounded or interrupted. If one is killed anyway, the recovery is
+not "look at the diff" — it is run the full suite AND every mutation baseline,
+because those are the only things that can tell a leftover defect from a real
+one.*
+
+---
+
+### 2.6 Mechanisms that were installed and not doing the work
+
+**34. A replacement can be written, wired, and still never run — because an
+outer guard's meaning quietly widened.** A retrospective correlation rule was
+replaced by a closure-driven one: the new code was written, tested, mutation-
+checked, and demonstrated against the real fleet. It had two defects that no
+test could see. First, the old rule was never deleted, so the function that ran
+in production still contained it and the replacement had no caller at all —
+"replaces" was true of the design and false of the code. Second, after the call
+was added, the pass still did nothing on a quiet system: its caller began with
+an early return when no new events were pending. That guard was correct when
+the pass only grouped fresh events. It became wrong the moment the same pass
+also took on work that is driven by STATE rather than by events — an ongoing
+outage emits nothing, and a recovery is the absence of a failure, so the pass
+that must notice "the cause is fixed and the consequence is not" is the
+quietest one there is. The same early return had also been skipping incident
+auto-resolution on a quiet system for as long as it had existed.
+*Rule 1: "X replaces Y" is a claim about the call graph. Assert it as one —
+walk the AST from the entry point to the replacement, and assert the retired
+code is gone by absence, not by comment.*
+*Rule 2: when a function acquires a second responsibility, re-read every early
+return in it AND in its callers. A guard is written against one meaning of
+"there is nothing to do", and nothing re-derives it when the meaning changes.*
+*Rule 3: neither defect was findable by reading the new module, and both were
+findable in seconds by running the system and asking what it actually did.*
+
+**35. A mechanism can be cancelled by its own caller, and the comment beside
+it will still describe the intent.** A retention routine deleted rows in bounded
+chunks specifically so the process-global write lock would be released between
+batches — the alternative being a single statement that holds it for minutes
+while every other writer blocks. Its docstring said "the loop keeps each
+statement small so the lock is released between batches". The caller wrapped the
+entire loop in one lock acquisition, so the chunking bounded each STATEMENT while
+the lock was held for the whole operation. The comment one line above the call
+even said the delete happened "outside the big lock block". Both statements
+described the design; neither described the code. Worse, the fix has a sharper
+edge than the bug: with the acquisition now inside the loop, and the lock a plain
+mutex rather than a reentrant one, a caller that takes it first no longer merely
+serialises — it deadlocks.
+*Rule 1: when a routine's correctness depends on NOT being wrapped in something,
+that is a property of the call site, and the call site is where it has to be
+asserted. Walk the callers; a docstring cannot enforce it.*
+*Rule 2: put the acquisition in the same few lines as the loop it must interleave
+with. Ownership at a distance is what let this survive — the loop and the lock
+were in different functions, and each one read correctly on its own.*
+
+**36. A text-scanning check can be silenced by its own documentation, not only
+triggered by it.** The familiar version of this failure is a grep that fires on
+the comment explaining the fix. The mirror image is worse and had not been seen
+here before: a check asserted that a required flag appeared in a generated
+script, the flag was then removed, and the check still passed — because the
+comment explaining why the flag was needed also contained its name. The
+substring was present; the behaviour was gone. It was caught only because a
+mutation deliberately removed the flag and the harness reported the test as
+blind.
+*Rule: assert against the INVOCATION, not the file. Exclude comment lines
+explicitly, and where there is no parser for the language, match the call line
+rather than the whole text.*
+*Corollary, from two other blind mutations in the same run: a mutation that
+lands and changes nothing observable is not always a blind test — sometimes it
+is a useless mutation, and the two look identical in the output. One test was
+genuinely aiming at the wrong guard (it asserted an integer field survived
+capping, but that field was not on the capped list at all, so the isinstance
+check it meant to defend was never reached). Another was equivalent by
+construction (a thread pool of one against a serial loop: same order, same peak
+concurrency, nothing to observe). The first is a test to fix; the second is a
+mutation to delete and a comment to leave behind so the next person does not
+re-add it.*
+
+**37. A hedge in a pattern is a hole in the test.** An assertion that the
+heart's contraction was computed inside the drawing frame was written as
+`squeeze|beatPhase` — two acceptable spellings, in case the implementation
+picked the other one. The mutation that removed the behaviour replaced the real
+call with a line that assigned `dataset.beatPhase`, and the test passed. The
+alternation was not protecting against a rename; it was accepting the absence of
+the thing being tested. The same session produced two more of the shape: a
+substring `--beat-depth: 0` that also matched `--beat-depth: 0.09`, and a helper
+returning "the first CSS rule with this selector" that returned a rule from
+inside a media query because that one came first in the file.
+*Rule: assert the narrowest thing that is true. An alternation, a prefix, or a
+"first match" is a place where a wrong implementation can still be right about
+the pattern — and the mutation harness is the only thing that will tell you,
+because a hedged assertion looks more robust, not less.*
+
+**38. Read back what you wrote, not what you meant to write.** A reduced-motion
+override was spliced in by matching on `.vitals-core {` — which occurs twice,
+and the first occurrence is inside a `max-width` media query rather than the
+motion query. The declaration landed in the responsive block: it would have
+disabled the heart's beat on every narrow screen and left it running for exactly
+the readers who asked for stillness. Two silent failures from one correct-looking
+edit. It was caught by printing the lines around the insertion point
+immediately afterwards, which took one command.
+*Rule: after any anchored splice into a file with repeated structure, print the
+CONTEXT of what landed — not just that the write succeeded. "Anchor found once"
+is a weaker claim than it sounds when the anchor is a selector, a brace, or an
+indented line, and the same class of mistake corrupted three splices of the
+mutation harness earlier in this branch.*
+
+**41. A fixed timer is not a release.** A manual restart put one server into
+accelerated polling — every check on every five-second tick — for twenty minutes,
+which is the safety ceiling the code itself warns about ("~240 forced cycles…
+almost certainly a bug"). The machine came back in fifty seconds. Measured
+against a comparable host in the same window: 184 samples versus 21. There WAS an
+early release, and it was unreachable from the case that needed it: it hangs off
+the update-install state machine, and a manual restart never creates an
+install-state row. So the mechanism existed, was correct, and could only fire for
+the path nobody triggers by hand.
+*Rule 1: a window opened to WAIT FOR AN EVENT must be closed BY that event.
+"Twenty minutes should be enough" is a guess with a cost attached, and it pays
+that cost in full every single time.*
+*Rule 2: when adding the release, the primitive must SHORTEN and never ARM.
+Calling the arming function with a small duration looks equivalent and is not —
+it would start polling every host that briefly blipped and recovered, turning a
+fix for excessive load into a cause of it. That distinction is what most of that
+feature's tests are for.*
+*Rule 3: put the release BEFORE the maintenance gate. A patch window is exactly
+when machines restart, so it is exactly when a suppression must not also suppress
+the thing that stops the hammering.*
+
+**42. Absence of motion was already carrying a meaning.** A still ECG trace was
+introduced to mean "you have seen this" — and this app already used a motionless
+trace to mean the opposite kind of thing entirely: the `flat` severity, every
+server offline. The new state was therefore not merely ambiguous, it collided
+with the one that means dead, and the rationale written beside it ("the still
+frame still carries colour and beat spacing") was true and beside the point. It
+took the owner looking at the real dashboard to see it; measured afterwards as
+three identical canvas frames over 2.4 seconds while the estate was elevated.
+*Rule: before using STILLNESS, EMPTINESS or SILENCE to encode something, ask what
+that absence already means in the same widget. Encoding a second meaning onto an
+absence is not like adding a colour — there is only one way to be absent, so the
+two meanings cannot be told apart.*
+*Corollary, from the same round: a signal must not fire in the resting state. The
+first version beat on every page load of a perfectly healthy estate, because
+nothing had been acknowledged yet — technically consistent with the rule and
+ambient in practice, which is the one thing the signal could not afford to be.*
+
 ---
 
 ## 3. The techniques that worked
@@ -517,6 +670,29 @@ These are the ones that cost time and are not obvious from the documentation.
 `getComputedStyle` returns start values forever. Disable transitions and
 animations before reading anything. This is trap number one and it will happen
 again.
+
+It happened again, and the near-miss is the part worth recording. The usual
+workaround — measure on a FRESH node, one that has never transitioned — is
+*almost* enough and fails on exactly one class of value: anything INHERITED.
+A newly created element inherits `color` from an ancestor that is still
+holding the colour it is leaving, so every element without an explicit colour
+class reported a contrast of 1.0 against the theme it had just switched to.
+Three separate readings looked like a catastrophic cascade defect and every
+one of them was the instrument. The reliable move is the blunt one named
+above: inject `* { transition: none !important }`, toggle, read, remove. Do
+not reach for the clever workaround first.
+
+**A dim factor is validated against one colour pair, and then applied to a
+region containing others.** The disabled treatment here is `opacity: 0.72`,
+chosen and measured to keep a label above AA. It does — for the label it was
+measured on. Applied to a table row whose secondary cells are already the
+muted and faint tokens, the same 0.72 took them to 3.76 and 2.82 against the
+card: the group the operator could not otherwise find became the group they
+could not read. A related edge from the same measurement: `faint` clears AA
+on the CARD surface and does not clear it on the PAGE surface, so the same
+class is compliant or not depending on which of two backgrounds it happens to
+sit on — and nothing in the class name says so. Measure the composition, not
+the token.
 
 **`requestAnimationFrame` never fires in that pane either, and the reason is
 worse than it sounds.** `document.visibilityState` is `"hidden"`, so the

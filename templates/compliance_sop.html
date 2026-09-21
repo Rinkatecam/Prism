@@ -1,5 +1,11 @@
 {% extends "base.html" %}
-{% block title %}{{ sop.id }} {{ sop.title }} — Prism{% endblock %}
+{# WP-6 D7 — this page's title is DATA: the SOP's own id + title, not a
+   constant page name, because the operator navigated here for this one
+   procedure. Capped at the chip's max-w + truncate (not by Jinja), which
+   truncates toward the id — the half that identifies it — since the id
+   comes first. #}
+{% block page_title %}{{ sop.id }} {{ sop.title }}{% endblock %}
+{% block page_icon %}scroll-text{% endblock %}
 
 {% block content %}
 <div class="p-6 max-w-7xl mx-auto">
@@ -18,7 +24,14 @@
 
     <!-- LEFT: table of contents (populated from the API response) -->
     <aside class="hidden lg:block">
-      <div id="toc-card" class="sticky top-4 bg-card rounded-lg border border-line p-4">
+      {# WP-6 step 20 (Batch G+H) -- ordering fixed to match the status card
+         below (also sticky top-4 bg-card ... p-4): card-shell utilities
+         first, position utilities (`sticky top-4`) last, the same
+         composition order card()'s own `extra=` uses onto CARD (§4.3). Was
+         `sticky top-4 bg-card rounded-lg border border-line p-4` -- the two
+         orderings this step's own text names. Still a CARD_EXCEPTIONS entry
+         either way (p-4, not the canonical p-5). #}
+      <div id="toc-card" class="bg-card rounded-lg border border-line p-4 sticky top-4">
         <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2">
           {{ t.get('on_this_page', 'On this page') }}
         </div>
@@ -327,7 +340,8 @@
       const data = await r.json();
       const div = document.getElementById('history');
       if (!data.history || data.history.length === 0) {
-        div.innerHTML = '<div class="text-faint">No executions recorded yet.</div>';
+        div.innerHTML = window.prismEmptyState('history', 'No executions recorded yet',
+          'Runs of this SOP will be listed here with who ran them and when');
         return;
       }
       // F-PHD-3 (XSS defence): build DOM with createElement + textContent so

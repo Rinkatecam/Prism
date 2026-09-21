@@ -1,0 +1,937 @@
+{# ── Add / edit / delete a server ──────────────────────────
+
+   WP-4 D4d, moved from /servers, which is now the fleet and nothing else.
+
+   Cut by NAME rather than by line range: unlike tags, health checks and
+   dependencies, this code was never contiguous. `testConnection` sits
+   between two functions that moved and stays behind, and eight view
+   functions sit between the modal's save path and its dirty check. #}
+
+{% from "partials/_empty_state.html" import empty_state %}
+{% from "partials/_tip.html" import tip_mirror with context %}
+{% from "partials/_card.html" import card with context %}
+
+{# WP-6 step 15: this h2 STAYS an h2 (C9 -- it already owned this card,
+   distance from its card alone is why the SECTION_HEADER_BASELINE
+   detector never flagged it as debt: the button cluster's ~1500
+   characters exceed that detector's 600-char window) and simply takes
+   the canonical string plus a stable id, now rendered by card()'s own
+   head row -- flush=True because the body is a full-bleed <table>
+   (§4.1). All four buttons + the hidden file input move into controls=. #}
+<div class="mb-8" id="server-list">
+  {% set _server_list_controls %}
+  <button data-action="discoverServers"
+          class="px-3 py-1.5 text-sm font-medium rounded border border-healthy text-healthy hover:bg-healthy-tint flex items-center gap-1">
+    <i data-lucide="radar" class="w-4 h-4"></i>
+    {{ t.discover_servers }}
+  </button>
+  <button data-action="exportServersCSV"
+          class="px-3 py-1.5 text-sm font-medium rounded border border-line hover:bg-page flex items-center gap-1">
+    <i data-lucide="download" class="w-4 h-4"></i>
+    {{ t.csv_export }}
+  </button>
+  <button data-action="_srvClickCsvImport"
+          class="px-3 py-1.5 text-sm font-medium rounded border border-line hover:bg-page flex items-center gap-1">
+    <i data-lucide="upload" class="w-4 h-4"></i>
+    {{ t.csv_import }}
+  </button>
+  <input type="file" id="csv-import-input" accept=".csv" class="hidden" data-change="_srvImportCsv">
+  <button data-action="showAddForm"
+          class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1">
+    <i data-lucide="plus" class="w-4 h-4"></i>
+    {{ t.add_server }}
+  </button>
+  {% endset %}
+  {% call card(heading=t.get('servers_page', 'Servers'), icon='server', flush=True,
+               heading_id='server-list-heading', controls=_server_list_controls) %}
+    {% if servers %}
+    {# Rendered from the same `servers` the page already has. Fetching the
+       list again would be a second source for it, and two sources for one
+       list is one more than can be right. #}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm" id="settings-server-table">
+        <thead class="bg-raised text-xs uppercase tracking-wide text-muted">
+          <tr>
+            <th class="text-left px-4 py-2" data-sort="text">{{ t.get('name', 'Name') }}</th>
+            <th class="text-left px-4 py-2" data-sort="text">{{ t.get('host', 'Host') }}</th>
+            <th class="text-left px-4 py-2 hidden sm:table-cell" data-sort="text">{{ t.get('type', 'Type') }}</th>
+            <th class="text-left px-4 py-2 hidden md:table-cell" data-sort="number">{{ t.get('port', 'Port') }}</th>
+            <th class="text-right px-4 py-2">{{ t.get('actions', 'Actions') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in servers %}
+          <tr class="border-t border-line hover:bg-page">
+            <td class="px-4 py-2 font-medium">{{ s.name }}</td>
+            <td class="px-4 py-2 text-muted">{{ s.host }}</td>
+            <td class="px-4 py-2 text-muted text-xs hidden sm:table-cell">{{ s.type | replace('_', ' ') | title }}</td>
+            <td class="px-4 py-2 text-muted text-xs hidden md:table-cell">{{ s.port }}</td>
+            <td class="px-4 py-2 text-right whitespace-nowrap">
+              <button data-action="editServer" data-args="[{{ loop.index0 }}]"
+                      class="p-1 text-accent hover:opacity-80"
+                      aria-label="{{ t.get('edit_server', 'Edit server') }} {{ s.name }}">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+              </button>
+              <button data-action="deleteServer" data-args="[{{ loop.index0 }}]"
+                      class="p-1 text-critical hover:opacity-80"
+                      aria-label="{{ t.get('delete_server', 'Delete server') }} {{ s.name }}">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="p-5">
+      {{ empty_state('server',
+                     t.get('no_servers', 'No servers configured'),
+                     t.get('no_servers_hint_settings',
+                           'Add one above, or use Discover to find them on the domain \u2014 nothing is collected until a server is here')) }}
+    </div>
+    {% endif %}
+  {% endcall %}
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     Add / Edit Server Modal
+     ═══════════════════════════════════════════════════════════════ -->
+{# WP-6 step 19: shadow-xl -> shadow-lg; HEAD_FLUSH header; role="dialog"
+   aria-modal="true" aria-labelledby="modal-title" (id already existed --
+   JS textContent target at :527/:549 below -- reused, untouched). #}
+<div id="server-modal" class="fixed inset-0 z-50 hidden">
+  <div class="fixed inset-0 bg-black/50" data-action="closeModal"></div>
+  <div class="fixed inset-0 flex items-center justify-center p-4">
+    <div role="dialog" aria-modal="true" aria-labelledby="modal-title" class="bg-card rounded-lg shadow-lg border border-line w-full max-w-lg max-h-[90vh] flex flex-col relative">
+      <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-line flex-shrink-0">
+        <h3 id="modal-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">{{ t.add_server }}</h3>
+        <button data-action="closeModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-4 space-y-4 overflow-y-auto flex-1">
+        <input type="hidden" id="edit-index" value="-1">
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium mb-1">{{ t.server_name }} *</label>
+            <input type="text" id="srv-name" placeholder="FileServer-01" required
+                   class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1">{{ t.host_ip }} *</label>
+            <input type="text" id="srv-host" placeholder="192.168.1.50" required
+                   class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-medium mb-1">{{ t.type }}</label>
+            {# The dropdown is the default view. When user picks "+ Custom…",
+               it's replaced inline by a text input with save/cancel buttons.
+               Clicking save adds the custom type to the dropdown + selects it.
+               Clicking cancel reverts to the dropdown. #}
+            <div id="srv-type-wrap">
+              <select id="srv-type" data-change="onServerTypeChange"
+                      class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
+                <option value="file_server">{{ t.file_servers }}</option>
+                <option value="app_server">{{ t.app_servers }}</option>
+                <option value="domain_controller">{{ t.domain_controllers }}</option>
+                <option value="database_server">{{ t.database_servers }}</option>
+                <option value="web_server">{{ t.web_servers }}</option>
+                <option value="mail_server">{{ t.mail_servers }}</option>
+                <option value="print_server">{{ t.print_servers }}</option>
+                <option value="backup_server">{{ t.backup_servers }}</option>
+                <option value="_custom">+ {{ t.get('custom_type', 'Custom') }}...</option>
+              </select>
+              <div id="srv-custom-input" class="hidden relative">
+                <input type="text" id="srv-custom-type" placeholder="{{ t.get('custom_type_name', 'e.g. proxy_server') }}"
+                       class="w-full pl-3 pr-16 py-1.5 text-sm rounded border border-healthy dark:border-healthy bg-field focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+                <div class="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5">
+                  <button type="button" data-action="confirmCustomType" aria-label="{{ t.get('save', 'Save') }}" aria-describedby="srv-custom-save-desc"
+                    data-tip-title="{{ t.get('save', 'Save') }}" data-tip-desc="{{ t.get('confirm_custom_type_desc', 'Add this custom server type to the list and select it.') }}"
+                    class="p-1 rounded hover:bg-healthy/20 text-healthy">
+                    <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                  </button>
+                  <span class="sr-only" id="srv-custom-save-desc">{{ t.get('confirm_custom_type_desc', 'Add this custom server type to the list and select it.') }}</span>
+                  <button type="button" data-action="cancelCustomType" aria-label="{{ t.get('cancel', 'Cancel') }}" aria-describedby="srv-custom-cancel-desc"
+                    data-tip-title="{{ t.get('cancel', 'Cancel') }}" data-tip-desc="{{ t.get('cancel_custom_type_desc', 'Discard this custom type and go back to the dropdown.') }}"
+                    class="p-1 rounded hover:bg-critical/20 text-critical">
+                    <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                  </button>
+                  <span class="sr-only" id="srv-custom-cancel-desc">{{ t.get('cancel_custom_type_desc', 'Discard this custom type and go back to the dropdown.') }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1">{{ t.username }}</label>
+            <input type="text" id="srv-user" placeholder="administrator"
+                   class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
+          </div>
+          <div>
+            <label for="srv-port" class="block text-xs font-medium mb-1">{{ t.port }}</label>
+            <input type="number" id="srv-port" value="5985" min="1" max="65535" required
+                   class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
+          </div>
+        </div>
+
+        <!-- WinRM transport + RBAC tier (rolled together to keep the form
+             compact). use_https flips port 5985↔5986 on toggle. tier=0 marks
+             a critical server requiring admin ACL + dual approval. -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="flex items-center gap-2 pt-1">
+            <input type="checkbox" id="srv-https"
+                   data-change="_srvHttpsToggle"
+                   class="h-4 w-4 rounded border-line">
+            <label for="srv-https" class="text-xs">
+              {{ t.get('use_https', 'WinRM over HTTPS') }}
+              <span class="text-[10px] text-muted">(5986)</span>
+            </label>
+            <span id="srv-https-skip-wrap" class="hidden flex items-center gap-1 ml-2">
+              <input type="checkbox" id="srv-https-skip" class="h-3.5 w-3.5">
+              <label for="srv-https-skip" class="text-[10px] text-warning" tabindex="0" aria-describedby="srv-https-skip-desc" data-tip-title="{{ t.get('skip_cert_verify', 'Skip cert verify') }}" data-tip-desc="{{ t.get('skip_cert_verify_desc', 'Disables certificate validation. Use only during initial cert rollout.') }}">
+                {{ t.get('skip_cert_verify', 'Skip cert verify') }}
+              </label>
+              <span class="sr-only" id="srv-https-skip-desc">{{ t.get('skip_cert_verify_desc', 'Disables certificate validation. Use only during initial cert rollout.') }}</span>
+            </span>
+          </div>
+          <div>
+            <label for="srv-tier" class="block text-xs font-medium mb-1">
+              {{ t.get('rbac_tier', 'RBAC tier') }}
+            </label>
+            <select id="srv-tier"
+                    class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field">
+              <option value="0">{{ t.get('tier_0_critical', 'Tier 0 — Critical (DC, primary DB, mail)') }}</option>
+              <option value="1" selected>{{ t.get('tier_1_standard', 'Tier 1 — Standard') }}</option>
+              <option value="2">{{ t.get('tier_2_dev', 'Tier 2 — Dev / Test') }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="srv-pass" class="block text-xs font-medium mb-1">{{ t.password }}</label>
+          <div class="relative">
+            <input type="password" id="srv-pass" placeholder="Enter password"
+                   autocomplete="new-password"
+                   class="w-full px-3 py-1.5 pr-10 text-sm rounded border border-line bg-field">
+            <button type="button"
+                    aria-label="Toggle password visibility"
+                    data-action="_srvTogglePass"
+                    class="absolute inset-y-0 right-0 px-2 flex items-center text-muted hover:text-info focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded-r"
+                    aria-pressed="false">
+              <i data-lucide="eye" class="w-4 h-4" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Thresholds -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-xs font-medium">{{ t.thresholds }}</label>
+            <button data-action="applyDefaults" class="text-xs text-info hover:underline">{{ t.reset_defaults }}</button>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[10px] text-muted mb-0.5">{{ t.cpu_warning }}</label>
+              <input type="number" id="th-cpu-warn" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
+            </div>
+            <div>
+              <label class="block text-[10px] text-muted mb-0.5">{{ t.cpu_critical }}</label>
+              <input type="number" id="th-cpu-crit" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
+            </div>
+            <div>
+              <label class="block text-[10px] text-muted mb-0.5">{{ t.ram_warning }}</label>
+              <input type="number" id="th-ram-warn" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
+            </div>
+            <div>
+              <label class="block text-[10px] text-muted mb-0.5">{{ t.ram_critical }}</label>
+              <input type="number" id="th-ram-crit" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
+            </div>
+            <div>
+              <label class="block text-[10px] text-muted mb-0.5">{{ t.disk_warning }}</label>
+              <input type="number" id="th-disk-warn" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
+            </div>
+            <div>
+              <label class="block text-[10px] text-muted mb-0.5">{{ t.disk_critical }}</label>
+              <input type="number" id="th-disk-crit" min="1" max="100" required class="w-full px-2 py-1 text-sm rounded border border-line bg-field">
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Modal test result -->
+      <div id="modal-test-result" class="hidden px-4 pt-2 flex-shrink-0">
+        <div class="test-result-box rounded p-2 text-sm"></div>
+      </div>
+      {# FOOTER kept justify-between -- Test Connection is a distinct,
+         left-side diagnostic action, separate from the Cancel/Save pair;
+         see service-picker-modal's comment in settings.html for the same
+         reasoning applied uniformly across every 2-sided modal footer. #}
+      <div class="px-5 py-4 border-t border-line flex items-center justify-between gap-2 flex-shrink-0">
+        <button data-action="testConnectionFromModal" id="modal-test-btn"
+                class="px-4 py-1.5 text-sm rounded border border-healthy text-healthy hover:bg-healthy/10 flex items-center gap-1.5">
+          <i data-lucide="plug" class="w-4 h-4"></i>
+          {{ t.test_connection }}
+        </button>
+        <div class="flex gap-2">
+          <button data-action="closeModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
+          <button data-action="saveServer" class="px-4 py-1.5 text-sm rounded bg-accent text-white dark:text-page hover:opacity-90">{{ t.save }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Setup Guide Modal -->
+
+<!-- Delete Server Confirmation Modal -->
+{# WP-6 step 19: shadow-xl -> shadow-lg. Border already present
+   (border-critical/30, a C-3-allowed border-<status> literal) -- kept, not
+   switched to border-line, matching the panel's own deliberate danger
+   colour; same for the header's border-b border-critical. role="dialog"
+   aria-modal="true" aria-labelledby="delete-modal-title" added
+   (delete-modal-title is the EXISTING span id, JS textContent target at
+   :587 below -- reused as-is, not moved onto the h3). The h3 carries
+   data-role="dialog-title" + the DIALOG_TITLE string (text-ink, dropping
+   its own text-critical), with text-critical moved onto the icon
+   directly so the danger cue survives on the one element that carried no
+   colour of its own before -- same split base.html's #prism-modal already
+   uses (icon = status colour, title text = neutral ink). JUDGEMENT CALL,
+   flagged in this step's own report. #}
+<div id="delete-modal" class="fixed inset-0 z-[60] hidden">
+  <div class="fixed inset-0 bg-black/50"></div>
+  <div class="fixed inset-0 flex items-center justify-center p-4">
+    <div role="dialog" aria-modal="true" aria-labelledby="delete-modal-title" class="bg-card rounded-lg shadow-lg border border-critical/30 w-full max-w-md relative">
+      <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-critical dark:border-critical-tint">
+        <h3 data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">
+          <i data-lucide="alert-triangle" class="w-5 h-5 text-critical"></i>
+          <span id="delete-modal-title">{{ t.get('delete_server', 'Delete Server') }}?</span>
+        </h3>
+        <button data-action="closeDeleteModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-4 space-y-4">
+        <div class="text-sm text-muted">
+          {{ t.get('delete_server_warning', 'This will remove the server and its monitoring configuration.') }}
+        </div>
+        <div>
+          <label class="block text-xs font-medium mb-1">{{ t.get('type_name_to_confirm', 'Type the server name to confirm:') }}</label>
+          <input type="text" id="delete-confirm-input" autocomplete="off"
+                 class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field font-mono"
+                 data-input="checkDeleteConfirmation">
+        </div>
+      </div>
+      <div class="px-5 py-4 border-t border-line flex items-center justify-end gap-2">
+        <button data-action="closeDeleteModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
+        {# Real <button> with its own visible label already — needs the §5.3
+           mirror/describedby pairing, not a second tip() trigger. The native
+           `disabled` stays: converting "waiting on you" reasons to
+           aria-disabled + data-inert is step 9's job (prismSetDisabled +
+           the [data-action] dispatcher), not this one's. #}
+        {% set _delete_tip_id = next_tip_id() %}
+        <button id="delete-confirm-btn" data-action="confirmDeleteServer" disabled
+                aria-describedby="{{ _delete_tip_id }}"
+                data-tip-title="{{ t.get('disabled_type_name_title', 'Type the server name first') }}"
+                data-tip-desc="{{ t.get('disabled_type_name_desc', 'Deleting a server removes its history. Type the name exactly as shown above to confirm.') }}"
+                class="px-4 py-1.5 text-sm font-medium rounded bg-critical text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+          {{ t.delete }}
+        </button>
+        {{ tip_mirror('disabled_type_name_desc', 'Deleting a server removes its history. Type the name exactly as shown above to confirm.', _delete_tip_id) }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AD Discovery Modal -->
+{# WP-6 step 19: shadow-xl -> shadow-lg; HEAD_FLUSH header; new id on the
+   title (none existed before); FOOTER kept justify-between (select-all +
+   count on the left is a bulk-action cluster, distinct from the dialog's
+   own Cancel/Add pair on the right). #}
+<div id="discovery-modal" class="fixed inset-0 z-[60] hidden">
+  <div class="fixed inset-0 bg-black/50" data-action="closeDiscoveryModal"></div>
+  <div class="fixed inset-0 flex items-center justify-center p-4">
+    <div role="dialog" aria-modal="true" aria-labelledby="discovery-modal-title" class="bg-card rounded-lg shadow-lg border border-line w-full max-w-2xl max-h-[80vh] flex flex-col relative">
+      <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-line flex-shrink-0">
+        <h3 id="discovery-modal-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">
+          <i data-lucide="radar" class="w-5 h-5 text-healthy"></i>
+          {{ t.discovered_servers }}
+        </h3>
+        <button data-action="closeDiscoveryModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-4 overflow-y-auto flex-1">
+        <div id="discovery-status" class="text-sm text-muted mb-3"></div>
+        <div id="discovery-list" class="space-y-1"></div>
+      </div>
+      <div class="px-5 py-4 border-t border-line flex items-center justify-between gap-2 flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <button data-action="selectAllDiscovered" class="px-3 py-1 text-xs font-medium rounded border border-line hover:bg-page">
+            {{ t.get('select_all', 'Select All') }}
+          </button>
+          <span id="discovery-selected-count" class="text-xs text-muted"></span>
+        </div>
+        <div class="flex gap-2">
+          <button data-action="closeDiscoveryModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
+          <button data-action="addDiscoveredServers" id="add-discovered-btn"
+                  class="px-4 py-1.5 text-sm rounded bg-healthy text-white hover:opacity-90 flex items-center gap-1">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            {{ t.add_selected }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+// Module state for the modals, which moved here with them in D4d.
+// --- Delete Server with Confirmation Modal ---
+let deleteServerIndex = -1;
+let deleteServerName = '';
+
+// ── Modal Backdrop Protection (dirty state tracking) ──
+let serverModalDirty = false;
+let serverModalInitialState = {};
+
+// Wrap showAddForm and editServer to capture state after populating the modal
+const _origShowAddForm = showAddForm;
+showAddForm = function() {
+  _origShowAddForm();
+  captureModalState();
+};
+
+const _origEditServer = editServer;
+editServer = function(index) {
+  _origEditServer(index);
+  // captureModalState after the async loadConfig completes
+  setTimeout(captureModalState, 200);
+};
+
+let discoveredServers = [];
+
+// Escape closes whichever modal is open. Bound here rather than on /servers,
+// which no longer has any of these elements.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const del = document.getElementById('delete-modal');
+  const srv = document.getElementById('server-modal');
+  const disc = document.getElementById('discovery-modal');
+  if (del && !del.classList.contains('hidden')) closeDeleteModal();
+  else if (srv && !srv.classList.contains('hidden')) closeModal();
+  else if (disc && !disc.classList.contains('hidden')) closeDiscoveryModal();
+});
+
+// The two wrappers, which capture the modal's state AFTER it is populated so
+// "has the operator changed anything" has something to compare against.
+const _origShowAddForm = showAddForm;
+showAddForm = function () {
+  _origShowAddForm();
+  captureModalState();
+};
+
+const _origEditServer = editServer;
+editServer = function (index) {
+  _origEditServer(index);
+  // captureModalState after the async loadConfig completes
+  setTimeout(captureModalState, 200);
+};
+
+// ── Threshold Defaults ──
+const DEFAULTS = {
+  file_server:        { cpu_warning: 75, cpu_critical: 90, ram_warning: 80, ram_critical: 90, disk_warning: 70, disk_critical: 85 },
+  app_server:         { cpu_warning: 70, cpu_critical: 85, ram_warning: 75, ram_critical: 85, disk_warning: 70, disk_critical: 85 },
+  domain_controller:  { cpu_warning: 40, cpu_critical: 60, ram_warning: 80, ram_critical: 90, disk_warning: 75, disk_critical: 90 },
+  database_server:    { cpu_warning: 70, cpu_critical: 85, ram_warning: 70, ram_critical: 85, disk_warning: 70, disk_critical: 85 },
+  web_server:         { cpu_warning: 70, cpu_critical: 85, ram_warning: 75, ram_critical: 90, disk_warning: 75, disk_critical: 90 },
+  mail_server:        { cpu_warning: 75, cpu_critical: 90, ram_warning: 92, ram_critical: 96, disk_warning: 70, disk_critical: 85 },
+  print_server:       { cpu_warning: 80, cpu_critical: 95, ram_warning: 80, ram_critical: 90, disk_warning: 75, disk_critical: 90 },
+  backup_server:      { cpu_warning: 80, cpu_critical: 95, ram_warning: 80, ram_critical: 90, disk_warning: 70, disk_critical: 85 },
+  other:              { cpu_warning: 75, cpu_critical: 90, ram_warning: 80, ram_critical: 90, disk_warning: 75, disk_critical: 90 },
+};
+function applyDefaults() {
+  const type = getServerType();
+  const d = DEFAULTS[type] || DEFAULTS.other;
+  document.getElementById('th-cpu-warn').value = d.cpu_warning;
+  document.getElementById('th-cpu-crit').value = d.cpu_critical;
+  document.getElementById('th-ram-warn').value = d.ram_warning;
+  document.getElementById('th-ram-crit').value = d.ram_critical;
+  document.getElementById('th-disk-warn').value = d.disk_warning;
+  document.getElementById('th-disk-crit').value = d.disk_critical;
+}
+function onServerTypeChange() {
+  const sel = document.getElementById('srv-type');
+  if (sel.value === '_custom') {
+    // Swap dropdown for inline input
+    sel.classList.add('hidden');
+    const wrap = document.getElementById('srv-custom-input');
+    wrap.classList.remove('hidden');
+    const inp = document.getElementById('srv-custom-type');
+    inp.value = '';
+    inp.focus();
+    lucide.createIcons({ nodes: [wrap] });
+    // Enter key = confirm
+    inp.onkeydown = function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); confirmCustomType(); }
+      if (e.key === 'Escape') cancelCustomType();
+    };
+  } else {
+    applyDefaults();
+  }
+}
+function confirmCustomType() {
+  const inp = document.getElementById('srv-custom-type');
+  const raw = (inp.value || '').trim();
+  if (!raw) { cancelCustomType(); return; }
+  // Normalize: lowercase, spaces→underscores, strip non-alphanumeric
+  const slug = raw.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+  if (!slug) { cancelCustomType(); return; }
+  // Check if it already exists in the dropdown — if so, just select it (no duplicate)
+  const sel = document.getElementById('srv-type');
+  const existing = Array.from(sel.options).find(o => o.value === slug && o.value !== '_custom');
+  if (existing) {
+    sel.value = slug;
+    sel.classList.remove('hidden');
+    document.getElementById('srv-custom-input').classList.add('hidden');
+    applyDefaults();
+    return;
+  }
+  // Add to dropdown + select it
+  ensureCustomTypeInDropdown(slug);
+  sel.value = slug;
+  // Swap back to dropdown
+  sel.classList.remove('hidden');
+  document.getElementById('srv-custom-input').classList.add('hidden');
+  applyDefaults();
+}
+function cancelCustomType() {
+  const sel = document.getElementById('srv-type');
+  sel.value = 'file_server'; // revert to first built-in
+  sel.classList.remove('hidden');
+  document.getElementById('srv-custom-input').classList.add('hidden');
+  document.getElementById('srv-custom-type').value = '';
+  applyDefaults();
+}
+function getServerType() {
+  const sel = document.getElementById('srv-type');
+  // If custom input is visible, the user hasn't confirmed yet
+  if (sel.classList.contains('hidden')) return 'file_server';
+  return sel.value === '_custom' ? 'file_server' : sel.value;
+}
+function setServerType(type) {
+  const sel = document.getElementById('srv-type');
+  ensureCustomTypeInDropdown(type);
+  sel.value = type;
+  sel.classList.remove('hidden');
+  document.getElementById('srv-custom-input').classList.add('hidden');
+}
+function ensureCustomTypeInDropdown(type) {
+  if (!type || type === '_custom') return;
+  const sel = document.getElementById('srv-type');
+  if (Array.from(sel.options).some(o => o.value === type)) return;
+  const customOpt = sel.querySelector('option[value="_custom"]');
+  const newOpt = document.createElement('option');
+  newOpt.value = type;
+  newOpt.textContent = type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  sel.insertBefore(newOpt, customOpt);
+}
+document.addEventListener('DOMContentLoaded', populateCustomServerTypes);
+
+function populateCustomServerTypes() {
+  loadConfig().then(data => {
+    const builtIn = new Set([
+      'file_server', 'app_server', 'domain_controller', 'database_server',
+      'web_server', 'mail_server', 'print_server', 'backup_server'
+    ]);
+    (data.servers || []).forEach(s => {
+      if (s.type && !builtIn.has(s.type)) ensureCustomTypeInDropdown(s.type);
+    });
+  });
+}
+function showAddForm() {
+  document.getElementById('modal-title').textContent = {{ t.add_server | tojson }};
+  document.getElementById('edit-index').value = -1;
+  document.getElementById('srv-name').value = '';
+  document.getElementById('srv-host').value = '';
+  setServerType('file_server');
+  document.getElementById('srv-user').value = 'administrator';
+  document.getElementById('srv-pass').value = '';
+  document.getElementById('srv-pass').placeholder = 'Enter password';
+  document.getElementById('srv-port').value = 5985;
+  // Defaults for new server
+  var _h = document.getElementById('srv-https'); if (_h) _h.checked = false;
+  var _hs = document.getElementById('srv-https-skip'); if (_hs) _hs.checked = false;
+  var _hsw = document.getElementById('srv-https-skip-wrap'); if (_hsw) _hsw.style.display = 'none';
+  var _t = document.getElementById('srv-tier'); if (_t) _t.value = '1';
+  applyDefaults();
+  document.getElementById('server-modal').classList.remove('hidden');
+  lucide.createIcons();
+}
+function editServer(index) {
+  loadConfig().then(data => {
+    const s = data.servers[index];
+    if (!s) return;
+    document.getElementById('modal-title').textContent = {{ t.edit | tojson }} + ' ' + {{ t.get('server', 'Server') | tojson }};
+    document.getElementById('edit-index').value = index;
+    document.getElementById('srv-name').value = s.name;
+    document.getElementById('srv-host').value = s.host;
+    setServerType(s.type || 'file_server');
+    document.getElementById('srv-user').value = s.username || 'administrator';
+    // Password is masked from API -- show empty field with placeholder hint
+    document.getElementById('srv-pass').value = '';
+    document.getElementById('srv-pass').placeholder = 'Leave blank to keep current password';
+    document.getElementById('srv-port').value = s.port || 5985;
+    var _h = document.getElementById('srv-https'); if (_h) _h.checked = !!s.use_https;
+    var _hs = document.getElementById('srv-https-skip'); if (_hs) _hs.checked = !!s.https_skip_verify;
+    var _hsw = document.getElementById('srv-https-skip-wrap'); if (_hsw) _hsw.style.display = s.use_https ? 'flex' : 'none';
+    var _tier = document.getElementById('srv-tier'); if (_tier) _tier.value = String(s.tier == null ? 1 : s.tier);
+    const t = s.thresholds || {};
+    document.getElementById('th-cpu-warn').value = t.cpu_warning || 75;
+    document.getElementById('th-cpu-crit').value = t.cpu_critical || 90;
+    document.getElementById('th-ram-warn').value = t.ram_warning || 80;
+    document.getElementById('th-ram-crit').value = t.ram_critical || 90;
+    document.getElementById('th-disk-warn').value = t.disk_warning || 75;
+    document.getElementById('th-disk-crit').value = t.disk_critical || 90;
+    document.getElementById('server-modal').classList.remove('hidden');
+    lucide.createIcons();
+  });
+}
+async function closeModal(force) {
+  if (!force && isModalDirty()) {
+    if (!await pConfirm({{ t.get('discard_changes', 'Discard unsaved changes?') | tojson }})) return;
+  }
+  document.getElementById('server-modal').classList.add('hidden');
+  document.getElementById('modal-test-result').classList.add('hidden');
+}
+function deleteServer(index) {
+  loadConfig().then(data => {
+    const s = data.servers[index];
+    if (!s) return;
+    deleteServerIndex = index;
+    deleteServerName = s.name;
+    document.getElementById('delete-modal-title').textContent = {{ t.get('delete_server', 'Delete Server') | tojson }} + ' \u2014 ' + s.name + '?';
+    document.getElementById('delete-confirm-input').value = '';
+    // Re-opening the modal resets the button, so it has to restore the
+    // reason too — a bare `.disabled = true` here left the control disabled
+    // and silent on every open after the first, because the previous close
+    // had cleared the attributes.
+    prismSetDisabled(document.getElementById('delete-confirm-btn'),
+      '{{ t.get("disabled_type_name_title", "Type the server name first") }}',
+      '{{ t.get("disabled_type_name_desc", "Deleting a server removes its history. Type the name exactly as shown above to confirm.") }}');
+    __prismSyncTipMirror(document.getElementById('delete-confirm-btn'),
+      '{{ t.get("disabled_type_name_title", "Type the server name first") }}',
+      '{{ t.get("disabled_type_name_desc", "Deleting a server removes its history. Type the name exactly as shown above to confirm.") }}');
+    document.getElementById('delete-modal').classList.remove('hidden');
+    lucide.createIcons();
+    document.getElementById('delete-confirm-input').focus();
+  });
+}
+function checkDeleteConfirmation() {
+  const input = document.getElementById('delete-confirm-input').value.trim();
+  // prismSetDisabled, not `.disabled =`: the reason has to disappear when the
+  // control is enabled. The markup carries the same reason for first paint,
+  // and a plain assignment would leave "Type the server name first" hovering
+  // over a button that is now perfectly clickable.
+  const _deleteNameOk = input !== deleteServerName && '{{ t.get("disabled_type_name_title", "Type the server name first") }}';
+  prismSetDisabled(document.getElementById('delete-confirm-btn'), _deleteNameOk,
+    '{{ t.get("disabled_type_name_desc", "Deleting a server removes its history. Type the name exactly as shown above to confirm.") }}');
+  __prismSyncTipMirror(document.getElementById('delete-confirm-btn'), _deleteNameOk,
+    '{{ t.get("disabled_type_name_desc", "Deleting a server removes its history. Type the name exactly as shown above to confirm.") }}');
+}
+function confirmDeleteServer() {
+  if (deleteServerIndex < 0) return;
+  const nameToDelete = deleteServerName;
+  loadConfig().then(data => {
+    data.servers.splice(deleteServerIndex, 1);
+    closeDeleteModal();
+    // Wipe all historical data for this server (metrics, events, logs,
+    // dependencies, etc.) BEFORE saving the new config, so the dashboard
+    // immediately stops showing it as offline. The DELETE endpoint also
+    // clears the in-memory collector caches.
+    fetch('/api/servers/' + encodeURIComponent(nameToDelete) + '/data', {
+      method: 'DELETE',
+      headers: { 'X-CSRFToken': csrfToken },
+    }).catch(() => { /* not blocking — proceed with config save anyway */ })
+      .finally(() => saveServerConfig(data));
+  });
+}
+function closeDeleteModal() {
+  document.getElementById('delete-modal').classList.add('hidden');
+  deleteServerIndex = -1;
+  deleteServerName = '';
+}
+function saveServer() {
+  const index = parseInt(document.getElementById('edit-index').value);
+  const passwordField = document.getElementById('srv-pass').value;
+  // If editing and password field is empty, send the mask to preserve existing password
+  const password = (index >= 0 && passwordField === '') ? '********' : passwordField;
+  const server = {
+    name: document.getElementById('srv-name').value.trim(),
+    host: document.getElementById('srv-host').value.trim(),
+    type: getServerType(),
+    username: document.getElementById('srv-user').value.trim() || 'administrator',
+    password: password,
+    port: parseInt(document.getElementById('srv-port').value) || 5985,
+    use_https: !!document.getElementById('srv-https')?.checked,
+    https_skip_verify: !!document.getElementById('srv-https-skip')?.checked,
+    tier: parseInt(document.getElementById('srv-tier')?.value || '1', 10),
+    thresholds: {
+      cpu_warning:  parseInt(document.getElementById('th-cpu-warn').value),
+      cpu_critical: parseInt(document.getElementById('th-cpu-crit').value),
+      ram_warning:  parseInt(document.getElementById('th-ram-warn').value),
+      ram_critical: parseInt(document.getElementById('th-ram-crit').value),
+      disk_warning: parseInt(document.getElementById('th-disk-warn').value),
+      disk_critical:parseInt(document.getElementById('th-disk-crit').value),
+    },
+  };
+
+  if (!server.name || !server.host) {
+    pAlert('Server name and host are required.');
+    return;
+  }
+
+  loadConfig().then(data => {
+    if (index >= 0) {
+      data.servers[index] = server;
+    } else {
+      data.servers.push(server);
+    }
+    saveServerConfig(data);
+  });
+}
+function saveServerConfig(data) {
+  fetch('/api/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify(data),
+  })
+  .then(r => r.json())
+  .then(result => {
+    const msg = document.getElementById('save-message');
+    if (result.ok) {
+      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-healthy-tint text-healthy-strong';
+      msg.textContent = {{ t.config_saved | tojson }};
+      msg.classList.remove('hidden');
+      closeModal(true);
+      setTimeout(() => location.reload(), 500);
+    } else {
+      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
+      msg.textContent = 'Error: ' + (result.error || 'Unknown error');
+      msg.classList.remove('hidden');
+    }
+  })
+  .catch(err => {
+    pAlert('Failed to save: ' + err.message);
+  });
+}
+function testConnectionFromModal() {
+  const container = document.getElementById('modal-test-result');
+  const btn = document.getElementById('modal-test-btn');
+  const payload = {
+    host: document.getElementById('srv-host').value.trim(),
+    username: document.getElementById('srv-user').value.trim() || 'administrator',
+    password: document.getElementById('srv-pass').value,
+    port: parseInt(document.getElementById('srv-port').value) || 5985,
+    use_https: !!document.getElementById('srv-https')?.checked,
+    https_skip_verify: !!document.getElementById('srv-https-skip')?.checked,
+  };
+  if (!payload.host) {
+    showTestResult(container, { ok: false, error: 'Host is required' });
+    return;
+  }
+  doTestConnection(payload, container, btn);
+}
+function captureModalState() {
+  serverModalInitialState = {
+    name: document.getElementById('srv-name').value,
+    host: document.getElementById('srv-host').value,
+    type: getServerType(),
+    user: document.getElementById('srv-user').value,
+    pass: document.getElementById('srv-pass').value,
+    port: document.getElementById('srv-port').value,
+    cpuWarn: document.getElementById('th-cpu-warn').value,
+    cpuCrit: document.getElementById('th-cpu-crit').value,
+    ramWarn: document.getElementById('th-ram-warn').value,
+    ramCrit: document.getElementById('th-ram-crit').value,
+    diskWarn: document.getElementById('th-disk-warn').value,
+    diskCrit: document.getElementById('th-disk-crit').value,
+  };
+  serverModalDirty = false;
+}
+function isModalDirty() {
+  return (
+    document.getElementById('srv-name').value !== serverModalInitialState.name ||
+    document.getElementById('srv-host').value !== serverModalInitialState.host ||
+    getServerType() !== serverModalInitialState.type ||
+    document.getElementById('srv-user').value !== serverModalInitialState.user ||
+    document.getElementById('srv-pass').value !== serverModalInitialState.pass ||
+    document.getElementById('srv-port').value !== serverModalInitialState.port ||
+    document.getElementById('th-cpu-warn').value !== serverModalInitialState.cpuWarn ||
+    document.getElementById('th-cpu-crit').value !== serverModalInitialState.cpuCrit ||
+    document.getElementById('th-ram-warn').value !== serverModalInitialState.ramWarn ||
+    document.getElementById('th-ram-crit').value !== serverModalInitialState.ramCrit ||
+    document.getElementById('th-disk-warn').value !== serverModalInitialState.diskWarn ||
+    document.getElementById('th-disk-crit').value !== serverModalInitialState.diskCrit
+  );
+}
+function exportServersCSV() {
+  window.location.href = '/api/servers/export-csv';
+}
+function importServersCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    fetch('/api/servers/import-csv', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify({ csv: e.target.result }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      const msg = document.getElementById('save-message');
+      if (data.ok) {
+        let text = data.imported + ' ' + {{ t.import_success | tojson }};
+        if (data.skipped > 0) text += ', ' + data.skipped + ' ' + {{ t.import_skipped | tojson }};
+        if (data.errors && data.errors.length > 0) text += '. Errors: ' + data.errors.join('; ');
+        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-healthy-tint text-healthy-strong';
+        msg.textContent = text;
+        msg.classList.remove('hidden');
+        if (data.imported > 0) setTimeout(() => location.reload(), 1500);
+      } else {
+        msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
+        msg.textContent = 'Error: ' + (data.error || 'Import failed');
+        msg.classList.remove('hidden');
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    })
+    .catch(err => pAlert('Import failed: ' + err.message));
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+function discoverServers() {
+  const modal = document.getElementById('discovery-modal');
+  const status = document.getElementById('discovery-status');
+  const list = document.getElementById('discovery-list');
+
+  modal.classList.remove('hidden');
+  status.innerHTML = '<span class="inline-block animate-spin mr-2">&#9696;</span> ' + {{ t.discovering | tojson }};
+  list.innerHTML = '';
+  lucide.createIcons();
+
+  fetch('/api/discover-servers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({}),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.ok) {
+      status.textContent = 'Error: ' + (data.error || 'Discovery failed');
+      status.className = 'text-sm text-critical mb-3';
+      return;
+    }
+    discoveredServers = data.servers || [];
+    status.textContent = data.total + ' computers found, ' + data.new + ' new';
+    status.className = 'text-sm text-healthy mb-3';
+
+    if (discoveredServers.length === 0) {
+      list.innerHTML = '<div class="text-sm text-muted py-4 text-center">' + {{ t.no_servers_found | tojson }} + '</div>';
+      return;
+    }
+
+    // Step 7 (WP-6): this tip is JS-built -- the data-tip-* text exists only
+    // in the string .map() below emits, never in this file's static Jinja
+    // markup -- so tip()/tip_mirror() cannot literally be called here (Jinja
+    // macros render at template-render time; this HTML is built client-side,
+    // per-row, from a fetch response). What's replicated by hand is the
+    // macro's OUTPUT SHAPE: a matching sr-only mirror + aria-describedby,
+    // giving a keyboard/screen-reader user the same section-5.3 guarantee
+    // every other carrier now has. t.get() runs once here, outside the
+    // per-row loop, since this string is the same for every monitored row.
+    const discoveryTipTitle = {{ t.get('discovery_already_monitored_title', 'Already monitored') | tojson }};
+    const discoveryTipDesc = {{ t.get('discovery_already_monitored_desc', 'This host is already in Prism — remove it from the Servers list first if you want to re-add it.') | tojson }};
+    list.innerHTML = discoveredServers.map((s, i) => {
+      // `disabled` and its reason are written into the tag together rather
+      // than hidden behind one interpolated variable. Both forms behave the
+      // same; only this one can be checked without running the page, and a
+      // guard that cannot see the attribute cannot enforce it.
+      const monitored = !!s.already_monitored;
+      const opacity = s.already_monitored ? 'opacity-50' : '';
+      const badge = s.already_monitored ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-raised dark:bg-line text-muted">Monitored</span>' : '';
+      const tipId = 'discovery-tip-' + i;
+      const mirror = monitored ? '<span class="sr-only" id="' + tipId + '">' + discoveryTipDesc + '</span>' : '';
+      return `<label class="flex items-center gap-3 p-2 rounded hover:bg-page dark:hover:bg-page/50 cursor-pointer ${opacity}">
+        <input type="checkbox" class="discovery-cb rounded border-gray-300" data-index="${i}" ${monitored ? 'disabled tabindex="0" aria-label="' + s.name + '" aria-describedby="' + tipId + '" data-tip-title="' + discoveryTipTitle + '" data-tip-desc="' + discoveryTipDesc + '"' : ''}>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium truncate">${s.name} ${badge}</div>
+          <div class="text-xs text-muted truncate">${s.host} ${s.os ? '\u2014 ' + s.os : ''}</div>
+        </div>
+      </label>${mirror}`;
+    }).join('');
+
+    // Update selected count on change
+    list.querySelectorAll('.discovery-cb').forEach(cb => {
+      cb.addEventListener('change', updateDiscoveryCount);
+    });
+  })
+  .catch(err => {
+    status.textContent = 'Error: ' + err.message;
+    status.className = 'text-sm text-critical mb-3';
+  });
+}
+function selectAllDiscovered() {
+  const cbs = document.querySelectorAll('.discovery-cb:not(:disabled)');
+  const allChecked = Array.from(cbs).every(cb => cb.checked);
+  cbs.forEach(cb => cb.checked = !allChecked);
+  updateDiscoveryCount();
+}
+function updateDiscoveryCount() {
+  const checked = document.querySelectorAll('.discovery-cb:checked').length;
+  document.getElementById('discovery-selected-count').textContent = checked + ' selected';
+}
+function addDiscoveredServers() {
+  const checked = document.querySelectorAll('.discovery-cb:checked');
+  if (checked.length === 0) return;
+
+  loadConfig().then(data => {
+    checked.forEach(cb => {
+      const s = discoveredServers[parseInt(cb.dataset.index)];
+      if (!s) return;
+      data.servers.push({
+        name: s.name,
+        host: s.host,
+        type: 'other',
+        username: 'administrator',
+        password: '',
+        port: 5985,
+        thresholds: {},
+      });
+    });
+    saveServerConfig(data);
+    closeDiscoveryModal();
+  });
+}
+function closeDiscoveryModal() {
+  document.getElementById('discovery-modal').classList.add('hidden');
+  discoveredServers = [];
+}
+function _srvHttpsToggle() {
+  var c = this, p = document.getElementById('srv-port');
+  if (c.checked && p.value == '5985') p.value = 5986;
+  else if (!c.checked && p.value == '5986') p.value = 5985;
+  document.getElementById('srv-https-skip-wrap').style.display = c.checked ? 'flex' : 'none';
+}
+function _srvTogglePass() {
+  var i = document.getElementById('srv-pass');
+  i.type = i.type === 'password' ? 'text' : 'password';
+  this.setAttribute('aria-pressed', i.type === 'text');
+}
+function _srvClickCsvImport() { document.getElementById('csv-import-input').click(); }
+function _srvImportCsv() { importServersCSV(this); }
+</script>

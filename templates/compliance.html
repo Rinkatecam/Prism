@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% block title %}{{ t.get('compliance', 'Compliance') }} — Prism{% endblock %}
+{% block page_title %}{{ t.get('compliance_dashboard', 'Compliance Dashboard') }}{% endblock %}
+{% block page_icon %}clipboard-check{% endblock %}
 
 {% block content %}
 <div class="p-6 max-w-7xl mx-auto space-y-6">
@@ -7,10 +8,6 @@
   <!-- Header -->
   <div class="flex items-start justify-between">
     <div>
-      <h1 class="text-2xl font-bold text-ink dark:text-[#F9FAFB] flex items-center gap-2">
-        <i data-lucide="clipboard-check" class="w-6 h-6 text-brand"></i>
-        {{ t.get('compliance_dashboard', 'Compliance Dashboard') }}
-      </h1>
       <p class="text-sm text-muted mt-1">
         {{ t.get('compliance_subtitle', 'GAMP 5 CSV operational status — SOPs, audit chain, findings.') }}
       </p>
@@ -26,8 +23,15 @@
   <!-- Readiness gauge + audit telemetry + findings tile -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
+    {# Readiness + audit telemetry: two of the "four bg-card p-4 readouts,
+       plus two more in compliance.html" that become the page-tile idiom
+       (TILE_ON_PAGE in _card.html: bg-card rounded border border-line p-3)
+       per DESIGN_SYSTEM_SPEC.md Part II §7 Batch E -- WP-6 step 18. Neither
+       has a real heading element (the uppercase label is a <div>, per
+       §4.4's own tile rule: "a tile carries no heading element"), so both
+       qualify as-is with no restructuring beyond the class string. #}
     <!-- Readiness card -->
-    <div id="readiness-card" class="bg-card rounded-lg border border-line p-4">
+    <div id="readiness-card" class="bg-card rounded border border-line p-3">
       <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2">
         {{ t.get('overall_readiness', 'Overall readiness') }}
       </div>
@@ -40,7 +44,7 @@
     </div>
 
     <!-- Audit telemetry card -->
-    <div id="audit-card" class="bg-card rounded-lg border border-line p-4">
+    <div id="audit-card" class="bg-card rounded border border-line p-3">
       <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2">
         {{ t.get('audit_telemetry', 'Audit telemetry') }}
       </div>
@@ -52,17 +56,28 @@
       </div>
     </div>
 
-    <!-- Findings tile -->
+    {# Findings tile -- the one CLICKABLE card of the three, so it takes the
+       §4.5 doorway idiom instead of its two siblings' tile treatment
+       (judgement call, flagged prominently in this step's own report: the
+       spec text names "the three clickable groups" without naming sites,
+       and network.html's/scan.html's link-lists are the other two). Existing
+       ids (findings-card/findings-status/findings-breakdown) and all JS
+       behaviour reading them are UNCHANGED -- only a leading icon is added
+       and the existing label/status/breakdown are wrapped in one flex-child
+       div, mirroring dashboard.html's own doorway tiles exactly. #}
     <a id="findings-card" href="/compliance/doc/CSV-17"
-       class="block bg-card rounded-lg border border-line p-4 hover:border-brand transition-colors">
-      <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2 flex items-center justify-between">
-        <span>{{ t.get('findings_register', 'Findings register') }}</span>
-        <i data-lucide="external-link" class="w-3 h-3"></i>
+       class="card-clickable bg-card rounded-lg border border-line p-5 flex items-start gap-3">
+      <i data-lucide="clipboard-list" class="w-5 h-5 text-accent flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      <div class="min-w-0 flex-1">
+        <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2 flex items-center justify-between">
+          <span>{{ t.get('findings_register', 'Findings register') }}</span>
+          <i data-lucide="external-link" class="w-3 h-3"></i>
+        </div>
+        <div id="findings-status" class="text-2xl font-bold text-healthy">
+          <span class="opacity-50">{{ t.get('loading', 'Loading…') }}</span>
+        </div>
+        <div id="findings-breakdown" class="mt-3 grid grid-cols-3 gap-2 text-xs"></div>
       </div>
-      <div id="findings-status" class="text-2xl font-bold text-healthy">
-        <span class="opacity-50">{{ t.get('loading', 'Loading…') }}</span>
-      </div>
-      <div id="findings-breakdown" class="mt-3 grid grid-cols-3 gap-2 text-xs"></div>
     </a>
   </div>
 

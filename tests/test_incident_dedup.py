@@ -53,18 +53,34 @@ def test_get_open_incident_id_by_title_prefix(tmp_db):
 
 
 def test_cascade_incident_is_not_duplicated_across_cycles(tmp_db):
+    """B1, re-pinned on the mechanism that actually runs now.
+
+    The 60-second-window rule this originally tested was retired at WP-1's
+    close and its title-prefix dedup went with it — that prefix contained the
+    child count, which is precisely how one outage became 295 incidents. The
+    invariant is unchanged and is what matters: three identical cycles over one
+    ongoing outage leave ONE open incident. The key is now the incident's
+    subject, which is a server name rather than a rendered sentence.
+    """
     db = tmp_db
     db.add_dependency("APPSRV07", "APPSRV06")  # APP07 depends on APP06
     servers = [_srv("APPSRV06"), _srv("APPSRV07")]
     events = [_critical("APPSRV06"), _critical("APPSRV07")]
+    # The election reads observed state, not the event stream: an outage that
+    # emits no events this cycle is still an outage.
+    db.insert_metric("APPSRV06", 99.0, 99.0, 99.0, None, "critical")
+    db.insert_metric("APPSRV07", 99.0, 99.0, 99.0, None, "critical")
 
     # Three identical collector cycles with the same ongoing outage.
     for _ in range(3):
         correlate_events(db, [dict(e) for e in events], servers)
 
     cascades = [i for i in db.get_incidents(status="open")
-                if i["title"].startswith("Cascading failure from APPSRV06")]
+                if i.get("subject_server") == "APPSRV06"]
     assert len(cascades) == 1, f"expected 1 open cascade incident, got {len(cascades)}"
+    # And the dependent did NOT get its own row: one outage, one incident.
+    assert not [i for i in db.get_incidents(status="open")
+                if i.get("subject_server") == "APPSRV07"]
 
 
 def test_multi_offline_incident_is_not_duplicated(tmp_db):

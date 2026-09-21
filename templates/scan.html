@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% from "partials/_card.html" import card with context %}
+{% from "partials/_tip.html" import tip, tip_button, tip_mirror, tip_overflow with context %}
+
+{# ── /scan — an honest surface over an absence ───────────────────────────
+
+   The twin of network.html, and the same rules apply in full: no zeroed
+   tiles, no empty table, no skeleton, no "coming soon", and the scope
+   sentence is the card's own tip string so the two cannot drift. See that
+   file's header for the argument; it is not repeated here because one copy
+   of a rule is easier to keep true than two.
+
+   The one thing specific to this page: the description says explicitly that
+   this is a POSTURE CHECK and not an attack tool. "Scan" invites the other
+   reading, and an on-prem admin evaluating a monitoring product is exactly
+   the reader who will assume the worst of the word. #}
+
+{% block page_title %}{{ t.get('vitals_scan', 'Scan') }}{% endblock %}
+{% block page_icon %}shield{% endblock %}
+
+{% block content %}
+
+<p class="text-sm text-muted mb-6 max-w-2xl">
+  {{ t.get('scan_lede',
+           'Prism does not sweep the estate for posture yet. This is what that would mean, and what it checks instead today.') }}
+</p>
+
+<div class="max-w-3xl">
+
+  {# rounded-md -> card()'s rounded-lg is the provably-inert radius step
+     (WP-6 step 18); see network.html's identical site for the full
+     extra= rationale (this file repeats the argument rather than the
+     text, per this house's "one copy of a rule" convention). #}
+  {% call card(extra='flex items-start gap-3 mb-4') %}
+    <i data-lucide="circle-slash" class="w-5 h-5 text-faint flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+    <div>
+      <p class="text-sm font-semibold text-ink">
+        {{ t.get('overview_not_collected', 'Nothing here is being collected yet.') }}
+      </p>
+      <p class="text-sm text-muted mt-1">
+        {{ t.get('vitals_scan_tip_desc',
+                 'Posture scanning will sweep the network for what should not be there and what needs updating - rogue devices, stale drivers, configuration drift. A posture check, not an attack tool.') }}
+      </p>
+    </div>
+  {% endcall %}
+
+  {# ── H2 — DESIGN_SYSTEM_SPEC.md Part II §2.3: one of the four H2s named
+     explicitly ("scan.html:44"). Names the grid of doorway cards below it,
+     stays bare on `page` with the canonical H2 string -- see network.html's
+     identical site for the full account of why the card this used to sit
+     inside dissolves entirely (WP-6 step 18).
+
+     WP-6 step 26 (D3 gate sweep): same gate-5 call as network.html's
+     identical site, for the identical reason -- see that file's own
+     comment rather than repeating the argument here. #}
+  {% set hid = next_tip_id() %}
+  <h2 class="text-base font-bold text-brand flex items-center gap-2 min-w-0">
+    {{ t.get('overview_today', 'What Prism watches today') }}
+    {{ tip_button('scan_today_desc',
+                  'Patch state is already tracked per server, and configuration drift is detected against each server\'s own baseline. Both are per-host rather than a sweep of the network.',
+                  hid, title_key='overview_today', title_fallback='What Prism watches today') }}
+  </h2>
+  {{ tip_mirror('scan_today_desc',
+                'Patch state is already tracked per server, and configuration drift is detected against each server\'s own baseline. Both are per-host rather than a sweep of the network.',
+                hid) }}
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <a href="/servers" class="card-clickable bg-card rounded-lg border border-line p-5 flex items-start gap-3">
+      <i data-lucide="server" class="w-5 h-5 text-accent flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      <div class="min-w-0">
+        <p class="text-sm font-semibold text-ink">{{ t.get('servers', 'Servers') }}</p>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-muted flex-shrink-0 ml-auto mt-0.5" aria-hidden="true"></i>
+    </a>
+    {# Compliance is an optional per-customer module. Linking to it when it
+       is switched off would send the operator to a route that is not
+       registered — the flag is already in the global template context for
+       exactly this. #}
+    {% if compliance_enabled %}
+    <a href="/compliance" class="card-clickable bg-card rounded-lg border border-line p-5 flex items-start gap-3">
+      <i data-lucide="clipboard-check" class="w-5 h-5 text-accent flex-shrink-0 mt-0.5" aria-hidden="true"></i>
+      <div class="min-w-0">
+        <p class="text-sm font-semibold text-ink">{{ t.get('compliance', 'Compliance') }}</p>
+      </div>
+      <i data-lucide="chevron-right" class="w-4 h-4 text-muted flex-shrink-0 ml-auto mt-0.5" aria-hidden="true"></i>
+    </a>
+    {% endif %}
+  </div>
+
+</div>
+
+{% endblock %}

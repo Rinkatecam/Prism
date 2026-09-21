@@ -1,31 +1,65 @@
 {% extends "base.html" %}
+{% from "partials/_tip.html" import tip, tip_button, tip_mirror, tip_overflow with context %}
+{% from "partials/_card.html" import card, subhead with context %}
+{% block page_title %}{{ t.settings }}{% endblock %}
+{% block page_icon %}settings{% endblock %}
 {% block content %}
-
-<div class="flex items-center justify-between mb-6">
-  <h1 class="text-2xl font-bold flex items-center gap-2">
-    <i data-lucide="settings" class="w-6 h-6 text-brand"></i>
-    {{ t.settings }}
-  </h1>
-</div>
 
 <!-- Status message (shown after save) -->
 <div id="save-message" class="hidden mb-4 rounded-lg p-3 text-sm"></div>
 
+{# ── WP-6 step 23 — the always-visible tab strip is gone from here ────────
+
+   Through step 22, this spot held an eleven-item `<nav>`: one tab per
+   settings theme, each looked up by slug in a hand-written label dict, fed
+   by a router-derived list passed in as its own render_template() keyword
+   argument. Step 23 (§7.4 — "moving a control from the page body to the
+   bar does not change what a section IS") replaced it outright with the
+   top-bar theme menu: `templates/partials/_settings_nav.html` (step 22's
+   markup, step 23's behaviour in base.html's initSettingsThemeMenu IIFE),
+   included from base.html's header on every `/settings*` path, right
+   beside the page-title chip. Same eleven slugs, same URLs, same
+   `aria-current="page"` semantics (§7.4 — "the same eleven slugs,
+   /settings still renders general rather than redirecting, unknown slug
+   still 404s") — only WHERE the picker lives changed, not what it picks
+   from or what it points at.
+
+   The old markup, its id, and the render_template() keyword argument that
+   fed it are gone from this template and from routes/views.py's settings()
+   view entirely — checked with a plain repo-wide grep before removal (see
+   this step's own report) and pinned going forward by
+   `tests/test_settings_nav.py`'s S-12. That test's own source necessarily
+   spells both retired identifiers out in full, which is exactly why this
+   comment deliberately does not: a raw, comment-blind grep for either one
+   (the kind a Verify line runs) must find nothing anywhere else in the
+   tree, including here. The per-section gating below
+   (`{% if section == '...' %}`, `data-settings-section="..."`) is
+   UNCHANGED: it never belonged to the tab strip, it belongs to each
+   section's own `<section>`, and it still reads `section` from the same
+   context variable the router still passes in. #}
+
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 1 — General Settings (locale + retention, NO restart needed)
      ═══════════════════════════════════════════════════════════════ -->
-<section class="mb-8">
-  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="settings-2" class="w-5 h-5 text-info"></i>
-    {{ t.general }}
-  </h2>
-  <div id="general-card" class="bg-card rounded-lg p-5 border border-line space-y-4">
+{% if section == 'general' %}
+<section class="mb-8" data-settings-section="general">
+  {# WP-6 step 15: the page-level theme H2 that used to sit above this div
+     (C9 -- "no page-level theme H2; every settings card owns its own
+     canonical H2") is gone. `general-card`'s id is NOT carried onto the
+     card() shell: grepped across templates/ and static/js/ before this
+     conversion and it is referenced nowhere -- a dead id, unlike
+     _detection.html's `baseline-security-card` (see that file's own
+     comment for why THAT one is preserved via card()'s new `id=`). #}
+  {% call card(heading=t.general, icon='settings-2') %}
+  <div class="space-y-4">
     {# Collector cadence rows moved to the Collector section below (2026-08-03).
        General is now purely locale + retention. #}
     <div class="flex items-center justify-between">
       <div>
-        <div class="text-sm font-medium">{{ t.data_retention }}</div>
-        <div class="text-xs text-muted">{{ t.data_retention_desc }}</div>
+        <div class="text-sm font-medium flex items-center gap-1.5">
+          {{ t.data_retention }}
+          {{ tip('data_retention_desc', 'How long to keep historical metric data') }}
+        </div>
       </div>
       <div class="flex items-center gap-1">
         <input type="number" id="retention-days" value="{{ settings.retention_days or 30 }}" min="1" max="365" required
@@ -35,8 +69,10 @@
     </div>
     <div class="flex items-center justify-between">
       <div>
-        <div class="text-sm font-medium">{{ t.language }}</div>
-        <div class="text-xs text-muted">{{ t.language_desc }}</div>
+        <div class="text-sm font-medium flex items-center gap-1.5">
+          {{ t.language }}
+          {{ tip('language_desc', 'Display language for the dashboard') }}
+        </div>
       </div>
       <select id="setting-language" class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="en" {% if settings.language == 'en' %}selected{% endif %}>{{ t.lang_en }}</option>
@@ -48,8 +84,10 @@
     </div>
     <div class="flex items-center justify-between">
       <div>
-        <div class="text-sm font-medium">{{ t.timezone }}</div>
-        <div class="text-xs text-muted">{{ t.timezone_desc }}</div>
+        <div class="text-sm font-medium flex items-center gap-1.5">
+          {{ t.timezone }}
+          {{ tip('timezone_desc', 'Timezone for timestamps and event logs') }}
+        </div>
       </div>
       <select id="setting-timezone" class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="Europe/Berlin" {% if settings.timezone == 'Europe/Berlin' %}selected{% endif %}>Europe/Berlin (CET/CEST)</option>
@@ -66,8 +104,10 @@
     </div>
     <div class="flex items-center justify-between">
       <div>
-        <div class="text-sm font-medium">{{ t.date_format }}</div>
-        <div class="text-xs text-muted">{{ t.date_format_desc }}</div>
+        <div class="text-sm font-medium flex items-center gap-1.5">
+          {{ t.date_format }}
+          {{ tip('date_format_desc', 'How dates are displayed across the dashboard') }}
+        </div>
       </div>
       <select id="setting-date-format" class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="DD.MM.YYYY" {% if settings.date_format == 'DD.MM.YYYY' %}selected{% endif %}>DD.MM.YYYY (31.12.2026)</option>
@@ -78,8 +118,10 @@
     </div>
     <div class="flex items-center justify-between">
       <div>
-        <div class="text-sm font-medium">{{ t.time_format }}</div>
-        <div class="text-xs text-muted">{{ t.time_format_desc }}</div>
+        <div class="text-sm font-medium flex items-center gap-1.5">
+          {{ t.time_format }}
+          {{ tip('time_format_desc', '12-hour or 24-hour clock') }}
+        </div>
       </div>
       <select id="setting-time-format" class="general-input px-2 py-1 text-sm rounded border border-line bg-field">
         <option value="24h" {% if settings.time_format == '24h' %}selected{% endif %}>24-hour (14:30)</option>
@@ -87,7 +129,9 @@
       </select>
     </div>
   </div>
+  {% endcall %}
 </section>
+{% endif %}
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 2 — Collector (cadences live; worker pool needs restart)
@@ -108,14 +152,10 @@
      restart-confirmation modal. Moving them visually must not change those
      class names — see captureGeneralState() / hasGeneralChanged().
      ═══════════════════════════════════════════════════════════════ -->
-<section class="mb-8">
-  <div class="flex items-center gap-3 mb-4">
-    <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="cpu" class="w-5 h-5 text-accent"></i>
-      {{ t.get('collector_engine_section', 'Collector') }}
-    </h2>
-  </div>
-  <div class="bg-card rounded-lg p-5 border border-line space-y-4">
+{% if section == 'collector' %}
+<section class="mb-8" data-settings-section="collector">
+  {% call card(heading=t.get('collector_engine_section', 'Collector'), icon='cpu') %}
+  <div class="space-y-4">
     {# All three interval rows below are *per-server* cadences. Each server
        is scheduled independently (with a small hash-derived offset so the
        fleet does not stampede on a tick boundary). Setting "60s" means
@@ -127,11 +167,10 @@
       <div>
         <div class="text-sm font-medium flex items-center gap-1.5">
           {{ t.poll_interval }}
-          <i data-lucide="info" class="w-3.5 h-3.5 text-faint cursor-help"
-             data-tip-title="{{ t.get('per_server_cadence_title', 'Per-server cadence') }}"
-             data-tip-desc="{{ t.get('poll_interval_tip_desc', 'Every server is polled on its own schedule, offset by a hash so the fleet does not stampede on a tick boundary. Setting 60s means each server is polled every ~60s independently — not that all servers are polled together once per minute.') }}"></i>
+          {{ tip('poll_interval_tip_desc',
+                 'Every server is polled on its own schedule, offset by a hash so the fleet does not stampede on a tick boundary. Setting 60s means each server is polled every ~60s independently — not that all servers are polled together once per minute.',
+                 title_key='per_server_cadence_title', title_fallback='Per-server cadence') }}
         </div>
-        <div class="text-xs text-muted">{{ t.poll_interval_desc }}</div>
       </div>
       <div class="flex items-center gap-2">
         <button type="button" data-action="syncNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors whitespace-nowrap">
@@ -149,11 +188,10 @@
       <div>
         <div class="text-sm font-medium flex items-center gap-1.5">
           {{ t.get('log_collection_interval', 'Log Collection Interval') }}
-          <i data-lucide="info" class="w-3.5 h-3.5 text-faint cursor-help"
-             data-tip-title="{{ t.get('per_server_cadence_title', 'Per-server cadence') }}"
-             data-tip-desc="{{ t.get('log_collection_tip_desc', 'Event-log scrape runs on each server independently at this cadence. Higher value = lower WinRM load on the targets, but event-log warnings take longer to surface in the dashboard. Decoupled from the metrics interval — these run on their own clock.') }}"></i>
+          {{ tip('log_collection_tip_desc',
+                 'Event-log scrape runs on each server independently at this cadence. Higher value = lower WinRM load on the targets, but event-log warnings take longer to surface in the dashboard. Decoupled from the metrics interval — these run on their own clock.',
+                 title_key='per_server_cadence_title', title_fallback='Per-server cadence') }}
         </div>
-        <div class="text-xs text-muted">{{ t.get('log_collection_interval_desc', 'How often to pull Windows event logs + failed login events from each server. Higher = less load on the targets.') }}</div>
       </div>
       <div class="flex items-center gap-2">
         <button type="button" data-action="syncLogsNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors whitespace-nowrap">
@@ -170,11 +208,10 @@
       <div>
         <div class="text-sm font-medium flex items-center gap-1.5">
           {{ t.get('update_check_interval', 'Update Check Interval') }}
-          <i data-lucide="info" class="w-3.5 h-3.5 text-faint cursor-help"
-             data-tip-title="{{ t.get('per_server_cadence_title', 'Per-server cadence') }}"
-             data-tip-desc="{{ t.get('update_check_tip_desc', 'Windows Update queries are spread across the fleet — at any given time only a small subset of servers is hitting the WU COM API, not all of them at once. This cadence is the per-server interval; the scheduler shards calls so collector load stays flat.') }}"></i>
+          {{ tip('update_check_tip_desc',
+                 'Windows Update queries are spread across the fleet — at any given time only a small subset of servers is hitting the WU COM API, not all of them at once. This cadence is the per-server interval; the scheduler shards calls so collector load stays flat.',
+                 title_key='per_server_cadence_title', title_fallback='Per-server cadence') }}
         </div>
-        <div class="text-xs text-muted">{{ t.get('update_check_interval_desc', 'How often to check each server for pending Windows Updates.') }}</div>
       </div>
       <div class="flex items-center gap-2">
         <button type="button" data-action="syncUpdatesNowBtn" class="text-xs font-medium px-3 py-1 rounded bg-accent hover:bg-accent-strong text-white dark:text-page transition-colors whitespace-nowrap">
@@ -193,11 +230,10 @@
           {# Restart pill lives on THIS row, not the section header — it is the
              only field in the Collector section that needs one. #}
           <span class="text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong font-normal">{{ t.get('requires_restart', 'Requires restart') }}</span>
-          <i data-lucide="info" class="w-3.5 h-3.5 text-faint cursor-help"
-             data-tip-title="{{ t.get('collector_v2_workers_tip_title', 'Concurrent WinRM probes') }}"
-             data-tip-desc="{{ t.get('collector_v2_workers_tip_desc', 'Number of worker threads pulling check items from the queue and executing WinRM probes against your servers. Default 15 handles ~150 servers with comfortable headroom (each worker can sit on a slow Windows Update query for up to 120 s). Increase for larger fleets or if the operations page shows workers active_count consistently near the pool size.') }}"></i>
+          {{ tip('collector_v2_workers_tip_desc',
+                 'Number of worker threads pulling check items from the queue and executing WinRM probes against your servers. Default 15 handles ~150 servers with comfortable headroom (each worker can sit on a slow Windows Update query for up to 120 s). Increase for larger fleets or if the operations page shows workers active_count consistently near the pool size.',
+                 title_key='collector_v2_workers_tip_title', title_fallback='Concurrent WinRM probes') }}
         </div>
-        <div class="text-xs text-muted mt-1">{{ t.get('collector_v2_workers_desc', 'Concurrent WinRM probes. Default 15 handles ~150 servers with headroom. Increase for larger fleets.') }}</div>
       </div>
       <div class="flex items-center gap-1">
         <input type="number" id="collector-v2-workers" min="2" max="100" step="1"
@@ -206,27 +242,160 @@
       </div>
     </div>
   </div>
+  {% endcall %}
 </section>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 2b — Detection & security alerts (moved from /monitoring, WP-4)
+
+     The markup is a partial because it moved between two page templates;
+     the wrapper stays here, where the routing is. See the partial's header.
+     ═══════════════════════════════════════════════════════════════ -->
+{% if section == 'servers' %}
+{% include "partials/settings/_servers.html" %}
+{% endif %}
+
+{% if section == 'detection' %}
+<section class="mb-8" data-settings-section="detection">
+  {# WP-6 step 15 / C9: the page-level "Detection" H2 that used to sit here
+     is gone -- _detection.html's own baseline-security-card now owns that
+     exact heading text (and icon) as its own canonical H2, via card(). #}
+  {% include "partials/settings/_detection.html" %}
+</section>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 2c — Alerts: certificate expiry and maintenance windows
+     (moved from /monitoring, WP-4 D2b)
+
+     Named for what these settings DO rather than where they came from: one
+     decides when a certificate's approaching expiry raises an alert, the
+     other decides when alerts are suppressed entirely. Alert Fatigue stayed
+     on /monitoring — it is a digest table and a Reset button, which is state
+     and an action, not configuration.
+     ═══════════════════════════════════════════════════════════════ -->
+{% if section == 'alerts' %}
+<section class="mb-8" data-settings-section="alerts">
+  {# WP-6 step 15 / C9: no page-level "Alerts" H2 -- _tls.html's "TLS
+     Monitoring" and _maintenance.html's "Maintenance windows" already own
+     their own canonical H2 each; a wrapper heading here would be a third,
+     purely-duplicative "H2 nested under H2" that names nothing the two
+     real cards don't already say. #}
+  {% include "partials/settings/_tls.html" %}
+  {% include "partials/settings/_maintenance.html" %}
+</section>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 2d — Operations: scheduled restarts (moved from /operations,
+     WP-4 D3)
+     ═══════════════════════════════════════════════════════════════ -->
+{% if section == 'operations' %}
+<section class="mb-8" data-settings-section="operations">
+  {# WP-6 step 15 / C9: no page-level "Operations" H2. The runbook-
+     definitions card below now owns its own canonical H2 -- given
+     `t.runbooks`/`book-open` (the SAME key and icon operations.html's own
+     "Runbook Library" section already uses for the identical concept,
+     just in 'run' rather than 'manage' mode) rather than re-using
+     "Operations" verbatim: this section shows two unrelated cards
+     (runbook definitions, then _restarts.html's "Scheduled restarts"),
+     and the settings NAV/index already say "Operations" for the section
+     as a whole (C9: "the theme's name lives in the nav chip and in the
+     index label") -- repeating it as this card's own title would say
+     nothing "Scheduled restarts" doesn't already contradict by being
+     more specific. The create-runbook button moves into `controls=`,
+     replacing the separate flex/justify-end row it used to need. #}
+  {% set _runbook_controls %}{% include "partials/_runbook_create_button.html" %}{% endset %}
+  {% call card(heading=t.runbooks, icon='book-open', controls=_runbook_controls, extra='mb-6') %}
+  <div class="space-y-6">
+    {% with mode = 'manage' %}{% include "partials/_runbook_list.html" %}{% endwith %}
+    {% include "partials/_runbook_form.html" %}
+  </div>
+  {% endcall %}
+
+  {% include "partials/settings/_restarts.html" %}
+  {# The picker the restart condition rows open. #}
+  {# WP-6 step 19: shadow-xl -> shadow-lg; HEAD_FLUSH-shaped header
+     (flex-wrap items-start gap-3 px-5 py-4, was p-4 with items-center and
+     no wrap/gap); role="dialog" aria-modal="true"
+     aria-labelledby="picker-title" on the panel (picker-title already
+     existed -- reused, not renamed); DIALOG_TITLE class + data-role on the
+     title (icon keeps its own text-accent, unaffected by the title text
+     going to text-ink). FOOTER: this row has a bulk-select cluster on the
+     LEFT (select-all/clear) and the dialog's own actions on the RIGHT
+     (cancel/apply) -- FOOTER_FLUSH's own string is `justify-end` (a single
+     trailing cluster), which would collapse that left/right grouping.
+     JUDGEMENT CALL, flagged in this step's own report: kept
+     `justify-between` and applied FOOTER_FLUSH's other facets (px-5 py-4
+     border-t border-line flex items-center) rather than the literal
+     `justify-end`, so the bulk-action buttons stay visually separated from
+     the dialog's own Cancel/Apply. #}
+  <div id="service-picker-modal" class="fixed inset-0 z-[70] hidden">
+    <div class="fixed inset-0 bg-black/50" data-action="closePickerModal"></div>
+    <div class="fixed inset-0 flex items-center justify-center p-4">
+      <div role="dialog" aria-modal="true" aria-labelledby="picker-title" class="bg-card rounded-lg shadow-lg border border-line w-full max-w-lg max-h-[80vh] flex flex-col relative">
+        <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-line flex-shrink-0">
+          <h3 id="picker-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">
+            <i data-lucide="list" class="w-5 h-5 text-accent"></i>
+            <span>{{ t.get('choose_services', 'Choose Services') }}</span>
+          </h3>
+          <button data-action="closePickerModal" class="p-1 text-muted hover:text-ink dark:hover:text-white">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+        <div class="px-4 pt-3 pb-2 flex-shrink-0 space-y-2">
+          <input type="text" id="picker-search" data-input="filterPickerItems"
+                 placeholder="{{ t.get('search_filter', 'Search / filter...') }}"
+                 class="w-full px-3 py-1.5 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-brand focus-visible:border-transparent outline-none">
+          <label id="picker-running-only-wrap" class="hidden items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="picker-running-only" checked data-change="filterPickerItems"
+                   class="rounded border-line dark:border-faint text-healthy focus-visible:ring-brand">
+            <span class="text-xs text-muted">{{ t.get('running_only', 'Running only') }}</span>
+            <span id="picker-counts" class="text-[10px] text-faint"></span>
+          </label>
+        </div>
+        <div id="picker-list" class="px-4 py-2 overflow-y-auto flex-1" style="max-height: 400px;">
+        </div>
+        <div class="px-5 py-4 border-t border-line flex items-center justify-between gap-2 flex-shrink-0">
+          <div class="flex items-center gap-2">
+            <button id="picker-select-all-btn" data-action="selectAllFiltered" class="hidden px-3 py-1 text-xs font-medium rounded border border-line hover:bg-page">
+              {{ t.get('select_all_filtered', 'Select All Filtered') }}
+            </button>
+            <button id="picker-clear-btn" data-action="clearPickerSelection" class="hidden px-3 py-1 text-xs font-medium rounded border border-line hover:bg-page">
+              {{ t.get('clear_selection', 'Clear') }}
+            </button>
+          </div>
+          <div class="flex gap-2">
+            <button data-action="closePickerModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
+            <button data-action="applyPickerSelection" class="px-4 py-1.5 text-sm rounded bg-brand text-white hover:opacity-90 flex items-center gap-1.5">
+              <i data-lucide="check" class="w-4 h-4"></i>
+              {{ t.get('apply_selection', 'Apply') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 3 — Security & Access (RESTART required)
      ═══════════════════════════════════════════════════════════════ -->
-<section class="mb-8">
-  <div class="flex items-center gap-3 mb-4">
-    <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="shield-check" class="w-5 h-5 text-accent"></i>
-      {{ t.security }}
-    </h2>
-    <span class="text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong">{{ t.get('requires_restart', 'Requires restart') }}</span>
-  </div>
-  <div class="bg-card rounded-lg p-5 border border-line space-y-5">
+{% if section == 'security' %}
+<section class="mb-8" data-settings-section="security">
+  {# WP-6 step 15 / C9: no page-level "Security" H2 -- the card below owns
+     the canonical H2 (t.security/shield-check) itself; the "Requires
+     restart" pill moves into `controls=`, the head row's own slot for
+     exactly this shape (a status/action cluster beside the heading). #}
+  {% set _security_controls %}<span class="text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong">{{ t.get('requires_restart', 'Requires restart') }}</span>{% endset %}
+  {% call card(heading=t.security, icon='shield-check', controls=_security_controls) %}
+  <div class="space-y-5">
 
     <!-- TLS / HTTPS -->
     <div>
-      <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="shield" class="w-4 h-4 text-accent"></i>
-        {{ t.communication }}
-      </div>
+      {{ subhead(t.communication, icon='shield') }}
       <div class="space-y-3 pl-1">
         <div class="flex items-center justify-between">
           <div>
@@ -265,10 +434,7 @@
 
     <!-- Authentication -->
     <div>
-      <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="lock" class="w-4 h-4 text-accent"></i>
-        {{ t.authentication }}
-      </div>
+      {{ subhead(t.authentication, icon='lock') }}
       <div class="space-y-3 pl-1">
         <div class="flex items-center justify-between">
           <div>
@@ -299,6 +465,7 @@
             <div class="text-xs font-medium flex items-center gap-1.5">
               <i data-lucide="shield" class="w-3.5 h-3.5 text-warning"></i>
               {{ t.admin_account }}
+              {{ tip('admin_account_desc', 'Local backup admin for when LDAP/AD is unavailable') }}
             </div>
             {% if _ba_configured %}
             <span class="badge badge-healthy text-[10px]">{{ t.get('configured', 'Configured') }}</span>
@@ -308,7 +475,6 @@
             <span class="text-[10px] px-2 py-0.5 rounded-full bg-raised dark:bg-line text-muted">{{ t.get('not_set_up', 'Not set up') }}</span>
             {% endif %}
           </div>
-          <div class="text-[10px] text-muted">{{ t.admin_account_desc }}</div>
 
           {% if _ba_configured %}
           <div class="mt-2 flex items-center justify-between">
@@ -430,27 +596,49 @@
       </div>
     </div>
   </div>
+  {% endcall %}
 </section>
+{% endif %}
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 3b — Permissions (moved out of the main nav, WP-4 D4)
+     ═══════════════════════════════════════════════════════════════ -->
+{% if section == 'rbac' %}
+<section class="mb-8" data-settings-section="rbac">
+  {# WP-6 step 15 / C9: no page-level "Permissions" H2 -- _rbac.html's own
+     four cards ("My permissions" / "Grant access" / "Current ACLs" /
+     "Pending approvals") already each own a canonical H2 of their own;
+     this wrapper heading named nothing they didn't already say between
+     them, and was the concrete "H2 nested under H2" example C9 itself
+     cites (test_design_headings.py's H-15 docstring names this exact
+     heading by location). #}
+  {% include "partials/settings/_rbac.html" %}
+</section>
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════════════════
+     Compliance — the CSV / GAMP 5 module's feature flag (WP-4 D6)
+     ══════════════════════════════════════════════════════════════ -->
+{% if section == 'compliance' %}
+{% include "partials/settings/_compliance.html" %}
+{% endif %}
+
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 4 — Notifications (RESTART required)
      ═══════════════════════════════════════════════════════════════ -->
-<section class="mb-8">
-  <div class="flex items-center gap-3 mb-4">
-    <h2 class="text-lg font-semibold flex items-center gap-2">
-      <i data-lucide="bell" class="w-5 h-5 text-accent"></i>
-      {{ t.get('notifications', 'Notifications') }}
-    </h2>
-    <span class="text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong">{{ t.get('requires_restart', 'Requires restart') }}</span>
-  </div>
-  <div class="bg-card rounded-lg p-5 border border-line space-y-5">
+{% if section == 'notifications' %}
+<section class="mb-8" data-settings-section="notifications">
+  {# WP-6 step 15 / C9: no page-level "Notifications" H2 -- the card below
+     owns the canonical H2 itself; the "Requires restart" pill moves into
+     `controls=`, same treatment as the security section above. #}
+  {% set _notifications_controls %}<span class="text-[10px] px-2 py-0.5 rounded-full bg-warning-tint dark:bg-warning-tint/30 text-warning-strong">{{ t.get('requires_restart', 'Requires restart') }}</span>{% endset %}
+  {% call card(heading=t.get('notifications', 'Notifications'), icon='bell', controls=_notifications_controls) %}
+  <div class="space-y-5">
 
     <!-- Email Alerts -->
     <div>
-      <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="mail" class="w-4 h-4 text-accent"></i>
-        {{ t.email_alerts }}
-      </div>
+      {{ subhead(t.email_alerts, icon='mail') }}
       <div class="space-y-3 pl-1">
         <div class="flex items-center justify-between">
           <div>
@@ -546,10 +734,7 @@
 
     <!-- Microsoft Teams Webhooks -->
     <div>
-      <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="webhook" class="w-4 h-4 text-accent"></i>
-        {{ t.teams_webhook }}
-      </div>
+      {{ subhead(t.teams_webhook, icon='webhook') }}
       <div class="space-y-3 pl-1">
         <div class="flex items-center justify-between">
           <div class="text-xs text-muted">{{ t.webhook_enabled }}</div>
@@ -596,16 +781,26 @@
 
     <!-- Scheduled Reports -->
     <div>
-      <div class="text-sm font-medium mb-2 flex items-center gap-1.5">
-        <i data-lucide="calendar-clock" class="w-4 h-4 text-accent"></i>
-        {{ t.scheduled_reports }}
-      </div>
+      {{ subhead(t.scheduled_reports, icon='calendar-clock') }}
       <div class="space-y-4 pl-1">
+        {# The eight controls in this block carry `general-input`, and the
+           move from `security-input` is a correction rather than a
+           preference. The bucket states whether a change needs a RESTART:
+           `security-input` raises the restart badge and the restart
+           confirmation. Scheduled reports need neither — `periodics.py`'s
+           60-second `scheduled_reports` job calls `get_settings()` on every
+           run, so a change is live within a minute.
+
+           They were in the security bucket and invisible to the compare
+           function, so the effect never showed: no Save bar meant no badge
+           either. Fixing the tracker made the misplacement visible
+           immediately, which is the useful kind of regression — the badge
+           started claiming a restart for a setting that does not need one. #}
         <!-- Enable scheduled reports -->
         <div class="flex items-center justify-between">
           <div class="text-xs text-muted">{{ t.get('enable_scheduled_reports', 'Enable scheduled reports') }}</div>
           <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="sched-enabled" class="sr-only peer security-input"
+            <input type="checkbox" id="sched-enabled" class="sr-only peer general-input"
                    {% if settings.get('scheduled_reports', {}).get('enabled') %}checked{% endif %}>
             <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-brand transition-colors"></div>
             <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
@@ -617,13 +812,13 @@
           <div class="text-xs text-muted">{{ t.daily_report }}</div>
           <div class="flex items-center gap-2">
             <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" id="sched-daily-enabled" class="sr-only peer security-input"
+              <input type="checkbox" id="sched-daily-enabled" class="sr-only peer general-input"
                      {% if settings.get('scheduled_reports', {}).get('daily_enabled', True) %}checked{% endif %}>
               <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-healthy transition-colors"></div>
               <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
             </label>
             <input type="time" id="sched-daily-time" value="{{ settings.get('scheduled_reports', {}).get('daily_time', '07:00') }}"
-                   class="security-input text-xs rounded border border-line bg-field px-2 py-1">
+                   class="general-input text-xs rounded border border-line bg-field px-2 py-1">
           </div>
         </div>
 
@@ -632,12 +827,12 @@
           <div class="text-xs text-muted">{{ t.weekly_report }}</div>
           <div class="flex items-center gap-2">
             <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" id="sched-weekly-enabled" class="sr-only peer security-input"
+              <input type="checkbox" id="sched-weekly-enabled" class="sr-only peer general-input"
                      {% if settings.get('scheduled_reports', {}).get('weekly_enabled', False) %}checked{% endif %}>
               <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-healthy transition-colors"></div>
               <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
             </label>
-            <select id="sched-weekly-day" class="security-input text-xs rounded border border-line bg-field px-2 py-1">
+            <select id="sched-weekly-day" class="general-input text-xs rounded border border-line bg-field px-2 py-1">
               {% for day in ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] %}
               <option value="{{ day }}" {% if settings.get('scheduled_reports', {}).get('weekly_day', 'monday') == day %}selected{% endif %}>
                 {{ day | capitalize }}
@@ -645,7 +840,7 @@
               {% endfor %}
             </select>
             <input type="time" id="sched-weekly-time" value="{{ settings.get('scheduled_reports', {}).get('weekly_time', '07:00') }}"
-                   class="security-input text-xs rounded border border-line bg-field px-2 py-1">
+                   class="general-input text-xs rounded border border-line bg-field px-2 py-1">
           </div>
         </div>
 
@@ -653,7 +848,7 @@
         <div class="flex items-center justify-between">
           <div class="text-xs text-muted">{{ t.get('email_report', 'Send via email') }}</div>
           <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="sched-email-report" class="sr-only peer security-input"
+            <input type="checkbox" id="sched-email-report" class="sr-only peer general-input"
                    {% if settings.get('scheduled_reports', {}).get('email_report', True) %}checked{% endif %}>
             <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-brand transition-colors"></div>
             <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
@@ -662,7 +857,7 @@
         <div class="flex items-center justify-between">
           <div class="text-xs text-muted">{{ t.get('include_pdf', 'Include PDF attachment') }}</div>
           <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="sched-include-pdf" class="sr-only peer security-input"
+            <input type="checkbox" id="sched-include-pdf" class="sr-only peer general-input"
                    {% if settings.get('scheduled_reports', {}).get('include_pdf', True) %}checked{% endif %}>
             <div class="w-9 h-5 bg-line dark:bg-faint rounded-full peer-checked:bg-brand transition-colors"></div>
             <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
@@ -671,21 +866,25 @@
       </div>
     </div>
   </div>
+  {% endcall %}
 </section>
+{% endif %}
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 5 — Display Preferences (localStorage)
      ═══════════════════════════════════════════════════════════════ -->
-<section class="mb-8">
-  <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-    <i data-lucide="sliders" class="w-5 h-5 text-accent"></i>
-    {{ t.display_preferences }}
-  </h2>
-  <div class="bg-card rounded-lg p-5 border border-line space-y-4">
+{% if section == 'display' %}
+<section class="mb-8" data-settings-section="display">
+  {# WP-6 step 15 / C9: no page-level "Display Preferences" H2 -- the card
+     below owns the canonical H2 itself. #}
+  {% call card(heading=t.display_preferences, icon='sliders') %}
+  <div class="space-y-4">
     <div class="flex items-center justify-between">
       <div>
-        <div class="text-sm font-medium">{{ t.default_time_range }}</div>
-        <div class="text-xs text-muted">{{ t.get('time_range_desc', 'Default time range for charts and reports') }}</div>
+        <div class="text-sm font-medium flex items-center gap-1.5">
+          {{ t.default_time_range }}
+          {{ tip('time_range_desc', 'Default time range for charts and reports') }}
+        </div>
       </div>
       <select id="pref-time-range" data-change="savePreferences"
               class="px-2 py-1 text-sm rounded border border-line bg-field">
@@ -699,8 +898,10 @@
     </div>
     <div class="flex items-center justify-between">
       <div>
-        <div class="text-sm font-medium">{{ t.auto_refresh_interval }}</div>
-        <div class="text-xs text-muted">{{ t.get('refresh_desc', 'How often the dashboard checks for new data') }}</div>
+        <div class="text-sm font-medium flex items-center gap-1.5">
+          {{ t.auto_refresh_interval }}
+          {{ tip('refresh_desc', 'How often the dashboard checks for new data') }}
+        </div>
       </div>
       <select id="pref-refresh-interval" data-change="savePreferences"
               class="px-2 py-1 text-sm rounded border border-line bg-field">
@@ -722,19 +923,26 @@
           <input type="checkbox" id="pref-show-status" checked data-change="savePreferences" class="rounded border-gray-300">
           {{ t.get('status_overview', 'Status Overview') }}
         </label>
-        <label class="flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" id="pref-show-servers" checked data-change="savePreferences" class="rounded border-gray-300">
-          {{ t.servers }}
-        </label>
-        <label class="flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" id="pref-show-activity" checked data-change="savePreferences" class="rounded border-gray-300">
-          {{ t.activity_feed }}
-        </label>
+        {# The "Servers" toggle used to be here. It hid the dashboard's server
+           grid, which has moved to /servers as one of two view modes, so the
+           checkbox had nothing left to toggle — and a preference control that
+           silently does nothing is worse than its absence, because the user
+           blames themselves for the setting not taking.
+
+           The "Activity Feed" toggle went the same way in WP-3, when the feed
+           moved to /servers. Two removals for one reason is a pattern rather
+           than a coincidence: this list is named "Dashboard Sections", so an
+           entry survives here only as long as the section it hides is on the
+           dashboard. It was not re-pointed at the feed's new home — a
+           preference the user set about the DASHBOARD must not quietly start
+           governing a different page. #}
       </div>
     </div>
     <div id="pref-saved-msg" class="hidden text-xs text-healthy">{{ t.preferences_saved }}</div>
   </div>
+  {% endcall %}
 </section>
+{% endif %}
 
 <!-- ═══════════════════════════════════════════════════════════════
      SECTION 6 — Sticky Bottom Save Bar
@@ -777,9 +985,12 @@
 <div id="ldap-picker-modal" class="fixed inset-0 z-[70] hidden">
   <div class="fixed inset-0 bg-black/50" data-action="closeLdapPicker"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-2xl max-h-[80vh] flex flex-col relative">
-      <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
-        <h3 class="text-base font-semibold flex items-center gap-2">
+    {# WP-6 step 19: same treatment as service-picker-modal above -- see its
+       comment for the FOOTER justify-between rationale (this footer's left
+       side is the result count, right side is Close). #}
+    <div role="dialog" aria-modal="true" aria-labelledby="ldap-picker-title" class="bg-card rounded-lg shadow-lg border border-line w-full max-w-2xl max-h-[80vh] flex flex-col relative">
+      <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-line flex-shrink-0">
+        <h3 id="ldap-picker-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">
           <i data-lucide="search" class="w-5 h-5 text-accent"></i>
           {{ t.get('ldap_picker_title', 'Query Active Directory') }}
         </h3>
@@ -826,7 +1037,7 @@
       </div>
 
       <!-- Footer -->
-      <div class="flex justify-between items-center gap-2 p-4 border-t border-line flex-shrink-0">
+      <div class="px-5 py-4 border-t border-line flex items-center justify-between gap-2 flex-shrink-0">
         <span id="ldap-picker-count" class="text-[10px] text-faint"></span>
         <button data-action="closeLdapPicker" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.get('close', 'Close') }}</button>
       </div>
@@ -838,9 +1049,12 @@
 <div id="reset-pw-modal" class="fixed inset-0 z-[70] hidden">
   <div class="fixed inset-0 bg-black/50" data-action="closeResetPasswordModal"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-sm relative">
-      <div class="flex items-center justify-between p-4 border-b border-line">
-        <h3 class="text-base font-semibold flex items-center gap-2">
+    {# WP-6 step 19: shadow-xl -> shadow-lg; HEAD_FLUSH header; FOOTER_FLUSH
+       footer applies literally here -- a single trailing Cancel/Reset
+       cluster, no left-side group. #}
+    <div role="dialog" aria-modal="true" aria-labelledby="reset-pw-modal-title" class="bg-card rounded-lg shadow-lg border border-line w-full max-w-sm relative">
+      <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-line">
+        <h3 id="reset-pw-modal-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">
           <i data-lucide="key" class="w-5 h-5 text-warning"></i>
           {{ t.change_admin_password }}
         </h3>
@@ -862,7 +1076,7 @@
                  class="w-full px-3 py-2 text-sm rounded border border-line bg-field focus-visible:ring-2 focus-visible:ring-brand focus-visible:border-transparent outline-none">
         </div>
       </div>
-      <div class="flex justify-end gap-2 p-4 border-t border-line">
+      <div class="px-5 py-4 border-t border-line flex items-center justify-end gap-2">
         <button data-action="closeResetPasswordModal" class="px-4 py-1.5 text-sm rounded border border-line hover:bg-page">{{ t.cancel }}</button>
         <button data-action="submitResetPassword" class="px-4 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 flex items-center gap-1.5">
           <i data-lucide="check" class="w-4 h-4"></i>
@@ -877,9 +1091,12 @@
 <div id="diff-modal" class="fixed inset-0 z-[70] hidden">
   <div class="fixed inset-0 bg-black/50"></div>
   <div class="fixed inset-0 flex items-center justify-center p-4">
-    <div class="bg-card rounded-lg shadow-xl border border-line w-full max-w-lg max-h-[80vh] flex flex-col relative">
-      <div class="flex items-center justify-between p-4 border-b border-line flex-shrink-0">
-        <h3 class="text-lg font-semibold flex items-center gap-2">
+    {# WP-6 step 19. FOOTER stays justify-between: Undo (left) is
+       distinct from Cancel/Confirm (right); FOOTER_FLUSH's justify-end
+       would merge them into one cluster. #}
+    <div role="dialog" aria-modal="true" aria-labelledby="diff-modal-title" class="bg-card rounded-lg shadow-lg border border-line w-full max-w-lg max-h-[80vh] flex flex-col relative">
+      <div class="flex flex-wrap items-start justify-between gap-3 px-5 py-4 border-b border-line flex-shrink-0">
+        <h3 id="diff-modal-title" data-role="dialog-title" class="text-base font-bold text-ink flex items-center gap-2">
           <i data-lucide="git-compare" class="w-5 h-5 text-warning"></i>
           {{ t.review_changes }}
         </h3>
@@ -890,7 +1107,7 @@
       <div class="p-4 overflow-y-auto flex-1">
         <div id="diff-list" class="space-y-2"></div>
       </div>
-      <div class="flex justify-between gap-2 p-4 border-t border-line flex-shrink-0">
+      <div class="px-5 py-4 border-t border-line flex items-center justify-between gap-2 flex-shrink-0">
         <button data-action="undoLastChange"
                 class="px-3 py-1.5 text-sm rounded border border-warning text-warning hover:bg-warning/10 flex items-center gap-1.5">
           <i data-lucide="undo-2" class="w-4 h-4"></i>
@@ -1014,145 +1231,99 @@ function _doSync(btn, url) {
 // Load current config into JS
 let configData = null;
 
-function loadConfig() {
-  return fetch('/api/config').then(r => r.json()).then(data => { configData = data; return data; });
-}
+// `loadConfig` is base.html's (WP-4 D4d). It returns the config and does
+// not set page state, so the one caller that needs `configData` assigns
+// it — three identical copies of a fetch wrapper is how `_escHtml`
+// managed to be missing from the one page that needed it.
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => loadConfig());
+document.addEventListener('DOMContentLoaded',
+  () => loadConfig().then(data => { configData = data; }));
 
-// --- General Settings change detection ---
-const generalInitial = {};
-function captureGeneralState() {
-  generalInitial.poll = document.getElementById('poll-interval').value;
-  generalInitial.logInterval = document.getElementById('log-collection-interval').value;
-  // Update Check Interval was tracked by NEITHER bucket, so editing it alone
-  // never opened the sticky Save bar — the value could only be saved by
-  // bundling it with some other tracked change. All three functions below must
-  // stay in sync or Cancel silently fails to revert this field.
-  generalInitial.updateInterval = document.getElementById('update-check-interval').value;
-  generalInitial.retention = document.getElementById('retention-days').value;
-  generalInitial.language = document.getElementById('setting-language').value;
-  generalInitial.timezone = document.getElementById('setting-timezone').value;
-  generalInitial.dateFormat = document.getElementById('setting-date-format').value;
-  generalInitial.timeFormat = document.getElementById('setting-time-format').value;
-}
-function hasGeneralChanged() {
-  return (
-    document.getElementById('poll-interval').value !== generalInitial.poll ||
-    document.getElementById('log-collection-interval').value !== generalInitial.logInterval ||
-    document.getElementById('update-check-interval').value !== generalInitial.updateInterval ||
-    document.getElementById('retention-days').value !== generalInitial.retention ||
-    document.getElementById('setting-language').value !== generalInitial.language ||
-    document.getElementById('setting-timezone').value !== generalInitial.timezone ||
-    document.getElementById('setting-date-format').value !== generalInitial.dateFormat ||
-    document.getElementById('setting-time-format').value !== generalInitial.timeFormat
-  );
-}
-function cancelGeneralSettings() {
-  document.getElementById('poll-interval').value = generalInitial.poll;
-  document.getElementById('log-collection-interval').value = generalInitial.logInterval;
-  document.getElementById('update-check-interval').value = generalInitial.updateInterval;
-  document.getElementById('retention-days').value = generalInitial.retention;
-  document.getElementById('setting-language').value = generalInitial.language;
-  document.getElementById('setting-timezone').value = generalInitial.timezone;
-  document.getElementById('setting-date-format').value = generalInitial.dateFormat;
-  document.getElementById('setting-time-format').value = generalInitial.timeFormat;
+// --- Settings change detection ---
+//
+// ONE tracker, driven by the marker class each control already carries.
+//
+// This replaced six hand-maintained lists — capture, compare and revert, for
+// each of two buckets — that had to agree with each other and with the
+// markup. They did not. Measured on the rendered page before the rewrite:
+// 43 controls carry a marker class and the compare lists named 35 of them.
+// The eight missing were the whole scheduled-reports block, and the effect
+// was exact: `doSaveAllSettings()` reads all eight and writes them
+// correctly, but the sticky Save bar only opens when a compare function
+// returns true, so an operator who switched scheduled reports on — or
+// changed the daily time — got no Save button and lost the edit on
+// navigation. Cancel did not restore them either.
+//
+// That is the same defect the comment above `updateInterval` used to
+// describe, in a different section, found again six weeks later. A list you
+// have to remember to extend is a list that will be forgotten, so the list
+// is gone: the DOM is the source of truth, and the marker class is what
+// settings.html's own section comment already says it is — "the JS
+// change-detection bucket".
+//
+// The buckets still differ in MEANING, which is why there are two rather
+// than one: `security-input` drives the restart-confirmation modal,
+// `general-input` does not. Placement in a bucket is a statement about
+// whether the change needs a restart, not about which section it renders
+// in. See the note on the Collector section.
+const _settingsSnapshots = {};
+
+function _settingsControls(bucket) {
+  return document.querySelectorAll('.' + bucket + '-input');
 }
 
-// --- Security Settings change detection ---
-const securityInitial = {};
-function captureSecurityState() {
-  securityInitial.httpsEnabled = document.getElementById('https-enabled').checked;
-  securityInitial.httpsCert = document.getElementById('https-cert').value;
-  securityInitial.httpsKey = document.getElementById('https-key').value;
-  securityInitial.authEnabled = document.getElementById('auth-enabled').checked;
-  securityInitial.authType = document.getElementById('auth-type').value;
-  securityInitial.ldapUrl = document.getElementById('auth-ldap-url').value;
-  securityInitial.ldapBaseDn = document.getElementById('auth-ldap-basedn').value;
-  securityInitial.ldapBindUser = document.getElementById('auth-ldap-bind-user').value;
-  securityInitial.ldapBindPass = document.getElementById('auth-ldap-bind-pass').value;
-  securityInitial.authTimeout = document.getElementById('auth-timeout').value;
-  securityInitial.authAllowedUsers = document.getElementById('auth-allowed-users').value;
-  securityInitial.emailEnabled = document.getElementById('email-enabled').checked;
-  securityInitial.emailSmtpServer = document.getElementById('email-smtp-server').value;
-  securityInitial.emailSmtpPort = document.getElementById('email-smtp-port').value;
-  securityInitial.emailUseTls = document.getElementById('email-use-tls').checked;
-  securityInitial.emailUsername = document.getElementById('email-username').value;
-  securityInitial.emailPassword = document.getElementById('email-password').value;
-  securityInitial.emailFrom = document.getElementById('email-from').value;
-  securityInitial.emailRecipients = document.getElementById('email-recipients').value;
-  securityInitial.emailSendCritical = document.getElementById('email-send-critical').checked;
-  securityInitial.emailSendWarning = document.getElementById('email-send-warning').checked;
-  securityInitial.emailDashboardUrl = document.getElementById('email-dashboard-url').value;
-  securityInitial.webhookEnabled = document.getElementById('webhook-enabled').checked;
-  securityInitial.webhookUrl = document.getElementById('webhook-url').value;
-  securityInitial.webhookSendCritical = document.getElementById('webhook-send-critical').checked;
-  securityInitial.webhookSendWarning = document.getElementById('webhook-send-warning').checked;
-  // Worker-pool size needs a restart to take effect, so it lives in
-  // the security-class change set (which triggers the restart diff).
-  securityInitial.collectorV2Workers = document.getElementById('collector-v2-workers').value;
+// Checkboxes compare by `checked`, everything else by `value`. Stringified
+// so one snapshot shape covers both and `!==` cannot compare a boolean to a
+// string. There are no radios in the settings form; if one is ever added it
+// lands here rather than in a list somebody has to update.
+function _settingsValue(el) {
+  return (el.type === 'checkbox' || el.type === 'radio') ? String(el.checked) : el.value;
 }
-function hasSecurityChanged() {
-  return (
-    document.getElementById('https-enabled').checked !== securityInitial.httpsEnabled ||
-    document.getElementById('https-cert').value !== securityInitial.httpsCert ||
-    document.getElementById('https-key').value !== securityInitial.httpsKey ||
-    document.getElementById('auth-enabled').checked !== securityInitial.authEnabled ||
-    document.getElementById('auth-type').value !== securityInitial.authType ||
-    document.getElementById('auth-ldap-url').value !== securityInitial.ldapUrl ||
-    document.getElementById('auth-ldap-basedn').value !== securityInitial.ldapBaseDn ||
-    document.getElementById('auth-ldap-bind-user').value !== securityInitial.ldapBindUser ||
-    document.getElementById('auth-ldap-bind-pass').value !== securityInitial.ldapBindPass ||
-    document.getElementById('auth-allowed-users').value !== securityInitial.authAllowedUsers ||
-    document.getElementById('auth-timeout').value !== securityInitial.authTimeout ||
-    document.getElementById('email-enabled').checked !== securityInitial.emailEnabled ||
-    document.getElementById('email-smtp-server').value !== securityInitial.emailSmtpServer ||
-    document.getElementById('email-smtp-port').value !== securityInitial.emailSmtpPort ||
-    document.getElementById('email-use-tls').checked !== securityInitial.emailUseTls ||
-    document.getElementById('email-username').value !== securityInitial.emailUsername ||
-    document.getElementById('email-password').value !== securityInitial.emailPassword ||
-    document.getElementById('email-from').value !== securityInitial.emailFrom ||
-    document.getElementById('email-recipients').value !== securityInitial.emailRecipients ||
-    document.getElementById('email-send-critical').checked !== securityInitial.emailSendCritical ||
-    document.getElementById('email-send-warning').checked !== securityInitial.emailSendWarning ||
-    document.getElementById('email-dashboard-url').value !== securityInitial.emailDashboardUrl ||
-    document.getElementById('webhook-enabled').checked !== securityInitial.webhookEnabled ||
-    document.getElementById('webhook-url').value !== securityInitial.webhookUrl ||
-    document.getElementById('webhook-send-critical').checked !== securityInitial.webhookSendCritical ||
-    document.getElementById('webhook-send-warning').checked !== securityInitial.webhookSendWarning ||
-    document.getElementById('collector-v2-workers').value !== securityInitial.collectorV2Workers
-  );
+
+function captureSettingsBucket(bucket) {
+  const snap = {};
+  _settingsControls(bucket).forEach(function (el) {
+    if (el.id) snap[el.id] = _settingsValue(el);
+  });
+  _settingsSnapshots[bucket] = snap;
 }
-function cancelSecuritySettings() {
-  document.getElementById('https-enabled').checked = securityInitial.httpsEnabled;
-  document.getElementById('https-cert').value = securityInitial.httpsCert;
-  document.getElementById('https-key').value = securityInitial.httpsKey;
-  document.getElementById('auth-enabled').checked = securityInitial.authEnabled;
-  document.getElementById('auth-type').value = securityInitial.authType;
-  document.getElementById('auth-ldap-url').value = securityInitial.ldapUrl;
-  document.getElementById('auth-ldap-basedn').value = securityInitial.ldapBaseDn;
-  document.getElementById('auth-ldap-bind-user').value = securityInitial.ldapBindUser;
-  document.getElementById('auth-ldap-bind-pass').value = securityInitial.ldapBindPass;
-  document.getElementById('auth-allowed-users').value = securityInitial.authAllowedUsers;
-  document.getElementById('auth-timeout').value = securityInitial.authTimeout;
-  document.getElementById('email-enabled').checked = securityInitial.emailEnabled;
-  document.getElementById('email-smtp-server').value = securityInitial.emailSmtpServer;
-  document.getElementById('email-smtp-port').value = securityInitial.emailSmtpPort;
-  document.getElementById('email-use-tls').checked = securityInitial.emailUseTls;
-  document.getElementById('email-username').value = securityInitial.emailUsername;
-  document.getElementById('email-password').value = securityInitial.emailPassword;
-  document.getElementById('email-from').value = securityInitial.emailFrom;
-  document.getElementById('email-recipients').value = securityInitial.emailRecipients;
-  document.getElementById('email-send-critical').checked = securityInitial.emailSendCritical;
-  document.getElementById('email-send-warning').checked = securityInitial.emailSendWarning;
-  document.getElementById('email-dashboard-url').value = securityInitial.emailDashboardUrl;
-  document.getElementById('webhook-enabled').checked = securityInitial.webhookEnabled;
-  document.getElementById('webhook-url').value = securityInitial.webhookUrl;
-  document.getElementById('webhook-send-critical').checked = securityInitial.webhookSendCritical;
-  document.getElementById('webhook-send-warning').checked = securityInitial.webhookSendWarning;
-  document.getElementById('collector-v2-workers').value = securityInitial.collectorV2Workers;
+
+function settingsBucketChanged(bucket) {
+  const snap = _settingsSnapshots[bucket] || {};
+  const controls = _settingsControls(bucket);
+  for (let i = 0; i < controls.length; i++) {
+    const el = controls[i];
+    if (!el.id) continue;
+    // A control that was not present when the snapshot was taken counts as
+    // a CHANGE. The form is server-rendered, so today this cannot happen —
+    // and if it ever does, the operator is looking at a field the tracker
+    // has never seen, which is precisely the state that must not be silent.
+    if (!(el.id in snap)) return true;
+    if (_settingsValue(el) !== snap[el.id]) return true;
+  }
+  return false;
 }
+
+function revertSettingsBucket(bucket) {
+  const snap = _settingsSnapshots[bucket] || {};
+  _settingsControls(bucket).forEach(function (el) {
+    if (!el.id || !(el.id in snap)) return;
+    if (el.type === 'checkbox' || el.type === 'radio') el.checked = (snap[el.id] === 'true');
+    else el.value = snap[el.id];
+  });
+}
+
+// The four names below are the API the rest of this page calls. Kept as
+// named functions rather than inlined at the call sites so the bucket string
+// appears exactly once per bucket per operation.
+function captureGeneralState() { captureSettingsBucket('general'); }
+function hasGeneralChanged() { return settingsBucketChanged('general'); }
+function cancelGeneralSettings() { revertSettingsBucket('general'); }
+
+function captureSecurityState() { captureSettingsBucket('security'); }
+function hasSecurityChanged() { return settingsBucketChanged('security'); }
+function cancelSecuritySettings() { revertSettingsBucket('security'); }
 
 // --- Unified change detection + sticky save bar ---
 //
@@ -1221,76 +1392,215 @@ function saveAllSettings() {
 }
 
 let _settingsSaving = false;
+// --- The save payload, one builder per section ---
+//
+// D1b established the contract: post what this page owns and let the server's
+// merge preserve the rest. This makes the page able to own LESS than all of
+// it, which is what WP-4's split into sub-pages needs.
+//
+// Before, the builder read all 43 controls unconditionally. On a page
+// rendering one section that is 30-odd `getElementById(...)` calls returning
+// null, and the save dies on `.value` of the first one — a TypeError inside a
+// promise chain, so the operator gets a spinner that never resolves rather
+// than an error.
+//
+// Now each section declares itself in the markup with
+// `data-settings-section`, and a section's keys are collected only when that
+// section is present. A section is the unit because it matches the SUB-TREE
+// CONTRACT in routes/api/config.py: https / auth / email / webhooks each have
+// to be posted whole or not at all, and each of them lives entirely inside
+// one section. Splitting on anything finer would let half of `email` be
+// posted, which blanks the other half.
+//
+// The mapping is not the same as the change-detection BUCKET above and must
+// not be conflated with it. The bucket says whether a change needs a restart;
+// the section says which page the field is on. The three cadence intervals
+// are the case that makes the difference visible: they render in Collector
+// and they apply live, so they are `general-input` in the Collector section.
+const _SETTINGS_SECTION_BUILDERS = {
+  compliance: function () {
+    return {
+      compliance: {
+        enabled: document.getElementById('compliance-enabled').checked,
+      },
+    };
+  },
+  general: function () {
+    return {
+      retention_days: parseInt(document.getElementById('retention-days').value) || 30,
+      language: document.getElementById('setting-language').value,
+      timezone: document.getElementById('setting-timezone').value,
+      date_format: document.getElementById('setting-date-format').value,
+      time_format: document.getElementById('setting-time-format').value,
+    };
+  },
+  collector: function () {
+    return {
+      poll_interval_seconds: (parseInt(document.getElementById('poll-interval').value) || 1) * 60,
+      log_collection_interval_minutes: parseInt(document.getElementById('log-collection-interval').value) || 5,
+      update_check_interval_minutes: parseInt(document.getElementById('update-check-interval').value) || 30,
+      // Restart-required; see the "Requires restart" pill on its row.
+      collector_v2_num_workers: parseInt(document.getElementById('collector-v2-workers').value) || 15,
+    };
+  },
+  detection: function () {
+    // Moved from /monitoring's saveMonitoringSettings (WP-4 D2). The two
+    // non-obvious parses came with it and are the reason this is a move
+    // rather than a rewrite: both exist because `|| default` turns a
+    // deliberate zero into the default, and a gate the operator switched OFF
+    // would switch itself back on at the next save.
+    return {
+      thresholds: {
+        enabled: document.getElementById('thresholds-enabled').checked,
+        slow_collection_ms: parseInt(document.getElementById('thresholds-slow-ms').value) || 10000,
+        exhaustion_ram: parseInt(document.getElementById('thresholds-exhaustion-ram').value) || 98,
+        exhaustion_disk: parseInt(document.getElementById('thresholds-exhaustion-disk').value) || 95,
+      },
+      anomaly_detection: {
+        enabled: document.getElementById('anomaly-enabled').checked,
+        suppression_hours: parseFloat(document.getElementById('anomaly-suppression').value) || 4,
+        rate_detection_enabled: document.getElementById('anomaly-rate-enabled').checked,
+        cpu_warning_consecutive_cycles: parseInt(document.getElementById('anomaly-cpu-consec').value) || 3,
+        // NOT `|| 5` — a deliberate 1 (gate disabled) must survive the round-trip.
+        spike_sustain_cycles: (function () {
+          const n = parseInt(document.getElementById('spike-sustain-cycles').value);
+          return Number.isNaN(n) ? 5 : n;
+        })(),
+        cpu_warning_window_cycles: parseInt(document.getElementById('anomaly-cpu-window').value) || 5,
+      },
+      baseline_detection: {
+        enabled: document.getElementById('baseline-enabled').checked,
+        sigma_warning: parseFloat(document.getElementById('baseline-sigma-warning').value) || 2.0,
+        sigma_critical: parseFloat(document.getElementById('baseline-sigma-critical').value) || 3.0,
+        min_samples: parseInt(document.getElementById('baseline-min-samples').value) || 10,
+        history_weeks: parseInt(document.getElementById('baseline-history-weeks').value) || 4,
+        recalc_hour: document.getElementById('baseline-recalc-time').value || '02:00',
+        allow_downgrade: document.getElementById('baseline-allow-downgrade').checked,
+        min_span_weeks: parseInt(document.getElementById('baseline-min-span-weeks').value) || 2,
+        min_coverage_pct: parseInt(document.getElementById('baseline-min-coverage-pct').value) || 50,
+        deviation_direction: document.getElementById('baseline-deviation-direction').value,
+        // `|| 80` would turn a deliberate 0 (gate disabled) into 80, so parse
+        // and fall back only when the value is genuinely not a number.
+        deviation_min_pct_of_warning: (function () {
+          const n = parseInt(document.getElementById('baseline-deviation-min-pct').value);
+          return Number.isNaN(n) ? 80 : n;
+        })(),
+        deviation_requires_authority: document.getElementById('baseline-deviation-requires-authority').checked,
+      },
+      security_alerts: {
+        failed_login_tracking: document.getElementById('security-failed-login-tracking').checked,
+        login_failure_threshold: parseInt(document.getElementById('security-failure-threshold').value) || 10,
+        lockout_alert: document.getElementById('security-lockout-alert').checked,
+        security_status_check: document.getElementById('sec-status-check').checked,
+        defender_check: document.getElementById('sec-defender-check').checked,
+        defender_max_sig_age_days: parseInt(document.getElementById('sec-defender-max-age').value) || 7,
+        firewall_check: document.getElementById('sec-firewall-check').checked,
+        bitlocker_check: document.getElementById('sec-bitlocker-check').checked,
+        track_local_users: document.getElementById('sec-track-users').checked,
+        track_open_ports: document.getElementById('sec-track-ports').checked,
+      },
+    };
+  },
+  alerts: function () {
+    // Maintenance windows are NOT here: they have their own
+    // `/api/maintenance-windows` endpoint and save from their modal, one
+    // window at a time. Only the TLS sub-tree rides the settings payload.
+    return {
+      tls_monitoring: getTlsConfigPayload(),
+    };
+  },
+  security: function (current) {
+    return {
+      https: {
+        enabled: document.getElementById('https-enabled').checked,
+        cert_file: document.getElementById('https-cert').value.trim(),
+        key_file: document.getElementById('https-key').value.trim(),
+      },
+      // The ldap_* keys here are STRIPPED by POST /api/config (defence in
+      // depth against directory hijack) — they are saved by POST
+      // /api/config/ldap instead, fired first below. They must still be SENT:
+      // save_config's auth validation rewrites any *missing* ldap key to "",
+      // so omitting them would wipe the directory config rather than preserve
+      // it. Sent values are replaced with the on-disk ones server-side, which
+      // by then are the newly saved ones.
+      //
+      // Merged over the FETCHED auth, and that is the one place this page
+      // still reads the current config: the same validator rewrites every
+      // field, so a partial auth object blanks `backup_admin` and the three
+      // `lockout_*` keys, none of which are rendered anywhere in the UI.
+      auth: Object.assign({}, current.settings?.auth || {}, {
+        enabled: document.getElementById('auth-enabled').checked,
+        type: document.getElementById('auth-type').value,
+        ldap_url: document.getElementById('auth-ldap-url').value.trim(),
+        ldap_base_dn: document.getElementById('auth-ldap-basedn').value.trim(),
+        ldap_user_filter: '(sAMAccountName={username})',
+        ldap_bind_user: document.getElementById('auth-ldap-bind-user').value.trim(),
+        ldap_bind_password: document.getElementById('auth-ldap-bind-pass').value.trim() || (current.settings?.auth?.ldap_bind_password || ''),
+        allowed_users: document.getElementById('auth-allowed-users').value.trim().split('\n').map(s => s.trim()).filter(Boolean),
+        session_timeout_minutes: parseInt(document.getElementById('auth-timeout').value) || 480,
+      }),
+    };
+  },
+  notifications: function () {
+    return {
+      email: getEmailSettingsFromForm(),
+      scheduled_reports: {
+        enabled: document.getElementById('sched-enabled').checked,
+        daily_enabled: document.getElementById('sched-daily-enabled').checked,
+        daily_time: document.getElementById('sched-daily-time').value || '07:00',
+        weekly_enabled: document.getElementById('sched-weekly-enabled').checked,
+        weekly_day: document.getElementById('sched-weekly-day').value || 'monday',
+        weekly_time: document.getElementById('sched-weekly-time').value || '07:00',
+        email_report: document.getElementById('sched-email-report').checked,
+        include_pdf: document.getElementById('sched-include-pdf').checked,
+      },
+      webhooks: {
+        enabled: document.getElementById('webhook-enabled').checked,
+        teams_webhook_url: document.getElementById('webhook-url').value.trim(),
+        send_on_critical: document.getElementById('webhook-send-critical').checked,
+        send_on_warning: document.getElementById('webhook-send-warning').checked,
+      },
+    };
+  },
+  // `display` has no entry on purpose: its four controls are dashboard
+  // preferences kept in localStorage and written on change. A builder
+  // returning {} would suggest it has server-side settings and does not.
+};
+
+function settingsSectionPresent(name) {
+  return !!document.querySelector('[data-settings-section="' + name + '"]');
+}
+
+function buildSettingsPayload(current) {
+  const settings = {};
+  Object.keys(_SETTINGS_SECTION_BUILDERS).forEach(function (name) {
+    if (!settingsSectionPresent(name)) return;
+    Object.assign(settings, _SETTINGS_SECTION_BUILDERS[name](current));
+  });
+  // `servers` is deliberately absent: its absence is what puts save_config on
+  // its `settings_only` path, where the server list is preserved wholesale
+  // rather than rewritten from a copy this page fetched some time ago.
+  return { settings: settings };
+}
+
 function doSaveAllSettings(needsRestart) {
   // Re-entrancy guard — a double-click must not fire two /api/config POSTs
   // (and two restarts). Cleared on every FAILURE path below; on success the
   // page reloads, which resets it.
   if (_settingsSaving) return;
   _settingsSaving = true;
-  loadConfig().then(data => {
-    // General settings
-    data.settings = Object.assign(data.settings || {}, {
-      poll_interval_seconds: (parseInt(document.getElementById('poll-interval').value) || 1) * 60,
-      log_collection_interval_minutes: parseInt(document.getElementById('log-collection-interval').value) || 5,
-      update_check_interval_minutes: parseInt(document.getElementById('update-check-interval').value) || 30,
-      retention_days: parseInt(document.getElementById('retention-days').value) || 30,
-      language: document.getElementById('setting-language').value,
-      timezone: document.getElementById('setting-timezone').value,
-      date_format: document.getElementById('setting-date-format').value,
-      time_format: document.getElementById('setting-time-format').value,
-    });
-
-    // Security + notification settings (always include to preserve them)
-    data.settings.https = {
-      enabled: document.getElementById('https-enabled').checked,
-      cert_file: document.getElementById('https-cert').value.trim(),
-      key_file: document.getElementById('https-key').value.trim(),
-    };
-    // NOTE: the ldap_* keys below are STRIPPED by POST /api/config (defence in
-    // depth against directory hijack) — they are saved by POST /api/config/ldap
-    // instead, fired first below. They must still be SENT here: save_config's
-    // auth validation rewrites any *missing* ldap key to "", so omitting them
-    // would wipe the directory config rather than preserve it. Sent values are
-    // replaced with the on-disk ones server-side, which by then are the newly
-    // saved ones.
-    data.settings.auth = Object.assign({}, data.settings.auth || {}, {
-      enabled: document.getElementById('auth-enabled').checked,
-      type: document.getElementById('auth-type').value,
-      ldap_url: document.getElementById('auth-ldap-url').value.trim(),
-      ldap_base_dn: document.getElementById('auth-ldap-basedn').value.trim(),
-      ldap_user_filter: '(sAMAccountName={username})',
-      ldap_bind_user: document.getElementById('auth-ldap-bind-user').value.trim(),
-      ldap_bind_password: document.getElementById('auth-ldap-bind-pass').value.trim() || (data.settings?.auth?.ldap_bind_password || ''),
-      allowed_users: document.getElementById('auth-allowed-users').value.trim().split('\n').map(s => s.trim()).filter(Boolean),
-      session_timeout_minutes: parseInt(document.getElementById('auth-timeout').value) || 480,
-    });
-    data.settings.email = getEmailSettingsFromForm();
-    data.settings.scheduled_reports = {
-      enabled: document.getElementById('sched-enabled').checked,
-      daily_enabled: document.getElementById('sched-daily-enabled').checked,
-      daily_time: document.getElementById('sched-daily-time').value || '07:00',
-      weekly_enabled: document.getElementById('sched-weekly-enabled').checked,
-      weekly_day: document.getElementById('sched-weekly-day').value || 'monday',
-      weekly_time: document.getElementById('sched-weekly-time').value || '07:00',
-      email_report: document.getElementById('sched-email-report').checked,
-      include_pdf: document.getElementById('sched-include-pdf').checked,
-    };
-    data.settings.webhooks = {
-      enabled: document.getElementById('webhook-enabled').checked,
-      teams_webhook_url: document.getElementById('webhook-url').value.trim(),
-      send_on_critical: document.getElementById('webhook-send-critical').checked,
-      send_on_warning: document.getElementById('webhook-send-warning').checked,
-    };
-    // Collector worker pool size (restart-required). The historical
-    // collector_engine field is no longer written — v1 is gone and v2
-    // is the only collector. ``app.py`` ignores any leftover value
-    // in settings.json with a warning.
-    data.settings.collector_v2_num_workers = parseInt(document.getElementById('collector-v2-workers').value) || 15;
+  loadConfig().then(current => {
+    // One object per section that is actually on the page. See
+    // _SETTINGS_SECTION_BUILDERS above for why the section is the unit.
+    const data = buildSettingsPayload(current);
 
     // Directory settings get their own admin-gated, audited endpoint. Fired
     // FIRST so a rejected LDAP URL aborts before anything else is written —
     // otherwise the user would get a partial save plus an error.
-    const ldapPayload = {
+    // Only when the section that renders these five controls is on the
+    // page. Without the guard, a sub-page without Security would read
+    // five nulls and die before the main save ever fired.
+    const ldapPayload = !settingsSectionPresent('security') ? null : {
       ldap_url: document.getElementById('auth-ldap-url').value.trim(),
       ldap_base_dn: document.getElementById('auth-ldap-basedn').value.trim(),
       ldap_user_filter: '(sAMAccountName={username})',
@@ -1299,12 +1609,13 @@ function doSaveAllSettings(needsRestart) {
       ldap_bind_password: document.getElementById('auth-ldap-bind-pass').value.trim(),
     };
 
-    fetch('/api/config/ldap', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-      body: JSON.stringify(ldapPayload),
-    })
-    .then(r => r.json())
+    (ldapPayload === null
+      ? Promise.resolve({ ok: true })
+      : fetch('/api/config/ldap', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+          body: JSON.stringify(ldapPayload),
+        }).then(r => r.json()))
     .then(ldapResult => {
       if (!ldapResult.ok) {
         const msg = document.getElementById('save-message');
@@ -1369,6 +1680,886 @@ document.addEventListener('DOMContentLoaded', () => {
     el.addEventListener('change', checkForChanges);
   });
 });
+
+const PRISM_DETECTION_PRIORITY = {{ t.get('detection_priority', 'Priority') | tojson }};
+const PRISM_DETECTION_OFF = {{ t.get('detection_off', 'Off') | tojson }};
+
+// --- Detection priority: rank the enabled detectors ---
+//
+// Moved from /monitoring with the cards it dims (WP-4 D2). Baseline outranks
+// anomaly, and any smart detector outranks the plain thresholds, so a demoted
+// card is faded to say "this one only fires for what the others miss".
+//
+// Guarded on the section being present rather than on optional chaining. The
+// `?.` this arrived with meant the block ran on every page and quietly did
+// nothing on most of them — which is why it survived a page move unnoticed.
+document.addEventListener('DOMContentLoaded', () => {
+  if (!settingsSectionPresent('detection')) return;
+  const updateDetectionPriority = () => {
+    // Rank the ENABLED detectors in fixed precedence order and say so on each
+    // card. This replaced `style.opacity = '0.65'` on the demoted ones, which
+    // measured 2.39 light / 3.07 dark on their help text — the third time in
+    // this round that a dim applied over already-muted text went under AA.
+    //
+    // It is also the better answer on its own terms: the fade was the only
+    // thing saying a detector was demoted, and an opacity says nothing to a
+    // screen reader. A label states the rank rather than implying it.
+    const order = [
+      ['baseline', document.getElementById('baseline-enabled')],
+      ['anomaly', document.getElementById('anomaly-enabled')],
+      ['thresholds', document.getElementById('thresholds-enabled')],
+    ];
+    let rank = 0;
+    order.forEach(([key, toggle]) => {
+      const label = document.querySelector('[data-detection-priority="' + key + '"]');
+      if (!label || !toggle) return;
+      if (toggle.checked) {
+        rank += 1;
+        label.textContent = PRISM_DETECTION_PRIORITY + ' ' + rank;
+      } else {
+        label.textContent = PRISM_DETECTION_OFF;
+      }
+    });
+  };
+  // Re-rank on every toggle. These bindings were lost when the block above
+  // was rewritten — the labels rendered once and then never moved, which
+  // looks exactly like a working feature until you toggle something.
+  ['baseline-enabled', 'anomaly-enabled', 'thresholds-enabled'].forEach(id => {
+    const toggle = document.getElementById(id);  // detection-priority-toggles
+    if (toggle) toggle.addEventListener('change', updateDetectionPriority);
+  });
+  updateDetectionPriority();
+});
+
+
+// ── Moved from /monitoring with their markup (WP-4 D2b) ──
+//
+// TLS certificate monitoring and maintenance windows. `recalculateBaselines`
+// came with the detection block's button in D2a and was left behind — the
+// button on /settings/detection had no handler at all until this landed.
+//
+// Every entry point below is guarded on its section being rendered, because
+// Settings shows one section per page.
+// ═══════════════════════════════════════════════════════════════
+// Baseline Detection
+// ═══════════════════════════════════════════════════════════════
+
+function recalculateBaselines() {
+  const btn = event.currentTarget;
+  const resultSpan = document.getElementById('baseline-result');
+  btn.disabled = true;
+  resultSpan.textContent = '{{ t.get("recalculating", "Recalculating...") }}';
+  resultSpan.className = 'text-xs ml-2 text-muted';
+  fetch('/api/baselines/recalculate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+  })
+  .then(r => r.json())
+  .then(result => {
+    btn.disabled = false;
+    if (result.ok) {
+      resultSpan.textContent = '{{ t.get("baselines_recalculated", "Baselines recalculated successfully.") }}';
+      resultSpan.className = 'text-xs ml-2 text-healthy';
+    } else {
+      resultSpan.textContent = 'Error: ' + (result.error || 'Unknown error');
+      resultSpan.className = 'text-xs ml-2 text-critical';
+    }
+  })
+  .catch(err => {
+    btn.disabled = false;
+    resultSpan.textContent = 'Error: ' + err.message;
+    resultSpan.className = 'text-xs ml-2 text-critical';
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Alert Fatigue Scoring
+// ═══════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════
+// Maintenance Windows
+// ═══════════════════════════════════════════════════════════════
+
+let maintWindows = [];
+
+function loadMaintenanceWindows() {
+  fetch('/api/maintenance-windows')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) return;
+      maintWindows = data.windows || [];
+      renderMaintWindows();
+    })
+    .catch(() => {});
+}
+
+function renderMaintWindows() {
+  const container = document.getElementById('maint-list');
+
+  if (maintWindows.length === 0) {
+    const _noMaintMsg = {{ t.no_maintenance_windows | tojson }};
+    const _noMaintHint = {{ t.get('no_maintenance_hint', 'Define windows when servers are expected to be under load') | tojson }};
+    container.innerHTML =
+      '<div class="text-sm text-faint text-center py-8">' +
+        '<i data-lucide="clock" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>' +
+        '<p>' + _escHtml(_noMaintMsg) + '</p>' +
+        '<p class="text-[10px] mt-1 opacity-60">' + _escHtml(_noMaintHint) + '</p>' +
+      '</div>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    return;
+  }
+
+  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  // Tip text for the per-row Edit/Delete buttons -- computed once, outside
+  // the .map() below, since it is identical for every row (see
+  // _server_config.html's discoveryTipTitle/discoveryTipDesc for the same
+  // pattern). Each Desc const is named <name>TipDesc, always longer than
+  // its <name>Tip sibling, so the two never read as equal-length.
+  const maintEditTip = {{ t.edit | tojson }};
+  const maintEditTipDesc = {{ t.get('edit_maint_window_desc', "Edit this maintenance window's schedule and servers.") | tojson }};
+  const maintDeleteTip = {{ t.delete | tojson }};
+  const maintDeleteTipDesc = {{ t.get('delete_maint_window_desc', 'Delete this maintenance window. This cannot be undone.') | tojson }};
+
+  container.innerHTML = '<div class="space-y-2">' + maintWindows.map((w, i) => {
+    const days = (w.days || []).map(d => dayNames[d] || '?').join(', ');
+    const servers = (w.servers || []).join(', ');
+    const timeRange = (w.start_time || '00:00') + ' – ' + (w.end_time || '23:59');
+    return `<div class="flex items-center gap-3 px-3 py-2 rounded-lg border border-line bg-page dark:bg-page/50">
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold text-ink">${_escHtml(w.name || 'Unnamed')}</span>
+          <span class="px-1.5 py-0.5 text-[9px] font-bold rounded bg-info/10 text-info dark:bg-info/20">${_escHtml(timeRange)}</span>
+        </div>
+        <div class="text-[10px] text-muted mt-0.5 font-mono truncate">${_escHtml(days)} → ${_escHtml(servers || 'No servers')}</div>
+      </div>
+      <button data-action="editMaintWindow" data-args="[${i}]" class="p-1.5 text-muted hover:text-info rounded hover:bg-info/10" aria-label="${maintEditTip}" aria-describedby="maint-edit-desc-${i}" data-tip-title="${maintEditTip}" data-tip-desc="${maintEditTipDesc}">
+        <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+      </button>
+      <span class="sr-only" id="maint-edit-desc-${i}">${maintEditTipDesc}</span>
+      <button data-action="deleteMaintWindow" data-args="[${i}]" class="p-1.5 text-muted hover:text-critical rounded hover:bg-critical/10" aria-label="${maintDeleteTip}" aria-describedby="maint-delete-desc-${i}" data-tip-title="${maintDeleteTip}" data-tip-desc="${maintDeleteTipDesc}">
+        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+      </button>
+      <span class="sr-only" id="maint-delete-desc-${i}">${maintDeleteTipDesc}</span>
+    </div>`;
+  }).join('') + '</div>';
+  lucide.createIcons();
+}
+
+function showAddMaintenance() {
+  document.getElementById('maint-modal-title').textContent = {{ t.add_maintenance | tojson }};
+  document.getElementById('maint-edit-index').value = -1;
+  document.getElementById('maint-name').value = '';
+  document.querySelectorAll('.maint-server-cb').forEach(cb => cb.checked = false);
+  document.querySelectorAll('.maint-day-cb').forEach(cb => cb.checked = false);
+  document.getElementById('maint-start').value = '02:00';
+  document.getElementById('maint-end').value = '06:00';
+  document.getElementById('maint-cpu-warn').value = 90;
+  document.getElementById('maint-cpu-crit').value = 98;
+  document.getElementById('maint-ram-warn').value = 95;
+  document.getElementById('maint-ram-crit').value = 99;
+  document.getElementById('maint-disk-warn').value = 90;
+  document.getElementById('maint-disk-crit').value = 98;
+  document.getElementById('maint-suppress-alerts').checked = false;
+  document.getElementById('maint-modal').classList.remove('hidden');
+  lucide.createIcons();
+}
+
+function editMaintWindow(index) {
+  const w = maintWindows[index];
+  if (!w) return;
+  document.getElementById('maint-modal-title').textContent = {{ t.get('edit_maintenance', 'Edit Maintenance Window') | tojson }};
+  document.getElementById('maint-edit-index').value = index;
+  document.getElementById('maint-name').value = w.name || '';
+  document.querySelectorAll('.maint-server-cb').forEach(cb => {
+    cb.checked = (w.servers || []).includes(cb.value);
+  });
+  document.querySelectorAll('.maint-day-cb').forEach(cb => {
+    cb.checked = (w.days || []).includes(parseInt(cb.value));
+  });
+  document.getElementById('maint-start').value = w.start_time || '02:00';
+  document.getElementById('maint-end').value = w.end_time || '06:00';
+  const th = w.thresholds || {};
+  document.getElementById('maint-cpu-warn').value = th.cpu_warning || 90;
+  document.getElementById('maint-cpu-crit').value = th.cpu_critical || 98;
+  document.getElementById('maint-ram-warn').value = th.ram_warning || 95;
+  document.getElementById('maint-ram-crit').value = th.ram_critical || 99;
+  document.getElementById('maint-disk-warn').value = th.disk_warning || 90;
+  document.getElementById('maint-disk-crit').value = th.disk_critical || 98;
+  document.getElementById('maint-suppress-alerts').checked = !!w.suppress_alerts;
+  document.getElementById('maint-modal').classList.remove('hidden');
+  lucide.createIcons();
+}
+
+function closeMaintModal() {
+  document.getElementById('maint-modal').classList.add('hidden');
+}
+
+function saveMaintWindow() {
+  const name = document.getElementById('maint-name').value.trim();
+  if (!name) { pAlert('Window name is required'); return; }
+
+  const servers = [];
+  document.querySelectorAll('.maint-server-cb:checked').forEach(cb => servers.push(cb.value));
+  const days = [];
+  document.querySelectorAll('.maint-day-cb:checked').forEach(cb => days.push(parseInt(cb.value)));
+
+  const window_data = {
+    name: name,
+    servers: servers,
+    days: days,
+    start_time: document.getElementById('maint-start').value || '02:00',
+    end_time: document.getElementById('maint-end').value || '06:00',
+    suppress_alerts: document.getElementById('maint-suppress-alerts').checked,
+    thresholds: {
+      cpu_warning: parseInt(document.getElementById('maint-cpu-warn').value) || 90,
+      cpu_critical: parseInt(document.getElementById('maint-cpu-crit').value) || 98,
+      ram_warning: parseInt(document.getElementById('maint-ram-warn').value) || 95,
+      ram_critical: parseInt(document.getElementById('maint-ram-crit').value) || 99,
+      disk_warning: parseInt(document.getElementById('maint-disk-warn').value) || 90,
+      disk_critical: parseInt(document.getElementById('maint-disk-crit').value) || 98,
+    },
+  };
+
+  const index = parseInt(document.getElementById('maint-edit-index').value);
+
+  fetch('/api/maintenance-windows', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({ window: window_data, index: index }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      maintWindows = data.windows || [];
+      renderMaintWindows();
+      closeMaintModal();
+    } else {
+      pAlert('Error: ' + (data.error || 'Save failed'));
+    }
+  })
+  .catch(err => pAlert('Save failed: ' + err.message));
+}
+
+async function deleteMaintWindow(index) {
+  if (!await pConfirm('Delete this maintenance window?')) return;
+  fetch('/api/maintenance-windows/' + index, {
+    method: 'DELETE',
+    headers: { 'X-CSRFToken': csrfToken },
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      maintWindows = data.windows || [];
+      renderMaintWindows();
+    }
+  })
+  .catch(err => pAlert('Delete failed: ' + err.message));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TLS Monitoring
+// ═══════════════════════════════════════════════════════════════
+
+function loadTlsConfig() {
+  if (!configData) return;
+  const tls = (configData.settings || {}).tls_monitoring || {};
+  const enabled = document.getElementById('tls-monitoring-enabled');
+  if (enabled) enabled.checked = !!tls.enabled;
+  const warnDays = document.getElementById('tls-warning-days');
+  if (warnDays && tls.warning_days) warnDays.value = tls.warning_days;
+  const critDays = document.getElementById('tls-critical-days');
+  if (critDays && tls.critical_days) critDays.value = tls.critical_days;
+
+  const certs = tls.certificates || [];
+  const list = document.getElementById('tls-cert-list');
+  const noCerts = document.getElementById('no-tls-certs');
+  list.innerHTML = '';
+  if (certs.length === 0) {
+    noCerts.classList.remove('hidden');
+  } else {
+    noCerts.classList.add('hidden');
+    certs.forEach(c => addTlsCertRow(c));
+  }
+}
+
+function addTlsCertRow(data) {
+  const list = document.getElementById('tls-cert-list');
+  document.getElementById('no-tls-certs').classList.add('hidden');
+
+  const row = document.createElement('div');
+  row.className = 'flex items-center gap-2 px-3 py-2 rounded-lg border border-line bg-page dark:bg-page/50 tls-cert-row';
+
+  // Per-row id for this row's tip mirrors -- list.children.length at
+  // creation time, same convention addServerRestartRow's `idx` already
+  // uses elsewhere in this file.
+  const _tlsRowIdx = list.children.length;
+  const tlsTestTip = {{ t.get('test', 'Test') | tojson }};
+  const tlsTestTipDesc = {{ t.get('test_tls_cert_desc', 'Test whether this host is reachable on the configured port.') | tojson }};
+  const tlsDeleteTip = {{ t.delete | tojson }};
+  const tlsDeleteTipDesc = {{ t.get('delete_tls_cert_desc', 'Remove this TLS certificate check. This cannot be undone.') | tojson }};
+
+  const serverOpts = _serverNames.map(n => `<option value="${n}" ${(data && data.server === n) ? 'selected' : ''}>${n}</option>`).join('');
+
+  row.innerHTML = `
+    <select class="tls-server px-2 py-1 text-xs rounded border border-line bg-field">
+      <option value="">-- Server --</option>
+      ${serverOpts}
+    </select>
+    <input type="text" class="tls-host px-2 py-1 text-xs rounded border border-line bg-field font-mono flex-1" placeholder="hostname or IP" value="${_escHtml((data && data.host) || '')}">
+    <input type="number" class="tls-port w-16 px-2 py-1 text-xs rounded border border-line bg-field text-right" placeholder="443" min="1" max="65535" value="${(data && data.port) || 443}">
+    <button data-action="testTlsCertRow" class="p-1.5 text-muted hover:text-healthy rounded hover:bg-healthy/10" aria-label="${tlsTestTip}" aria-describedby="tls-test-desc-${_tlsRowIdx}" data-tip-title="${tlsTestTip}" data-tip-desc="${tlsTestTipDesc}">
+      <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+    </button>
+    <span class="sr-only" id="tls-test-desc-${_tlsRowIdx}">${tlsTestTipDesc}</span>
+    <button data-action="removeTlsCertRow" class="p-1.5 text-muted hover:text-critical rounded hover:bg-critical/10" aria-label="${tlsDeleteTip}" aria-describedby="tls-delete-desc-${_tlsRowIdx}" data-tip-title="${tlsDeleteTip}" data-tip-desc="${tlsDeleteTipDesc}">
+      <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+    </button>
+    <span class="sr-only" id="tls-delete-desc-${_tlsRowIdx}">${tlsDeleteTipDesc}</span>
+    <div class="tls-test-result text-xs ml-1 hidden"></div>
+  `;
+  list.appendChild(row);
+  lucide.createIcons({ nodes: [row] });
+}
+
+function updateTlsNoItemsMsg() {
+  const list = document.getElementById('tls-cert-list');
+  const noCerts = document.getElementById('no-tls-certs');
+  if (list.children.length === 0) noCerts.classList.remove('hidden');
+  else noCerts.classList.add('hidden');
+}
+
+// Row-scoped helpers for the delegated data-action fallback (`this` = the
+// clicked button, bound by the delegation dispatcher).
+function testTlsCertRow() { testTlsCert(this.closest('.tls-cert-row')); }
+function removeTlsCertRow() { const r = this.closest('.tls-cert-row'); if (r) r.remove(); updateTlsNoItemsMsg(); }
+
+function testTlsCert(row) {
+  const host = row.querySelector('.tls-host').value.trim();
+  const port = parseInt(row.querySelector('.tls-port').value) || 443;
+  const resultEl = row.querySelector('.tls-test-result');
+  if (!host) { resultEl.textContent = 'Enter a host'; resultEl.classList.remove('hidden'); return; }
+
+  resultEl.textContent = 'Checking...';
+  resultEl.className = 'tls-test-result text-xs ml-1 text-muted';
+
+  fetch('/api/tls-certificates/check', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({ host: host, port: port }),
+  })
+    .then(r => r.json())
+    .then(result => {
+      if (result.ok) {
+        const days = result.days_remaining || 0;
+        const color = days <= 7 ? '#DC2626' : days <= 30 ? '#F59E0B' : '#10B981';
+        resultEl.innerHTML = `<span style="color:${color}">${days}d remaining</span>`;
+      } else {
+        resultEl.innerHTML = `<span class="text-critical">${_escHtml(result.error || 'Check failed')}</span>`;
+      }
+      resultEl.classList.remove('hidden');
+    })
+    .catch(err => {
+      resultEl.innerHTML = `<span class="text-critical">${_escHtml(err.message)}</span>`;
+      resultEl.classList.remove('hidden');
+    });
+}
+
+function getTlsConfigPayload() {
+  const rows = document.querySelectorAll('.tls-cert-row');
+  const certificates = [];
+  rows.forEach(row => {
+    const server = row.querySelector('.tls-server').value;
+    const host = row.querySelector('.tls-host').value.trim();
+    const port = parseInt(row.querySelector('.tls-port').value) || 443;
+    // NOTE: backend reads `server_name` (collector.py _check_tls_certificates).
+    // Send both `server_name` (canonical) and `server` (legacy compat for older configs).
+    if (host) certificates.push({ server_name: server, server: server, host: host, port: port });
+  });
+  return {
+    enabled: document.getElementById('tls-monitoring-enabled').checked,
+    warning_days: parseInt(document.getElementById('tls-warning-days').value) || 30,
+    critical_days: parseInt(document.getElementById('tls-critical-days').value) || 7,
+    certificates: certificates,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Init on page load
+// ═══════════════════════════════════════════════════════════════
+
+
+// The service/process picker moved with them: its target is a restart
+// condition row's `.cond-value`, so it edits the block that moved rather
+// than anything left on /operations.
+{% include "partials/_runbooks_shared.html" %}
+{% include "partials/_runbooks_manage.html" %}
+
+// ── Scheduled restarts, moved from /operations (WP-4 D3) ──
+//
+// Saves through its own `/api/scheduled-restarts` endpoint and its own
+// button, so nothing here touches the settings payload or the save bar.
+// ═══════════════════════════════════════════════════════════════
+// Scheduled Restarts
+// ═══════════════════════════════════════════════════════════════
+
+function updateFlaskRestartDayVisibility() {
+  const sched = document.getElementById('flask-restart-schedule').value;
+  document.getElementById('flask-restart-day-wrap').classList.toggle('hidden', sched !== 'weekly');
+  document.getElementById('flask-restart-monthday-wrap').classList.toggle('hidden', sched !== 'monthly');
+}
+// Guarded: this runs at parse time, and Settings renders one section
+// per page — on any other sub-page the element is simply not here.
+(function () {
+  const el = document.getElementById('flask-restart-schedule');
+  if (el) el.addEventListener('change', updateFlaskRestartDayVisibility);
+})();
+
+function updateServerRestartDayVisibility() {
+  const sched = document.getElementById('server-restart-schedule').value;
+  document.getElementById('server-restart-day-wrap').classList.toggle('hidden', sched !== 'weekly');
+  document.getElementById('server-restart-monthday-wrap').classList.toggle('hidden', sched !== 'monthly');
+}
+// Guarded: this runs at parse time, and Settings renders one section
+// per page — on any other sub-page the element is simply not here.
+(function () {
+  const el = document.getElementById('server-restart-schedule');
+  if (el) el.addEventListener('change', updateServerRestartDayVisibility);
+})();
+
+function loadRestartSchedules() {
+  fetch('/api/scheduled-restarts')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) return;
+      // Flask restart
+      const fr = data.flask_restart || {};
+      document.getElementById('flask-restart-enabled').checked = fr.enabled || false;
+      document.getElementById('flask-restart-schedule').value = fr.schedule || 'daily';
+      document.getElementById('flask-restart-time').value = fr.time || '03:00';
+      if (fr.day) document.getElementById('flask-restart-day').value = fr.day;
+      if (fr.month_day) document.getElementById('flask-restart-monthday').value = fr.month_day;
+      updateFlaskRestartDayVisibility();
+      // Server restart schedule (global)
+      const srs = data.server_restart_schedule || {};
+      document.getElementById('server-restart-enabled').checked = srs.enabled || false;
+      document.getElementById('server-restart-schedule').value = srs.schedule || 'weekly';
+      document.getElementById('server-restart-time').value = srs.time || '03:00';
+      if (srs.day) document.getElementById('server-restart-day').value = srs.day;
+      if (srs.month_day) document.getElementById('server-restart-monthday').value = srs.month_day;
+      updateServerRestartDayVisibility();
+      // Delay
+      if (data.delay_between_seconds) {
+        document.getElementById('restart-delay').value = data.delay_between_seconds;
+      }
+      // Server restarts (with conditions)
+      const list = data.server_restarts || [];
+      const container = document.getElementById('server-restart-list');
+      container.innerHTML = '';
+      list.forEach((sr, i) => addServerRestartRow(sr));
+      document.getElementById('no-server-restarts').classList.toggle('hidden', list.length > 0);
+    })
+    .catch(() => {});
+}
+
+function addServerRestartRow(data) {
+  const container = document.getElementById('server-restart-list');
+  document.getElementById('no-server-restarts').classList.add('hidden');
+  const idx = container.children.length;
+  const d = data || {};
+  const conditions = d.conditions || [];
+  const row = document.createElement('div');
+  row.className = 'rounded-lg border border-line bg-page dark:bg-page/50 overflow-hidden';
+  const serverOpts = _serverNames.map(n => `<option value="${n}" ${d.server === n ? 'selected' : ''}>${n}</option>`).join('');
+
+  // Tip text for this row's carriers, hoisted once per row (the existing
+  // Jinja splices below this point are the pre-existing visible-text
+  // lookups and are left exactly as they were -- these new consts are only
+  // for the new data-tip-* attributes). Desc consts are always named
+  // <name>TipDesc so they are never mistaken for equal-length to their
+  // <name>Tip sibling by a naive scanner.
+  const srInstallUpdatesTip = {{ t.install_updates | tojson }};
+  const srInstallUpdatesTipDesc = {{ t.install_updates_desc | tojson }};
+  const srConditionsTip = {{ t.restart_conditions | tojson }};
+  const srConditionsTipDesc = {{ t.get('restart_conditions_desc', 'Show or hide the conditions this server restart must wait for before running.') | tojson }};
+  const srDeleteTip = {{ t.delete | default('Delete') | tojson }};
+  const srDeleteTipDesc = {{ t.get('delete_restart_row_desc', 'Remove this scheduled server restart. This cannot be undone.') | tojson }};
+
+  row.innerHTML = `
+    <div class="flex flex-wrap items-center gap-2 p-2.5">
+      <div class="flex items-center gap-1 bg-info/10 rounded px-1.5 py-0.5">
+        <span class="text-[10px] font-bold text-info">#</span>
+        <input type="number" class="sr-order w-8 px-0 py-0 text-xs font-bold text-info bg-transparent border-0 text-center outline-none focus-visible:ring-2 focus-visible:ring-brand" value="${d.order || (idx + 1)}" min="1" max="99">
+      </div>
+      <select class="sr-server px-2 py-1 text-xs font-medium rounded border border-line bg-field">
+        <option value="">-- Server --</option>
+        ${serverOpts}
+      </select>
+      <label class="flex items-center gap-1.5 px-2 py-1 rounded border border-warning/30 bg-warning/5 cursor-pointer" tabindex="0" aria-describedby="sr-install-updates-desc-${idx}" data-tip-title="${srInstallUpdatesTip}" data-tip-desc="${srInstallUpdatesTipDesc}">
+        <input type="checkbox" class="sr-install-updates w-3.5 h-3.5 rounded border-line dark:border-faint accent-warning" ${d.install_updates ? 'checked' : ''}>
+        <i data-lucide="download" class="w-3 h-3 text-warning"></i>
+        <span class="text-[10px] font-medium text-warning-strong">` + {{ t.install_updates | tojson }} + `</span>
+      </label>
+      <span class="sr-only" id="sr-install-updates-desc-${idx}">${srInstallUpdatesTipDesc}</span>
+      <div class="flex items-center gap-1 ml-auto">
+        <button data-action="toggleConditionsEl" class="px-2 py-1 text-[10px] font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1" aria-label="${srConditionsTip}" aria-describedby="sr-cond-toggle-desc-${idx}" data-tip-title="${srConditionsTip}" data-tip-desc="${srConditionsTipDesc}">
+          <i data-lucide="filter" class="w-3 h-3"></i>
+          <span class="sr-cond-count">${conditions.length || 0}</span>
+        </button>
+        <span class="sr-only" id="sr-cond-toggle-desc-${idx}">${srConditionsTipDesc}</span>
+        <button data-action="removeRestartRowEl" aria-label="${srDeleteTip}" aria-describedby="sr-row-delete-desc-${idx}" data-tip-title="${srDeleteTip}" data-tip-desc="${srDeleteTipDesc}"
+                class="inline-flex items-center justify-center w-7 h-7 rounded border border-critical text-critical hover:bg-critical/10">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+        </button>
+        <span class="sr-only" id="sr-row-delete-desc-${idx}">${srDeleteTipDesc}</span>
+      </div>
+    </div>
+    <div class="sr-conditions hidden border-t border-line bg-card/50 dark:bg-card/50 p-2.5">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-[10px] font-semibold uppercase tracking-wider text-brand">` + {{ t.restart_conditions | tojson }} + `</span>
+        <button data-action="addConditionToRowEl" class="px-2 py-0.5 text-[10px] font-medium rounded border border-brand text-brand hover:bg-brand/10 flex items-center gap-1">
+          <i data-lucide="plus" class="w-3 h-3"></i>
+          ` + {{ t.add_condition | tojson }} + `
+        </button>
+      </div>
+      <div class="sr-cond-list space-y-1.5"></div>
+      <div class="sr-no-cond text-[10px] text-faint italic ${conditions.length > 0 ? 'hidden' : ''}">` + {{ t.no_conditions | tojson }} + `</div>
+    </div>`;
+  container.appendChild(row);
+  // Load existing conditions
+  conditions.forEach(c => addConditionToRow(row.querySelector('.sr-conditions button'), c));
+  lucide.createIcons();
+}
+
+// data-action wrappers: bridge `this` (the clicked element) to the element-arg APIs.
+function toggleConditionsEl() { toggleConditions(this); }
+function removeRestartRowEl() { removeRestartRow(this); }
+function addConditionToRowEl() { addConditionToRow(this); }
+function updateConditionFieldsEl() { updateConditionFields(this); }
+function openServicePickerEl() { openServicePicker(this); }
+function removeConditionEl() { removeCondition(this); }
+
+function toggleConditions(btn) {
+  const row = btn.closest('.rounded-lg');
+  const panel = row.querySelector('.sr-conditions');
+  panel.classList.toggle('hidden');
+}
+
+function removeRestartRow(btn) {
+  btn.closest('.rounded-lg').remove();
+  const container = document.getElementById('server-restart-list');
+  document.getElementById('no-server-restarts').classList.toggle('hidden', container.children.length > 0);
+}
+
+function addConditionToRow(btn, data) {
+  const condPanel = btn.closest('.sr-conditions');
+  const condList = condPanel.querySelector('.sr-cond-list');
+  condPanel.querySelector('.sr-no-cond').classList.add('hidden');
+  const d = data || {};
+  // Per-row id for this condition row's tip mirrors, and the tip text
+  // itself (hoisted once per row -- identical for every condition row).
+  const _condIdx = condList.children.length;
+  const condBrowseTip = {{ t.get('browse', 'Browse') | tojson }};
+  const condBrowseTipDesc = {{ t.get('browse_condition_target_desc', 'Pick a running service or process from the selected server instead of typing its name.') | tojson }};
+  const condRemoveTip = {{ t.remove_condition | tojson }};
+  const condRemoveTipDesc = {{ t.get('remove_condition_desc', 'Remove this restart condition.') | tojson }};
+  const condRow = document.createElement('div');
+  condRow.className = 'flex flex-wrap items-center gap-1.5 p-1.5 rounded bg-page dark:bg-page/50 border border-line';
+  condRow.innerHTML = `
+    <select class="cond-type px-1.5 py-0.5 text-[11px] rounded border border-line bg-field" data-change="updateConditionFieldsEl">
+      <option value="wait_online" ${d.type==='wait_online'?'selected':''}>` + {{ t.wait_online | tojson }} + `</option>
+      <option value="wait_service" ${d.type==='wait_service'?'selected':''}>` + {{ t.wait_service | tojson }} + `</option>
+      <option value="wait_process" ${d.type==='wait_process'?'selected':''}>` + {{ t.wait_process | tojson }} + `</option>
+    </select>
+    <input type="text" class="cond-value px-1.5 py-0.5 text-[11px] rounded border border-line bg-field w-36 ${d.type && d.type !== 'wait_online' ? '' : 'hidden'}"
+           placeholder="${d.type === 'wait_process' ? '` + {{ t.process_name | tojson }} + `' : '` + {{ t.service_name | tojson }} + `'}" value="${d.value || ''}">
+    <button type="button" data-action="openServicePickerEl" class="cond-browse-btn px-1.5 py-0.5 text-[11px] rounded border border-line bg-field hover:bg-page dark:hover:bg-line text-muted ${d.type && d.type !== 'wait_online' ? '' : 'hidden'}" aria-label="${condBrowseTip}" aria-describedby="cond-browse-desc-${_condIdx}" data-tip-title="${condBrowseTip}" data-tip-desc="${condBrowseTipDesc}">
+      <i data-lucide="list" class="w-3 h-3"></i>
+    </button>
+    <span class="sr-only" id="cond-browse-desc-${_condIdx}">${condBrowseTipDesc}</span>
+    <div class="flex items-center gap-1">
+      <span class="text-[10px] text-muted">` + {{ t.condition_timeout | tojson }} + `:</span>
+      <input type="number" class="cond-timeout w-14 px-1 py-0.5 text-[11px] rounded border border-line bg-field text-center" value="${d.timeout || 300}" min="30" max="3600">
+      <span class="text-[10px] text-muted">s</span>
+    </div>
+    <button data-action="removeConditionEl" class="p-0.5 text-critical hover:bg-critical/10 rounded ml-auto" aria-label="${condRemoveTip}" aria-describedby="cond-remove-desc-${_condIdx}" data-tip-title="${condRemoveTip}" data-tip-desc="${condRemoveTipDesc}">
+      <i data-lucide="x" class="w-3 h-3"></i>
+    </button>
+    <span class="sr-only" id="cond-remove-desc-${_condIdx}">${condRemoveTipDesc}</span>`;
+  condList.appendChild(condRow);
+  updateCondCountBadge(condPanel);
+  lucide.createIcons();
+}
+
+function updateConditionFields(select) {
+  const row = select.closest('.flex');
+  const valueInput = row.querySelector('.cond-value');
+  const browseBtn = row.querySelector('.cond-browse-btn');
+  if (select.value === 'wait_online') {
+    valueInput.classList.add('hidden');
+    valueInput.value = '';
+    if (browseBtn) browseBtn.classList.add('hidden');
+  } else {
+    valueInput.classList.remove('hidden');
+    valueInput.placeholder = select.value === 'wait_process' ? {{ t.process_name | tojson }} : {{ t.service_name | tojson }};
+    if (browseBtn) browseBtn.classList.remove('hidden');
+  }
+}
+
+function removeCondition(btn) {
+  const condPanel = btn.closest('.sr-conditions');
+  btn.closest('.flex').remove();
+  const condList = condPanel.querySelector('.sr-cond-list');
+  if (condList.children.length === 0) {
+    condPanel.querySelector('.sr-no-cond').classList.remove('hidden');
+  }
+  updateCondCountBadge(condPanel);
+}
+
+function updateCondCountBadge(condPanel) {
+  const row = condPanel.closest('.rounded-lg');
+  const count = condPanel.querySelector('.sr-cond-list').children.length;
+  row.querySelector('.sr-cond-count').textContent = count;
+}
+
+function saveRestartSchedules() {
+  const btn = document.getElementById('save-restart-btn');
+  const result = document.getElementById('restart-save-result');
+  btn.disabled = true;
+  result.textContent = '';
+
+  const flaskRestart = {
+    enabled: document.getElementById('flask-restart-enabled').checked,
+    schedule: document.getElementById('flask-restart-schedule').value,
+    time: document.getElementById('flask-restart-time').value,
+    day: document.getElementById('flask-restart-day').value,
+    month_day: parseInt(document.getElementById('flask-restart-monthday').value) || 1,
+  };
+
+  // Global server restart schedule
+  const serverRestartSchedule = {
+    enabled: document.getElementById('server-restart-enabled').checked,
+    schedule: document.getElementById('server-restart-schedule').value,
+    time: document.getElementById('server-restart-time').value,
+    day: document.getElementById('server-restart-day').value,
+    month_day: parseInt(document.getElementById('server-restart-monthday').value) || 1,
+  };
+
+  const serverRestarts = [];
+  document.querySelectorAll('#server-restart-list > .rounded-lg').forEach(row => {
+    const server = row.querySelector('.sr-server').value;
+    if (!server) return;
+    // Gather conditions
+    const conditions = [];
+    row.querySelectorAll('.sr-cond-list > div').forEach(condRow => {
+      const cond = {
+        type: condRow.querySelector('.cond-type').value,
+        timeout: parseInt(condRow.querySelector('.cond-timeout').value) || 300,
+      };
+      const val = condRow.querySelector('.cond-value').value.trim();
+      if (val) cond.value = val;
+      conditions.push(cond);
+    });
+    serverRestarts.push({
+      server: server,
+      order: parseInt(row.querySelector('.sr-order').value) || 1,
+      install_updates: row.querySelector('.sr-install-updates').checked,
+      conditions: conditions,
+    });
+  });
+  // Sort by order
+  serverRestarts.sort((a, b) => a.order - b.order);
+
+  const payload = {
+    flask_restart: flaskRestart,
+    server_restart_schedule: serverRestartSchedule,
+    server_restarts: serverRestarts,
+    delay_between_seconds: parseInt(document.getElementById('restart-delay').value) || 60,
+  };
+
+  fetch('/api/scheduled-restarts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify(payload),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      result.textContent = {{ t.schedule_saved | tojson }};
+      result.className = 'text-xs text-healthy';
+    } else {
+      result.textContent = data.error || 'Error';
+      result.className = 'text-xs text-critical';
+    }
+  })
+  .catch(err => {
+    result.textContent = 'Error: ' + err.message;
+    result.className = 'text-xs text-critical';
+  })
+  .finally(() => { btn.disabled = false; });
+}
+document.addEventListener('DOMContentLoaded', () => {
+  if (!settingsSectionPresent('operations')) return;
+  loadRestartSchedules();
+  loadRunbooksSettings();
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Service / Process Picker
+// ═══════════════════════════════════════════════════════════════
+let _pickerTarget = null;
+let _pickerType = null;
+let _pickerItems = [];
+let _pickerFetchId = 0;
+
+
+function openServicePicker(btn) {
+  const restartRow = btn.closest('#server-restart-list > .rounded-lg');
+  const serverName = restartRow ? restartRow.querySelector('.sr-server').value : '';
+  if (!serverName) {
+    pAlert({{ t.get('select_server_first', 'Please select a server first') | tojson }});
+    return;
+  }
+
+  const condRow = btn.closest('.flex');
+  const condType = condRow.querySelector('.cond-type').value;
+  _pickerTarget = condRow.querySelector('.cond-value');
+  _pickerType = condType === 'wait_service' ? 'service' : 'process';
+
+  const modal = document.getElementById('service-picker-modal');
+  modal.classList.remove('hidden');
+  document.getElementById('picker-title').textContent = _pickerType === 'service'
+    ? {{ t.get('choose_services', 'Choose Services') | tojson }}
+    : {{ t.get('choose_processes', 'Choose Processes') | tojson }};
+  document.getElementById('picker-search').value = '';
+  const _loadingText = {{ t.get('loading', 'Loading...') | tojson }};
+  document.getElementById('picker-list').innerHTML = `
+    <div class="text-center py-8">
+      <div class="animate-spin rounded-full h-6 w-6 border-2 border-brand border-t-transparent mx-auto"></div>
+      <p class="text-xs text-muted mt-2">${_loadingText}</p>
+    </div>`;
+  document.getElementById('picker-select-all-btn').classList.add('hidden');
+  document.getElementById('picker-clear-btn').classList.add('hidden');
+
+  const endpoint = _pickerType === 'service'
+    ? `/api/servers/${encodeURIComponent(serverName)}/services`
+    : `/api/servers/${encodeURIComponent(serverName)}/processes`;
+
+  const fetchId = ++_pickerFetchId;
+  fetch(endpoint, { headers: { 'X-CSRFToken': csrfToken } })
+    .then(r => r.json())
+    .then(data => {
+      if (fetchId !== _pickerFetchId) return;
+      if (!data.ok) {
+        document.getElementById('picker-list').innerHTML = `<div class="text-center py-6 text-sm text-critical">${_escHtml(data.error || 'Error loading items')}</div>`;
+        return;
+      }
+      _pickerItems = _pickerType === 'service' ? (data.services || []) : (data.processes || []);
+      document.getElementById('picker-select-all-btn').classList.remove('hidden');
+      document.getElementById('picker-clear-btn').classList.remove('hidden');
+      renderPickerItems(_pickerItems);
+    })
+    .catch(err => {
+      if (fetchId !== _pickerFetchId) return;
+      document.getElementById('picker-list').innerHTML = `<div class="text-center py-6 text-sm text-critical">${_escHtml(err.message || 'Failed to fetch')}</div>`;
+    });
+}
+
+function renderPickerItems(items) {
+  if (!_pickerTarget) return;
+  const current = (_pickerTarget.value || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  const search = (document.getElementById('picker-search').value || '').toLowerCase();
+  let filtered = items.filter(item => {
+    const name = (item.name || item.Name || '').toLowerCase();
+    const display = (item.display_name || item.DisplayName || '').toLowerCase();
+    return !search || name.includes(search) || display.includes(search);
+  });
+
+  const list = document.getElementById('picker-list');
+  const _noItemsText = {{ t.get('no_items_found', 'No items found') | tojson }};
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="text-center py-6 text-sm text-muted">${_noItemsText}</div>`;
+    return;
+  }
+
+  const runningLabel = {{ t.get('running', 'Running') | tojson }};
+  const stoppedLabel = {{ t.get('stopped', 'Stopped') | tojson }};
+
+  const runningOnlyWrap = document.getElementById('picker-running-only-wrap');
+  const runningOnlyCheck = document.getElementById('picker-running-only');
+  if (_pickerType === 'service') {
+    runningOnlyWrap.classList.remove('hidden');
+    runningOnlyWrap.classList.add('flex');
+    const totalRunning = filtered.filter(i => (i.status || i.Status || '').toLowerCase() === 'running').length;
+    document.getElementById('picker-counts').textContent = `(${totalRunning} / ${filtered.length})`;
+    if (runningOnlyCheck.checked) {
+      filtered = filtered.filter(i => (i.status || i.Status || '').toLowerCase() === 'running');
+    }
+    filtered.sort((a, b) => {
+      const aRun = (a.status || a.Status || '').toLowerCase() === 'running' ? 0 : 1;
+      const bRun = (b.status || b.Status || '').toLowerCase() === 'running' ? 0 : 1;
+      if (aRun !== bRun) return aRun - bRun;
+      return (a.name || a.Name || '').localeCompare(b.name || b.Name || '');
+    });
+  } else {
+    runningOnlyWrap.classList.add('hidden');
+    runningOnlyWrap.classList.remove('flex');
+    filtered.sort((a, b) => (a.name || a.Name || '').localeCompare(b.name || b.Name || ''));
+  }
+
+  list.innerHTML = filtered.map(item => {
+    const name = item.name || item.Name || '';
+    const safeName = _escHtml(name);
+    const checked = current.includes(name.toLowerCase()) ? 'checked' : '';
+    const display = item.display_name || item.DisplayName || '';
+    const safeDisplay = _escHtml(display);
+    const status = (item.status || item.Status || '').toLowerCase();
+    const isRunning = status === 'running';
+    const memory = item.memory_mb || item.MemoryMB || '';
+
+    let detail = '';
+    if (_pickerType === 'service') {
+      detail = `<span class="text-[10px] text-muted truncate max-w-[200px]">${safeDisplay}</span>`;
+    } else {
+      detail = memory ? `<span class="text-[10px] text-muted">${_escHtml(String(memory))} MB</span>` : '';
+    }
+
+    return `
+      <label class="flex items-center gap-2 px-3 py-1.5 rounded hover:bg-page dark:hover:bg-page/60 cursor-pointer">
+        <input type="checkbox" class="picker-check rounded border-line dark:border-faint text-brand focus-visible:ring-brand" value="${safeName}" ${checked}>
+        <span class="text-xs font-medium min-w-[120px]">${safeName}</span>
+        <span class="flex items-center gap-1.5 ml-auto">${detail}</span>
+      </label>`;
+  }).join('');
+}
+
+function filterPickerItems() {
+  renderPickerItems(_pickerItems);
+}
+
+function selectAllFiltered() {
+  document.querySelectorAll('#picker-list .picker-check').forEach(cb => cb.checked = true);
+}
+
+function clearPickerSelection() {
+  document.querySelectorAll('#picker-list .picker-check').forEach(cb => cb.checked = false);
+}
+
+function applyPickerSelection() {
+  const selected = [];
+  document.querySelectorAll('#picker-list .picker-check:checked').forEach(cb => selected.push(cb.value));
+  if (_pickerTarget) {
+    _pickerTarget.value = selected.join(', ');
+  }
+  closePickerModal();
+}
+
+function closePickerModal() {
+  document.getElementById('service-picker-modal').classList.add('hidden');
+  _pickerTarget = null;
+  _pickerType = null;
+  _pickerItems = [];
+}
 
 // --- Email helpers ---
 function getEmailSettingsFromForm() {
@@ -1460,6 +2651,11 @@ function checkCertExpiry() {
 document.addEventListener('DOMContentLoaded', () => {
   const httpsToggle = document.getElementById('https-enabled');
   const httpsWarning = document.getElementById('https-warning');
+  // Section-scoped initialiser. Settings renders ONE section per page as of
+  // WP-4, so on /settings/collector these two are simply not here — and an
+  // unguarded `.addEventListener` on null is an uncaught TypeError that stops
+  // every initialiser registered after it, not just this one.
+  if (!httpsToggle || !httpsWarning) return;
   function updateHttpsWarning() {
     if (httpsToggle.checked) {
       httpsWarning.classList.remove('hidden');
@@ -1476,6 +2672,9 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('DOMContentLoaded', () => {
   const authToggle = document.getElementById('auth-enabled');
   const authWarning = document.getElementById('auth-warning');
+  const authLdapUrl = document.getElementById('auth-ldap-url');
+  // Section-scoped; see the https initialiser above.
+  if (!authToggle || !authWarning || !authLdapUrl) return;
   function updateAuthWarning() {
     if (!authToggle.checked) {
       authWarning.classList.add('hidden');
@@ -1496,52 +2695,74 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   authToggle.addEventListener('change', updateAuthWarning);
-  document.getElementById('auth-ldap-url').addEventListener('input', updateAuthWarning);
+  authLdapUrl.addEventListener('input', updateAuthWarning);
   updateAuthWarning();
 });
 
 // --- Enhanced save validation ---
 function _validateBeforeSave() {
-  if (document.getElementById('https-enabled').checked) {
-    const cert = document.getElementById('https-cert').value.trim();
-    const key = document.getElementById('https-key').value.trim();
+  // Every check here belongs to ONE section, and Settings renders one section
+  // per page. So each asks whether its field is on this page before
+  // validating it — a validator that throws is worse than one that skips,
+  // because the exception aborts the save with no message at all and the
+  // operator sees a button that did nothing.
+  const el = (id) => document.getElementById(id);
+  const fail = (message) => {
+    const msg = el('save-message');
+    msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
+    msg.textContent = message;
+    msg.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return false;
+  };
+
+  // ── Security ──
+  const httpsEnabled = el('https-enabled');
+  if (httpsEnabled && httpsEnabled.checked) {
+    const cert = el('https-cert').value.trim();
+    const key = el('https-key').value.trim();
     if (!cert || !key) {
-      const msg = document.getElementById('save-message');
-      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
-      msg.textContent = {{ t.get('https_cert_required', 'HTTPS is enabled but certificate or key file path is empty. Please provide both paths or disable HTTPS.') | tojson }};
-      msg.classList.remove('hidden');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return false;
+      return fail({{ t.get('https_cert_required', 'HTTPS is enabled but certificate or key file path is empty. Please provide both paths or disable HTTPS.') | tojson }});
     }
   }
-  if (document.getElementById('auth-enabled').checked) {
-    const ldapUrl = document.getElementById('auth-ldap-url').value.trim();
-    const backupSection = document.getElementById('auth-enabled').closest('.space-y-3');
+  const authEnabled = el('auth-enabled');
+  if (authEnabled && authEnabled.checked) {
+    const ldapUrl = el('auth-ldap-url').value.trim();
+    const backupSection = authEnabled.closest('.space-y-3');
     const backupAdminConfigured = backupSection && backupSection.querySelector('.badge-healthy');
     if (!ldapUrl && !backupAdminConfigured) {
-      const msg = document.getElementById('save-message');
-      msg.className = 'mb-4 rounded-lg p-3 text-sm bg-critical-tint text-critical-strong';
-      msg.textContent = {{ t.get('auth_method_required', 'Authentication is enabled but no login method is configured. Set up LDAP or create an admin account first.') | tojson }};
-      msg.classList.remove('hidden');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return fail({{ t.get('auth_method_required', 'Authentication is enabled but no login method is configured. Set up LDAP or create an admin account first.') | tojson }});
+    }
+  }
+  const timeoutField = el('auth-timeout');
+  if (timeoutField) {
+    const timeout = parseInt(timeoutField.value);
+    if (isNaN(timeout) || timeout < 5 || timeout > 1440) {
+      pAlert({{ t.get('invalid_timeout', 'Session timeout must be between 5 and 1440 minutes.') | tojson }});
       return false;
     }
   }
-  const poll = parseInt(document.getElementById('poll-interval').value);
-  if (isNaN(poll) || poll < 1 || poll > 60) {
-    pAlert({{ t.get('invalid_poll', 'Poll interval must be between 1 and 60 minutes.') | tojson }});
-    return false;
+
+  // ── Collector ──
+  const pollField = el('poll-interval');
+  if (pollField) {
+    const poll = parseInt(pollField.value);
+    if (isNaN(poll) || poll < 1 || poll > 60) {
+      pAlert({{ t.get('invalid_poll', 'Poll interval must be between 1 and 60 minutes.') | tojson }});
+      return false;
+    }
   }
-  const retention = parseInt(document.getElementById('retention-days').value);
-  if (isNaN(retention) || retention < 1 || retention > 365) {
-    pAlert({{ t.get('invalid_retention', 'Retention days must be between 1 and 365.') | tojson }});
-    return false;
+
+  // ── General ──
+  const retentionField = el('retention-days');
+  if (retentionField) {
+    const retention = parseInt(retentionField.value);
+    if (isNaN(retention) || retention < 1 || retention > 365) {
+      pAlert({{ t.get('invalid_retention', 'Retention days must be between 1 and 365.') | tojson }});
+      return false;
+    }
   }
-  const timeout = parseInt(document.getElementById('auth-timeout').value);
-  if (isNaN(timeout) || timeout < 5 || timeout > 1440) {
-    pAlert({{ t.get('invalid_timeout', 'Session timeout must be between 5 and 1440 minutes.') | tojson }});
-    return false;
-  }
+
   return true;
 }
 
@@ -1667,8 +2888,6 @@ function loadPreferences() {
     if (prefs.refreshInterval !== undefined) document.getElementById('pref-refresh-interval').value = prefs.refreshInterval;
     if (prefs.showCritical !== undefined) document.getElementById('pref-show-critical').checked = prefs.showCritical;
     if (prefs.showStatus !== undefined) document.getElementById('pref-show-status').checked = prefs.showStatus;
-    if (prefs.showServers !== undefined) document.getElementById('pref-show-servers').checked = prefs.showServers;
-    if (prefs.showActivity !== undefined) document.getElementById('pref-show-activity').checked = prefs.showActivity;
   } catch(e) {}
 }
 
@@ -1678,8 +2897,6 @@ function savePreferences() {
     refreshInterval: document.getElementById('pref-refresh-interval').value,
     showCritical: document.getElementById('pref-show-critical').checked,
     showStatus: document.getElementById('pref-show-status').checked,
-    showServers: document.getElementById('pref-show-servers').checked,
-    showActivity: document.getElementById('pref-show-activity').checked,
   };
   localStorage.setItem('prism-dashboard-prefs', JSON.stringify(prefs));
   const msg = document.getElementById('pref-saved-msg');
@@ -1927,7 +3144,7 @@ function runLdapPickerQuery() {
         ? (upn || sam) + (desc ? ' — ' + desc : '')
         : sam + (desc ? ' — ' + desc : '');
       html += '<div class="py-2 px-2 -mx-2 rounded hover:bg-page cursor-pointer flex items-start gap-2" '
-           + 'data-action="pickLdapResult" data-args="' + JSON.stringify([r.sam || r.name || '']).replace(/"/g, '&quot;') + '">'
+           + 'data-action="pickLdapResult" tabindex="0" role="button" data-args="' + JSON.stringify([r.sam || r.name || '']).replace(/"/g, '&quot;') + '">'
            + '<i data-lucide="' + icon + '" class="w-4 h-4 text-info flex-shrink-0 mt-0.5"></i>'
            + '<div class="flex-1 min-w-0">'
            + '<div class="text-sm font-medium truncate">' + label + '</div>'

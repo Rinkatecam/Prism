@@ -1,0 +1,105 @@
+{# Runbook definitions: create, edit, save, delete — Settings only. See partials/_runbook_list.html for why the list is shared. #}
+function showCreateRunbookForm() {
+  document.getElementById('runbook-form-wrap').classList.remove('hidden');
+  document.getElementById('runbook-form-title').textContent = RB_T.create;
+  document.getElementById('runbook-edit-id').value = '';
+  document.getElementById('rb-name').value = '';
+  document.getElementById('rb-description').value = '';
+  document.getElementById('rb-category').value = 'general';
+  document.getElementById('rb-steps').value = '[{"type": "powershell", "script": "", "timeout": 30}]';
+}
+
+function hideRunbookForm() {
+  document.getElementById('runbook-form-wrap').classList.add('hidden');
+}
+
+function editRunbook(rbId) {
+  fetch('/api/runbooks')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) return;
+      const rb = data.runbooks.find(r => r.id === rbId);
+      if (!rb) return;
+      document.getElementById('runbook-form-wrap').classList.remove('hidden');
+      document.getElementById('runbook-form-title').textContent = RB_T.edit;
+      document.getElementById('runbook-edit-id').value = rb.id;
+      document.getElementById('rb-name').value = rb.name;
+      document.getElementById('rb-description').value = rb.description || '';
+      document.getElementById('rb-category').value = rb.category || 'general';
+      try {
+        document.getElementById('rb-steps').value = JSON.stringify(JSON.parse(rb.steps_json), null, 2);
+      } catch (e) {
+        document.getElementById('rb-steps').value = rb.steps_json;
+      }
+    });
+}
+
+function saveRunbook() {
+  const editId = document.getElementById('runbook-edit-id').value;
+  const payload = {
+    name: document.getElementById('rb-name').value.trim(),
+    description: document.getElementById('rb-description').value.trim(),
+    category: document.getElementById('rb-category').value,
+    steps_json: document.getElementById('rb-steps').value.trim(),
+  };
+  if (!payload.name || !payload.steps_json) {
+    pAlert('Name and Steps JSON are required');
+    return;
+  }
+  const url = editId ? '/api/runbooks/' + editId : '/api/runbooks';
+  const method = editId ? 'PUT' : 'POST';
+  fetch(url, {
+    method: method,
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify(payload),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      hideRunbookForm();
+      loadRunbooksSettings();
+    } else {
+      pAlert(data.error || 'Failed to save runbook');
+    }
+  })
+  .catch(e => pAlert('Error: ' + e.message));
+}
+
+async function deleteRunbook(rbId, name) {
+  if (!await pConfirm({{ t.delete_runbook | default('Delete Runbook') | tojson }} + ': ' + name + '?')) return;
+  fetch('/api/runbooks/' + rbId, {
+    method: 'DELETE',
+    headers: { 'X-CSRFToken': csrfToken },
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) loadRunbooksSettings();
+    else pAlert(data.error || 'Failed to delete');
+  })
+  .catch(e => pAlert('Error: ' + e.message));
+}
+
+// The row actions this page offers: edit and delete. Built-ins are
+// read-only, which is why both are empty strings for them. Running a
+// runbook is an action and lives on /operations.
+function runbookRowActions(rb) {
+  const editLbl = {{ t.edit | default('Edit') | tojson }};
+  const editDesc = {{ t.get('edit_runbook_tip', "Edit this runbook's name, steps and category.") | tojson }};
+  const delLbl = {{ t.delete | default('Delete') | tojson }};
+  const delDesc = {{ t.get('delete_runbook_tip', 'Permanently delete this runbook. This cannot be undone.') | tojson }};
+  const editTipId = 'rb-edit-tip-' + rb.id;
+  const delTipId = 'rb-delete-tip-' + rb.id;
+  const editBtn = rb.is_builtin ? '' :
+          '<button data-action="editRunbook" data-args="[' + rb.id + ']" ' +
+          'aria-label="' + editLbl + '" aria-describedby="' + editTipId + '" data-tip-title="' + editLbl + '" data-tip-desc="' + editDesc + '" ' +
+          'class="inline-flex items-center justify-center w-7 h-7 rounded border border-line text-info hover:bg-info/10">' +
+          '<i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>' +
+          '<span class="sr-only" id="' + editTipId + '">' + editDesc + '</span>';
+  const delBtn = rb.is_builtin ? '' :
+          '<button data-action="deleteRunbook" data-args="[' + rb.id + ', ' + JSON.stringify(rb.name).replace(/"/g, '&quot;') + ']" ' +
+          'aria-label="' + delLbl + '" aria-describedby="' + delTipId + '" data-tip-title="' + delLbl + '" data-tip-desc="' + delDesc + '" ' +
+          'class="inline-flex items-center justify-center w-7 h-7 rounded border border-critical text-critical hover:bg-critical/10">' +
+          '<i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>' +
+          '<span class="sr-only" id="' + delTipId + '">' + delDesc + '</span>';
+  return editBtn + delBtn;
+}

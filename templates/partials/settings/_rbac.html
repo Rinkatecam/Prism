@@ -1,0 +1,358 @@
+{# ── Permissions (RBAC) ───────────────────────────────────────────────────
+
+   Moved out of the main nav into Settings in WP-4 D4. Who may do what to
+   which server is configuration, and it was the last top-level nav entry that
+   configured rather than showed.
+
+   Brought up to the app's own standards on the way, which is what the
+   "redesign" amounted to once measured rather than imagined: fourteen raw
+   colour literals became tokens (twelve of them in script-built class strings
+   and one an inline `style="color:"`, the ratchet's blind spot), three bare
+   "Loading…" texts became ghosts, the fourth copy of an HTML escaper was
+   deleted in favour of base.html's, and three raw timestamps now go through
+   `formatTs` like every other timestamp in the app.
+
+   The LAYOUT is deliberately untouched: four cards in a sensible order, and
+   rearranging them without the owner would be redesign by assumption. #}
+{# Per-server RBAC management UI.
+
+  This page is the admin counterpart to the /api/rbac/* endpoints.
+  Anything sensitive is enforced server-side: the API rejects callers
+  that aren't the backup admin or a wildcard-admin (/api/rbac.py:
+  _require_rbac_admin). The page itself is open to any authenticated
+  user — non-admins simply see a banner explaining they can't grant.
+
+  Three sections:
+    1. Permissive-mode banner + "permissions for me" summary
+    2. ACL grant/revoke table
+    3. Pending approvals queue (tier-0 dual-admin flow)
+
+  WP-6 step 15: the four h2s below STAY h2 (C9 -- each already owns its
+  own card) and simply take the canonical string plus a stable id, now
+  rendered by card()'s own head row (p-4 -> p-5, automatic: CARD's own
+  string is "...p-5"). "Pending approvals"'s icon loses its text-warning
+  tint (H2_ICON is a fixed "...text-brand" string, per the roles rule --
+  §2.4: "an H2's leading icon is violet with its text" -- flagged in this
+  step's own report as an expected, spec-mandated consequence, not an
+  oversight). #}
+{% from "partials/_card.html" import card with context %}
+
+<div class="flex items-center justify-end mb-4 flex-wrap gap-3">
+  <button id="rbac-refresh"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded border border-line hover:bg-page"
+          aria-label="{{ t.get('rbac_refresh_aria', 'Refresh ACL list') }}">
+    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+    {{ t.get('refresh', 'Refresh') }}
+  </button>
+</div>
+
+<!-- Banner: permissive mode, lack-of-access, etc. -->
+<div id="rbac-banner" class="hidden mb-4 px-4 py-3 rounded-lg text-sm"></div>
+
+<!-- "What can I do" summary card -->
+{% call card(heading=t.get('my_permissions', 'My permissions'), icon='user-check',
+             heading_id='rbac-my-permissions-heading', extra='mb-4') %}
+  <div id="rbac-me-summary" class="text-xs text-muted"><div class="rbac-ghost" aria-hidden="true">
+      <div class="skeleton h-4 w-40 mb-2"></div>
+      <div class="skeleton h-3 w-56 mb-1"></div>
+      <div class="skeleton h-3 w-48"></div>
+    </div></div>
+{% endcall %}
+
+<!-- ACL grant form -->
+{% call card(heading=t.get('grant_acl', 'Grant access'), icon='user-plus',
+             heading_id='rbac-grant-access-heading', extra='mb-4') %}
+  <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+    <input type="text" id="rbac-grant-user"
+           placeholder="{{ t.get('username', 'Username (bare, no DOMAIN\\\\)') }}"
+           class="px-3 py-1.5 text-sm rounded border border-line bg-field"
+           aria-label="{{ t.get('rbac_username_aria', 'Username to grant') }}">
+    <select id="rbac-grant-server"
+            class="px-3 py-1.5 text-sm rounded border border-line bg-field"
+            aria-label="{{ t.get('rbac_server_aria', 'Server name') }}">
+      <option value="*">* — {{ t.get('all_servers', 'All servers (wildcard)') }}</option>
+      {% for s in server_names %}
+        <option value="{{ s }}">{{ s }}</option>
+      {% endfor %}
+    </select>
+    <select id="rbac-grant-perm"
+            class="px-3 py-1.5 text-sm rounded border border-line bg-field"
+            aria-label="{{ t.get('rbac_permission_aria', 'Permission level') }}">
+      <option value="view">view</option>
+      <option value="control">control</option>
+      <option value="admin" selected>admin</option>
+    </select>
+    <button id="rbac-grant-btn"
+            class="px-3 py-1.5 text-sm font-medium rounded bg-accent text-white dark:text-page hover:opacity-90 disabled:opacity-50"
+            aria-label="{{ t.get('rbac_grant_aria', 'Grant access') }}">
+      <i data-lucide="check" class="w-3.5 h-3.5 inline"></i>
+      {{ t.get('grant', 'Grant') }}
+    </button>
+  </div>
+  <p class="text-[10px] text-faint mt-2 italic">
+    {{ t.get('rbac_grant_hint', "Tip: granting any ACL exits permissive mode and starts enforcement for everyone.") }}
+  </p>
+{% endcall %}
+
+<!-- Existing ACLs -->
+{% call card(heading=t.get('current_acls', 'Current ACLs'), icon='list-checks',
+             heading_id='rbac-current-acls-heading', extra='mb-4') %}
+  <div id="rbac-acl-list" class="text-xs text-muted"><div class="rbac-ghost" aria-hidden="true">
+      <div class="skeleton h-3 w-full mb-2"></div>
+      <div class="skeleton h-3 w-full mb-2"></div>
+      <div class="skeleton h-3 w-3/4"></div>
+    </div></div>
+{% endcall %}
+
+<!-- Pending approvals -->
+{% call card(heading=t.get('pending_approvals', 'Pending approvals (tier-0)'), icon='hourglass',
+             heading_id='rbac-pending-approvals-heading') %}
+  <div id="rbac-approvals-list" class="text-xs text-muted"><div class="rbac-ghost" aria-hidden="true">
+      <div class="skeleton h-4 w-2/3 mb-1"></div>
+      <div class="skeleton h-3 w-1/2"></div>
+    </div></div>
+{% endcall %}
+
+<script nonce="{{ csp_nonce }}">
+(function () {
+  'use strict';
+
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+  // Every string this script renders, resolved once and handed over as data.
+  // The alternative — a translation call inlined at each use — is what the
+  // restart overlay did in eleven places, and each one is a chance to quote a
+  // translation wrong in a way that only breaks one language.
+  //
+  // This comment used to spell that call out with its braces, and Jinja read
+  // them: a template comment is still template source, so the page 500'd on
+  // its own explanation.
+  const RBAC_T = {
+    backupAdmin: {{ t.get('rbac_badge_backup_admin', 'BACKUP ADMIN') | tojson }},
+    permissive: {{ t.get('rbac_badge_permissive', 'PERMISSIVE') | tojson }},
+    authOff: {{ t.get('rbac_badge_auth_off', 'AUTH OFF') | tojson }},
+    noAuth: {{ t.get('rbac_no_auth', '(no auth)') | tojson }},
+    failedToLoad: {{ t.get('rbac_failed_to_load', 'Failed to load') | tojson }},
+    noServers: {{ t.get('rbac_no_servers', 'No servers configured') | tojson }},
+    permissiveBanner: {{ t.get('rbac_permissive_banner', 'No ACLs configured yet. Any authenticated user has full access (tier-0 servers excepted). Grant the first ACL to start enforcement.') | tojson }},
+    aclForbidden: {{ t.get('rbac_acl_forbidden', 'Only backup admins or wildcard admins can view ACLs.') | tojson }},
+    noAcls: {{ t.get('rbac_no_acls', 'No ACLs yet') | tojson }},
+    noAclsHint: {{ t.get('rbac_no_acls_hint', 'Every user can reach every server until you add a rule') | tojson }},
+    colUser: {{ t.get('rbac_col_user', 'User') | tojson }},
+    colServer: {{ t.get('server', 'Server') | tojson }},
+    colPerm: {{ t.get('rbac_col_perm', 'Perm') | tojson }},
+    colGranted: {{ t.get('rbac_col_granted', 'Granted') | tojson }},
+    revoke: {{ t.get('rbac_revoke', 'Revoke') | tojson }},
+    revokeAria: {{ t.get('rbac_revoke_aria', 'Revoke ACL') | tojson }},
+    revokeConfirm: {{ t.get('rbac_revoke_confirm', "Revoke '{user}' on '{server}'?") | tojson }},
+    revokeFailed: {{ t.get('rbac_revoke_failed', 'Revoke failed') | tojson }},
+    noApprovals: {{ t.get('rbac_no_approvals', 'No pending approvals') | tojson }},
+    noApprovalsHint: {{ t.get('rbac_no_approvals_hint', 'Nothing is waiting on you') | tojson }},
+    approvalLine: {{ t.get('rbac_approval_line', '{user} wants {action} on {server}') | tojson }},
+    approvalMeta: {{ t.get('rbac_approval_meta', 'Requested {requested} \u00b7 expires {expires}') | tojson }},
+    approve: {{ t.get('rbac_approve', 'Approve') | tojson }},
+    reject: {{ t.get('rbac_reject', 'Reject') | tojson }},
+    approveAria: {{ t.get('rbac_approve_aria', 'Approve request') | tojson }},
+    rejectAria: {{ t.get('rbac_reject_aria', 'Reject request') | tojson }},
+    decisionFailed: {{ t.get('rbac_decision_failed', 'Decision failed') | tojson }},
+    usernameRequired: {{ t.get('rbac_username_required', 'Username required') | tojson }},
+    grantFailed: {{ t.get('rbac_grant_failed', 'Grant failed') | tojson }},
+  };
+
+  // Placeholder substitution, because word order is the first thing that stops
+  // surviving translation: a sentence assembled from fragments can only ever
+  // come out in English order.
+  function rbacFill(template, values) {
+    return Object.keys(values).reduce(
+      (out, k) => out.split('{' + k + '}').join(values[k]), template);
+  }
+
+
+  function showBanner(text, kind) {
+    const b = document.getElementById('rbac-banner');
+    if (!b) return;
+    if (!text) { b.classList.add('hidden'); return; }
+    // Tinted surface + `-strong` ink, the pairing the rest of the app uses
+    // and the one `test_every_status_label_clears_aa_on_its_own_tint`
+    // measures in both themes. The twelve literals this replaces each
+    // carried their own `dark:` override, which is what the tokens do.
+    const palette = {
+      info:  'bg-info-tint border border-info/30 text-info-strong',
+      warn:  'bg-warning-tint border border-warning/30 text-warning-strong',
+      error: 'bg-critical-tint border border-critical/30 text-critical-strong',
+    };
+    b.className = 'mb-4 px-4 py-3 rounded-lg text-sm ' + (palette[kind] || palette.info);
+    b.textContent = text;
+  }
+
+  // ── /api/rbac/me — what can the current user do?
+  function loadMe() {
+    fetch('/api/rbac/me').then(r => r.json()).then(data => {
+      const div = document.getElementById('rbac-me-summary');
+      if (!div) return;
+      if (!data.ok) { div.textContent = data.error || RBAC_T.failedToLoad; return; }
+      const head = `
+        <div class="mb-2"><b>${_escHtml(data.user || RBAC_T.noAuth)}</b>
+          ${data.is_backup_admin ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-brand/15 text-brand font-bold">${RBAC_T.backupAdmin}</span>` : ''}
+          ${data.permissive_mode ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-warning/15 text-warning font-bold">${RBAC_T.permissive}</span>` : ''}
+          ${!data.auth_enabled ? `<span class="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-raised text-muted font-bold">${RBAC_T.authOff}</span>` : ''}
+        </div>`;
+      const rows = Object.entries(data.permissions || {}).map(([srv, p]) => {
+        const tierBadge = p.tier === 0
+          ? '<span class="px-1 py-0.5 rounded text-[9px] bg-critical/15 text-critical font-bold ml-1">T0</span>'
+          : (p.tier === 2 ? '<span class="px-1 py-0.5 rounded text-[9px] bg-raised text-muted font-bold ml-1">T2</span>' : '');
+        // A CLASS, not `style="color:…"`. An inline style is invisible to the
+        // colour ratchet — WP-3 found nineteen literals hiding in exactly
+        // that shape on the restart overlay — and it cannot follow a theme.
+        const permClass = { admin: 'text-healthy', control: 'text-info',
+                            view: 'text-muted', none: 'text-critical' }[p.permission] || 'text-muted';
+        return `<tr><td class="py-0.5 pr-3 font-mono">${_escHtml(srv)}${tierBadge}</td><td class="font-bold ${permClass}">${_escHtml(p.permission)}</td></tr>`;
+      }).join('');
+      div.innerHTML = head + (rows ? `<table class="text-[11px]"><tbody>${rows}</tbody></table>` : `<i>${_escHtml(RBAC_T.noServers)}</i>`);
+
+      if (data.permissive_mode && data.auth_enabled) {
+        showBanner(RBAC_T.permissiveBanner, 'warn');
+      } else {
+        showBanner('', null);
+      }
+    });
+  }
+
+  // ── /api/rbac/acl — list + revoke
+  function loadAcl() {
+    fetch('/api/rbac/acl').then(r => {
+      if (r.status === 403) {
+        document.getElementById('rbac-acl-list').innerHTML =
+          `<i>${_escHtml(RBAC_T.aclForbidden)}</i>`;
+        return null;
+      }
+      return r.json();
+    }).then(data => {
+      if (!data) return;
+      const div = document.getElementById('rbac-acl-list');
+      if (!div) return;
+      if (!data.ok) { div.textContent = data.error || RBAC_T.failedToLoad; return; }
+      if (!data.acl.length) {
+        // "Permissive mode" is the consequence, not the instruction. The
+        // hint has to say what to do, because this empty state is the one
+        // place an admin learns the fleet is currently unrestricted.
+        div.innerHTML = window.prismEmptyState('shield-off', RBAC_T.noAcls, RBAC_T.noAclsHint);
+        return;
+      }
+      const rows = data.acl.map(r => {
+        return `<tr class="border-t border-line">
+          <td class="py-1.5 pr-3 font-mono">${_escHtml(r.username)}</td>
+          <td class="py-1.5 pr-3 font-mono">${_escHtml(r.server_name)}</td>
+          <td class="py-1.5 pr-3"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-info/10 text-info">${_escHtml(r.permission)}</span></td>
+          <td class="py-1.5 pr-3 text-[10px]">${_escHtml(r.granted_by)} · ${_escHtml(formatTs(r.granted_at))}</td>
+          <td class="py-1.5 text-right">
+            <button data-revoke-user="${_escHtml(r.username)}" data-revoke-server="${_escHtml(r.server_name)}"
+                    class="text-critical hover:underline text-[11px]" aria-label="${_escHtml(RBAC_T.revokeAria)}">
+              ${_escHtml(RBAC_T.revoke)}
+            </button>
+          </td>
+        </tr>`;
+      }).join('');
+      div.innerHTML = `
+        <table class="w-full text-xs">
+          <thead data-sort-table="rbac-acl"><tr class="text-[10px] uppercase text-faint">
+            <th class="text-left py-1 pr-3" data-sort="text">${_escHtml(RBAC_T.colUser)}</th>
+            <th class="text-left py-1 pr-3" data-sort="text">${_escHtml(RBAC_T.colServer)}</th>
+            <th class="text-left py-1 pr-3" data-sort="status">${_escHtml(RBAC_T.colPerm)}</th>
+            <th class="text-left py-1 pr-3">${_escHtml(RBAC_T.colGranted)}</th>
+            <th></th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+      div.querySelectorAll('[data-revoke-user]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const user = btn.getAttribute('data-revoke-user');
+          const srv = btn.getAttribute('data-revoke-server');
+          if (!await pConfirm(rbacFill(RBAC_T.revokeConfirm, { user: user, server: srv }))) return;
+          fetch('/api/rbac/revoke', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({ username: user, server_name: srv }),
+          }).then(r => r.json()).then(d => {
+            if (!d.ok) { showToast(d.error || RBAC_T.revokeFailed, 'error'); return; }
+            loadAcl(); loadMe();
+          });
+        });
+      });
+    });
+  }
+
+  // ── /api/approvals — pending tier-0 requests
+  function loadApprovals() {
+    fetch('/api/approvals').then(r => r.json()).then(data => {
+      const div = document.getElementById('rbac-approvals-list');
+      if (!div) return;
+      if (!data.ok) { div.textContent = data.error || RBAC_T.failedToLoad; return; }
+      if (!data.approvals.length) {
+        div.innerHTML = window.prismEmptyState('check-circle', RBAC_T.noApprovals, RBAC_T.noApprovalsHint);
+        return;
+      }
+      div.innerHTML = data.approvals.map(a => `
+        <div class="flex items-center justify-between gap-3 py-2 border-b border-line last:border-0">
+          <div>
+            <div class="text-xs">${rbacFill(_escHtml(RBAC_T.approvalLine), {
+              user: `<b>${_escHtml(a.requested_by)}</b>`,
+              action: `<b class="text-warning">${_escHtml(a.action)}</b>`,
+              server: `<b>${_escHtml(a.server_name)}</b>` })}</div>
+            <div class="text-[10px] text-faint">${rbacFill(_escHtml(RBAC_T.approvalMeta), {
+              requested: _escHtml(formatTs(a.requested_at)),
+              expires: _escHtml(formatTs(a.expires_at)) })} · #${a.id}</div>
+          </div>
+          <div class="flex gap-1.5">
+            <button data-decide-id="${a.id}" data-decide-ok="1"
+                    class="px-3 py-1 text-[11px] rounded bg-healthy text-white hover:opacity-90"
+                    aria-label="${_escHtml(RBAC_T.approveAria)}">${_escHtml(RBAC_T.approve)}</button>
+            <button data-decide-id="${a.id}" data-decide-ok="0"
+                    class="px-3 py-1 text-[11px] rounded border border-critical text-critical hover:bg-critical/10"
+                    aria-label="${_escHtml(RBAC_T.rejectAria)}">${_escHtml(RBAC_T.reject)}</button>
+          </div>
+        </div>
+      `).join('');
+      div.querySelectorAll('[data-decide-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-decide-id');
+          const approved = btn.getAttribute('data-decide-ok') === '1';
+          fetch('/api/approvals/' + encodeURIComponent(id) + '/decide', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({ approved }),
+          }).then(r => r.json()).then(d => {
+            if (!d.ok) { showToast(d.error || RBAC_T.decisionFailed, 'error'); return; }
+            loadApprovals();
+          });
+        });
+      });
+    });
+  }
+
+  // Grant button
+  document.getElementById('rbac-grant-btn')?.addEventListener('click', () => {
+    const user = document.getElementById('rbac-grant-user').value.trim();
+    const srv = document.getElementById('rbac-grant-server').value;
+    const perm = document.getElementById('rbac-grant-perm').value;
+    if (!user) { showToast(RBAC_T.usernameRequired, 'warn'); return; }
+    fetch('/api/rbac/grant', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify({ username: user, server_name: srv, permission: perm }),
+    }).then(r => r.json()).then(d => {
+      if (!d.ok) { showToast(d.error || RBAC_T.grantFailed, 'error'); return; }
+      document.getElementById('rbac-grant-user').value = '';
+      loadAcl(); loadMe();
+    });
+  });
+
+  document.getElementById('rbac-refresh')?.addEventListener('click', () => {
+    loadMe(); loadAcl(); loadApprovals();
+  });
+
+  // Initial load + periodic refresh of approvals (they expire after 1h)
+  loadMe(); loadAcl(); loadApprovals();
+  setInterval(loadApprovals, 30000);
+})();
+</script>

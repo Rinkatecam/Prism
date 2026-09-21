@@ -8,6 +8,88 @@ Real-time monitoring dashboard for Windows server fleets. Built with Python (Fla
 
 **Author:** Rinkatecam & Atlas
 
+## How it works
+
+Prism is **one process on one host inside your network**. There is no cloud
+component, no account to create, and nothing to register.
+
+It polls each server in your `config.json` over WinRM for CPU, memory, disk,
+services, Windows updates, event logs and failed logins; stores what it finds in
+a local SQLite file; and renders it through a Flask + HTMX web UI. Optionally it
+can authenticate operators against your Active Directory, send alerts through
+your mail server, and post to a webhook you nominate. That is the whole system.
+
+```
+your browser ──▶ Prism (Flask + collector) ──▶ your Windows servers   (WinRM)
+                        │                  ──▶ your directory         (LDAP, optional)
+                        │                  ──▶ your mail server       (SMTP, optional)
+                        ▼
+                  data/prism.db  ◀── everything Prism knows lives here
+```
+
+## Does it send your data anywhere?
+
+**No — and here is the version of that answer you can check.**
+
+Prism has **no vendor endpoint**. There is no telemetry, no licence check, no
+update ping, no analytics, and no crash reporting. Nothing in the source
+contains an address belonging to us, because no such address exists.
+
+What it does *not* claim is "no data leaves". That would be false and you would
+disprove it in one `grep`: a monitoring tool that connected to nothing could not
+monitor anything. Prism opens sockets constantly. The honest claim is about
+**destination and consent** — every destination comes from your configuration
+file:
+
+- **24 outbound call sites across 9 files, and 0 of them have a hardcoded
+  destination.** Every one resolves to a value you set.
+- **Core monitoring is LAN-only.** Block all non-LAN egress at the host
+  firewall and the dashboard, metrics, health checks and TLS checks keep working
+  unchanged.
+- **The browser loads no third-party code.** Tailwind, HTMX, Idiomorph,
+  Chart.js, Lucide and the web fonts are vendored in `static/vendor/` and served
+  by Prism; the Content-Security-Policy names no external origin at all.
+- **Opt-in integrations are off until you turn them on** — LDAP, SMTP and
+  webhooks. You choose whether they run and where they point. Webhooks are the
+  one integration whose defaults point outward (Teams / Slack / Discord), and
+  they ship disabled.
+- **One hardcoded destination exists**, and it cannot leave your segment: the
+  Wake-on-LAN magic packet, a broadcast to `255.255.255.255:9` that routers do
+  not forward.
+- **Everything is stored on your host** in a single SQLite file, with server
+  credentials encrypted at rest.
+
+### Verify it rather than believing it
+
+```bash
+python tools/audit_outbound.py                              # every outbound call site + its destination
+python tools/verify_lan_only.py --port 5000 --seconds 180   # live census of what it actually connected to
+```
+
+The second one exits non-zero if Prism reached a routable public address.
+
+### It stays true because tests enforce it
+
+A document goes stale the day it is written. These fail the build:
+
+| test | fails on |
+|---|---|
+| `tests/test_outbound_ratchet.py` | a new outbound path, a hardcoded destination, or an external host literal anywhere in the Python |
+| `tests/test_csp.py` | any CSP directive naming an external origin |
+| `tests/test_route_governance.py` | a mutating endpoint without auth or without an audit write |
+
+Each is additionally mutation-checked — `python tools/verify_guardrails.py`
+reintroduces every defect on purpose and fails if the test does not notice.
+
+**Full detail:** [`docs/DATA_FLOWS.md`](docs/DATA_FLOWS.md) is the complete
+inventory, including the findings we fixed and the ones we argued and left.
+[`docs/LAN_ONLY_VERIFICATION.md`](docs/LAN_ONLY_VERIFICATION.md) is the
+procedure for proving it on your own kit.
+[`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md) is written for a security
+reviewer doing vendor due diligence, and includes the plain statement about what
+a host administrator can read. Policy, threat model and how to report a
+vulnerability are in [`SECURITY.md`](SECURITY.md).
+
 ## Quick Start
 
 ```bash
@@ -142,7 +224,7 @@ When an admin action is triggered (restart, install updates, cancel updates), th
 The WU COM API refuses `Download()` and `Install()` calls from remote WinRM sessions (returns `0x80070005 E_ACCESSDENIED`). Prism works around this with a **scheduled task**:
 
 1. User clicks "Install Updates" on the server detail page
-2. Prism encodes the install script as UTF-16LE base64 (to bypass AppLocker blocking `.ps1` files)
+2. Prism encodes the install script as UTF-16LE base64 — that is the wire format `-EncodedCommand` takes, and it is what lets the script reach the scheduled task **without writing a `.ps1` file to disk**. No script file is created, so none is left behind for anything to read or modify between registration and execution.
 3. Registers a scheduled task running as `NT AUTHORITY\SYSTEM` with `-EncodedCommand`
 4. Task writes progress to `C:\ProgramData\Prism\update-status.json` and logs to `update-log.txt`
 5. UI polls `/api/servers/<name>/update-status` every 5s, showing live stage transitions
@@ -188,6 +270,12 @@ data/                 - SQLite database + keys (excluded from git)
 ```
 
 ## Security Notes
+
+Outbound connections, storage and the data-flow story are covered above under
+[How it works](#how-it-works) and [Does it send your data
+anywhere?](#does-it-send-your-data-anywhere), with the full evidence in
+[`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md). This section is the
+application-level controls.
 
 - `config.json` contains encrypted server passwords — excluded from git via `.gitignore`
 - `data/` directory contains the SQLite DB, Flask secret key, and encryption key — excluded from git

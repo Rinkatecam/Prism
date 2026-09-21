@@ -1,5 +1,11 @@
 {% extends "base.html" %}
-{% block title %}{{ doc.id }} {{ doc.title }} — Prism{% endblock %}
+{# WP-6 D7 — this page's title is DATA: the document's own id + title, not
+   a constant page name, because the operator navigated here for this one
+   document. Capped at the chip's max-w + truncate (not by Jinja), which
+   truncates toward the id — the half that identifies it — since the id
+   comes first. #}
+{% block page_title %}{{ doc.id }} {{ doc.title }}{% endblock %}
+{% block page_icon %}file-text{% endblock %}
 
 {% block content %}
 <div class="p-6 max-w-7xl mx-auto">
@@ -18,7 +24,17 @@
 
     <!-- LEFT: table of contents -->
     <aside class="hidden lg:block">
-      <div id="toc-card" class="sticky top-4 bg-card rounded-lg border border-line p-4">
+      {# WP-6 step 20 (Batch G+H) -- ordering fixed to match the OTHER sticky
+         p-4 card in this same file (the metadata aside, two dozen lines
+         down): card-shell utilities first, position utilities (`sticky
+         top-4`) last, appended the same way card()'s own `extra=` composes
+         onto CARD (§4.3: "extra is appended after the canonical string, not
+         folded into it"). Was `sticky top-4 bg-card rounded-lg border
+         border-line p-4` -- the two orderings this step's own text names.
+         Still a CARD_EXCEPTIONS entry either way (p-4, not the canonical
+         p-5) -- reordering does not change the count, only makes the two
+         sticky p-4 cards in this file spell the same idiom identically. #}
+      <div id="toc-card" class="bg-card rounded-lg border border-line p-4 sticky top-4">
         <div class="text-xs font-semibold uppercase tracking-wide text-muted mb-2">
           {{ t.get('on_this_page', 'On this page') }}
         </div>
@@ -44,7 +60,7 @@
         <dl class="text-xs text-muted space-y-1">
           <div class="flex justify-between gap-3"><dt>ID:</dt><dd class="text-right font-mono">{{ doc.id }}</dd></div>
           <div class="flex justify-between gap-3"><dt>Category:</dt><dd class="text-right">{{ doc.category }}</dd></div>
-          <div class="flex justify-between gap-3"><dt>Path:</dt><dd class="text-right text-[10px] truncate" title="{{ doc.doc_path }}">{{ doc.doc_path }}</dd></div>
+          <div class="flex justify-between gap-3"><dt>Path:</dt><dd class="text-right text-[10px] truncate ps-tip-overflow" tabindex="0" data-tip-title="" data-tip-desc="{{ doc.doc_path }}">{{ doc.doc_path }}</dd></div>
         </dl>
 
         <p class="text-xs text-ink dark:text-line mt-3">{{ doc.short_desc }}</p>

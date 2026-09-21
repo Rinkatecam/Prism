@@ -1,22 +1,11 @@
 {# Dashboard widget — Windows Update alerts + install progress.
    Shows servers that have pending updates, active installs, errors, or
    pending reboots. Returns empty body when nothing needs attention. #}
+{% from "partials/_card.html" import card with context %}
 {%- if items -%}
-<div class="bg-card rounded-lg border border-line p-4">
-  <div class="flex items-center justify-between mb-3">
-    <h2 class="text-sm font-semibold flex items-center gap-2">
-      <i data-lucide="download-cloud" class="w-4 h-4 text-accent"></i>
-      {{ t.get('windows_updates', 'Windows Updates') }}
-      <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-info/10 text-info dark:bg-info/20 dark:text-info-strong">
-        {{ items | length }}
-      </span>
-    </h2>
-    {% if last_checked %}
-    <span class="text-[10px] text-faint">
-      {{ t.get('checked', 'Checked') }}: <span class="ts-local" data-ts="{{ last_checked }}">{{ last_checked }}</span>
-    </span>
-    {% endif %}
-  </div>
+{% set _updates_heading %}{{ t.get('windows_updates', 'Windows Updates') }} <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-info/10 text-info dark:bg-info/20 dark:text-info-strong">{{ items | length }}</span>{% endset %}
+{% set _updates_controls %}{% if last_checked %}<span class="text-[10px] text-faint">{{ t.get('checked', 'Checked') }}: <span class="ts-local" data-ts="{{ last_checked }}">{{ last_checked }}</span></span>{% endif %}{% endset %}
+{% call card(heading=_updates_heading, icon='download-cloud', controls=_updates_controls) %}
 
   <div class="space-y-2">
     {% for it in items %}
@@ -113,5 +102,5 @@
 
     {% endfor %}
   </div>
-</div>
+{% endcall %}
 {%- endif -%}

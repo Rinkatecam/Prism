@@ -17,6 +17,51 @@ differently:
 If you only ever use the structured blocks, the regex sandbox's known
 weaknesses (see below) **do not apply** to your workflows.
 
+## Where the boundary actually is (2026-08)
+
+Read this before the sections below, because it changes what they are for.
+
+**The regex sandbox is defence in depth. It is not the security boundary.** The
+boundary is RBAC, and it is enforced at AUTHORING time: creating, updating or
+cloning a workflow that contains a block reaching WinRM requires **admin
+permission on every server those blocks name** — the same grant that running the
+workflow by hand has always required.
+
+It has to be checked at authoring, and the reason is the whole point. Running a
+workflow by hand happens as a user, so a permission can be checked. A workflow
+can also fire from a **schedule**, and the scheduler runs with no user present —
+so there was nothing to check, and a login was enough to plant a free-form
+script on a daily trigger. Update and clone are gated as well, because "create
+it empty and fill it in" and "clone somebody else's blocks" are the two obvious
+ways round a create-only gate.
+
+What that means in practice:
+
+* a user who can author a free-form script on a server **already holds admin on
+  that server**, so defeating the regex gains them nothing they did not have;
+* the regex still runs, and still refuses the obvious dangerous shapes, because
+  a mistake is far more common than an attack;
+* the honest full fix for the remaining surface is unchanged and is still
+  Constrained Language Mode plus JEA on the targets — see below.
+
+**Hardened in the same round**, and the shape is worth copying: the two
+"compute the name of the thing you want to run" bypasses were not fixed by
+listing more spellings of `Invoke-Expression`. They were fixed by denying
+**dynamic invocation** itself — the call operator and dot-sourcing applied to
+anything that is not a bare identifier — which is the one shape every such
+bypass needs. Backtick-split identifiers were fixed by normalising the script
+before matching, rather than by adding a rule per split point. The reflection
+surface (`.GetType(`, `.Assembly`, `.Invoke(`, `[scriptblock]::Create`,
+`[char]`) is denied, which closes the chains that started from an allowlisted
+cmdlet and ended at arbitrary process spawn.
+
+**One weakness is open on purpose.** Allowlisted read cmdlets (`Get-Content`,
+`Get-ChildItem` and their aliases) accept arbitrary paths, so a free-form script
+can read any file the service account can. A path allowlist would break the
+diagnostic workflows those cmdlets exist for, and after the authoring gate the
+only people who can write such a script are people with admin on that server —
+who can read those files by other routes anyway. Accepted risk, with a reason.
+
 ---
 
 ## What changed in Sprint 1 (2026-05)

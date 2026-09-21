@@ -9,7 +9,20 @@
    a fresh per-request nonce would not match the host page's CSP nonce. #}
 {% else %}
 <div>
-  <h2 class="text-xl font-semibold flex items-center gap-2 mb-3">
+  {# ── H2 — DESIGN_SYSTEM_SPEC.md Part II §2.3: this heading NAMES A GRID OF
+     CARDS (the issue cards below) and therefore cannot sit inside any one of
+     them -- the one shape D2 (headings move inside their card) cannot
+     express. It keeps the canonical H2 string and sits bare on `page`,
+     exactly like dashboard.html's four sibling group-label headings (WP-6
+     step 18). The icon is DELIBERATELY left text-critical rather than
+     recoloured violet: this is a severity-carrying heading in the same
+     family as dashboard.html's "Incidents" h2 and the §2.6 carve-out table's
+     spirit (a critical verdict rendered violet would undersell it) -- see
+     this step's own report for why that is a judgement call rather than a
+     structural carve-out (no data-role exists for this shape, so
+     test_design_roles.py's H2_ICON_BASELINE keeps counting it, deliberately,
+     the same way it already tolerates dashboard.html's "Incidents"). #}
+  <h2 class="text-base font-bold text-brand flex items-center gap-2 min-w-0">
     <i data-lucide="alert-octagon" class="w-5 h-5 text-critical"></i>
     {{ t.issues_detected }}
     <span class="badge badge-critical">{{ issues | length }}</span>
@@ -17,7 +30,13 @@
   <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
     {% for issue in issues %}
     <a href="/server/{{ issue.server_name }}"
-       class="block bg-card rounded-lg p-4 border border-line hover:shadow-md transition-shadow {% if issue.status == 'critical' %}border-status-critical{% elif issue.status == 'warning' %}border-status-warning{% else %}border-status-offline{% endif %}">
+       {# `card-clickable` replaces `hover:shadow-md transition-shadow`: the
+          class carries the lift, the shadow AND the focus ring, and the
+          Tailwind pair carried only the shadow. `transition-shadow` also
+          quietly narrowed the transition to one property, so the lift the
+          class adds would have snapped instead of moving — Tailwind's sheet
+          is injected after app.css and wins at equal specificity. #}
+       class="card-clickable block bg-card rounded-lg p-4 border border-line {% if issue.status == 'critical' %}border-status-critical{% elif issue.status == 'warning' %}border-status-warning{% else %}border-status-offline{% endif %}">
       <div class="flex items-center justify-between mb-2">
         <span class="font-semibold text-sm">{{ issue.server_name }}</span>
         <span class="badge badge-{{ issue.status }}">{{ issue.status }}</span>

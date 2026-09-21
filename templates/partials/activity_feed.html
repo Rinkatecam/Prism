@@ -1,16 +1,29 @@
 <!-- Activity Feed - consolidated events timeline -->
+{% from "partials/_empty_state.html" import empty_state %}
 {% if events | length == 0 %}
-<div class="bg-card rounded-lg p-6 border border-line text-center">
-  <i data-lucide="clock" class="w-8 h-8 mx-auto mb-2 text-muted"></i>
-  <p class="text-sm text-muted">{{ t.no_events }}</p>
-</div>
+{# This is the empty state DESIGN_PHASE_3_SCOPE.md §4 names as the one that
+   fails review: it said "no events" and stopped. An empty feed on a healthy
+   fleet is good news, and without the second line it reads as a data
+   failure — the operator cannot tell "nothing has gone wrong" from "the
+   collector is not reporting". #}
+{{ empty_state(
+     'clock',
+     t.no_events,
+     t.get('no_events_hint', 'Nothing has needed attention recently — alerts and status changes will appear here as they happen'),
+     card=true) }}
 {% else %}
 {# The scroller is the INNER div. A rounded element that scrolls has its
    scrollbar painted straight across its own corners — Chromium does not clip
    ::-webkit-scrollbar to border-radius — so the card reads as square on the
    right-hand side. Rounding + clipping outside, scrolling inside. #}
 <div class="bg-card rounded-lg border border-line overflow-hidden">
-<div class="max-h-[400px] overflow-y-auto">
+{# The cap, and its ghost in partials/_skeletons.html's `feed_rows`, are one
+   decision in two files. 400px on the dashboard's full-width feed; 240px for
+   the compact copy on /servers, where this sits between the server list and
+   the configuration sections and a 400px block would push them off the page.
+   Change one and the region jumps by the difference when the real content
+   lands — which is what the ghost exists to prevent. #}
+<div class="{% if compact %}max-h-[240px]{% else %}max-h-[400px]{% endif %} overflow-y-auto">
   {% for event in events %}
   <a href="/server/{{ event.server_name }}" class="flex items-start gap-3 px-4 py-3 cursor-pointer {% if not loop.last %}border-b border-line {% endif %} hover:bg-page dark:hover:bg-page/50 transition-colors">
     <!-- Timeline dot -->
@@ -37,11 +50,15 @@
           {{ event.server_name }}
         </span>
         {% if event.noise_score is defined and event.noise_score and event.noise_score > 30 %}
+        {%- set _noise_tip_id = next_tip_id() %}
         <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium {% if event.noise_score > 70 %}bg-critical/10 text-critical dark:bg-critical/10 dark:text-critical {% elif event.noise_score > 50 %}bg-warning/10 text-warning dark:bg-warning/10 dark:text-warning {% else %}bg-muted/10 text-muted {% endif %}"
-          title="{{ t.noisy_alert if t.noisy_alert is defined else 'Noisy alert' }}: {{ t.noise_score if t.noise_score is defined else 'Score' }} {{ event.noise_score }}">
+          tabindex="0" aria-describedby="{{ _noise_tip_id }}"
+          data-tip-title="{{ t.noisy_alert if t.noisy_alert is defined else 'Noisy alert' }}"
+          data-tip-desc="{{ t.noise_score if t.noise_score is defined else 'Score' }} {{ event.noise_score }}">
           <i data-lucide="volume-2" class="w-3 h-3"></i>
           {{ event.noise_score }}
         </span>
+        <span class="sr-only" id="{{ _noise_tip_id }}">{{ t.noise_score if t.noise_score is defined else 'Score' }} {{ event.noise_score }}</span>
         {% endif %}
       </div>
 

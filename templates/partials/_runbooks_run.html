@@ -1,0 +1,169 @@
+{# Runbook execution: history and the run modal — /operations only. See partials/_runbook_list.html for why the list is shared. #}
+function loadRunbookExecHistory() {
+  fetch('/api/runbooks/executions?limit=25')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) {
+        document.getElementById('runbook-exec-table-body').innerHTML =
+          '<tr><td colspan="5" class="px-3 py-8 text-center text-critical">' +
+          {{ t.get('failed_to_load_executions', 'Failed to load execution history') | tojson }} + '</td></tr>';
+        return;
+      }
+      const tbody = document.getElementById('runbook-exec-table-body');
+      if (data.executions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-10 text-center">' +
+          '<i data-lucide="history" class="w-10 h-10 mx-auto mb-2 text-faint opacity-50"></i>' +
+          '<p class="text-sm text-muted font-medium">' + {{ t.get('no_executions', 'No executions yet') | tojson }} + '</p>' +
+          '<p class="text-[10px] mt-1 text-faint">' + {{ t.get('no_executions_hint', 'Click the play icon on any runbook to run it') | tojson }} + '</p>' +
+          '</td></tr>';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        return;
+      }
+      const STATUS_CLS = {
+        completed: 'bg-healthy/10 text-healthy',
+        failed: 'bg-critical/10 text-critical',
+        running: 'bg-info/10 text-info',
+        pending: 'bg-warning/10 text-warning',
+      };
+      const STATUS_LABEL = { completed: RB_T.completed, failed: RB_T.failed, running: RB_T.running, pending: RB_T.pending };
+      let html = '';
+      data.executions.forEach(ex => {
+        const cls = STATUS_CLS[ex.status] || 'bg-raised text-muted';
+        const label = STATUS_LABEL[ex.status] || ex.status;
+        const ts = (typeof formatTs === 'function') ? formatTs(ex.timestamp) : (ex.timestamp || '').substring(0, 16);
+        const dur = ex.duration_ms ? (ex.duration_ms / 1000).toFixed(1) + 's' : '-';
+        html += '<tr class="border-b border-line">';
+        html += '<td class="px-3 py-2">' + (ex.runbook_name || '#' + ex.runbook_id) + (ex.dry_run ? ' <span class="text-[10px] text-faint">(dry run)</span>' : '') + '</td>';
+        html += '<td class="px-3 py-2 text-muted">' + ex.server_name + '</td>';
+        html += '<td class="px-3 py-2"><span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ' + cls + '">' + label + '</span></td>';
+        html += '<td class="px-3 py-2 text-muted whitespace-nowrap">' + ts + '</td>';
+        html += '<td class="px-3 py-2 text-right text-muted">' + dur + '</td>';
+        html += '</tr>';
+      });
+      tbody.innerHTML = html;
+    })
+    .catch(err => {
+      document.getElementById('runbook-exec-table-body').innerHTML =
+        '<tr><td colspan="5" class="px-3 py-8 text-center text-critical">' +
+        {{ t.get('failed_to_load_executions', 'Failed to load execution history') | tojson }} + ': ' + (err.message || '') + '</td></tr>';
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Runbook Run Modal — server picker + execute + poll
+// Mirrors server_detail.html's executeRunbook / pollExecution flow.
+// ═══════════════════════════════════════════════════════════════
+let _rbRunSelectedId = null;
+let _rbPollTimer = null;
+
+function openRunbookRunModal(rbId) {
+  const rb = _opsRunbooks.find(r => r.id === rbId);
+  if (!rb) { pAlert({{ t.get('runbook_not_found', 'Runbook not found') | tojson }}); return; }
+  _rbRunSelectedId = rbId;
+  document.getElementById('rb-run-title').textContent =
+    {{ t.get('run_runbook', 'Run Runbook') | tojson }} + ': ' + rb.name;
+  document.getElementById('rb-run-desc').textContent = rb.description || '';
+  document.getElementById('rb-run-output').classList.add('hidden');
+  document.getElementById('rb-run-confirm-btn').disabled = false;
+  document.getElementById('runbook-run-modal').classList.remove('hidden');
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function closeRunbookRunModal() {
+  document.getElementById('runbook-run-modal').classList.add('hidden');
+  if (_rbPollTimer) { clearInterval(_rbPollTimer); _rbPollTimer = null; }
+  _rbRunSelectedId = null;
+}
+
+function confirmRunbookRun() {
+  if (!_rbRunSelectedId) return;
+  const serverName = document.getElementById('rb-run-server').value;
+  const dryRun = document.getElementById('rb-run-dry').checked;
+  if (!serverName) { pAlert({{ t.get('select_server', 'Please select a server') | tojson }}); return; }
+
+  const btn = document.getElementById('rb-run-confirm-btn');
+  const out = document.getElementById('rb-run-output');
+  const status = document.getElementById('rb-run-status');
+  const dur = document.getElementById('rb-run-duration');
+  const content = document.getElementById('rb-run-content');
+  btn.disabled = true;
+  out.classList.remove('hidden');
+  status.textContent = {{ t.get('execution_running', 'Running') | tojson }};
+  status.className = 'inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-info/10 text-info';
+  dur.textContent = '';
+  content.textContent = {{ t.get('starting', 'Starting...') | tojson }};
+
+  fetch('/api/runbooks/' + _rbRunSelectedId + '/execute', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+    body: JSON.stringify({ server_name: serverName, dry_run: dryRun }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.ok) {
+      status.textContent = {{ t.get('execution_failed', 'Failed') | tojson }};
+      status.className = 'inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-critical/10 text-critical';
+      content.textContent = data.error || {{ t.get('unknown_error', 'Unknown error') | tojson }};
+      btn.disabled = false;
+      return;
+    }
+    pollRunbookExecution(data.execution_id);
+  })
+  .catch(err => {
+    status.textContent = {{ t.get('execution_failed', 'Failed') | tojson }};
+    status.className = 'inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-critical/10 text-critical';
+    content.textContent = (err.message || 'Network error');
+    btn.disabled = false;
+  });
+}
+
+function pollRunbookExecution(execId) {
+  if (_rbPollTimer) clearInterval(_rbPollTimer);
+  _rbPollTimer = setInterval(() => {
+    fetch('/api/runbooks/executions/' + execId)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.ok) return;
+        const ex = data.execution;
+        const status = document.getElementById('rb-run-status');
+        const content = document.getElementById('rb-run-content');
+        const dur = document.getElementById('rb-run-duration');
+        if (ex.status === 'running') {
+          status.textContent = {{ t.get('execution_running', 'Running') | tojson }};
+          status.className = 'inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-info/10 text-info';
+          content.textContent = ex.output || {{ t.get('executing', 'Executing...') | tojson }};
+        } else if (ex.status === 'completed') {
+          clearInterval(_rbPollTimer); _rbPollTimer = null;
+          status.textContent = {{ t.get('execution_completed', 'Completed') | tojson }};
+          status.className = 'inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-healthy/10 text-healthy';
+          dur.textContent = ex.duration_ms ? '(' + (ex.duration_ms / 1000).toFixed(1) + 's)' : '';
+          content.textContent = ex.output || {{ t.get('completed_no_output', 'Completed with no output') | tojson }};
+          document.getElementById('rb-run-confirm-btn').disabled = false;
+          loadRunbookExecHistory();
+        } else if (ex.status === 'failed') {
+          clearInterval(_rbPollTimer); _rbPollTimer = null;
+          status.textContent = {{ t.get('execution_failed', 'Failed') | tojson }};
+          status.className = 'inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-critical/10 text-critical';
+          dur.textContent = ex.duration_ms ? '(' + (ex.duration_ms / 1000).toFixed(1) + 's)' : '';
+          content.textContent = ex.output || {{ t.get('execution_failed', 'Failed') | tojson }};
+          document.getElementById('rb-run-confirm-btn').disabled = false;
+          loadRunbookExecHistory();
+        }
+      })
+      .catch(() => {});
+  }, 1500);
+}
+
+// The row actions this page offers: run it. Editing a definition is
+// configuration and lives in Settings -> Operations.
+function runbookRowActions(rb) {
+  const runLbl = {{ t.get('run_action_label', 'Run') | tojson }};
+  const runDesc = {{ t.get('run_runbook', 'Run on a server') | tojson }};
+  const runTipId = 'rb-run-tip-' + rb.id;
+  const runBtn = '<button data-action="openRunbookRunModal" data-args="[' + rb.id + ']" ' +
+          'aria-label="' + runLbl + '" aria-describedby="' + runTipId + '" data-tip-title="' + runLbl + '" data-tip-desc="' + runDesc + '" ' +
+          'class="inline-flex items-center justify-center w-7 h-7 rounded border border-healthy text-healthy hover:bg-healthy/10">' +
+          '<i data-lucide="play" class="w-3.5 h-3.5"></i></button>' +
+          '<span class="sr-only" id="' + runTipId + '">' + runDesc + '</span>';
+  return runBtn;
+}

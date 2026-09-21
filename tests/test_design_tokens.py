@@ -485,36 +485,164 @@ def test_css_and_tailwind_cover_exactly_the_same_tokens():
 # An allowlist of forty-odd colours would assert nothing. A RATCHET does:
 # the count per file may fall, never rise. That is the property §7 actually
 # wanted — "without it this regrows" — and it is enforceable.
+#
+# WP-6 step 27's close-out sweep deletes every entry below that had already
+# reached 0 (dashboard.html, reports.html, servers.html, partials/
+# active_actions.html, monitoring.html, partials/verdict_header.html,
+# operations.html, base.html) -- dict.get(f, 0) already treats a missing
+# key identically to an explicit 0 in every test below, so this changes no
+# test's behaviour, only removes now-redundant bookkeeping. Each file's own
+# "how it got to 0" narrative stays in the comment immediately above where
+# its entry used to sit.
 
 LITERAL_BASELINE: dict[str, int] = {
-    "server_detail.html": 47,
+    # 47 -> 46 + 1: the anomalies/forecasts region moved to
+    # partials/server_analytics.html for layered rendering, and one literal
+    # went with it. Nothing was added or removed — see LITERAL_TOTAL, which
+    # is what stops a file split being used to launder new literals past the
+    # "new templates start clean" rule.
+    # 46 -> 43 with WP-6 step 17 (Batch D): RE-MEASURED, not hand-counted --
+    # running _literal_counts() after the conversion found 43, not "46 minus
+    # the four named hex literals" (which would have implied 42, since only
+    # dark:border-[#8B5CF6]/30 lived in this file; the other three named
+    # literals are partials/server_card.html's, below). The runbook-output
+    # panel's dark:border-[#8B5CF6]/30 AND dark:bg-[#8B5CF6]/10 both left
+    # with the brand-bordered-flush-card conversion (card(flush=true,
+    # extra='border-brand/30') has no head-row tint parameter, so the
+    # second one is simply gone, not folded onto a token), and the two
+    # notice-box conversions took bg-[#FEF2F2] with them (the neutral
+    # "update check failed" notice had no hex to begin with). Three
+    # literals, not one — measuring beat the arithmetic exactly as this
+    # step's own instructions warned it would.
+    "server_detail.html": 43,
+    "partials/server_analytics.html": 1,
     "workflows.html": 33,
-    "dashboard.html": 16,
-    "rbac.html": 14,
-    "reports.html": 12,
-    "servers.html": 9,
+    # 16 -> 0. The dashboard redesign rewrote every region that held one: the
+    # status-filter buttons and their JS class lists went to servers.html
+    # spelled as tokens (the `dark:` literal halves were pre-token leftovers —
+    # `border-faint` already resolves per theme, so they were deleted rather
+    # than moved), and the restart banner's four were the same story.
+    # rbac.html left the baseline entirely in WP-4 D4: its fourteen
+    # literals were replaced by tokens rather than relocated when the
+    # page became a settings partial. Twelve were in script-built class
+    # strings and one was an inline `style="color:"` — the shape the
+    # ratchet counts but cannot force down on its own.
+    # 12 -> 0. WP-5 rewrote the page around questions rather than file
+    # formats, and the rewrite tokenised every literal on the way through:
+    # four hand-rolled `text-[#hex] dark:text-[#hex]` pairs became the
+    # `text-healthy` / `-warning` / `-critical` / `-muted` tokens, which are
+    # contrast-tested against the card in both themes where the raw pairs
+    # were not, and four saturated button fills became the canonical
+    # `bg-accent hover:bg-accent-strong` idiom. The four bare hexes that
+    # remain are SVG stroke and bar-fill values, not class utilities, and
+    # are invisible to this ratchet by design: a mark needs 3:1, not 4.5:1.
     "settings.html": 10,
-    "partials/active_actions.html": 0,
-    "monitoring.html": 6,
-    "partials/server_card.html": 4,
-    "compliance.html": 5,
+    # The toggle idiom's dark override, relocated with the TLS block in
+    # WP-4 D2b. settings.html carries nine identical copies; WP-8 takes
+    # them in one pass rather than leaving one fixed and nine behind.
+    "partials/settings/_tls.html": 1,
+    # Two more copies of the same toggle idiom, relocated with the
+    # scheduled-restart block in WP-4 D3.
+    "partials/settings/_restarts.html": 2,   # 6 -> 4: two left with the detection block
+    #                           extracted to partials/settings/_detection.html
+    #                           in WP-4 D2, and were tokenised on the way
+    #                           rather than given a baseline of their own
+    # 4 -> 1 with WP-6 step 17 (Batch D): the three named hex literals on
+    # the status-border conditional (!border-l-[#6366F1] -> brand,
+    # dark:!border-l-[#EF4444] -> critical, dark:!border-l-[#FBBF24] ->
+    # warning) are gone. The fourth, text-[#B45309] on the "why flagged"
+    # reason line, is untouched -- not one of this step's four named
+    # literals, and left as measured debt rather than guessed at.
+    "partials/server_card.html": 1,
+    # 5 -> 4. WP-6 step 12 deleted compliance.html's in-page <h1> (its title
+    # moved to the topbar chip via page_title/page_icon), taking its
+    # `dark:text-[#F9FAFB]` with it. The h2 four lines below carries the
+    # same literal and is untouched — that one is steps 14-20's job (the
+    # heading-ladder/card conversion), not this sweep's.
+    "compliance.html": 4,
     "partials/incidents_panel.html": 5,
-    "partials/verdict_header.html": 5,
-    "operations.html": 4,
+    # 5 -> 0. Two went with the deleted all-healthy branch; the other three
+    # were the light/dark halves of status washes that the `-tint` / `-strong`
+    # pairs express in one class.
     "partials/server_comparison.html": 4,
-    "base.html": 1,
+    # 1 -> 0. WP-6 step 11 gave the global confirm/prompt dialog's <h3> the
+    # canonical dialog-title string (data-role="dialog-title", §2.6) in the
+    # same commit that dropped `dark:text-[#F9FAFB]` for the `text-ink` token
+    # it was redundantly restating.
     "partials/critical_issues.html": 1,
     "setup.html": 1,
 }
 
 _LITERAL = re.compile(r"-\[#[0-9A-Fa-f]{6}\]")
 
+# Jinja, HTML and block/line comments, blanked rather than deleted so the
+# offsets a caller might report stay true.
+#
+# Added when a comment in servers.html explaining WHY two `dark:` hex halves
+# were deleted on the way over from the dashboard pushed that file two over
+# its baseline. The literals it named render nothing — they are the removed
+# code, quoted. Without this the ratchet fires on its own documentation, and
+# the cheapest way to make it green is to delete the explanation, which is
+# the wrong repair (docs/OPS-LEARNINGS.md §2.2, and the third time this shape
+# has appeared in this repository).
+#
+# The baseline did not move as a result. Measured across all 33 templates,
+# servers.html is the ONLY file whose count changes (11 -> 9, the two quoted
+# above), so every number recorded in the baseline is a count of live
+# utilities and always was.
+_COMMENTS = re.compile(r"{#.*?#}|<!--.*?-->|/\*.*?\*/", re.S)
+_LINE_COMMENT = re.compile(r"^[ \t]*//[^\n]*", re.M)
+
+
+def _code_only(text: str) -> str:
+    blanked = _COMMENTS.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), text)
+    return _LINE_COMMENT.sub(lambda m: " " * len(m.group(0)), blanked)
+
 
 def _literal_counts() -> dict[str, int]:
     templates = PROJECT_ROOT / "templates"
     return {p.relative_to(templates).as_posix(): n
             for p in sorted(templates.rglob("*.html"))
-            if (n := len(_LITERAL.findall(p.read_text(encoding="utf-8"))))}
+            if (n := len(_LITERAL.findall(
+                _code_only(p.read_text(encoding="utf-8")))))}
+
+
+def test_the_counter_reads_code_and_not_the_comments_about_it():
+    """Positive control for `_code_only`, in both directions.
+
+    A stripper that strips nothing leaves the ratchet firing on prose. A
+    stripper that strips too much hides real literals in the code around it.
+    Both directions are asserted, over the exact shapes that occur in this
+    repository's templates.
+
+    The `//` rule is anchored to the start of a line, which is a deliberate
+    trade and worth pinning: a mid-line rule would consume the `//` in every
+    `https://` URL and everything after it on that line — hiding live
+    literals, i.e. UNDER-reporting, which is the direction that lets a
+    regression through. The cost is that a trailing `// …` comment survives
+    and can be counted, which over-reports. Both are asserted below so
+    swapping one for the other fails here rather than quietly moving the
+    numbers."""
+    quoted = "{# `dark:border-[#6B7280]` was a pre-token leftover #}"
+    assert _LITERAL.findall(quoted), "the sample no longer contains a literal"
+    assert not _LITERAL.findall(_code_only(quoted)), (
+        "a literal quoted inside a comment is being counted; the ratchet is "
+        "reading its own documentation")
+
+    whole_line = "  // hover:bg-[#EF4444] was removed with the token migration"
+    assert not _LITERAL.findall(_code_only(whole_line)), (
+        "a whole-line `//` comment is no longer stripped")
+
+    url_line = "  const u = 'https://example.test/a'; cls = 'text-[#CBD5E1]';"
+    assert len(_LITERAL.findall(_code_only(url_line))) == 1, (
+        "the line-comment rule is eating code — a mid-line `//` rule takes "
+        "the `//` in a URL and everything after it, hiding live literals")
+
+    trailing = '  cls = "text-[#CBD5E1]"; // and hover:bg-[#EF4444]'
+    assert len(_LITERAL.findall(_code_only(trailing))) == 2, (
+        "a trailing comment is now stripped too. That is not wrong in "
+        "itself, but it is the mid-line rule the check above forbids — "
+        "there is no way to strip one without the other")
 
 
 def test_hardcoded_colour_literals_never_increase():
@@ -544,9 +672,78 @@ def test_the_baseline_is_not_left_behind_when_literals_are_removed():
 
 def test_no_colour_literal_outside_the_templates_that_already_have_one():
     """A brand-new template must start clean. The baseline records history;
-    it is not a licence to add the next one somewhere else."""
+    it is not a licence to add the next one somewhere else.
+
+    A partial split out of an existing template is the one legitimate way a
+    new entry appears here, because the literals are relocated rather than
+    written. That is also the loophole — an entry added "for a split" could
+    carry brand-new literals — so it is closed by the total below, not by
+    trusting the reason given in a comment."""
     new = sorted(set(_literal_counts()) - set(LITERAL_BASELINE))
     assert not new, f"new template(s) with hardcoded colours: {new}"
+
+
+# The sum of the per-file baseline, written out rather than computed from it.
+# Computing it would make the assertion tautological; the value of a separate
+# number is that ADDING an entry to LITERAL_BASELINE — the one move the
+# per-file ratchets permit — cannot happen silently.
+#
+# Not 188. The header above records 188 survivors at the end of the token
+# migration; the real count today is 177, and the difference is later
+# reductions that were tracked per file. Taking the number from the prose
+# would have been a constant that agreed with a comment instead of the code.
+# 177 -> 156 with the dashboard redesign: dashboard.html 16 -> 0 and
+# partials/verdict_header.html 5 -> 0. Note that three brand-new templates
+# landed in the same change (vitals_quadrant.html, and the two on /servers)
+# and none of them appears above, which is the rule working rather than a
+# coincidence — `test_no_colour_literal_outside_the_templates_that_already_
+# have_one` fails the build on the first literal in any of them.
+# 156 -> 154 with WP-4 D2: the detection block moved out of monitoring.html
+# into partials/settings/_detection.html, and its two violet literals became
+# `bg-brand-tint` on the way rather than arriving with a baseline. A file
+# split normally redistributes literals at a constant total; this one
+# reduced it, which is the only direction this number may move.
+# 154 -> 151 with WP-4 D2b: four literals left monitoring.html with the TLS
+# and maintenance blocks; three of them were tokenised on the way and one
+# (the shared toggle idiom) took a baseline entry in the new partial.
+# 151 -> 149 with WP-4 D3: four literals left operations.html with the
+# scheduled-restart block; two were redundant dark overrides of a token
+# that already flips, and two are the shared toggle idiom.
+# 149 -> 135 with WP-4 D4: rbac.html's fourteen became tokens. The
+# largest single reduction of the round, and the first file to leave
+# the baseline rather than shrink within it.
+# 126 -> 114: the twelve reports.html literals removed in the WP-5 rewrite.
+# Lowering this in the same commit is the point of the pair — a baseline that
+# keeps the headroom after the literals are gone lets the next change spend it
+# again without anything failing.
+# 114 -> 113 with WP-6 step 11: base.html's one dark:text-[#F9FAFB], with the
+# modal <h3> that carried it.
+# 113 -> 112 with WP-6 step 12: compliance.html's in-page <h1> is deleted
+# (its title moved to the topbar chip), taking its dark:text-[#F9FAFB] with it.
+# 112 -> 106 with WP-6 step 17 (Batch D): RE-MEASURED by running
+# _literal_counts() over the post-conversion tree, not computed as
+# "112 - 4" for the four named literals -- the real delta is 6: three from
+# partials/server_card.html's status-border fold and three (not one) from
+# server_detail.html, per that file's own LITERAL_BASELINE comment above.
+LITERAL_TOTAL = 106
+
+
+def test_the_total_number_of_literals_never_rises():
+    """Per-file ratchets miss one move: adding a NEW baseline entry. That is
+    permitted for an extracted partial — the literals came with the markup —
+    and it would equally permit smuggling in fresh ones under the same
+    justification. The total does not care what the entry is called."""
+    counts = _literal_counts()
+    total = sum(counts.values())
+    assert total <= LITERAL_TOTAL, (
+        f"total hardcoded literals rose to {total} (was {LITERAL_TOTAL}). "
+        "A file split redistributes them; it does not create them:\n  "
+        + "\n  ".join(f"{f}: {n} (baseline {LITERAL_BASELINE.get(f, 0)})"
+                      for f, n in sorted(counts.items())
+                      if n != LITERAL_BASELINE.get(f, 0)))
+    assert total == LITERAL_TOTAL, (
+        f"total fell to {total}; lower LITERAL_TOTAL to match, or the "
+        "headroom just won is silently available to spend again")
 
 
 def test_app_css_matches_the_python_table():
@@ -575,6 +772,249 @@ def test_base_html_tailwind_map_matches_the_python_table():
     for name in dt.TOKENS:
         assert f"'{name}': 'rgb(var(--c-{name}) / <alpha-value>)'" in base, \
             f"{name} missing from tailwind.config in base.html"
+
+
+def test_base_html_tailwind_z_map_matches_the_python_table():
+    """The same guarantee for the stacking scale, and it fails harder.
+
+    A colour name Tailwind never emits leaves an element uncoloured, which is
+    visible the first time anyone opens the page. A LAYER name Tailwind never
+    emits leaves the element at `z-index: auto`, where it looks correct until
+    the one moment something else happens to overlap it — and the whole
+    reason `Z_LAYERS` exists is that exact failure, live: `#ps-tooltip`
+    (base.html, `z-index: 9999`) and `#prism-modal` (`z-[9999]`) tie, so DOM
+    order decides and the tooltip, emitted 520 lines earlier, loses. Every
+    explanation opened inside a modal renders behind the modal.
+
+    Asserting the VALUE and not just the key is the point: `z-tooltip`
+    rendering as some other number is the same defect with a name on it.
+    """
+    base = (PROJECT_ROOT / "templates" / "base.html").read_text(encoding="utf-8")
+    for name, value in dt.Z_LAYERS.items():
+        assert f"'{name}': '{value}'" in base, (
+            f"z-{name} is {value} in tools/design_tokens.Z_LAYERS but not in "
+            "tailwind.config in base.html. Regenerate the zIndex block with "
+            "design_tokens.render_tailwind_z()")
+
+
+# ── the z-scale, and a ratchet on the literals it does not own yet ───────
+#
+# Same shape as the colour ratchet above, for the same reason: three colour
+# abstractions existed and were referenced by nothing, because typing a hex
+# was easier and nothing failed. A z-scale nothing is obliged to use would be
+# the fourth.
+#
+# `Z_LAYERS` deliberately repoints NOTHING when it lands — the tooltip moves
+# onto `z-tooltip` in the next step, the Settings menu onto `z-dropdown`
+# later — so on the day this was seeded every one of the sites below was
+# still a bare number, and the baseline is the honest size of the debt rather
+# than a target.
+#
+# Measured 2026-08-28 by RUNNING the detector below, not by copying a number:
+# **54** sites over 14 files, holding **19** distinct values on two number
+# systems that were never reconciled. The clusters:
+#
+#   19  workflows.html, most of it the editor's private in-canvas ladder
+#       (0,1,2,20,25,30,31) which sits inside `#workflow-editor` —
+#       `position: fixed; z-index: 60`, i.e. its own stacking context — and
+#       therefore never actually competes with the app's chrome.
+#    8  the value 9999: the three rival tooltip panels (`#ps-tooltip`,
+#       `#topo-tooltip`, workflows'), `#prism-modal`, two toast containers
+#       and two JS-built popups. `#prism-modal-overlay` sits one below at
+#       9998, which is the only ordered pair in the whole band.
+#    8  the value 70: eight modals, at the top of a 55/60/65/70 dialog
+#       ladder whose four heights have no stated reason.
+#
+# Keys are PROJECT-relative, unlike LITERAL_BASELINE's templates/-relative
+# ones, because this detector reads two roots: a bare "app.css" sitting next
+# to "base.html" would not say which tree it came from.
+
+Z_LITERAL_BASELINE: dict[str, int] = {
+    "static/css/app.css": 6,
+    "templates/base.html": 7,
+    "templates/compliance_doc.html": 1,
+    "templates/compliance_sop.html": 1,
+    "templates/operations.html": 2,
+    "templates/partials/server_analytics.html": 1,
+    "templates/partials/settings/_dependencies.html": 1,
+    "templates/partials/settings/_maintenance.html": 1,
+    "templates/partials/settings/_server_config.html": 3,
+    "templates/server_detail.html": 4,
+    "templates/servers.html": 2,
+    "templates/settings.html": 5,
+    # 1 -> 0. WP-6 step 8 deleted #topo-tooltip along with the rest of its
+    # CSS, including its own `z-index: 9999;` declaration — one of the eight
+    # 9999 sites named in the cluster comment above. Nothing else in this
+    # file used a raw z-index, so the count reaches zero rather than merely
+    # falling. Entry itself deleted at WP-6 step 27's close-out sweep.
+    # 19 -> 18. WP-6 step 8 deleted #block-tooltip along with the rest of
+    # its CSS, including its own `z-index: 9999;` declaration — the OTHER
+    # rival-panel 9999 named in the cluster comment above. The editor's own
+    # private in-canvas ladder (0,1,2,20,25,30,31) is untouched — it never
+    # competed with the app's chrome in the first place — so the eighteen
+    # that remain are all still that ladder.
+    "templates/workflows.html": 18,
+}
+
+# A `z-index:` declaration — in a <style> block, in an inline `style=`, or in
+# a cssText string a script assembles at runtime (4 of the 54 are that last
+# shape, which is why this reads the raw text rather than parsed markup) —
+# plus the Tailwind class in BOTH spellings, arbitrary `z-[70]` and built-in
+# `z-50`. Both are live: 25 of the 54 sites are declarations and 29 are
+# classes, and those 29 split 19 arbitrary / 10 built-in — so a detector that
+# knew only declarations would miss more than half, and one that knew only
+# the arbitrary spelling would still miss ten.
+#
+# The lookbehind is what stops `data-z-50` and `--vitals-z-2` matching; the
+# leading `-?` is what keeps a negative utility (`-z-10`) in scope even
+# though the tree has none today. `z-auto` is deliberately NOT counted: it
+# names no number, and an element that says it has no layer is not the debt
+# this ratchet is measuring.
+_Z_LITERAL = re.compile(
+    r"z-index\s*:\s*-?\d+"
+    r"|(?<![\w-])-?z-\[-?\d+\]"
+    r"|(?<![\w-])-?z-\d+(?![\w-])"
+)
+
+
+def _z_literal_counts() -> dict[str, int]:
+    paths = sorted((PROJECT_ROOT / "templates").rglob("*.html"))
+    paths.append(PROJECT_ROOT / "static" / "css" / "app.css")
+    return {p.relative_to(PROJECT_ROOT).as_posix(): n
+            for p in paths
+            if (n := len(_Z_LITERAL.findall(
+                _code_only(p.read_text(encoding="utf-8")))))}
+
+
+def test_the_z_counter_reads_both_spellings_and_not_the_prose():
+    """Positive control for `_Z_LITERAL`, in both directions.
+
+    A detector that misses a spelling under-reports, and the ratchet then
+    buys headroom that was never won. One that matches prose fires on its own
+    documentation, and the cheapest way to make that green is to delete the
+    explanation — the wrong repair (docs/OPS-LEARNINGS.md §2.2).
+
+    The prose case is not hypothetical here: the zIndex block in base.html
+    carries a comment naming the literals it is replacing, and without the
+    shared `_code_only()` stripper this file's own measured total would be 57
+    instead of 54.
+    """
+    assert len(_Z_LITERAL.findall('style="z-index: 20; position: relative;"')) == 1
+    assert len(_Z_LITERAL.findall("'position:fixed;z-index:9999;top:16px'")) == 1
+    assert len(_Z_LITERAL.findall('class="fixed inset-0 z-[70] hidden"')) == 1
+    assert len(_Z_LITERAL.findall('class="fixed top-14 left-0 z-50 flex"')) == 1
+
+    assert not _Z_LITERAL.findall('class="relative z-auto"'), (
+        "z-auto is being counted; it names no number and is not the debt "
+        "this ratchet measures")
+    assert not _Z_LITERAL.findall('<div data-z-50 style="--vitals-z-2: 1">'), (
+        "the class rule is matching inside a longer word")
+
+    quoted = "          // 51 exists only to beat the sidebar's z-50 — z-[9999]"
+    assert len(_Z_LITERAL.findall(quoted)) == 2, (
+        "the sample no longer contains the two shapes it is meant to quote")
+    assert not _Z_LITERAL.findall(_code_only(quoted)), (
+        "a literal quoted inside the comment that explains it is being "
+        "counted; the ratchet is reading its own documentation")
+
+
+def test_z_index_literals_never_increase():
+    """19 values, two number systems, and one of them is a functional bug —
+    `#ps-tooltip` and `#prism-modal` both at 9999, so DOM order decides and
+    the tooltip loses. Use a layer from `tools/design_tokens.Z_LAYERS`."""
+    counts = _z_literal_counts()
+    grew = [f"{f}: {n} literal(s), baseline {Z_LITERAL_BASELINE.get(f, 0)}"
+            for f, n in counts.items() if n > Z_LITERAL_BASELINE.get(f, 0)]
+    assert not grew, (
+        "raw z-index values increased. Name the layer instead — the keys of "
+        "tools/design_tokens.Z_LAYERS are rendered as `z-*` classes by "
+        "tailwind.config in base.html:\n  " + "\n  ".join(grew))
+
+
+def test_the_z_baseline_is_not_left_behind_when_literals_are_removed():
+    """A ratchet that is never tightened is a ratchet in name only. Steps 3
+    and 22 each take a handful of these; if the baseline stays where it was,
+    the headroom they won is immediately available to spend again."""
+    counts = _z_literal_counts()
+    slack = {f: (b, counts.get(f, 0))
+             for f, b in Z_LITERAL_BASELINE.items() if counts.get(f, 0) < b}
+    assert not slack, (
+        "these files now hold FEWER raw z-index values than the baseline; "
+        "lower it:\n  "
+        + "\n  ".join(f"{f}: baseline {b} -> {n}" for f, (b, n) in slack.items()))
+
+
+def test_no_z_index_literal_outside_the_files_that_already_have_one():
+    """A file that has never needed a raw z-index does not get to start now:
+    the scale exists, and a new number in a new file is precisely how 19 of
+    them accumulated. The baseline records history, not permission."""
+    new = sorted(set(_z_literal_counts()) - set(Z_LITERAL_BASELINE))
+    assert not new, f"new file(s) with a raw z-index: {new}"
+
+
+# The sum of the per-file baseline, written out rather than computed from it,
+# for the same reason LITERAL_TOTAL is: computing it makes the assertion
+# tautological, and the one move the per-file ratchets permit — ADDING an
+# entry, which a template split legitimately needs — would then be silent.
+#
+# 54 at the moment Z_LAYERS landed. Nothing was migrated in that step, so
+# this is the full size of the debt on day one and every later movement of
+# this number is a real removal.
+# 54 -> 52 with WP-6 step 8: deleting #block-tooltip and #topo-tooltip took
+# their own `z-index: 9999;` declarations with them — two of the eight 9999
+# sites the seeding comment above counted, and the first real removal since
+# the scale was seeded. Lowered in the same commit as the two per-file
+# entries above, or the headroom just won would be silently available to
+# spend again (the property test_the_z_baseline_is_not_left_behind_when_
+# literals_are_removed exists to catch).
+Z_LITERAL_TOTAL = 52
+
+
+def test_the_total_number_of_z_literals_never_rises():
+    """Per-file ratchets miss one move: adding a NEW baseline entry. A file
+    split redistributes literals at a constant total; it does not create
+    them, and the total does not care what the new entry is called."""
+    counts = _z_literal_counts()
+    total = sum(counts.values())
+    assert total <= Z_LITERAL_TOTAL, (
+        f"total raw z-index values rose to {total} (was {Z_LITERAL_TOTAL}):\n  "
+        + "\n  ".join(f"{f}: {n} (baseline {Z_LITERAL_BASELINE.get(f, 0)})"
+                      for f, n in sorted(counts.items())
+                      if n != Z_LITERAL_BASELINE.get(f, 0)))
+    assert total == Z_LITERAL_TOTAL, (
+        f"total fell to {total}; lower Z_LITERAL_TOTAL to match, or the "
+        "headroom just won is silently available to spend again")
+
+
+def test_every_named_layer_is_distinct_and_ordered():
+    """The scale's only real job is that two things which must not tie, do
+    not. `#ps-tooltip` and `#prism-modal` tying at 9999 is the live defect
+    behind this whole step, so a duplicate value here is that bug reissued
+    with names on it.
+
+    Ordering is asserted against the dict order because the dict IS the
+    ladder — reading it top to bottom is how anyone decides which layer a new
+    element belongs on, and a key that sorts differently from where it is
+    written would make that reading wrong.
+    """
+    values = list(dt.Z_LAYERS.values())
+    assert len(set(values)) == len(values), (
+        f"two layers share a value: {dt.Z_LAYERS}")
+    assert values == sorted(values), (
+        "Z_LAYERS is not written in stacking order; the table reads as a "
+        f"ladder and must be one: {dt.Z_LAYERS}")
+    assert dt.Z_LAYERS["tooltip"] > dt.Z_LAYERS["dropdown"], (
+        "a tooltip explaining a menu item must not open behind the menu")
+    assert dt.Z_LAYERS["modal"] > dt.Z_LAYERS["overlay"], (
+        "a dialog panel behind its own backdrop")
+    assert dt.Z_LAYERS["topbar"] > dt.Z_LAYERS["sidebar"], (
+        "the topbar spans the sidebar's full width and must sit over it — "
+        "measured today as z-[51] against z-50")
+    assert dt.Z_LAYERS["tooltip"] > 9999, (
+        "z-tooltip must BEAT the eight live 9999s it currently ties and, on "
+        "DOM order, loses to. When those are renumbered it comes down to 90 "
+        "and z-toast goes above it — in the same commit, or the scale is a "
+        "fiction with one exception in it")
 
 
 # ── contrast is a build failure, not a matter of taste ───────────────────
@@ -619,6 +1059,79 @@ def test_every_text_token_clears_wcag_aa_on_its_card():
             ratio = contrast(dt.TOKENS[name][index], card)
             assert ratio >= 4.5, (
                 f"{name} on card is {ratio:.2f}:1 in {theme} mode")
+
+
+def test_every_text_token_clears_aa_on_page_and_raised():
+    """WP-6 step 13. §2.4's extension of the AA-on-card test above to the
+    other two surfaces a text token actually renders on: `card` was never
+    the only place body text sits -- `page` behind a group label
+    (§2.3: dashboard.html:300, network.html:56, scan.html:44), `raised`
+    inside a tile or an inset box -- and until now neither had ever been
+    checked here.
+
+    `faint` is EXCLUDED, deliberately, not because it is unimportant but
+    because it already, measurably, FAILS: 4.34:1 on `page` and 4.04:1 on
+    `raised`, both light theme, both below the 4.5 AA floor (§2.3's own
+    table). This is the exact measurement that keeps a heading off
+    `page`/`raised` at the H4 rung (H-2/H-3 in
+    tests/test_design_headings.py) and `text-faint` out of a tile. Excluding
+    it here records a known, already-diagnosed failure; it does not hide a
+    new one, and fixing it is explicitly NOT this test's job -- per
+    DESIGN_SYSTEM_SPEC.md's own §8.5 changed-enforcement entry for this
+    exact test: "Do not change the `faint` token values -- that is a
+    palette decision for the owner, not a side effect of this work."
+
+    `warning` on `raised` is EXCLUDED too, narrowly -- light theme only,
+    that one surface only (it clears `card` at 5.19:1 and `page` at 4.73:1
+    fine, and dark-theme `raised` is 11.59:1). Measured at 4.41:1 while
+    writing this test: a real, previously undocumented AA miss, not one the
+    spec's own §2.3 table names the way it names `faint`'s two failures.
+    Unlike `faint`, nothing in this tree yet stops `text-warning` from being
+    used inside a tile (`bg-raised`) the way C-9/H-3 stop `text-faint` --
+    this exclusion records the measurement so the test can be written today
+    without inventing a new content rule that isn't this step's job either;
+    it is not evidence the combination is already governed. A same-class-
+    string grep for `bg-raised` + `text-warning` on one element found no
+    current call site, but that check cannot see a `text-warning` child
+    inside a `bg-raised` parent, so this is a disclosed gap, not a cleared
+    one -- flag it to the owner rather than treating the exclusion as proof
+    of safety.
+    """
+    for index, theme in ((0, "light"), (1, "dark")):
+        for surface in ("page", "raised"):
+            bg = dt.TOKENS[surface][index]
+            for name in TEXT_TOKENS:
+                if name == "faint":
+                    continue
+                if name == "warning" and surface == "raised":
+                    continue
+                ratio = contrast(dt.TOKENS[name][index], bg)
+                assert ratio >= 4.5, (
+                    f"{name} on {surface} is {ratio:.2f}:1 in {theme} mode")
+
+
+def test_faint_is_excluded_above_for_a_measured_reason_not_a_convenient_one():
+    """Guard on the exclusion in the test above: if the palette ever moves
+    and `faint` clears AA on both surfaces, THIS fails -- so the exclusion
+    gets revisited deliberately instead of sitting there forever as an
+    unexamined carve-out. Light theme only, matching how the failure is
+    cited everywhere else it appears in this codebase (§2.3's own table):
+    dark theme's faint already clears both surfaces (raised 4.95:1, page
+    5.97:1)."""
+    on_raised = contrast(dt.TOKENS["faint"][0], dt.TOKENS["raised"][0])
+    on_page = contrast(dt.TOKENS["faint"][0], dt.TOKENS["page"][0])
+    assert on_raised < 4.5, f"faint on raised is now {on_raised:.2f}:1 -- the exclusion above may be stale"
+    assert on_page < 4.5, f"faint on page is now {on_page:.2f}:1 -- the exclusion above may be stale"
+
+
+def test_warning_is_excluded_above_for_a_measured_reason_not_a_convenient_one():
+    """Guard on the `warning`/`raised`/light exclusion in the test above: if
+    the palette ever moves and `warning` clears AA there too, THIS fails, so
+    the exclusion gets revisited instead of sitting there unexamined. Dark
+    theme and the `page` surface are not excluded above and so need no guard
+    here -- both already clear AA (page 4.73:1, dark raised 11.59:1)."""
+    on_raised = contrast(dt.TOKENS["warning"][0], dt.TOKENS["raised"][0])
+    assert on_raised < 4.5, f"warning on raised is now {on_raised:.2f}:1 -- the exclusion above may be stale"
 
 
 def test_every_status_label_clears_aa_on_its_own_tint():
