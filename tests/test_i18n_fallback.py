@@ -38,6 +38,55 @@ def test_all_real_locales_cover_every_english_key():
         assert not missing, f"{lang!r} still missing {len(missing)} keys: {missing[:5]}"
 
 
+def test_every_locale_actually_translates_every_english_key():
+    """The test above checks `get_translations(lang)`, which merges each
+    locale OVER English before comparing -- so a key genuinely missing from
+    a locale is invisibly backfilled by the merge itself, and the assertion
+    passes either way. That test can only ever catch a key missing from
+    `en`, which cannot happen; it has never been able to catch a locale that
+    simply never translated a key.
+
+    This reads `i18n.TRANSLATIONS[lang]` directly, unmerged -- the only way
+    to prove a string was actually written for that locale rather than the
+    app quietly rendering English and no test noticing. Found by
+    cross-referencing this file against the Linux/Network/Posture planning
+    specs (docs/plans/SIBLING_COORDINATION_NOTES.md §2.3): 37 keys added for
+    the compliance/SOP-viewer feature were missing, identically, from all
+    four non-English locales, for as long as that feature has existed --
+    the test above stayed green the entire time."""
+    en = i18n.TRANSLATIONS["en"]
+    for lang, real in i18n.TRANSLATIONS.items():
+        if lang == "en":
+            continue
+        missing = sorted(k for k in en if k not in real)
+        assert not missing, (
+            f"{lang!r} has not actually translated {len(missing)} key(s) -- "
+            f"get_translations() hides this by falling back to English: "
+            f"{missing[:5]}")
+
+
+def test_the_direct_coverage_check_can_actually_fail(monkeypatch):
+    """Positive control for the test above, in the shape `tools/
+    verify_guardrails.py` argues for repo-wide: a check that has never been
+    seen to fail is indistinguishable from one that cannot. Delete a real
+    key from a real locale's OWN dict (not the merged view) and confirm the
+    direct check catches it -- proving it was the merge, and not some other
+    accident, that made the old test blind."""
+    de = dict(i18n.TRANSLATIONS["de"])
+    en = i18n.TRANSLATIONS["en"]
+    sample_key = next(iter(en))
+    de.pop(sample_key, None)
+    monkeypatch.setitem(i18n.TRANSLATIONS, "de", de)
+
+    missing = sorted(k for k in en if k not in i18n.TRANSLATIONS["de"])
+    assert sample_key in missing
+
+    # And, unpatched, the same shape of check on the real dicts finds nothing.
+    monkeypatch.undo()
+    missing_real = sorted(k for k in en if k not in i18n.TRANSLATIONS["de"])
+    assert not missing_real
+
+
 def test_no_locale_defines_the_same_key_twice():
     """A duplicate key in a dict literal is legal Python and the LAST one wins,
     silently. Adding a key that already exists therefore does not fail, does
