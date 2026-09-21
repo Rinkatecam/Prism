@@ -4,6 +4,7 @@ import csv
 import hashlib
 import io
 import json as _json
+import os
 import sqlite3
 import logging
 import time
@@ -14,7 +15,13 @@ from datetime import datetime, timezone
 logger = logging.getLogger("prism.db")
 
 
-DB_PATH = Path(__file__).parent / "data" / "prism.db"
+# PRISM_DB_PATH overrides the default location (documented in
+# docs/csv/05_CONFIG_SPEC.md §D). tests/conftest.py sets this before any test
+# module can import this file, so `Database()` — including app.py's
+# module-level `db = Database()` — never resolves to the real production
+# database during a pytest run.
+DB_PATH = Path(os.environ["PRISM_DB_PATH"]) if os.environ.get("PRISM_DB_PATH") \
+    else Path(__file__).parent / "data" / "prism.db"
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS metrics (
