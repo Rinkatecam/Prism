@@ -144,6 +144,19 @@ def _is_self(rel_path: str) -> bool:
     return rel_path in SELF
 
 
+# docs/ANONYMISATION.md: "Author attribution in LICENSE and README.md is
+# deliberate and exempt. The point is to protect the estate, not the
+# maintainer's byline." Only PERSON terms (load_person_terms) are suppressed
+# for these two — a real hostname or IP address in either file is still a
+# real leak and stays caught, exactly as the SELF exemption above only lifts
+# the regex rules and nothing else. As narrow as the reason for it.
+ATTRIBUTION_EXEMPT = ("LICENSE", "README.md")
+
+
+def _is_attribution_exempt(rel_path: str) -> bool:
+    return rel_path in ATTRIBUTION_EXEMPT
+
+
 def _is_placeholder_address(value: str) -> bool:
     return (bool(re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", value))
             and value.startswith(ALLOWED_ADDRESS_PREFIXES))
@@ -226,6 +239,48 @@ def load_secret_terms(config_path: Path | None = None) -> set[str]:
     return terms
 
 
+def load_person_terms(config_path: Path | None = None) -> set[str]:
+    """The subset of load_secret_terms() that names a PERSON, not a machine.
+
+    Specifically: fragments of a server's configured username and of
+    ldap_bind_user. This is what the LICENSE/README author-attribution
+    exemption (docs/ANONYMISATION.md: "the point is to protect the estate,
+    not the maintainer's byline") is allowed to suppress. A real hostname,
+    server name or IP address is not a person term and is never in this set
+    — those stay forbidden in LICENSE/README exactly as everywhere else.
+
+    Re-derives from config.json rather than filtering load_secret_terms()'s
+    output, because that output is already lowercased and flattened; keeping
+    the two derivations independent (and small) is cheaper than threading
+    provenance through a set of strings.
+    """
+    config_path = config_path or CONFIG_PATH
+    if not config_path.exists():
+        return set()
+    try:
+        cfg = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return set()
+
+    terms: set[str] = set()
+
+    def add(value: str | None) -> None:
+        if value and _label_is_distinctive(value):
+            terms.add(value.lower())
+
+    for server in cfg.get("servers", []) or []:
+        username = server.get("username") or ""
+        for part in re.split(r"[\\/@]", username):
+            add(part)
+
+    auth = (cfg.get("settings", {}) or {}).get("auth", {}) or {}
+    for part in re.split(r"[.\\/@:,=\s]", str(auth.get("ldap_bind_user") or "")):
+        add(part)
+
+    terms |= load_local_person_terms()
+    return terms
+
+
 def load_local_terms(path: Path | None = None) -> set[str]:
     """Extra forbidden terms the deployment config cannot know about.
 
@@ -233,6 +288,11 @@ def load_local_terms(path: Path | None = None) -> set[str]:
     fixture for months because it appears nowhere in config.json, so nothing
     could derive it. Anything matched only by a shape rule would have to be a
     shape, and 'first.last' is far too common a shape to forbid.
+
+    A `person:` prefix is stripped here like any other term — it is still
+    forbidden everywhere by default. The prefix only matters to
+    load_local_person_terms(), which is what makes it eligible for the
+    LICENSE/README attribution exemption.
     """
     path = path or LOCAL_TERMS_PATH
     if not path.exists():
@@ -240,8 +300,35 @@ def load_local_terms(path: Path | None = None) -> set[str]:
     terms = set()
     for line in path.read_text(encoding="utf-8").splitlines():
         term = line.split("#", 1)[0].strip()
-        if term and not term.lower().startswith("regex:"):
+        if not term or term.lower().startswith("regex:"):
+            continue
+        if term.lower().startswith("person:"):
+            term = term[len("person:"):].strip()
+        if term:
             terms.add(term.lower())
+    return terms
+
+
+def load_local_person_terms(path: Path | None = None) -> set[str]:
+    """`person:`-prefixed lines in the local deny-list.
+
+    This is the operator's own explicit marking that a term names a PERSON —
+    an account, a real name — not the estate, and may therefore be lifted for
+    LICENSE/README author attribution (docs/ANONYMISATION.md). Nothing is
+    inferred from shape or content; an untagged term (including the ones
+    added for the exact same person before this prefix existed) stays
+    forbidden in LICENSE/README exactly as everywhere else.
+    """
+    path = path or LOCAL_TERMS_PATH
+    if not path.exists():
+        return set()
+    terms = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        term = line.split("#", 1)[0].strip()
+        if term.lower().startswith("person:"):
+            stripped = term[len("person:"):].strip()
+            if stripped:
+                terms.add(stripped.lower())
     return terms
 
 
@@ -318,7 +405,8 @@ def _should_skip(rel_path: str) -> bool:
 
 
 def scan_text(text: str, secret_terms: set[str], rules=None,
-              skip_patterns: bool = False) -> list[tuple[int, str, str]]:
+              skip_patterns: bool = False,
+              exempt_terms: set[str] | None = None) -> list[tuple[int, str, str]]:
     """Return [(line_no, rule, offending_text)] for a blob of text.
 
     ``skip_patterns`` is for the checker's own source and test file, which must
@@ -326,8 +414,14 @@ def scan_text(text: str, secret_terms: set[str], rules=None,
     config-derived terms and the address rule still apply, because a real
     hostname in an exempt file is still a real hostname. A blanket exemption
     hid exactly that for a while.
+
+    ``exempt_terms`` is different in kind, not just degree: it is a caller-
+    supplied subset of ``secret_terms`` to lift for THIS file only (see
+    ATTRIBUTION_EXEMPT / load_person_terms), never the whole set. The regex
+    rules and the address rule are never affected by it.
     """
     rules = active_rules() if rules is None else rules
+    terms = secret_terms - exempt_terms if exempt_terms else secret_terms
     findings: list[tuple[int, str, str]] = []
     for line_no, line in enumerate(text.splitlines(), start=1):
         lowered = line.lower()
@@ -336,14 +430,15 @@ def scan_text(text: str, secret_terms: set[str], rules=None,
                 findings.append((line_no, rule, match.group(0)))
         for addr in address_findings(line):
             findings.append((line_no, "private-address", addr))
-        for term in secret_terms:
+        for term in terms:
             if term in lowered:
                 findings.append((line_no, "config-derived", term))
     return findings
 
 
 def scan_path(rel_path: str, secret_terms: set[str], rules=None,
-              skip_patterns: bool = False) -> list[tuple[int, str, str]]:
+              skip_patterns: bool = False,
+              exempt_terms: set[str] | None = None) -> list[tuple[int, str, str]]:
     """A PATH is published too, even when the file's contents are spotless.
 
     `FILE01_Deduplication.html` gives away a hostname from the directory
@@ -353,22 +448,23 @@ def scan_path(rel_path: str, secret_terms: set[str], rules=None,
     """
     return [(0, f"path:{rule}", text)
             for _ln, rule, text in scan_text(rel_path, secret_terms, rules,
-                                             skip_patterns)]
+                                             skip_patterns, exempt_terms)]
 
 
 def scan_file(rel_path: str, secret_terms: set[str], rules=None,
-              skip_patterns: bool = False) -> list[tuple[int, str, str]]:
+              skip_patterns: bool = False,
+              exempt_terms: set[str] | None = None) -> list[tuple[int, str, str]]:
     """Return [(line_no, rule, offending_text)] for one working-tree file.
 
     Binary and unreadable files still have their NAME checked — that is the
     part of them that gets published either way.
     """
-    findings = scan_path(rel_path, secret_terms, rules, skip_patterns)
+    findings = scan_path(rel_path, secret_terms, rules, skip_patterns, exempt_terms)
     try:
         text = (REPO_ROOT / rel_path).read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return findings   # binary or unreadable — nothing else quotable in it
-    return findings + scan_text(text, secret_terms, rules, skip_patterns)
+    return findings + scan_text(text, secret_terms, rules, skip_patterns, exempt_terms)
 
 
 def _git(*args: str) -> str:
@@ -398,7 +494,8 @@ def scan_commit_messages(commits: list[str],
 
 
 def scan_commit_trees(commits: list[str],
-                      secret_terms: set[str], rules=None) -> list[tuple[str, int, str, str]]:
+                      secret_terms: set[str], rules=None,
+                      person_terms: set[str] | None = None) -> list[tuple[str, int, str, str]]:
     """Scan the tree of every commit being pushed, not just the final one.
 
     The tip being clean says nothing about the commits underneath it. Three
@@ -423,8 +520,9 @@ def scan_commit_trees(commits: list[str],
         try:
             for rel_path in _git("ls-tree", "-r", "--name-only", commit).splitlines():
                 if rel_path and not _should_skip(rel_path):
+                    exempt = person_terms if _is_attribution_exempt(rel_path) else None
                     for _ln, rule, text in scan_path(rel_path, secret_terms, rules,
-                                                     _is_self(rel_path)):
+                                                     _is_self(rel_path), exempt):
                         violations.append((f"{rel_path} @ {commit[:9]}", 0, rule, text))
         except subprocess.CalledProcessError:
             pass
@@ -451,8 +549,9 @@ def scan_commit_trees(commits: list[str],
                 blob = _git("show", f"{commit}:{rel_path}")
             except subprocess.CalledProcessError:
                 continue
+            exempt = person_terms if _is_attribution_exempt(rel_path) else None
             for line_no, rule, text in scan_text(blob, secret_terms, rules,
-                                                 _is_self(rel_path)):
+                                                 _is_self(rel_path), exempt):
                 violations.append((f"{rel_path} @ {commit[:9]}", line_no, rule, text))
     return violations
 
@@ -507,6 +606,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     secret_terms = load_secret_terms()
+    person_terms = load_person_terms()
     # Check the FILE, not the derived terms: a populated local deny-list would
     # otherwise mask a missing config and let the weaker ruleset through.
     if args.require_config and not CONFIG_PATH.exists():
@@ -526,8 +626,9 @@ def main(argv: list[str] | None = None) -> int:
         if _should_skip(rel_path):
             continue
         scanned += 1
+        exempt = person_terms if _is_attribution_exempt(rel_path) else None
         for line_no, rule, text in scan_file(rel_path, secret_terms, rules,
-                                             _is_self(rel_path)):
+                                             _is_self(rel_path), exempt):
             violations.append((rel_path, line_no, rule, text))
 
     commits: list[str] = []
@@ -538,7 +639,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"could not resolve range {args.rev_range!r}", file=sys.stderr)
             return 2
         violations += scan_commit_messages(commits, secret_terms, rules)
-        violations += scan_commit_trees(commits, secret_terms, rules)
+        violations += scan_commit_trees(commits, secret_terms, rules, person_terms)
 
     if not violations:
         scope = "shape rules only" if not secret_terms else "full"
