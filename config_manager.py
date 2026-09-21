@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import shutil
 import time
 import threading
@@ -17,7 +18,13 @@ from crypto_utils import (
 
 logger = logging.getLogger("prism.config")
 
-CONFIG_PATH = Path(__file__).parent / "config.json"
+# PRISM_CONFIG_PATH overrides the default location (documented in
+# docs/csv/05_CONFIG_SPEC.md §D). tests/conftest.py sets this before any test
+# module can import this file, so `ConfigManager()` — including app.py's
+# module-level `config = ConfigManager()` — never resolves to the real
+# production config.json during a pytest run.
+CONFIG_PATH = Path(os.environ["PRISM_CONFIG_PATH"]) if os.environ.get("PRISM_CONFIG_PATH") \
+    else Path(__file__).parent / "config.json"
 
 
 class ConfigManager:
