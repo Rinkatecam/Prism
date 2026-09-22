@@ -48,6 +48,41 @@ def get_runbooks():
     return jsonify({"ok": True, "runbooks": runbooks})
 
 
+def _validate_runbook_steps(steps):
+    """Run every ``powershell`` step's script through ps_sandbox before a
+    runbook is persisted. Same pattern as ``validate_workflow_script()``
+    above: read live settings, resolve (enabled, extras, max_len) via
+    ``get_sandbox_settings``, then ``validate_script`` per script.
+
+    This is the save-time half of closing the runbook sandbox gap: prior to
+    this, ``create_runbook``/``update_runbook`` only checked that
+    ``steps_json`` parsed as JSON, never that the embedded PowerShell was on
+    the allowlist -- so a saved runbook could contain anything, and
+    ``runbook_engine.execute_runbook`` ran it against the real WinRM target
+    with no check at all. See ``runbook_engine.execute_runbook``'s docstring
+    for the matching execute-time gate (defense in depth) and why built-in
+    runbooks are exempt from both.
+
+    Returns None if every step is OK, else a string describing the first
+    offending step (1-indexed) for a 400 response.
+    """
+    from ps_sandbox import validate_script, get_sandbox_settings
+    settings = _shared._config.get_settings()
+    enabled, extras, max_len = get_sandbox_settings(settings)
+    for i, step in enumerate(steps):
+        if not isinstance(step, dict) or step.get("type") != "powershell":
+            continue
+        script = step.get("script", "")
+        if not isinstance(script, str):
+            return f"step {i + 1}: script must be a string"
+        if len(script) > max_len:
+            return f"step {i + 1}: script too long ({len(script)} > {max_len} chars)"
+        ok, reason = validate_script(script, allowed_cmdlets=extras, enabled=enabled)
+        if not ok:
+            return f"step {i + 1}: {reason}"
+    return None
+
+
 @api_bp.route("/runbooks", methods=["POST"])
 def create_runbook():
     """Create a custom runbook. Auth required."""
@@ -71,6 +106,14 @@ def create_runbook():
         steps_str = json.dumps(parsed) if not isinstance(steps_json, str) else steps_json
     except (json.JSONDecodeError, TypeError) as e:
         return jsonify({"ok": False, "error": f"Invalid JSON: {e}"}), 400
+    # Save-time sandbox gate. is_builtin is always False on this route (below) --
+    # built-ins are seeded directly via runbook_engine.seed_builtin_runbooks(),
+    # never through this endpoint -- so every runbook reaching here is
+    # user-authored and unconditionally subject to the sandbox.
+    sandbox_err = _validate_runbook_steps(parsed)
+    if sandbox_err:
+        return jsonify({"ok": False,
+                        "error": f"Blocked by PowerShell sandbox ({sandbox_err})"}), 400
     rid = _shared._db.create_runbook(name=name, description=description, category=category,
                               steps_json=steps_str,
                               created_by=flask_session.get("username", "admin"),
@@ -106,6 +149,16 @@ def update_runbook(rid):
             parsed = json.loads(data["steps_json"]) if isinstance(data["steps_json"], str) else data["steps_json"]
             if not isinstance(parsed, list):
                 return jsonify({"ok": False, "error": "Steps must be a JSON array"}), 400
+            # Same save-time gate as create_runbook(). Without this, "create a
+            # benign runbook, then PUT a disallowed script over it" is the
+            # obvious bypass of the create-time check above -- the same shape
+            # of bypass test_workflow_authoring_rbac.py already documents for
+            # workflow UPDATE. rb["is_builtin"] was already rejected above
+            # (builtins can't reach this line), so this is always user-authored.
+            sandbox_err = _validate_runbook_steps(parsed)
+            if sandbox_err:
+                return jsonify({"ok": False,
+                                "error": f"Blocked by PowerShell sandbox ({sandbox_err})"}), 400
             updates["steps_json"] = json.dumps(parsed) if not isinstance(data["steps_json"], str) else data["steps_json"]
         except (json.JSONDecodeError, TypeError) as e:
             return jsonify({"ok": False, "error": f"Invalid JSON: {e}"}), 400
