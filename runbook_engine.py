@@ -47,6 +47,12 @@ BUILTIN_RUNBOOKS = [
         "category": "diagnostic",
         "steps": [{"type": "powershell", "script": "Get-Service | Where-Object { $_.DisplayName -notlike 'Windows*' -and $_.DisplayName -notlike 'Microsoft*' } | Select-Object Name, DisplayName, Status, StartType | ConvertTo-Json", "timeout": 20}],
     },
+    {
+        "name": "Disable Windows Search Service",
+        "description": "Stop and disable the Windows Search (WSearch) service. Recommended on RDS/session hosts, where per-user content indexing can hang session teardown at logoff -- diagnosed 2026-09-22 on a session host repeatedly freezing under normal load: WSearch failing to clean up a user's indexed data at logoff (Application log event ID 2) was backing up Winlogon's own notification pipeline (event ID 6005) and leaving some users on temporary profiles (event ID 1511). Safe and reversible; does not affect Start Menu search for an administrator logged on at the console.",
+        "category": "service",
+        "steps": [{"type": "powershell", "script": "Stop-Service WSearch -Force; Set-Service WSearch -StartupType Disabled; Get-Service WSearch | Select-Object Name, Status, StartType | ConvertTo-Json", "timeout": 30}],
+    },
 ]
 
 
