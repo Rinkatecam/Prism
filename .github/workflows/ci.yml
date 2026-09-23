@@ -4,6 +4,22 @@ on:
   push:
   pull_request:
 
+# A same-repo PR fires both `push` (to the branch) and `pull_request`
+# (synchronize) for every commit, so without this every push to an open PR
+# queued two full, duplicate runs of all three jobs instead of one. This
+# cancels a run's in-progress predecessor on the same branch/PR — it does not
+# change what triggers a run or what any job does.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least-privilege default for the whole workflow: none of these three jobs
+# push commits, comment, or write releases — they only need to read the
+# checked-out repo. (release.yml declares its own, wider permissions where
+# it actually needs contents:write / id-token:write.)
+permissions:
+  contents: read
+
 jobs:
   # Runs FIRST and gates nothing else, deliberately: this repository is public
   # and has leaked real hostnames twice, both times past a manual review. Local
