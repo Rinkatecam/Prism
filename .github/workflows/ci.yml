@@ -4,6 +4,22 @@ on:
   push:
   pull_request:
 
+# A same-repo PR fires both `push` (to the branch) and `pull_request`
+# (synchronize) for every commit, so without this every push to an open PR
+# queued two full, duplicate runs of all three jobs instead of one. This
+# cancels a run's in-progress predecessor on the same branch/PR — it does not
+# change what triggers a run or what any job does.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least-privilege default for the whole workflow: none of these three jobs
+# push commits, comment, or write releases — they only need to read the
+# checked-out repo. (release.yml declares its own, wider permissions where
+# it actually needs contents:write / id-token:write.)
+permissions:
+  contents: read
+
 jobs:
   # Runs FIRST and gates nothing else, deliberately: this repository is public
   # and has leaked real hostnames twice, both times past a manual review. Local
@@ -95,8 +111,29 @@ jobs:
   audit:
     name: Dependency vulnerability audit
     runs-on: ubuntu-latest
-    # Don't fail the build on findings yet — Sprint-3 hardens this to fail-on-Critical.
-    continue-on-error: true
+    # Was continue-on-error: true, "Sprint-3 hardens this to fail-on-Critical."
+    # "Sprint-3" is a dangling reference — no such sprint plan exists anywhere
+    # in this repo's current docs/plans/ (checked 2026-09-23, see
+    # docs/plans/CICD_REVIEW.md). More importantly, "fail-on-Critical" turns
+    # out not to be buildable as literally stated: pip-audit 2.10.1's own
+    # OSV-sourced records for these findings carry NO severity/CVSS field at
+    # all (confirmed by inspecting its full JSON output), and the CLI has no
+    # --fail-on-severity flag — only --ignore-vuln ID (repeatable). There is
+    # no "Critical" to gate on without standing up separate severity-scoring
+    # tooling, which is its own project, not a one-line hardening.
+    #
+    # What ships instead: fail on any REGRESSION. Every finding known as of
+    # 2026-09-23 (25 IDs across cryptography, idna, pillow, pyasn1, urllib3 —
+    # see docs/plans/CICD_REVIEW.md for the full table and remediation notes)
+    # is explicitly grandfathered below so today's baseline stays green; any
+    # NEW finding pip-audit turns up from here on fails the job for real.
+    # This does NOT silently bless the grandfathered list forever — each ID
+    # here is a real, currently-unpatched finding (several in `cryptography`,
+    # which backs this project's own credential encryption) that still wants
+    # a deliberate upgrade decision from the owner. Re-run pip-audit locally
+    # and prune this list whenever a grandfathered package is upgraded past
+    # its fix version, and re-baseline (with the owner's eyes on the new
+    # list) if a wider dependency bump happens first.
     steps:
       - uses: actions/checkout@v4
 
@@ -116,6 +153,33 @@ jobs:
       - name: Install pip-audit
         run: pip install pip-audit
 
-      - name: Audit requirements.lock
-        # Print findings; do not fail. Hardening to "fail on Critical" is Sprint-3.
-        run: pip-audit -r requirements.lock --disable-pip || true
+      - name: Audit requirements.lock (fails on any NEW finding)
+        # Baseline as of 2026-09-23 — see the job-level comment above and
+        # docs/plans/CICD_REVIEW.md for what each ID is and why it's here.
+        run: |
+          pip-audit -r requirements.lock --disable-pip \
+            --ignore-vuln GHSA-537c-gmf6-5ccf \
+            --ignore-vuln PYSEC-2026-1284 \
+            --ignore-vuln PYSEC-2026-2141 \
+            --ignore-vuln PYSEC-2026-35 \
+            --ignore-vuln PYSEC-2026-3553 \
+            --ignore-vuln PYSEC-2026-3554 \
+            --ignore-vuln PYSEC-2026-215 \
+            --ignore-vuln PYSEC-2026-2253 \
+            --ignore-vuln PYSEC-2026-2254 \
+            --ignore-vuln PYSEC-2026-2255 \
+            --ignore-vuln PYSEC-2026-2256 \
+            --ignore-vuln PYSEC-2026-2257 \
+            --ignore-vuln PYSEC-2026-3451 \
+            --ignore-vuln PYSEC-2026-3452 \
+            --ignore-vuln PYSEC-2026-3453 \
+            --ignore-vuln PYSEC-2026-3454 \
+            --ignore-vuln PYSEC-2026-3493 \
+            --ignore-vuln PYSEC-2026-3494 \
+            --ignore-vuln PYSEC-2026-3495 \
+            --ignore-vuln PYSEC-2026-3496 \
+            --ignore-vuln PYSEC-2026-3455 \
+            --ignore-vuln PYSEC-2026-3456 \
+            --ignore-vuln PYSEC-2026-3457 \
+            --ignore-vuln PYSEC-2026-141 \
+            --ignore-vuln PYSEC-2026-142

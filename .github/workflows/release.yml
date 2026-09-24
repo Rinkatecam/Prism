@@ -32,11 +32,6 @@ jobs:
           # Fetch the tag commit only; we don't need full history for the tarball.
           fetch-depth: 1
 
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
       - name: Compute version from tag
         id: version
         run: |
