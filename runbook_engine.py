@@ -47,6 +47,12 @@ BUILTIN_RUNBOOKS = [
         "category": "diagnostic",
         "steps": [{"type": "powershell", "script": "Get-Service | Where-Object { $_.DisplayName -notlike 'Windows*' -and $_.DisplayName -notlike 'Microsoft*' } | Select-Object Name, DisplayName, Status, StartType | ConvertTo-Json", "timeout": 20}],
     },
+    {
+        "name": "Disable Windows Search Service",
+        "description": "Stop and disable the Windows Search (WSearch) service. Recommended on RDS/session hosts, where per-user content indexing can hang session teardown at logoff -- diagnosed 2026-09-22 on a session host repeatedly freezing under normal load: WSearch failing to clean up a user's indexed data at logoff (Application log event ID 2) was backing up Winlogon's own notification pipeline (event ID 6005) and leaving some users on temporary profiles (event ID 1511). Safe and reversible; does not affect Start Menu search for an administrator logged on at the console.",
+        "category": "service",
+        "steps": [{"type": "powershell", "script": "Stop-Service WSearch -Force; Set-Service WSearch -StartupType Disabled; Get-Service WSearch | Select-Object Name, Status, StartType | ConvertTo-Json", "timeout": 30}],
+    },
 ]
 
 
@@ -88,6 +94,52 @@ def execute_runbook(db, runbook_id, server_name, server_config, dry_run=False, e
           email_alerts.should_send_email allowlist.
         - Mirrors the dispatch block in collector.py per-server loop.
 
+    SANDBOX GATE (defense in depth):
+        routes/api/workflows.py's create_runbook()/update_runbook() already
+        run every step's script through ps_sandbox.validate_script() before
+        a user-authored runbook is persisted. That is a SAVE-time gate, and
+        three things can still reach this function with an unvalidated (or
+        no-longer-valid) script:
+          - a runbook saved before that gate existed on this branch,
+          - sandbox settings (allowed_cmdlets / enabled) tightened after the
+            runbook was saved -- what passed at save time may not pass now,
+          - direct DB writes that never go through the HTTP route at all.
+        So execute_runbook() re-validates every "powershell" step immediately
+        before opening the WinRM connection, exactly like workflow_engine.py's
+        _exec_run_powershell/_exec_condition already validate before running
+        a workflow step. A blocked script fails the run with status="failed"
+        and a clear reason in the output -- it is never silently skipped or
+        silently allowed to run.
+
+    EXEMPTION FOR is_builtin RUNBOOKS:
+        Built-in runbooks (seeded by seed_builtin_runbooks(), created_by=
+        "system") are EXEMPT from this gate. Two reasons, not one:
+          1. They bypass create_runbook()'s save-time gate entirely -- they
+             are inserted straight via db.create_runbook(), never through the
+             HTTP route -- so they can never have been vetted by it, and
+             gating only one of the two entry points would be incoherent.
+          2. Extending the allowlist to cover them is not actually possible
+             for all of them. "Clear Temp Files" runs `Remove-Item`, which is
+             in ps_sandbox.HARD_DENY (not merely absent from
+             DEFAULT_ALLOWED_CMDLETS) -- HARD_DENY is checked before the
+             allowlist and always wins (see ps_sandbox.validate_script), so
+             no amount of `allowed_cmdlets` settings can make that script
+             pass. ("Restart Print Spooler" and "Flush DNS Cache" would also
+             fail today on Start-Sleep/Clear-DnsClientCache being merely
+             unlisted -- confirmed by running validate_script over
+             BUILTIN_RUNBOOKS directly.)
+        This mirrors an existing precedent in this codebase:
+        workflow_engine._exec_clear_temp runs the identical hardcoded
+        Remove-Item script for the "clear_temp" block type and has never
+        gone through ps_sandbox at all, because it is shipped code, not
+        user input. Built-in runbooks are the same category of trusted,
+        curated, unedited content -- Prism already trusts its own shipped
+        code over arbitrary user input elsewhere (this is exactly that
+        pattern, applied consistently). A user-created runbook can never
+        set is_builtin=True (create_runbook() hardcodes it False), so this
+        exemption cannot be used to smuggle an unvalidated script past the
+        gate.
+
     Returns: execution_id
     """
     runbook = db.get_runbook(runbook_id)
@@ -122,31 +174,59 @@ def execute_runbook(db, runbook_id, server_name, server_config, dry_run=False, e
         final_status = "completed"
 
         try:
-            wsman = make_wsman(
-                server_config,
-                connection_timeout=15,
-                read_timeout=max(s.get("timeout", 30) for s in steps),
-            )
-
-            with RunspacePool(wsman) as pool:
+            # Sandbox gate -- see the EXEMPTION docstring above execute_runbook
+            # for why is_builtin runbooks skip this. Runs BEFORE any WinRM
+            # connection is opened (mirrors workflow_engine._exec_run_powershell,
+            # which validates before _connect_winrm) so a blocked runbook never
+            # touches the target server at all.
+            sandbox_blocked = False
+            if not runbook.get("is_builtin"):
+                from ps_sandbox import validate_script, get_sandbox_settings
+                enabled, extras, max_len = get_sandbox_settings(settings or {})
                 for i, step in enumerate(steps):
-                    if step["type"] == "powershell":
-                        ps = PowerShell(pool)
-                        ps.add_script(step["script"])
-                        result = ps.invoke()
+                    if step.get("type") != "powershell":
+                        continue
+                    script = step.get("script", "")
+                    if len(script) > max_len:
+                        output_parts.append(
+                            f"Step {i+1} BLOCKED by PowerShell sandbox: "
+                            f"script too long ({len(script)} > {max_len} chars)")
+                        final_status = "failed"
+                        sandbox_blocked = True
+                        break
+                    ok, reason = validate_script(script, allowed_cmdlets=extras, enabled=enabled)
+                    if not ok:
+                        output_parts.append(f"Step {i+1} BLOCKED by PowerShell sandbox: {reason}")
+                        final_status = "failed"
+                        sandbox_blocked = True
+                        break
 
-                        step_output = "\n".join(str(o) for o in result) if result else ""
-                        if ps.had_errors:
-                            errors = "\n".join(str(e) for e in ps.streams.error)
-                            output_parts.append(f"Step {i+1} ERROR:\n{errors}")
-                            final_status = "failed"
-                            break
-                        else:
-                            output_parts.append(f"Step {i+1} OK:\n{step_output}")
+            if not sandbox_blocked:
+                wsman = make_wsman(
+                    server_config,
+                    connection_timeout=15,
+                    read_timeout=max(s.get("timeout", 30) for s in steps),
+                )
 
-                    elif step["type"] == "wait":
-                        time.sleep(step.get("seconds", 5))
-                        output_parts.append(f"Step {i+1}: Waited {step.get('seconds', 5)}s")
+                with RunspacePool(wsman) as pool:
+                    for i, step in enumerate(steps):
+                        if step["type"] == "powershell":
+                            ps = PowerShell(pool)
+                            ps.add_script(step["script"])
+                            result = ps.invoke()
+
+                            step_output = "\n".join(str(o) for o in result) if result else ""
+                            if ps.had_errors:
+                                errors = "\n".join(str(e) for e in ps.streams.error)
+                                output_parts.append(f"Step {i+1} ERROR:\n{errors}")
+                                final_status = "failed"
+                                break
+                            else:
+                                output_parts.append(f"Step {i+1} OK:\n{step_output}")
+
+                        elif step["type"] == "wait":
+                            time.sleep(step.get("seconds", 5))
+                            output_parts.append(f"Step {i+1}: Waited {step.get('seconds', 5)}s")
 
         except Exception as e:
             output_parts.append(f"ERROR: {str(e)}")
